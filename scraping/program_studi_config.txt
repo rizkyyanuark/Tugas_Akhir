@@ -1,0 +1,44 @@
+# KONFIGURASI PROGRAM STUDI - PDDIKTI SCRAPER
+# ================================================
+# 
+# FILE INI BERISI DAFTAR PROGRAM STUDI YANG AKAN DI-SCRAPE DATA DOSENNYA
+# 
+# TUJUAN FILE:
+# - Memudahkan konfigurasi tanpa edit notebook
+# - Memungkinkan developer lain untuk dengan mudah menambah/mengurangi program studi
+# - Menyimpan history program studi yang pernah di-scrape
+# - Memisahkan konfigurasi dari logic code
+#
+# CARA PENGGUNAAN:
+# 1. Satu baris = satu program studi
+# 2. Baris yang dimulai dengan # akan diabaikan (komentar)
+# 3. Baris kosong akan diabaikan
+# 4. Gunakan nama program studi yang sesuai dengan data PDDIKTI
+# 5. Pastikan nama exact match dengan database PDDIKTI
+#
+# FORMAT: 
+# [Nama Program Studi]
+#
+# CONTOH:
+# Sains Data
+# Kecerdasan Artifisial
+# Teknik Informatika
+# Sistem Informasi
+#
+# ================================================
+
+# PROGRAM STUDI AKTIF (UNCOMMENT UNTUK AKTIFKAN)
+Sains Data
+Kecerdasan Artifisial
+
+# ================================================
+# CATATAN DEVELOPER:
+# 
+# - Sebelum menambah program studi baru, cek dulu ketersediaan data di PDDIKTI
+# - Beberapa program studi mungkin tidak memiliki data dosen yang lengkap
+# - Program studi dengan nama yang mirip mungkin menghasilkan data duplikat
+# - Untuk program studi baru, disarankan test dengan sample kecil terlebih dahulu
+# 
+# LAST UPDATED: 2025-09-24
+# TOTAL ACTIVE PRODI: 2
+# ================================================
