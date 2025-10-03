@@ -9,3 +9,42 @@ wheels/
 # Virtual environments
 .venv
 .ipynb_checkpoints
+
+# Environment files (contains sensitive data)
+ws.env
+*.env
+!*.env.template
+!*.env.sample
+
+# Docker volumes data
+logs/
+data/
+
+# Neo4j specific
+neo4j_data/
+neo4j_logs/
+neo4j_plugins/
+neo4j_import/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter notebook outputs
+*.ipynb_checkpoints
+
+# Temporary files
+*.tmp
+*.temp
+*.log

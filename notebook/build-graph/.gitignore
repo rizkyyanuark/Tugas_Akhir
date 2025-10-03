@@ -1,7 +1,0 @@
-embedding_model/
-.idea/
-__pycache__/
-scratch/
-*.env
-.DS_Store
-.ipynb_checkpoints/
