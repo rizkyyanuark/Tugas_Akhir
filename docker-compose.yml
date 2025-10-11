@@ -6,35 +6,24 @@ services:
       NEO4J_server_memory_heap_initial__size: 256m
       NEO4J_server_memory_heap_max__size: 1G
       NEO4J_server_memory_pagecache_size: 256m
-      # Enable multiple databases
       NEO4J_dbms_default__database: datascience
       NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      # Enable Prometheus metrics
+      NEO4J_metrics_prometheus_enabled: "true"
+      NEO4J_metrics_prometheus_endpoint: "0.0.0.0:2004"
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
       - neo4j_import:/var/lib/neo4j/import
     ports:
-      - "7474:7474" # Neo4j Browser
-      - "7687:7687" # Bolt protocol
+      - "7474:7474"
+      - "7687:7687"
+      - "2004:2004"
     deploy:
       resources:
         limits:
           cpus: "2"
           memory: 1500m
-
-  # cadvisor:
-  #   image: gcr.io/cadvisor/cadvisor:v0.47.0
-  #   volumes:
-  #     - /:/rootfs:ro
-  #     - /var/run:/var/run:ro
-  #     - /sys:/sys:ro
-  #     - /var/lib/docker/:/var/lib/docker:ro
-  #     - /dev/disk/:/dev/disk:ro
-  #   ports:
-  #     - "8081:8080"
-  #   privileged: true
-  #   devices:
-  #     - /dev/kmsg
 
   node_exporter:
     image: prom/node-exporter:latest
@@ -55,6 +44,7 @@ services:
     depends_on:
       - node_exporter
       - neo4j
+      - weaviate
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -69,11 +59,49 @@ services:
       - prometheus
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/neo4j-dashboard.json
+
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.9
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+      - "2112:2112"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "text2vec-transformers"
+      ENABLE_MODULES: "text2vec-transformers"
+      TRANSFORMERS_INFERENCE_API: "http://t2v-transformers:8080"
+      CLUSTER_HOSTNAME: "node1"
+      PROMETHEUS_MONITORING_ENABLED: "true"
+      PROMETHEUS_MONITORING_GROUP: "weaviate"
+      QUERY_MAXIMUM_RESULTS: 10000
+      GOMEMLIMIT: "1536MiB"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    restart: on-failure:0
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+
+  t2v-transformers:
+    image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-paraphrase-multilingual-MiniLM-L12-v2
+    environment:
+      ENABLE_CUDA: "0"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
 
 volumes:
   neo4j_data:
@@ -82,3 +110,4 @@ volumes:
   neo4j_import:
   prometheus_data:
   grafana_data:
+  weaviate_data:

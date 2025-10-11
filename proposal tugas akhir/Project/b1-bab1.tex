@@ -1,0 +1,91 @@
+%==================================================================
+% Ini adalah bab 1
+% Silahkan edit sesuai kebutuhan, baik menambah atau mengurangi \section, \subsection
+%==================================================================
+
+\chapter[PENDAHULUAN]{\\ PENDAHULUAN}
+
+\section{Latar Belakang}
+Perkembangan pesat informasi akademik dalam repositori digital telah menciptakan peluang dan tantangan bagi peneliti, pendidik, dan mahasiswa. Meskipun kini tersedia akses ke sejumlah besar pengetahuan, namun menavigasi sumber daya yang ada masih menjadi masalah. Penelitian ini mengatasi tantangan tersebut melalui pengembangan kerangka kerja RAG berbasis grafik yang dirancang khusus untuk pencarian dan penemuan semantik dalam lingkup akademik.
+
+Pada umumnya, pencarian informasi tradisional sangat bergantung pada pencocokan kata kunci,
+yang seringkali gagal menangkap hubungan semantik yang kompleks
+antara konsep-konsep akademik \cite{indexingbylatent}.Selain itu pendekatan konvensional juga kesulitan
+dalam memahami konteks, mengenali sinonim \cite{indexingbylatent}, dan mengidentifikasi hubungan
+konseptual yang melebihi sekedar mencocokkan kata \cite{introretrieval}.  Keterbatasan ini mengakibatkan hasil pencarian
+yang kurang relevan, menghambat transfer pengetahuan dan kolaborasi antar disiplin.
+
+Perkembangan pesat dalam Model Bahasa Besar (LLMs) telah meningkatkan
+kemampuan pemrosesan teks secara signifikan. Akan tetapi, pendekatan Retrieval Augmented Generation (RAG) standar masih menghadapi keterbatasan saat diterapkan pada ranah akademik. Metode RAG konvensional meningkatkan kemampuan LLMs di dalam pencarian informasi eksternal, tetapi umumnya masih menggunakan struktur dokumen sederhana yang tidak dapat dijadikan representatif dari keseluruhan hubungan yang ada di dalam konteks akademik  \cite{retrievalaugmentedgenerationlargelanguage}. Informasi akademik memiliki hubungan yang kompleks misalnya hubungan antar prasyarat dalam mata kuliah,
+referensi antar penelitian, dan struktur hierarki dalam disiplin ilmu yang mendasar untuk menghasilkan sumber informasi yang komprehensif.
+
+Pada saat ini, penelitian dalam pencarian sebuah informasi telah mulai mengadopsi pendekatan berbasis graf untuk merepresentasikan pengetahuan \cite{edge2025localglobalgraphrag, guo2025lightragsimplefastretrievalaugmented, wu2024medicalgraphragsafe, qian2025memoragboostinglongcontext, peng2024graphretrievalaugmentedgenerationsurvey}, namun sedikit jurnal yang berfokus pada tantangan unik dalam konteks akademik. Sebagian besar sistem graf yang ada dirancang untuk domain pengetahuan umum atau penerapan komersil \cite{wu2024medicalgraphragsafe,edge2025localglobalgraphrag}, sehingga kurang memiliki konstruksi yang sesuai dengan kebutuhan
+untuk pencarian sebuah informasi yang bersifat akademis. Selain itu, studi yang mengeksplorasi integrasi knowledge graph dengan model bahasa sebagian besar berfokus pada aspek akurasi secara faktual daripada peningkatan pemahaman kontekstual dan navigasi relasi antar-entitas.
+
+Integrasi struktur Knowledge Graph (KG) dengan RAG menunjukkan
+pendekatan yang menarik namun belum banyak dieksplorasi untuk mengatasi batasan-batasan tersebut. Dengan
+memodelkan secara eksplisit hubungan antara entitas dan konteks akademik, sistem pencarian berbasis graf berpotensi menangkap sifat multidimensional dari pengetahuan akademik secara lebih efektif daripada pendekatan berbasis vektor tradisional. Arah penelitian ini juga sejalan dengan tren terbaru dalam kecerdasan buatan yang menekankan representasi pengetahuan terstruktur, sekaligus menjawab kebutuhan spesifik pencarian informasi dalam bidang akademik.
+
+\section{Rumusan Masalah}
+Berdasarkan kebutuhan untuk meningkatkan efisiensi proses \textit{skill matching} di lingkungan Prodi Sains Data UNESA, serta potensi teknologi Graph-RAG yang telah diuraikan pada latar belakang, maka permasalahan dalam penelitian ini dirumuskan sebagai berikut:
+\begin{enumerate}
+	\item \textbf{Masalah Rekayasa Data:} Bagaimana merancang sebuah \textit{pipeline} ETL (\textit{Extract, Transform, Load}) yang skalabel untuk membangun \textit{Knowledge Graph} (KG) keahlian dosen secara otomatis dengan mengintegrasikan data publikasi berskala besar dari Scopus dengan data akademik internal (CSV) dan silabus (PDF)?
+	
+	\item \textbf{Masalah Implementasi Sistem Cerdas:} Bagaimana mengimplementasikan arsitektur Graph-RAG yang memanfaatkan KG tersebut untuk melakukan penalaran semantik, yaitu menganalisis kecocokan makna antara deskripsi topik TA mahasiswa dengan profil keahlian dosen yang kompleks dan multi-dimensi?
+	
+	\item \textbf{Masalah Evaluasi dan Validasi:} Sejauh mana efektivitas prototipe AI Assistant yang dibangun dalam memberikan rekomendasi dosen pembimbing yang tidak hanya akurat, tetapi juga transparan dan dapat dijelaskan (\textit{explainable}), di mana alur penalarannya dapat dilacak dan divalidasi melalui visualisasi graf interaktif?
+\end{enumerate}
+
+\section{Tujuan Penelitian}
+Tujuan utama dari penelitian ini adalah mengembangkan dan mengevaluasi sebuah prototipe AI Assistant berbasis Graph-RAG yang mampu memberikan rekomendasi dosen pembimbing Tugas Akhir (TA) secara cerdas dan transparan. 
+
+Untuk mencapai tujuan utama tersebut, penelitian ini memiliki beberapa tujuan turunan sebagai berikut:
+\begin{enumerate}
+	\item Membangun sebuah \textit{Knowledge Graph} (KG) yang secara komprehensif memodelkan profil keahlian dosen di Prodi Sains Data UNESA dengan mengolah dan menghubungkan data dari berbagai sumber (publikasi, riwayat mengajar, paten, dan RPS).
+	\item Mengimplementasikan sebuah sistem rekomendasi yang menggunakan penalaran semantik berbasis \textit{vector embedding} untuk menghitung tingkat kecocokan antara usulan topik TA mahasiswa dengan keahlian setiap dosen yang tersimpan dalam KG.
+	\item Mengembangkan sebuah antarmuka aplikasi (prototipe) yang tidak hanya menampilkan hasil rekomendasi dalam bentuk teks, tetapi juga menyajikan visualisasi subgraf yang relevan sebagai "bukti" atau jejak penalaran (\textit{traceability}) dari sistem.
+	\item Menganalisis kinerja prototipe yang dihasilkan berdasarkan metrik relevansi rekomendasi dan kemampuan sistem dalam menyediakan penjelasan yang dapat dilacak.
+\end{enumerate}
+
+\section{Manfaat Penelitian}
+
+Adapun manfaat yang diharapkan dapat diperoleh dari penelitian ini adalah sebagai berikut :
+
+\subsection{Manfaat Teoritis}
+\begin{subsectlist}
+	\begin{packed_item_sub}
+		\item Menyediakan kontribusi ilmiah dalam pengembangan kerangka kerja Graph-RAG yang mengombinasikan knowledge graph dan model bahasa besar untuk konteks akademik.
+		\item Memperkaya kajian knowledge graph di ranah akademik dengan model integrasi data terstruktur dan semiterstruktur.
+		\item Menjadi rujukan bagi penelitian selanjutnya dalam topik retrieval-augmented generation berbasis graf untuk sistem informasi akademik.
+	\end{packed_item_sub}
+\end{subsectlist}
+
+\subsection{Manfaat Praktis}
+\begin{subsectlist}
+	\begin{packed_item_sub}
+		\item Menghasilkan pipeline ETL yang dapat diadopsi oleh prodi untuk secara otomatis membangun dan memperbarui basis data keahlian dosen dari Scopus.
+		\item Menghasilkan prototipe AI Assistant yang dapat mempercepat dan meningkatkan akurasi proses pencarian dosen pembimbing bagi mahasiswa.
+		\item Memudahkan proses pencarian dan penelusuran sumber daya akademik di lingkungan Prodi Sains Data UNESA melalui antarmuka QA semantik.
+	\end{packed_item_sub}
+\end{subsectlist}
+	
+\section{Batasan Masalah}
+
+Permasalahan yang dibahas pada penelitian ini memiliki ruang lingkup yang luas, sehingga diberikan batasan-batasan agar bisa terfokus pada tujuan penelitian, maka ditentukan batasan masalah sebagai berikut :
+\begin{packed_item}
+	\item \textbf{Fokus Aplikasi Inti:} Kerangka kerja Graph-RAG yang dikembangkan hanya diimplementasikan dan dievaluasi untuk satu studi kasus utama, yaitu pengembangan prototipe AI Assistant untuk rekomendasi pembimbing Tugas Akhir di Prodi Sains Data UNESA.
+	
+	\item \textbf{Model Ekstraksi Pengetahuan:} Penelitian ini memanfaatkan Model Bahasa Besar (LLM) pre-trained sebagai komponen utama untuk tugas ekstraksi entitas dan relasi dari data semi-terstruktur (abstrak publikasi dan dokumen RPS). Kontribusi penelitian tidak terletak pada pembuatan atau pelatihan model LLM dari awal, melainkan pada perancangan pipeline, rekayasa prompt (prompt engineering), dan strategi evaluasi untuk memastikan hasil ekstraksi yang akurat dan konsisten.
+	
+	\item \textbf{Sumber Data:} Sumber data yang diolah terbatas pada data publikasi dari Sinta, data akademik internal Prodi Sains Data UNESA dalam format CSV, dan dokumen Rencana Pembelajaran Semester dalam format PDF. Sumber data non-teks seperti gambar atau video tidak termasuk dalam cakupan penelitian.
+	
+	\item \textbf{Aspek Teknis:} Fokus teknis penelitian ini adalah pada arsitektur sistem end-to-end, mulai dari pipeline ETL, konstruksi \textit{knowledge graph} hibrida (struktur dan vektor), hingga implementasi algoritma Graph Retrieval. Pengembangan antarmuka pengguna hanya sebatas prototipe fungsional menggunakan Streamlit.
+	
+	\item \textbf{Metode Evaluasi:} Evaluasi sistem akan berfokus pada dua aspek utama: (a) \textbf{Kualitas \textit{Knowledge Graph}} yang dihasilkan, diukur melalui akurasi ekstraksi entitas dan relasi oleh LLM dibandingkan dengan sampel data manual. (b) \textbf{Kinerja Aplikasi Rekomendasi}, diukur melalui relevansi hasil rekomendasi pada beberapa skenario uji coba.
+\end{packed_item}
+
+\section{Keaslian Gagasan}
+Keaslian gagasan bertujuan untuk menekankan inovasi atau kontribusi unik yang ditawarkan oleh proyek ini. Bagian ini menjelaskan bagaimana proyek ini menawarkan pendekatan yang berbeda atau peningkatan dibandingkan dengan metode atau perangkat yang sudah ada. Keaslian gagasan dapat diperlihatkan melalui perbandingan dengan proyek atau produk serupa, menunjukkan perbedaan signifikan atau keunggulan yang dihadirkan oleh solusi yang diusulkan. Misalnya, peningkatan kinerja, efisiensi, atau kemudahan penggunaan yang dihasilkan dari metode atau pendekatan baru. Selain itu, bagian ini juga bisa mencakup penggunaan teknologi atau desain yang belum banyak diterapkan dalam konteks yang sama. Penekanan pada keaslian gagasan membantu menunjukkan bahwa proyek ini tidak hanya mengikuti pola yang sudah ada, tetapi juga menghadirkan sesuatu yang baru dan relevan.
+
+\section{Sistematika Penulisan}
+Sistematika penulisan memberikan panduan mengenai struktur dari keseluruhan laporan proyek ini, sehingga memudahkan pembaca dalam memahami alur isi laporan dari setiap bab. Bagian ini menjelaskan isi dari setiap bab secara singkat, mulai dari latar belakang hingga kesimpulan dan rekomendasi. Misalnya, BAB I membahas pendahuluan dan dasar pengembangan proyek, BAB II menguraikan tinjauan pustaka dan landasan teori, dan seterusnya. Dengan memberikan sistematika penulisan, pembaca dapat memahami bagaimana laporan ini disusun secara keseluruhan dan bagaimana setiap bab saling berkaitan dalam mencapai tujuan akhir proyek.
