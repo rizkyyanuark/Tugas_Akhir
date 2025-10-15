@@ -2,7 +2,8 @@ version = 1
 revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
-    "python_full_version >= '3.13'",
+    "python_full_version >= '3.14'",
+    "python_full_version == '3.13.*'",
     "python_full_version == '3.12.*'",
     "python_full_version < '3.12'",
 ]
@@ -2170,6 +2171,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pybliometrics"
+version = "4.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "tqdm" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/8b/176d83fab55b0a6bacffd4bf1888ab155b7f2f927b3ef10e3671c9f1885f/pybliometrics-4.3.tar.gz", hash = "sha256:47bf01e429ead542f46bde2965f108a9950e3783e2c823b3896b351fbcfb9028", size = 990064, upload-time = "2025-06-06T11:44:47.912Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/36/92e6b2bb24dc09465ad9c852ab7660ba769d5f48a2fc006ff889f5a16907/pybliometrics-4.3-py3-none-any.whl", hash = "sha256:0eb1920938e1ff4ce0a0b46f34ea9ddc6726952dc51d0939284a36f11bbf1a20", size = 107844, upload-time = "2025-06-06T11:44:41.982Z" },
+]
+
+[[package]]
 name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
@@ -3147,6 +3162,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pddiktipy" },
     { name = "plotly" },
+    { name = "pybliometrics" },
     { name = "pyotp" },
     { name = "python-dotenv" },
     { name = "qrcode", extra = ["pil"] },
@@ -3181,6 +3197,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "pddiktipy", specifier = ">=2.0.6" },
     { name = "plotly", specifier = ">=6.3.0" },
+    { name = "pybliometrics", specifier = ">=4.3" },
     { name = "pyotp", specifier = ">=2.9.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "qrcode", extras = ["pil"], specifier = ">=8.2" },

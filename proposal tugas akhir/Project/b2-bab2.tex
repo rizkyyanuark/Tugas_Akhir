@@ -62,7 +62,6 @@ Penelitian ini dibangun di atas fondasi penelitian yang telah ada di bidang \tex
 		\textbf{Metode:} Membangun sebuah KG yang memodelkan entitas seperti Peneliti, Publikasi, dan Topik. Menggunakan KG tersebut untuk mengidentifikasi dan merekomendasikan pakar berdasarkan kueri pengguna.\newline
 		\textbf{Temuan:} Sistem berbasis KG mampu memberikan rekomendasi pakar yang lebih akurat dan dapat dijelaskan dibandingkan metode tradisional. Relasi antar entitas memungkinkan penemuan pakar yang tidak terdeteksi oleh pencarian kata kunci.\\
 		\hline
-		
 	\end{longtable}
 \end{center}
 
@@ -101,7 +100,7 @@ Penelitian ini dibangun di atas fondasi penelitian yang telah ada di bidang \tex
 \subsection{Retrieval-Augmented Generation (RAG)}
 	\begin{subsectcontent}
 		\indent Retrieval-Augmented Generation (RAG) adalah pendekatan kolaboratif yang menggabungkan kemampuan model bahasa besar (LLM) yang telah dilatih sebelumnya, dengan sistem pencarian informasi eksternal untuk meningkatkan kinerja pada tugas-tugas yang membutuhkan pengetahuan mendalam. \cite{lewis2021retrievalaugmentedgenerationknowledgeintensivenlp,gao2024retrievalaugmentedgenerationlargelanguage}. Berbeda dari model bahasa tradisional yang hanya mengandalkan pengetahuan internal dalam parameter model, RAG memungkinkan sistem untuk mencari dan mengambil dokumen terkait dari database luar sebelum menghasilkan jawaban. Pendekatan ini secara efektif mampu mengatasi keterbatasan LLM terkait dengan risiko halusinasi, ppengetahuan yang usang, dan transparansi yang terbatas yang menjadikan RAG sebuah lompatan penting di dunia pemrosesan bahasa alami.
-		
+	
 		\begin{figure}[!t]
 			\centering
 			\makebox[\textwidth][c]{\includegraphics[width=1.5\textwidth]{RAG.png}}
@@ -119,7 +118,7 @@ Penelitian ini dibangun di atas fondasi penelitian yang telah ada di bidang \tex
 		
 		\FloatBarrier
 		
-		Dengan RAG, LLM bisa secara dinamis memanfaatkan pengetahuan eksternal membuat respons yang dihasilkan menjadi lebih akurat, informatif, dan mutakhir. Proses retrieval mengurangi risiko model "ngarang" jawaban karena jawaban merujuk pada sumber dokumen. Ini membuat RAGG sangat unggul dalam domain yang pengetahuannya berkembang cepat, seperti berita, publikasi sains, ataupun regulasi yang berubah secara periodik. Pengguna juga bisa menelusuri dari mana sumber jawaban AI berasal, meningkatkan transparansi dan kepercayaan
+		Dengan RAG, LLM bisa secara dinamis memanfaatkan pengetahuan eksternal membuat respons yang dihasilkan menjadi lebih akurat, informatif, dan mutakhir. Proses retrieval mengurangi risiko model "ngarang" jawaban karena jawaban merujuk pada sumber dokumen. Ini membuat RAG sangat unggul dalam domain yang pengetahuannya berkembang cepat, seperti berita, publikasi sains, ataupun regulasi yang berubah secara periodik. Pengguna juga bisa menelusuri dari mana sumber jawaban AI berasal, meningkatkan transparansi dan kepercayaan
 		
 		Sebagai ilustrasi praktis, misal pengguna ingin mengetahui perkembangan suatu topik berita yang sedang viral beberapa hari terakhir. Model LLM berbasis pre-trained umumnya kurang mampu memberikan informasi terbaru, sehingga respons yang dihasilkan sering kurang relevan dengan konteks aktual. Namun, dengan penerapan skema RAG seperti pada \figref{fig:rag-process}, sistem akan secara otomatis mengambil dan mengintegrasikan dokumen berita terkini sebagai referensi utama, sehingga jawaban yang dihasilkan lebih faktual dan sesuai kebutuhan pengguna.
 

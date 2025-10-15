@@ -48,3 +48,45 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# LaTeX compilation artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.nav
+*.snm
+*.vrb
+*.bcf
+*.run.xml
+*.figlist
+*.makefile
+*.figlist.bak
+*.ist
+*.gls
+*.glo
+*.glg
+
+# LaTeX package test files
+__package_test__.*
+
+# Dependency cache
+.latex_deps_cache/
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# IDE files
+*.swp
+*.swo
+*~

@@ -1,0 +1,73 @@
+\chapter{PENDAHULUAN}
+
+\section{Latar Belakang}
+
+Ekspansi pesat informasi akademik di dalam repositori digital telah menghadirkan peluang sekaligus tantangan signifikan bagi para peneliti, pendidik, dan mahasiswa. Meskipun akses terhadap sumber pengetahuan kini semakin terbuka, proses navigasi untuk menemukan informasi yang relevan secara kontekstual masih menjadi kendala utama. Penelitian ini bertujuan untuk mengatasi tantangan tersebut dengan mengembangkan sebuah kerangka kerja \textit{Retrieval-Augmented Generation} (RAG) berbasis graf, yang dirancang secara khusus untuk kebutuhan pencarian semantik di lingkungan akademik.
+
+Secara umum, sistem pencarian informasi tradisional yang bergantung pada pencocokan kata kunci seringkali gagal menangkap hubungan semantik yang kompleks antar konsep akademik \cite{indexingbylatent}. Keterbatasan ini membuat pendekatan konvensional kesulitan dalam memahami konteks, mengenali sinonim \cite{indexingbylatent}, serta mengidentifikasi relasi konseptual yang melampaui pencocokan kata sederhana \cite{introretrieval}. Akibatnya, banyak sumber daya akademik yang berharga tidak terdeteksi, sehingga menghambat transfer pengetahuan dan potensi kolaborasi lintas disiplin.
+
+Di sisi lain, kemajuan pesat dalam Model Bahasa Besar (LLM) telah meningkatkan kemampuan pemrosesan teks secara drastis. Namun, ketika diterapkan dalam arsitektur RAG standar, keterbatasan baru muncul ketika di implementasikan dalamn ranah akademik. Metode RAG konvensional memang mampu memperkaya LLM dengan informasi eksternal, tetapi umumnya masih mengandalkan struktur dokumen datar yang gagal merepresentasikan jaringan pengetahuan akademik yang kompleks \cite{retrievalaugmentedgenerationlargelanguage}. Padahal, informasi akademik dicirikan oleh hubungan-hubungan rumit seperti relasi prasyarat antar mata kuliah, jejaring sitasi antar penelitian, serta hierarki konseptual dalam suatu disiplin ilmu yang semuanya krusial untuk penemuan sumber daya yang komprehensif.
+
+Meskipun penelitian terkini mulai mengadopsi pendekatan berbasis graf untuk merepresentasikan pengetahuan \cite{edge2025localglobalgraphrag, guo2025lightragsimplefastretrievalaugmented, wu2024medicalgraphragsafe, qian2025memoragboostinglongcontext, peng2024graphretrievalaugmentedgenerationsurvey}, sebagian besar implementasinya masih dirancang untuk domain pengetahuan umum atau aplikasi komersial \cite{wu2024medicalgraphragsafe, edge2025localglobalgraphrag}. Akibatnya, sistem-sistem tersebut kurang memiliki fitur yang disesuaikan untuk kebutuhan spesifik di dunia akademis. Studi yang telah mengintegrasikan \textit{knowledge graph} dengan model bahasa pun lebih banyak berfokus pada peningkatan akurasi faktual, bukan pada pendalaman pemahaman kontekstual atau fasilitasi navigasi relasional antar entitas.
+
+Oleh karena itu, integrasi struktur \textit{Knowledge Graph} (KG) dengan arsitektur RAG, atau yang dikenal sebagai Graph-RAG, menawarkan sebuah solusi yang menjanjikan. Dengan memodelkan hubungan antar entitas dan konsep akademik secara eksplisit, sistem pencarian berbasis graf memiliki potensi untuk menangkap sifat multidimensional dari pengetahuan akademik secara lebih efektif dibandingkan pendekatan berbasis vektor tradisional. Arah penelitian ini tidak hanya sejalan dengan tren terkini dalam kecerdasan buatan yang menekankan representasi pengetahuan terstruktur, tetapi juga secara langsung menjawab kebutuhan spesifik untuk penemuan informasi yang lebih cerdas di bidang akademik.
+
+\section{Rumusan Masalah}
+
+Berdasarkan uraian pada bagian latar belakang, maka dapat dirumuskan 
+permasalahan yang ada dalam penelitian ini sebagai berikut:
+
+\begin{daftar}
+	\item Bagaimana model matematika penyebaran polutan pada pertemuan dua sungai.
+	\item Bagaimana menerapkan Metode Volume Hingga skema \textit{QUICK} pada model penyebaran polutan pada pertemuan dua sungai tersebut.
+	\item Bagaimana hasil penyebaran polutan di daerah aliran pertemuan dua sungai dengan Metode Volume Hingga skema \textit{QUICK}.
+\end{daftar}
+
+\section{Tujuan Penelitian}
+
+Tujuan utama dari penelitian ini adalah mengembangkan dan mengevaluasi sebuah prototipe AI Assistant berbasis Graph-RAG yang mampu memberikan rekomendasi dosen pembimbing Tugas Akhir (TA) secara cerdas dan transparan. Untuk mencapai tujuan utama tersebut, penelitian ini memiliki beberapa tujuan turunan sebagai berikut:
+
+\begin{daftar}
+	\item Membangun sebuah \textit{Knowledge Graph} (KG) yang secara komprehensif memodelkan profil keahlian dosen di Prodi Sains Data UNESA dengan mengolah dan menghubungkan data dari berbagai sumber (publikasi, riwayat mengajar, paten, dan RPS).
+	\item Mengimplementasikan sebuah sistem rekomendasi yang menggunakan penalaran semantik berbasis \textit{vector embedding} untuk menghitung tingkat kecocokan antara usulan topik TA mahasiswa dengan keahlian setiap dosen yang tersimpan dalam KG.
+	\item Mengembangkan sebuah antarmuka aplikasi (prototipe) yang tidak hanya menampilkan hasil rekomendasi dalam bentuk teks, tetapi juga menyajikan visualisasi subgraf yang relevan sebagai "bukti" atau jejak penalaran (\textit{traceability}) dari sistem.
+	\item Menganalisis kinerja prototipe yang dihasilkan berdasarkan metrik relevansi rekomendasi dan kemampuan sistem dalam menyediakan penjelasan yang dapat dilacak.
+\end{daftar}
+
+\section{Manfaat Penelitian}
+
+Adapun manfaat yang diharapkan dapat diperoleh dari penelitian ini adalah sebagai berikut:
+
+\begin{daftar}
+	\item Manfaat Teoretis
+	\begin{daftar}
+		\item Menyediakan kontribusi ilmiah dalam pengembangan kerangka kerja Graph-RAG yang mengombinasikan knowledge graph dan model bahasa besar untuk konteks akademik.
+		\item Memperkaya kajian knowledge graph di ranah akademik dengan model integrasi data terstruktur dan semiterstruktur.
+		\item Menjadi rujukan bagi penelitian selanjutnya dalam topik retrieval-augmented generation berbasis graf untuk sistem informasi akademik.
+	\end{daftar}
+	\item Manfaat Praktis
+	\begin{daftar}
+		\item \textbf{Bagi Penulis:} Menghasilkan pipeline ETL yang dapat diadopsi oleh prodi untuk secara otomatis membangun dan memperbarui basis data keahlian dosen dari Scopus, menghasilkan prototipe AI Assistant yang dapat mempercepat dan meningkatkan akurasi proses pencarian dosen pembimbing bagi mahasiswa, dan memudahkan proses pencarian dan penelusuran sumber daya akademik di lingkungan Prodi Sains Data UNESA melalui antarmuka QA semantik.
+		\item \textbf{Bagi Peneliti selanjutnya:}
+		% (isi manfaat untuk peneliti selanjutnya di sini)
+		\item \textbf{Bagi \textit{stakeholder} terkait (sebutkan \textit{stakeholder}nya):}
+		% (isi manfaat untuk stakeholder di sini)
+	\end{daftar}
+\end{daftar}
+
+\section{Batasan Masalah}
+
+Permasalahan yang dibahas pada penelitian ini memiliki ruang lingkup yang luas, sehingga diberikan batasan-batasan agar bisa terfokus pada tujuan penelitian, maka ditentukan batasan masalah sebagai berikut:
+
+\begin{daftar}
+	\item \textbf{Fokus Aplikasi Inti:} Kerangka kerja Graph-RAG yang dikembangkan hanya diimplementasikan dan dievaluasi untuk satu studi kasus utama, yaitu pengembangan prototipe AI Assistant untuk rekomendasi pembimbing Tugas Akhir di Prodi Sains Data UNESA.
+	\item \textbf{Model Ekstraksi Pengetahuan:} Penelitian ini memanfaatkan Model Bahasa Besar (LLM) pre-trained sebagai komponen utama untuk tugas ekstraksi entitas dan relasi dari data semi-terstruktur (abstrak publikasi dan dokumen RPS). Kontribusi penelitian tidak terletak pada pembuatan atau pelatihan model LLM dari awal, melainkan pada perancangan pipeline, rekayasa prompt (prompt engineering), dan strategi evaluasi untuk memastikan hasil ekstraksi yang akurat dan konsisten.
+	\item \textbf{Sumber Data:} Sumber data yang diolah terbatas pada data publikasi dari Sinta, data akademik internal Prodi Sains Data UNESA dalam format CSV, dan dokumen Rencana Pembelajaran Semester dalam format PDF. Sumber data non-teks seperti gambar atau video tidak termasuk dalam cakupan penelitian.
+	\item \textbf{Aspek Teknis:} Fokus teknis penelitian ini adalah pada arsitektur sistem end-to-end, mulai dari pipeline ETL, konstruksi \textit{knowledge graph} hibrida (struktur dan vektor), hingga implementasi algoritma Graph Retrieval. Pengembangan antarmuka pengguna hanya sebatas prototipe fungsional menggunakan Streamlit.
+	\item \textbf{Metode Evaluasi:} Evaluasi sistem akan berfokus pada dua aspek utama: (a) \textbf{Kualitas \textit{Knowledge Graph}} yang dihasilkan, diukur melalui akurasi ekstraksi entitas dan relasi oleh LLM dibandingkan dengan sampel data manual. (b) \textbf{Kinerja Aplikasi Rekomendasi}, diukur melalui relevansi hasil rekomendasi pada beberapa skenario uji coba.
+\end{daftar}
+
+\section{Asumsi penelitian (jika ada)}
+
+Asumsi penelitian (jika ada) adalah anggapan dasar tentang suatu hal yang dijadikan pijakan berpikir dan bertindak dalam melaksanakan penelitian. Asumsi dapat juga diartikan sebagai anggapan dasar yang menyebabkan suatu teori dapat berlaku. Asumsi dapat bersifat substantif atau metodologis. Asumsi substantif berkenaan dengan permasalahan penelitian, sedangkan asumsi metodologis berkenaan dengan metode penelitian.
+
