@@ -195,7 +195,7 @@ FUNCTION {bbl.and}
 { "and"}
 
 FUNCTION {bbl.etal}
-{ "et~al." }
+{ "dkk." }
 
 FUNCTION {bbl.editors}
 { "eds." }
@@ -1251,7 +1251,7 @@ s #1 "{vv~}{ll}" format.name$
 s num.names$ duplicate$
 #2 >
 { pop$
-" " * bbl.etal *
+", " * bbl.etal *
 }
 { #2 <
 'skip$

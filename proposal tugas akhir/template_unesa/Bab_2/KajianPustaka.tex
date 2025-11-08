@@ -17,7 +17,7 @@
 	\endlastfoot
 	
 	1 & 
-	\textbf{Judul:} \textit{Docs2KG: Unified Knowledge Graph Construction from Heterogeneous Documents...} \newline
+	\textbf{Judul:} \textit{AcademicRAG: Knowledge Graph Enhanced Retrieval-Augmented Generation for Academic Resource Discovery} \newline
 	\textbf{Penulis:} Qiang Sun, dkk. (2024) \cite{sun2024docs2kg} &
 	\textbf{Metode:} Mengembangkan kerangka kerja \textit{dual-path} (\textit{Image Converter} dan \textit{Markdown Converter}) untuk mengolah sumber data heterogen (PDF, HTML, Excel, dll.) menjadi satu KG terpadu. \newline
 	\textbf{Temuan:} Efektif dalam mengintegrasikan "danau dokumen" yang beragam, memungkinkan kueri lintas format dan menyediakan fondasi untuk aplikasi \textit{knowledge-grounded RAG}. \\
@@ -57,9 +57,20 @@
 	\textbf{Metode:} Mengusulkan kerangka kerja \textbf{Contextualized Graph RAG (CG-RAG)} yang mengintegrasikan sinyal pencarian \textit{sparse} dan \textit{dense} dalam struktur graf. Kerangka ini mencakup representasi graf kutipan kontekstual dan metode pencarian \textbf{Lexical-Semantic Graph Retrieval (LeSeGR)}. \newline
 	\textbf{Temuan:} Kerangka kerja CG-RAG secara signifikan mengungguli metode RAG lainnya dalam akurasi pencarian dan kualitas jawaban pada tolok ukur tanya jawab penelitian, dengan memanfaatkan konteks dari graf kutipan. \\
 	\hline
+
+    7 & 
+    \textbf{Judul:} \textit{University Research Graph Database For Efficient Multi-Perspective Data Analysis Using Neo4j} \newline
+    \textbf{Penulis:} \cite{afandi2020university} &
+    \textbf{Metode:} Membangun graph database dengan Neo4j yang punya 12 jenis node dan 15 jenis relasi. Data diambil dari Google Scholar, lalu dibentuk jadi graf untuk analisis aktivitas Tri Dharma dosen. \newline
+    \textbf{Temuan:} Graph database jauh lebih cepat dibanding database relasional biasa saat menjawab pertanyaan yang rumit. Sistem ini bisa dipakai universitas untuk melihat performa dosen dan pola kolaborasi penelitian mereka. \\
+    \hline
 \end{longtable}
 		
 \section{Kajian Teori}
+
+\subsection{Scientific Research}
+
+Terdapat berbagai jenis \textit{knowledge graph} yang berfokus pada penggunaan untuk mendukung proses ilmiah dan membantu peneliti dalam mengeksplorasi pengetahuan penelitian serta mengidentifikasi materi yang relevan \cite{7458844}. Graph-graph ini umumnya menggambarkan seperti, dokumen (misalnya, artikel penelitian, paten), subjek (misalnya, penulis, organisasi), entitas (misalnya, topik, tugas, teknologi), dan informasi kontekstual lainnya (misalnya, proyek, pendanaan) sedemikian rupa sehingga saling terhubung.
 
 \subsection{Knowledge Graph}
 
@@ -92,7 +103,7 @@ Retrieval-Augmented Generation (RAG) adalah pendekatan kolaboratif yang menggabu
 		\centering
 		\makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{Gambar/RAG.png}}
 		\caption{Proses Retrieval-Augmented Generation untuk Question Answering \cite{edge2025localglobalgraphrag}}
-		\label{fig:rag-proses}
+		\label{fig:rag-process}
 \end{figure}
 
 Dengan RAG, LLM bisa secara dinamis memanfaatkan pengetahuan eksternal membuat respons yang dihasilkan menjadi lebih akurat, informatif, dan mutakhir. Proses retrieval mengurangi risiko model "ngarang" jawaban karena jawaban merujuk pada sumber dokumen. Ini membuat RAG sangat unggul dalam domain yang pengetahuannya berkembang cepat, seperti berita, publikasi sains, ataupun regulasi yang berubah secara periodik. Pengguna juga bisa menelusuri dari mana sumber jawaban AI berasal, meningkatkan transparansi dan kepercayaan.
@@ -111,7 +122,7 @@ Seiring dengan meningkatnya kebutuhan akan informasi yang akurat dan terkini, RA
 Pendekatan ini menghasilkan beberapa keunggulan signifikan seperti, penalaran yang lebih presisi, akurasi faktual yang lebih tinggi, serta \textbf{interpretasi dan transparansi} yang lebih baik, karena respons yang dihasilkan dapat dilacak kembali ke entitas dan relasi spesifik di dalam graf. Hal ini menjadikan Graph-RAG sangat ideal untuk aplikasi yang menuntut konsistensi logika dan pemahaman mendalam terhadap hubungan antar-entitas, seperti pada sistem rekomendasi akademik yang akan dikembangkan dalam penelitian ini.
 		
 \subsubsection{Rumus}
-	Rumus umum persamaan pythagoras diberikan oleh persamaan~\ref{eq:pythagoras} berikut ini
+	Rumus umum persamaan pythagoras diberikan oleh persamaan~\ref{fig:rag-process} berikut ini
 \begin{equation}
 	a^2 + b^2 = c^2 \label{eq:pythagoras}
 \end{equation}
@@ -166,6 +177,9 @@ Matriks Identitas $3 \times 3$ diberikan oleh:
 	\begin{theorem}
 		Diberikan bilangan bulat  $a$, $b$, dan $c$ dengan $a \neq 0$ sehingga berlaku sifat-sifat berikut ini.
 	\end{theorem}
+
+\section{test}
+
 		
 \section{Hasil Penelitian yang Relevan}
 	Hasil Penelitian yang relevan berfungsi memperkuat posisi penelitian yang dilakukan saat ini dengan melihat hasil-hasil penelitian yang sudah dilakukan. Hasil penelitian yang relevan juga digunakan sebagai dasar peneliti menyusun kerangka berpikir. Hasil penelitian yang relevan disajikan secara narasi dengan menganalisis hasil penelitian yang satu dengan hasil penelitian yang lain.
@@ -174,4 +188,4 @@ Matriks Identitas $3 \times 3$ diberikan oleh:
 	Kerangka Berpikir berisikan gambaran logis dan rasional tentang bagaimana variable-variabel penelitian dapat saling berhubungan (korelasi). Kerangka berpikir akan mengarahkan peneliti kepada perumusan hipotesis. Penelitianyang tidak membuktikan hipotesis seperti penelitian dengan pendekatan kualitatif, tidak perlu menuliskan kerangka berpikir.
 		
 \section{Pertanyaan Penelitian dan/atau Hipotesis (jika ada)}
-		Pertanyaan penelitian merupakan penegasan dari rumusan masalah yang akan dicari jawabannya melalui penelitian. Hipotesis merupakan jawaban sementara terhadap rumusan masalah yang dinyatakan dengan kalimat pernyataan. Untuk penelitian yang tidak membuktikan hipotesis cukup menuliskan pertanyaan penelitian. Hipotesis atau pertanyaan penelitian harus selaras dan merupakan jabaran dari rumusan masalah.
+	Pertanyaan penelitian merupakan penegasan dari rumusan masalah yang akan dicari jawabannya melalui penelitian. Hipotesis merupakan jawaban sementara terhadap rumusan masalah yang dinyatakan dengan kalimat pernyataan. Untuk penelitian yang tidak membuktikan hipotesis cukup menuliskan pertanyaan penelitian. Hipotesis atau pertanyaan penelitian harus selaras dan merupakan jabaran dari rumusan masalah.
