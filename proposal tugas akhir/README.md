@@ -1,410 +1,476 @@
-# 📘 Template LaTeX Laporan Tugas Akhir
+# 📘 Template LaTeX Skripsi & Proposal Tugas Akhir
 
-*Program Sarjana Terapan Teknik Elektronika – Universitas Negeri Yogyakarta*
+**Program Studi Sarjana Sains Data – Universitas Negeri Surabaya (UNESA)**
 
-Template ini dirancang untuk mempermudah penulisan Proposal dan Laporan Tugas Akhir bagi mahasiswa D4 Teknik Elektronika UNY. Template ini memastikan keseragaman format, efisiensi penulisan, serta kemudahan kolaborasi dan pengelolaan dokumen melalui Git atau Overleaf.
+Template ini dirancang untuk mempermudah penulisan Proposal dan Skripsi Tugas Akhir bagi mahasiswa S1 Sains Data FMIPA UNESA. Template memastikan keseragaman format sesuai pedoman penulisan skripsi UNESA.
+
+> **Versi**: 2.5 (Desember 2025) - Versi pedoman penulisan skripsi unesa
+
+---
+
+## ✨ Fitur Utama
+
+- ✅ **Zero Configuration**: Clone → Compile → Done!
+- ✅ **Cross-platform**: Windows, macOS, Linux
+- ✅ **Editor-agnostic**: VS Code, TeXstudio, Overleaf, Emacs, Vim
+- ✅ **Smart Build**: `latexmk` auto-deteksi perubahan, skip jika tidak ada
+- ✅ **Format UNESA**: Sesuai pedoman penulisan skripsi terbaru
+
+---
+
+## 🏗️ Arsitektur
+
+Template ini dirancang agar **langsung jalan tanpa konfigurasi**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    HOW IT WORKS                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  User clone repository                                          │
+│         ↓                                                       │
+│  latexmk -pdf ProposalTA.tex                                    │
+│         ↓                                                       │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ latexmk reads .latexmkrc (if exists)                    │   │
+│  │   • Custom rules for glossaries                          │   │
+│  │   • Dependency tracking                                  │   │
+│  │   • Smart rebuild (skip if no changes)                   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│         ↓                                                       │
+│  PDF Generated! 🎉                                              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## 📋 Informasi Proyek
+
+| Item              | Detail                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Judul**         | Pengembangan _Knowledge Graph-Based RAG_ Menggunakan Pendekatan _Hybrid Vector-Graph Retrieval_ untuk Asisten Pencarian Referensi Akademik |
+| **Penulis**       | Rizky Yanuar Kristianto (22031554017)                                                                                                      |
+| **Program Studi** | Sarjana Sains Data                                                                                                                         |
+| **Fakultas**      | Matematika dan Ilmu Pengetahuan Alam (FMIPA)                                                                                               |
+| **Universitas**   | Universitas Negeri Surabaya                                                                                                                |
+| **Tahun**         | 2025                                                                                                                                       |
 
 ---
 
 ## 📁 Struktur Proyek
 
 ```
-Template-LaTeX-Laporan-Tugas-Akhir
-├── CHANGELOG                         # Catatan perubahan
-├── LICENSE                           # Lisensi proyek        
-├── Project                           # Folder proyek    
-│   ├── a0-identitas.tex              # Isi identitas laporan 
-│   ├── a1-database.hyphenate.tex     # Database untuk hyphenation
-│   ├── a2-abstrak.tex                # Abstrak dalam Bahasa Indonesia  
-│   ├── a3-abstract.tex               # Abstrak dalam Bahasa Inggris
-│   ├── a4-persembahan.tex            # Persembahan
-│   ├── a5-katapengantar.tex          # Kata Pengantar
-│   ├── a6-daftarsingkatan.tex        # Daftar Singkatan
-│   ├── a7-pustaka.bib                # Daftar pustaka dalam format BibTeX
-│   ├── a8-lampiran.tex               # Lampiran
-│   ├── b1-bab1.tex                   # BAB I - Pendahuluan
-│   ├── b2-bab2.tex                   # BAB II - Tinjauan Pustaka
-│   ├── b3-bab3.tex                   # BAB III - Metode Penelitian
-│   ├── b4-bab4.tex                   # BAB IV - Hasil dan Pembahasan
-│   ├── b5-bab5.tex                   # BAB V - Kesimpulan dan Saran
-│   ├── b6-bab6.tex                   # BAB VI - Tutorial LaTeX (opsional)
-│   ├── gambar                        # Folder untuk menyimpan gambar
-│   │   ├── gambar-kucing.jpg
-│   │   ├── logo-uny.png
-│   │   ├── screenshot-miktex.png
-│   │   ├── screenshot-overleaf.png
-│   │   ├── screenshot-texstudio-macos.png
-│   │   └── screenshot-texstudio-windows.png
-│   ├── kode                          # Folder untuk menyimpan kode program
-│   │   ├── code_sample.cpp
-│   │   ├── code_sample.ino
-│   │   ├── code_sample.java
-│   │   └── code_sample.py
-│   ├── laporan.pdf                   # Hasil kompilasi laporan
-│   ├── laporan.tex                   # File utama untuk kompilasi laporan
-│   └── untouch                       # Folder untuk menyimpan file yang tidak perlu diubah
-│       ├── xx-daftar.tex
-│       ├── xx-daftarpustaka.tex
-│       ├── xx-pengesahan.tex
-│       ├── xx-pernyataan.tex
-│       ├── xx-persetujuan-proposal.tex
-│       ├── xx-persetujuan-ujian.tex
-│       ├── xx-preambles.tex
-│       ├── xx-sampul-laporan.tex
-│       ├── xx-sampul-proposal.tex
-│       ├── xx-sampuldalam-laporan.tex
-│       └── xx-sampuldalam-proposal.tex
-└── README.md                         # Dokumen ini
+proposal tugas akhir/
+├── 📄 ProposalTA.tex           # File utama PROPOSAL (Bab 1-3)
+├── 📄 Skripsi.tex              # File utama SKRIPSI (Bab 1-5)
+├── 🎨 ProposalUnesa.cls        # Class file untuk Proposal
+├── 🎨 SkripsiUnesa.cls         # Class file untuk Skripsi
+├── 📝 DataSkripsi.tex          # Data identitas (nama, NIM, judul, dll)
+├── 📚 Pustaka.bib              # Database referensi BibTeX
+├── 📖 Istilah.tex              # Daftar istilah/glosarium
+├── 🔧 unesa.bst                # Style bibliografi UNESA
+│
+├── 📂 Bab_1/                   # Pendahuluan
+├── 📂 Bab_2/                   # Kajian Pustaka
+├── 📂 Bab_3/                   # Metode Penelitian
+├── 📂 Bab_4/                   # Hasil Penelitian (Skripsi)
+├── 📂 Bab_5/                   # Simpulan (Skripsi)
+├── 📂 Gambar/                  # Folder gambar
+│
+└── 🚫 .gitignore               # Ignore file temporary
 ```
+
+### 📌 Konvensi Penamaan File
+
+| Suffix   | Digunakan untuk | Bab     |
+| -------- | --------------- | ------- |
+| `*P.tex` | **Proposal**    | Bab 1-3 |
+| `*.tex`  | **Skripsi**     | Bab 1-5 |
 
 ---
 
-## 🧩 Fitur Utama
+## 📝 File yang Perlu Diedit
 
-✅ **Format sesuai standar** Prodi D4 Teknik Elektronika UNY
+### Untuk Proposal
 
-✅ **Dual mode support**: Kompilasi proposal & laporan akhir
+| File                          | Fungsi                                 |
+| ----------------------------- | -------------------------------------- |
+| `DataSkripsi.tex`             | Data identitas (nama, NIM, judul, dll) |
+| `Bab_1/PendahuluanP.tex`      | Bab I - Pendahuluan                    |
+| `Bab_2/KajianPustakaP.tex`    | Bab II - Kajian Pustaka                |
+| `Bab_3/MetodePenelitianP.tex` | Bab III - Metodologi                   |
+| `Pustaka.bib`                 | Daftar referensi BibTeX                |
+| `Istilah.tex`                 | Daftar istilah/glossary                |
 
-✅ **Kompilasi otomatis** dengan script `compile.sh` yang canggih
+### Untuk Skripsi (tambahan)
 
-✅ **Dependency caching** untuk kompilasi ~65% lebih cepat
-
-✅ **Tutorial lengkap**: Gambar, kode program, persamaan, tabel, dan TikZ diagrams
-
-✅ **Referensi otomatis** dengan BibTeX dan cross-referencing
-
-✅ **Multi-platform**: Compatible dengan TeXstudio, VS Code, dan Overleaf
-
-✅ **Auto package management**: Instalasi package LaTeX otomatis
-
+| File                         | Fungsi                                  |
+| ---------------------------- | --------------------------------------- |
+| `Bab_1/Pendahuluan.tex`      | Bab I - Pendahuluan (versi lengkap)     |
+| `Bab_2/KajianPustaka.tex`    | Bab II - Kajian Pustaka (versi lengkap) |
+| `Bab_3/MetodePenelitian.tex` | Bab III - Metodologi (versi lengkap)    |
+| `Bab_4/HasilPenelitian.tex`  | Bab IV - Hasil dan Pembahasan           |
+| `Bab_5/Simpulan.tex`         | Bab V - Simpulan dan Saran              |
 
 ---
 
-## 🚀 Compilation Script (`compile.sh`)
+## ⚠️ File yang TIDAK Boleh Diedit
 
-Template ini dilengkapi dengan script kompilasi canggih yang mempermudah proses build dokumen LaTeX dengan fitur dependency management dan caching system.
+- `ProposalUnesa.cls` - Document class Proposal
+- `SkripsiUnesa.cls` - Document class Skripsi
+- `unesa.bst` - Bibliography style
+- `config/*` - Konfigurasi sistem
 
-### ✨ **Fitur Script Compile**
+---
 
-#### 🎯 **Smart Dependency Management**
-- **Auto-detection**: Deteksi otomatis LaTeX installation dan package requirements
-- **Auto-installation**: Install missing packages secara otomatis via `tlmgr`
-- **Cross-platform**: Support macOS, Windows, dan Linux
-- **Fallback instructions**: Panduan manual jika auto-install gagal
+## 🚀 Quick Start (5 Menit!)
 
-#### ⚡ **Performance Optimization**
-- **Dependency Caching**: Cache status dependencies untuk 7 hari
-- **Speed Improvement**: ~65% lebih cepat pada subsequent runs
-- **Smart Cache**: Auto-invalidation jika LaTeX version berubah
-- **Background Processing**: Multiple verbosity levels untuk berbagai use cases
+### Langkah 1: Install LaTeX Distribution
 
-#### 🛠️ **Advanced Options**
-- **Multiple Build Passes**: 4-pass compilation untuk resolving semua references
-- **BibTeX Integration**: Automatic bibliography processing
-- **Cleanup**: Auto-cleanup temporary files
-- **Error Handling**: Comprehensive error reporting dan troubleshooting
+<details>
+<summary><b>🪟 Windows (MiKTeX)</b></summary>
 
-### 📋 **Quick Start**
+1. Download dari https://miktex.org/download
+2. Jalankan installer
+3. **Penting**: Centang ✅ "Always install missing packages on-the-fly"
+4. Restart terminal/VS Code setelah install
 
-```bash
-# Masuk ke direktori Project
-cd Project/
+</details>
 
-# Kompilasi normal (menggunakan cache jika tersedia)
-./compile.sh
-
-# Kompilasi silent (untuk automation)
-./compile.sh --quiet
-
-# Lihat semua opsi yang tersedia
-./compile.sh --help
-```
-
-### 🎛️ **Command Line Options**
-
-| Option | Deskripsi |
-|--------|-----------|
-| `--help` | Tampilkan bantuan lengkap |
-| `--quiet` | Mode silent (hanya hasil akhir) |
-| `--verbose` | Mode verbose (output lengkap) |
-| `--debug` | Mode debug (maximum verbosity) |
-| `--error-only` | Hanya tampilkan errors |
-| `--warning` | Tampilkan warnings dan errors |
-| `--final-warnings` | Hanya warnings dari kompilasi terakhir |
-| `--clean` | Bersihkan temporary files |
-| `--skip-deps` | Skip dependency checking |
-| `--force-deps-check` | Force full dependency recheck |
-| `--clear-cache` | Clear dependency cache |
-
-### 📊 **Performance Comparison**
-
-| Run Type | Waktu | Improvement |
-|----------|-------|-------------|
-| First run (dengan dependency check) | ~12s | Baseline |
-| Cached run (menggunakan cache) | ~4s | **65% faster** |
-| Skip dependencies | ~4s | **68% faster** |
-
-### 🔧 **Usage Examples**
+<details>
+<summary><b>🍎 macOS (MacTeX)</b></summary>
 
 ```bash
-# Development workflow (daily use)
-./compile.sh                        # Fast compilation dengan cache
-
-# CI/CD pipeline  
-./compile.sh --quiet --skip-deps     # Maximum speed untuk automation
-
-# Troubleshooting
-./compile.sh --debug                 # Full diagnostic output
-./compile.sh --force-deps-check      # Refresh dependency cache
-
-# Maintenance
-./compile.sh --clear-cache           # Reset cache system
-./compile.sh --clean                 # Clean temporary files only
-```
-
-### 🗂️ **Cache System**
-
-Script menggunakan intelligent caching system yang disimpan di `.latex_deps_cache/`:
-
-```
-.latex_deps_cache/
-├── dependency_status.log    # Status package dependencies
-└── versions.log            # LaTeX version tracking
-```
-
-- **Cache Validity**: 7 hari (168 jam)
-- **Auto-Invalidation**: Jika LaTeX version berubah
-- **Size**: ~500 bytes total
-- **Git Integration**: Otomatis ditambahkan ke `.gitignore`
-
-### 🎨 **TikZ & Advanced Features**
-
-Template ini dilengkapi dengan dukungan lengkap untuk pembuatan diagram dan visualisasi profesional:
-
-#### 📊 **TikZ Diagrams (BAB VI)**
-
-- **Flowchart**: Diagram alur kerja sistem yang kompleks
-- **Mathematical Plots**: Grafik fungsi matematika dengan `pgfplots`
-- **Block Diagrams**: Sistem kontrol feedback dan arsitektur sistem
-- **Network Topology**: Diagram jaringan komputer dan komunikasi
-- **Pie Charts**: Visualisasi data distribusi dengan `pgf-pie`
-
-#### 🔧 **TikZ Libraries Included**
-
-```latex
-% Pre-configured libraries
-\usepackage{tikz}
-\usetikzlibrary{calc, shapes, arrows.meta, positioning}
-\usepackage{pgfplots}
-\usepackage{pgf-pie}
-```
-
-#### 🎯 **Table Examples**
-
-- **Simple Tables**: Data hasil pengujian dan measurement
-- **Advanced Tables**: Multi-row/column dengan `multirow` dan `multicolumn`
-- **Professional Formatting**: Booktabs untuk publikasi-ready tables
-
-### 🚨 **Troubleshooting**
-
-#### Missing LaTeX Installation
-
-```bash
-# macOS
+# Via Homebrew (recommended)
 brew install --cask mactex
 
+# Atau download dari https://tug.org/mactex/
+```
+
+</details>
+
+<details>
+<summary><b>🐧 Linux (TeX Live)</b></summary>
+
+```bash
 # Ubuntu/Debian
-sudo apt-get install texlive-full
+sudo apt-get update
+sudo apt-get install texlive-full latexmk
 
-# Windows  
-# Download dan install MiKTeX dari https://miktex.org/
+# Fedora
+sudo dnf install texlive-scheme-full latexmk
+
+# Arch Linux
+sudo pacman -S texlive-most latexmk
 ```
 
-#### Package Installation Issues
+</details>
+
+### Langkah 2: Clone Repository
 
 ```bash
-# Manual package installation
-tlmgr install package_name
+git clone https://github.com/rizkyyanuark/Tugas_Akhir.git
+cd "Tugas_Akhir/proposal tugas akhir"
 
-# Update package manager
-tlmgr update --self
-tlmgr update --all
+# Compile dengan latexmk (recommended)
+latexmk -pdf ProposalTA.tex
 
-# Permission issues (Linux/macOS)
-sudo tlmgr install package_name
+# Atau manual
+pdflatex ProposalTA
+bibtex ProposalTA
+pdflatex ProposalTA
+pdflatex ProposalTA
 ```
 
-#### Performance Issues
+### VS Code
 
-```bash
-# Clear cache dan rebuild
-./compile.sh --clear-cache
-./compile.sh --force-deps-check
-
-# Skip dependencies untuk speed
-./compile.sh --skip-deps --quiet
-```
-
----
-
-## 🖥️ Panduan Instalasi & Penggunaan
-
-### 💻 **Windows (TeXstudio)**
-
-1. **Install MikTeX**: [https://miktex.org/download](https://miktex.org/download)
-   > Pilih *For All Users*, centang opsi *Always install missing packages*
-
-2. **Install TeXstudio**: [https://www.texstudio.org/](https://www.texstudio.org/)
-
-3. **Update MikTeX** melalui MikTeX Console
-
-4. **Clone/unduh** repositori dan buka `laporan.tex` melalui TeXstudio
-
-5. **Compile**: Klik **Build & View** untuk melihat hasil (`laporan.pdf`)
-
-### 🍎 **macOS (VS Code)**
-
-1. **Install MacTeX**:
-
-   ```bash
-   brew install --cask mactex
-   ```
-
-   Atau download dari [https://www.tug.org/mactex/](https://www.tug.org/mactex/)
-
-2. **Install VS Code LaTeX Workshop extension**
-
-3. **Clone repositori dan buka di VS Code**
-
-4. **Compile**: Gunakan script atau Ctrl+Alt+B
-
-   ```bash
-   cd Project/
-   ./compile.sh
-   ```
-
-> 📖 **Tutorial lengkap**: [LaTeX di MacOS dengan VS Code](https://sudorealm.com/blog/how-to-write-latex-documents-with-visual-studio-code-on-mac)
-
-### 🐧 **Linux (Ubuntu/Debian)**
-
-1. **Install TeX Live**:
-
-   ```bash
-   sudo apt-get update
-   sudo apt-get install texlive-full
-   ```
-
-2. **Install editor** (pilih salah satu):
-
-   ```bash
-   # TeXstudio
-   sudo apt-get install texstudio
-   
-   # VS Code
-   sudo snap install code --classic
-   ```
-
-3. **Clone dan compile**:
-
-   ```bash
-   git clone [repository-url]
-   cd Template-LaTeX-Tugas-Akhir-Sarjana-Terapan-UNY/Project/
-   ./compile.sh
-   ```
-
-### 🌐 **Overleaf (Online)**
-
-1. **Upload project** ke Overleaf
-2. **Set main document** ke `laporan.tex`  
-3. **Compile** langsung di browser
-
-> ⚠️ **Note**: Script `compile.sh` tidak tersedia di Overleaf
-
----
-
-## ⚙️ Pengaturan Proposal / Laporan
-
-Gunakan perintah berikut pada baris awal `laporan.tex`:
-
-```latex
-%\newcommand{\Jenis}{Proposal}   % Gunakan untuk Proposal
-\newcommand{\Jenis}{Laporan}     % Gunakan untuk Laporan
-```
-
-> *Hanya aktifkan salah satu perintah (`%` artinya dikomentari)*
-
----
-
-## ✍️ Langkah Pengerjaan Laporan
-
-| File                          | Keterangan                                         |
-| ----------------------------- | -------------------------------------------------- |
-| `a0-identitas.tex`            | Isi nama, NIM, judul TA, pembimbing, dll           |
-| `b1-bab1.tex` – `b5-bab5.tex` | Isi konten utama BAB I–V                           |
-| `a7-pustaka.bib`              | Tambah referensi dengan BibTeX                     |
-| `a8-lampiran.tex`             | Tambah daftar lampiran                             |
-| `b6-bab6.tex`                 | *Berisi tutorial LaTeX, opsional, dapat diabaikan* |
-| `a2–a6-*.tex`                 | Abstrak, Kata Pengantar, Persembahan, dll.         |
+1. Install extension **LaTeX Workshop**
+2. Buka folder `proposal tugas akhir`
+3. Buka `ProposalTA.tex`
+4. Tekan **Ctrl+S** → Auto-compile!
 
 ---
 
 ## 📚 Manajemen Referensi
 
-Gunakan salah satu reference manager berikut:
+### Format BibTeX
 
-- [Mendeley](https://www.mendeley.com/)
-- [Zotero](https://www.zotero.org/)  
-- [JabRef](https://www.jabref.org/) *(direkomendasikan)*
+Tambahkan referensi di `Pustaka.bib`:
 
-Format ekspor: `.bib` (BibTeX), lalu tambahkan ke file `a7-pustaka.bib`.
+```bibtex
+@article{contoh2024,
+  author  = {Nama Penulis},
+  title   = {Judul Artikel},
+  journal = {Nama Jurnal},
+  year    = {2024},
+  volume  = {10},
+  pages   = {1--15},
+  doi     = {10.1234/example}
+}
+```
 
----
+### Reference Manager yang Direkomendasikan
 
-## 🎬 Video Tutorial
+- [Zotero](https://www.zotero.org/) – Gratis, open-source
+- [Mendeley](https://www.mendeley.com/) – Integrasi cloud
+- [JabRef](https://www.jabref.org/) – Native BibTeX editor
 
-| No | Judul                                              | Link                                                   |
-| -- | -------------------------------------------------- | ------------------------------------------------------ |
-| 1  | Penggunaan Template TA UNY                         | [YouTube](https://www.youtube.com/watch?v=lnPTVrOGB90) |
-| 2  | Penulisan Isi Laporan                              | [YouTube](https://www.youtube.com/watch?v=4Qk_2pknhsM) |
-| 3  | Menambah Gambar dan Tabel                          | [YouTube](https://www.youtube.com/watch?v=oxY1mbZgv94) |
-| 4  | Referensi dan Sitasi                               | [YouTube](https://www.youtube.com/watch?v=goq-IS4WJW4) |
-| 5  | Menulis Kode Program                               | [YouTube](https://www.youtube.com/watch?v=JeSJ0mYfxA0) |
-| 6  | Workshop Lengkap Proposal dan Laporan dengan LaTeX | [YouTube](https://www.youtube.com/watch?v=anMLRydjDOE) |
+### Cara Sitasi
 
----
+```latex
+% Dalam teks
+Menurut \cite{contoh2024}, hasil penelitian menunjukkan...
 
-## 📝 Changelog
-
-Catatan lengkap perubahan dan versi terbaru tersedia di file:
-📄 [CHANGELOG](CHANGELOG)
-
----
-
-## 🖼️ Screenshot
-
-| MacOS                                                             | Windows                                                               |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------- |
-| ![TexStudio MacOS](Project/gambar/screenshot-texstudio-macos.png) | ![TexStudio Windows](Project/gambar/screenshot-texstudio-windows.png) |
+% Atau dengan natbib
+\citep{contoh2024}  % (Penulis, 2024)
+\citet{contoh2024}  % Penulis (2024)
+```
 
 ---
 
-## 📄 Lisensi
+## 🖥️ Setup Editor
 
-Proyek ini dilisensikan di bawah [MIT License](LICENSE).
+<details>
+<summary><b>VS Code (Recommended)</b></summary>
+
+### Extensions yang Diperlukan
+
+1. **LaTeX Workshop** (James Yu) - Compile dan preview
+2. **LaTeX Utilities** (tecosaur) - Snippet dan autocompletion _(opsional)_
+
+### Konfigurasi
+
+✅ **Sudah otomatis!** File `.vscode/settings.json` sudah included.
+
+### Keyboard Shortcuts
+
+| Shortcut                             | Fungsi              |
+| ------------------------------------ | ------------------- |
+| `Ctrl+S`                             | Save & auto-compile |
+| `Ctrl+Alt+V`                         | View PDF            |
+| `Ctrl+Click` pada PDF                | Jump ke source code |
+| `Ctrl+Shift+P` → "Build with recipe" | Pilih build mode    |
+
+</details>
+
+<details>
+<summary><b>TeXstudio</b></summary>
+
+1. Options → Configure TeXstudio → Build
+2. Default Compiler: **PdfLaTeX**
+3. Default Bibliography: **BibTeX**
+4. Build & View: **F5**
+
+</details>
+
+<details>
+<summary><b>Overleaf</b></summary>
+
+1. Upload semua file ke project baru
+2. Menu → Settings → Compiler: **pdfLaTeX**
+3. Main document: **ProposalTA.tex** atau **Skripsi.tex**
+
+</details>
+
+<details>
+<summary><b>Terminal (Vim/Emacs users)</b></summary>
+
+```bash
+# One-time full build
+latexmk -pdf ProposalTA.tex
+
+# Continuous build (watch mode)
+latexmk -pvc -pdf ProposalTA.tex
+
+# Clean
+latexmk -C
+
+# View PDF (Linux)
+xdg-open ProposalTA.pdf
+
+# View PDF (macOS)
+open ProposalTA.pdf
+```
+
+</details>
 
 ---
 
-## 🤝 Kontribusi
+## 🎨 Fitur Template
 
-Saran, kontribusi, dan perbaikan sangat terbuka.
-Silakan buat **Pull Request** atau buka **Issue** melalui GitHub.
+### ✅ Sudah Termasuk
+
+- Format sesuai pedoman skripsi UNESA
+- Halaman judul, persetujuan, daftar isi otomatis
+- Daftar tabel dan gambar otomatis
+- Daftar simbol dan glosarium
+- Penomoran halaman (romawi untuk awal, arab untuk isi)
+- Cross-referencing otomatis
+- Bibliography style UNESA (`unesa.bst`)
+
+### 📦 Package yang Digunakan
+
+```latex
+% Matematika
+amsmath, amsthm, amssymb, mathtools
+
+% Tabel
+longtable, tabularx, multirow, array, hhline
+
+% Gambar
+graphicx, subcaption, float
+
+% Referensi
+natbib, hyperref
+
+% Lainnya
+tikz, pgfplots, listings, glossaries
+```
+
+---
+
+## 🔧 Troubleshooting
+
+<details>
+<summary><b>❌ Error: Citation undefined</b></summary>
+
+```bash
+# Terminal
+latexmk -pdf ProposalTA.tex
+
+# VS Code: Pilih recipe "📚 Full Build (Bibliography)"
+```
+
+</details>
+
+<details>
+<summary><b>❌ Error: Missing package</b></summary>
+
+**Penyebab**: Package LaTeX belum terinstall
+
+**Solusi**:
+
+```bash
+# MiKTeX (Windows) - otomatis install
+# Atau manual:
+mpm --install nama_package
+
+# TeX Live (Linux/Mac)
+tlmgr install nama_package
+```
+
+</details>
+
+<details>
+<summary><b>❌ Error: Bibliography tidak muncul</b></summary>
+
+**Penyebab**: BibTeX belum dijalankan
+
+**Solusi**:
+
+```bash
+pdflatex ProposalTA
+bibtex ProposalTA
+pdflatex ProposalTA
+pdflatex ProposalTA
+
+# Atau gunakan latexmk (otomatis)
+latexmk -pdf ProposalTA.tex
+```
+
+</details>
+
+<details>
+<summary><b>⚠️ Warning: Infinite glue shrinkage / Underfull hbox</b></summary>
+
+**Status**: Warning ini **normal** dan tidak mempengaruhi output PDF.
+
+**Penyebab**: Layout adjustment pada tabel/longtable yang split antar halaman.
+
+</details>
+
+<details>
+<summary><b>⏱️ Compile sangat lambat (>2 menit)</b></summary>
+
+**Penyebab**: Full build dengan semua bab
+
+**Solusi**:
+
+1. Gunakan `\includeonly{Bab_X/...}` saat editing
+2. Pilih recipe "⚡ Quick Build" di VS Code
+3. Jika pakai OneDrive, pertimbangkan pindah ke folder lokal
+
+</details>
+
+<details>
+<summary><b>❌ makeglossaries tidak jalan</b></summary>
+
+**Penyebab**: Perl tidak terinstall (Windows)
+
+**Solusi Windows**:
+
+1. Install Strawberry Perl: https://strawberryperl.com/
+2. Restart terminal/VS Code
+3. Verify: `perl --version`
+
+</details>
 
 ---
 
 ## 📬 Kontak
 
-Jika Anda memiliki pertanyaan, hubungi:
-📧 [ardyseto@uny.ac.id](mailto:ardyseto@uny.ac.id)
-👤 [@2black0](https://github.com/2black0)
+**Penulis:** Rizky Yanuar Kristianto  
+**Email:** rizky.22017@mhs.unesa.ac.id  
+**GitHub:** [@rizkyyanuark](https://github.com/rizkyyanuark)
+
+**Pembimbing:**
+
+1. Ibnu Febry K., S.Kom., M.Sc., Ph.D.
+2. Hasanuddin Al-Habib, M.Si.
 
 ---
+
+## 📄 Lisensi
+
+Template ini dapat digunakan dan dimodifikasi untuk keperluan akademik di lingkungan UNESA.
+
+---
+
+## 🤝 Kontribusi
+
+Kontribusi sangat diterima! Silakan:
+
+1. **Fork** repository ini
+2. Buat **branch** baru: `git checkout -b fitur-baru`
+3. **Commit** perubahan: `git commit -m "Tambah fitur X"`
+4. **Push** ke branch: `git push origin fitur-baru`
+5. Buat **Pull Request**
+
+### Yang Bisa Dikontribusikan
+
+- 🐛 Bug fixes pada class file
+- 📝 Perbaikan dokumentasi
+- 🎨 Improvement template layout
+- 🔧 Optimisasi build process
+
+---
+
+## 📊 Kompatibilitas
+
+| Platform | LaTeX Distribution | Status         |
+| -------- | ------------------ | -------------- |
+| Windows  | MiKTeX             | ✅ Tested      |
+| Windows  | TeX Live           | ✅ Tested      |
+| macOS    | MacTeX             | ✅ Should work |
+| Linux    | TeX Live           | ✅ Should work |
+| Online   | Overleaf           | ✅ Tested      |
+
+| Editor                   | Status                   |
+| ------------------------ | ------------------------ |
+| VS Code + LaTeX Workshop | ✅ Fully configured      |
+| TeXstudio                | ✅ Works with .latexmkrc |
+| Overleaf                 | ✅ Works                 |
+| Emacs/Vim                | ✅ Works with latexmk    |
+
+---
+
+_Last updated: Desember 2025_

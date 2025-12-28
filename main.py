@@ -1,89 +1,107 @@
-from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
 
-proxies = {
-    "server": "brd.superproxy.io:33335",
-    "username": 'brd-customer-hl_68223b6e-zone-web_unlocker1',
-    "password": 'n8buv1pplvv0'
+import streamlit as st
+from datasets import load_dataset
+from transformers import AutoConfig, AutoModelForSeq2SeqLM, AutoTokenizer
+from time import time
+import torch
+
+
+@st.cache(
+    allow_output_mutation=True,
+    hash_funcs={
+        AutoTokenizer: lambda x: None,
+        AutoModelForSeq2SeqLM: lambda x: None,
+    },
+    suppress_st_warning=True
+)
+def load_models():
+    st_time = time()
+    tokenizer = AutoTokenizer.from_pretrained("Babelscape/rebel-large")
+    print("+++++ loading Model", time() - st_time)
+    model = AutoModelForSeq2SeqLM.from_pretrained("Babelscape/rebel-large")
+    if torch.cuda.is_available():
+        _ = model.to("cuda:0")  # comment if no GPU available
+    _ = model.eval()
+    print("+++++ loaded model", time() - st_time)
+    dataset = load_dataset('datasets/rebel-short.py', data_files={'train': 'data/rebel/sample.jsonl', 'dev': 'data/rebel/sample.jsonl',
+                           'test': 'data/rebel/sample.jsonl', 'relations': "data/relations_count.tsv"}, split="validation")
+    return (tokenizer, model, dataset)
+
+
+def extract_triplets(text):
+    triplets = []
+    relation = ''
+    for token in text.split():
+        if token == "<triplet>":
+            current = 't'
+            if relation != '':
+                triplets.append((subject, relation, object_))
+                relation = ''
+            subject = ''
+        elif token == "<subj>":
+            current = 's'
+            if relation != '':
+                triplets.append((subject, relation, object_))
+            object_ = ''
+        elif token == "<obj>":
+            current = 'o'
+            relation = ''
+        else:
+            if current == 't':
+                subject += ' ' + token
+            elif current == 's':
+                object_ += ' ' + token
+            elif current == 'o':
+                relation += ' ' + token
+    triplets.append((subject, relation, object_))
+    return triplets
+
+
+tokenizer, model, dataset = load_models()
+
+agree = st.checkbox('Free input', False)
+if agree:
+    text = st.text_input(
+        'Input text', 'Punta Cana is a resort town in the municipality of Higüey, in La Altagracia Province, the easternmost province of the Dominican Republic.')
+    print(text)
+else:
+    dataset_example = st.slider('dataset id', 0, 1000, 0)
+    text = dataset[dataset_example]['context']
+length_penalty = st.slider('length_penalty', 0, 10, 0)
+num_beams = st.slider('num_beams', 1, 20, 3)
+num_return_sequences = st.slider('num_return_sequences', 1, num_beams, 2)
+
+gen_kwargs = {
+    "max_length": 256,
+    "length_penalty": length_penalty,
+    "num_beams": num_beams,
+    "num_return_sequences": num_return_sequences,
 }
 
-pw = sync_playwright().start()
-browser = pw.firefox.launch(
-    headless=False,
-    slow_mo=2000,  # Reduced from 5000 to 2000ms for better performance
-    proxy=proxies
+model_inputs = tokenizer(text, max_length=256, padding=True,
+                         truncation=True, return_tensors='pt')
+generated_tokens = model.generate(
+    model_inputs["input_ids"].to(model.device),
+    attention_mask=model_inputs["attention_mask"].to(model.device),
+    **gen_kwargs,
 )
 
-page = browser.new_page(
-    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
+decoded_preds = tokenizer.batch_decode(
+    generated_tokens, skip_special_tokens=False)
+st.title('Input text')
 
-# Step 1: Navigate to the scholar profile page (LIST VIEW - bukan detail artikel)
-# URL ini menampilkan daftar publikasi, bukan detail satu artikel
-scholar_profile_url = "http://scholar.google.com/citations?view_op=view_citation&hl=en&user=lFCI_vsAAAAJ&cstart=20&sortby=pubdate&citation_for_view=lFCI_vsAAAAJ:ZeXyd9-uunAC"
-print(f"[1] Navigating to scholar profile LIST: {scholar_profile_url}")
-page.goto(scholar_profile_url)
-page.wait_for_load_state("networkidle")
-print(f"    Current URL: {page.url}")
+st.write(text)
 
-# Step 2: Find and click the first journal article link (class="gsc_a_at")
-print("\n[2] Looking for first journal article link (class='gsc_a_at')...")
+if not agree:
+    st.title('Silver output')
+    st.write(dataset[dataset_example]['triplets'])
+    st.write(extract_triplets(dataset[dataset_example]['triplets']))
 
-# Debug: Check how many article links exist
-article_links_count = page.locator('a.gsc_a_at').count()
-print(f"    Found {article_links_count} article link(s) on page")
+st.title('Prediction text')
+decoded_preds = [text.replace('<s>', '').replace(
+    '</s>', '').replace('<pad>', '') for text in decoded_preds]
+st.write(decoded_preds)
 
-if article_links_count > 0:
-    article_link = page.locator('a.gsc_a_at').first
-    article_title = article_link.inner_text()
-    article_href = article_link.get_attribute('href')
-    print(f"    Article title: {article_title}")
-    print(f"    Article href: {article_href}")
-
-    # Click the article link
-    print(f"\n[3] Clicking on article...")
-    article_link.click()
-
-    # Wait for navigation to complete
-    page.wait_for_load_state("domcontentloaded")
-    page.wait_for_timeout(3000)  # Extra wait to ensure page fully loads
-    print(f"    Navigated to: {page.url}")
-
-    # Step 3: Extract description from class="gsh_csp"
-    print("\n[4] Extracting description (class='gsh_csp')...")
-    html_content = page.content()
-    soup = BeautifulSoup(html_content, 'html.parser')
-
-    description_div = soup.find('div', class_='gsh_csp')
-
-    if description_div:
-        description_text = description_div.get_text(strip=True)
-        print("\n" + "="*80)
-        print("DESCRIPTION:")
-        print("="*80)
-        print(description_text)
-        print("="*80)
-    else:
-        print("    ⚠️  Description div (class='gsh_csp') not found!")
-        print("    Available classes on page:")
-        # Debug: print semua div classes yang ada
-        all_divs = soup.find_all('div', class_=True)
-        unique_classes = set()
-        for div in all_divs[:20]:  # Show first 20 unique classes
-            if div.get('class'):
-                unique_classes.update(div.get('class'))
-        for cls in sorted(unique_classes):
-            print(f"      - {cls}")
-
-    # Take screenshot of the article page
-    page.screenshot(path="article_page.png")
-    print(f"\n[5] Screenshot saved: article_page.png")
-
-else:
-    print("    ⚠️  No article links found on the page!")
-    print("    Taking screenshot of current page for debugging...")
-    page.screenshot(path="profile_page_debug.png")
-    print(f"    Screenshot saved: profile_page_debug.png")
-
-browser.close()
-print("\n✅ Done!")
+for idx, sentence in enumerate(decoded_preds):
+    st.title(f'Prediction triplets sentence {idx}')
+    st.write(extract_triplets(sentence))

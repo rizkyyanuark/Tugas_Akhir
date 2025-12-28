@@ -1,0 +1,118 @@
+\PassOptionsToPackage{table}{xcolor}
+\documentclass{ProposalUnesa}
+
+\pgfplotsset{compat=1.18}
+
+%==================================================================
+% COMPILE CEPAT - Uncomment SATU baris untuk compile bab tertentu
+% LaTeX akan pakai cache .aux sehingga nomor halaman tetap benar
+%==================================================================
+%\includeonly{Bab_1/PendahuluanP}
+%\includeonly{Bab_2/KajianPustakaP}
+%\includeonly{Bab_3/MetodePenelitianP}
+%==================================================================
+
+\loadglsentries{Istilah.tex}
+
+\begin{document}
+	
+	\input{DataSkripsi}
+	
+	\Awal
+	
+	\HalamanJudul
+	
+	\HalamanPersetujuan 
+	
+	\DaftarIsi
+	\DaftarTabel
+	\DaftarGambar
+	\DaftarSimbol
+	\renewcommand{\arraystretch}{1.3}
+	\begin{longtable}{p{0.15\textwidth} p{0.75\textwidth}}
+		% ===== SIMBOL HIMPUNAN & STRUKTUR =====
+		$\mathcal{T}$ & Teks input atau dokumen yang akan diproses \\
+		$\mathcal{S}$ & Representasi terstruktur hasil ekstraksi informasi \\
+		$E$ & Himpunan entitas dalam \textit{Knowledge Graph} \\
+		$R$ & Himpunan relasi dalam \textit{Knowledge Graph} \\
+		$T$ & Himpunan \textit{triplet} dalam \textit{Knowledge Graph} \\
+		$G$ & \textit{Knowledge Graph} yang didefinisikan sebagai $G = (E, R, T)$ \\
+		$\mathcal{G}$ & Graf pengetahuan (\textit{Knowledge Graph}) secara keseluruhan \\
+		$A$ & Himpunan seluruh kemungkinan respons/jawaban \\
+		$\mathbb{R}^d$ & Ruang vektor berdimensi $d$ (untuk \textit{embeddings}) \\
+		\\[0.5em]
+		% ===== SIMBOL ENTITAS & TRIPLET =====
+		$e_i$ & Entitas subjek (\textit{head}) dalam sebuah \textit{triplet} \\
+		$e_j$ & Entitas objek (\textit{tail}) dalam sebuah \textit{triplet} \\
+		$r_{ij}$ & Relasi atau predikat yang menghubungkan entitas $e_i$ dan $e_j$ \\
+		$h$ & Entitas asal (\textit{head}) dalam format triplet $(h, r, t)$ \\
+		$r$ & Relasi dalam format triplet $(h, r, t)$ \\
+		$t$ & Entitas tujuan (\textit{tail}) dalam format triplet $(h, r, t)$ \\
+		$(h, r, t)$ & Format \textit{triplet} pengetahuan: subjek, predikat, objek \\
+		\\[0.5em]
+		% ===== SIMBOL LLM & GENERASI =====
+		$P_\theta$ & Fungsi probabilitas model bahasa dengan parameter $\theta$ \\
+		$x$ & Input teks dari pengguna ke model bahasa \\
+		$y_t$ & Token keluaran pada posisi ke-$t$ yang dihasilkan model \\
+		$y_1, \cdots, y_t$ & Urutan token keluaran dari posisi pertama hingga ke-$t$ \\
+		$\theta$ & Parameter model \textit{retriever} yang dapat dilatih \\
+		$\phi$ & Parameter model \textit{generator} yang dapat dilatih \\
+		\\[0.5em]
+		% ===== SIMBOL GRAPH-RAG =====
+		$a^*$ & Jawaban optimal yang dihasilkan sistem \textit{Graph-RAG} \\
+		$a$ & Jawaban atau respons yang dihasilkan sistem \\
+		$q$ & Pertanyaan atau kueri dari pengguna \\
+		$Q$ & Pertanyaan pengguna dalam notasi proses ekstraksi kata kunci \\
+		$p(a \mid q, \mathcal{G})$ & Distribusi probabilitas jawaban $a$ diberikan pertanyaan $q$ dan graf $\mathcal{G}$ \\
+		$p_\theta(G \mid q, \mathcal{G})$ & Model \textit{graph retriever} untuk memilih subgraf relevan \\
+		$p_\phi(a \mid q, G)$ & Model \textit{answer generator} untuk menghasilkan jawaban dari subgraf \\
+		$G^*$ & Subgraf optimal yang dipilih oleh \textit{retriever} \\
+		% ===== SIMBOL KATA KUNCI & RETRIEVAL =====
+		$\mathcal{K}^{clues}$ & Kata kunci petunjuk awal dari basis data vektor \\
+		$\mathcal{K}_l$ & Kata kunci tingkat rendah (\textit{low-level}) untuk pencarian detail \\
+		$\mathcal{K}_h$ & Kata kunci tingkat tinggi (\textit{high-level}) untuk konteks tema besar \\
+		$\text{LLM}_{keyword}$ & Fungsi LLM untuk mengekstraksi dan mengklasifikasikan kata kunci \\
+		$k$ & Jumlah dokumen atau entitas teratas yang diambil (\textit{top-k}) \\
+		% ===== SIMBOL INFORMASI LOKAL & GLOBAL =====
+		$\mathcal{L}_{\text{local}}$ & Informasi lokal hasil ekstraksi dari subgraf \\
+		$\mathcal{E}_{\text{local}}$ & Himpunan entitas dari ekstraksi informasi lokal \\
+		$\mathcal{R}_{\text{local}}$ & Himpunan relasi dari ekstraksi informasi lokal \\
+		$\mathcal{T}_{\text{local}}$ & Himpunan unit teks dari ekstraksi informasi lokal \\
+		$\text{pipeline}_{\text{local}}$ & Fungsi \textit{pipeline} untuk ekstraksi informasi lokal \\
+		$\mathcal{L}_{\text{global}}$ & Informasi global hasil ekstraksi dari jaringan relasi \\
+		$\mathcal{E}_{\text{global}}$ & Himpunan entitas dari ekstraksi informasi global \\
+		$\mathcal{R}_{\text{global}}$ & Himpunan relasi dari ekstraksi informasi global \\
+		$\mathcal{T}_{\text{global}}$ & Himpunan unit teks dari ekstraksi informasi global \\
+		$\text{pipeline}_{\text{global}}$ & Fungsi \textit{pipeline} untuk ekstraksi informasi global \\
+		% ===== SIMBOL FUNGSI & OPERATOR =====
+		$f_{IE}$ & Fungsi pemetaan \textit{Information Extraction} dari teks ke struktur \\
+		$\arg\max$ & Operator untuk menemukan argumen yang memaksimalkan fungsi \\
+		$\sum$ & Operator penjumlahan \\
+		$\subseteq$ & Relasi himpunan bagian (\textit{subset}) \\
+		$\in$ & Relasi keanggotaan himpunan \\
+		$\mid$ & Simbol kondisional (``diberikan'') dalam probabilitas \\
+		% ===== SIMBOL EVALUASI =====
+		$P@k$ & \textit{Precision at k}, presisi pada $k$ dokumen teratas \\
+		$TP$ & \textit{True Positive}, prediksi positif yang benar \\
+		$FP$ & \textit{False Positive}, prediksi positif yang salah \\
+		$FN$ & \textit{False Negative}, prediksi negatif yang salah \\
+	\end{longtable}
+	\newpage
+	
+	\Inti
+	
+	\include{Bab_1/PendahuluanP}
+	
+	\include{Bab_2/KajianPustakaP}
+	
+	\include{Bab_3/MetodePenelitianP}
+	
+	\nocite{*}
+	
+	\DaftarPustaka{Pustaka}
+	\Glosarium
+	\BukaLampiran
+	
+	\lampiran{Data dan lain-lain}
+	
+\end{document}

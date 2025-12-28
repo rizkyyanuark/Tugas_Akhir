@@ -90,3 +90,97 @@ __package_test__.*
 *.swp
 *.swo
 *~
+
+# Core auxiliary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+# Bibliography
+*.bbl
+*.bcf
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+
+# Glossary
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.ist
+
+# Index
+*.idx
+*.ilg
+*.ind
+
+# Listings
+*.lol
+
+# Minitoc
+*.maf
+*.mlf
+*.mlt
+*.mtc[0-9]*
+*.slf[0-9]*
+*.slt[0-9]*
+*.stc[0-9]*
+
+# Package specific
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+
+# TikZ/PGF
+*.dpth
+*.md5
+*.auxlock
+
+# Beamer
+*.nav
+*.pre
+*.snm
+*.vrb
+
+# Build directories (if using output directory)
+build/
+_minted*/
+*.pyg
+
+# Generated PDF (optional - uncomment if you don't want to track PDFs)
+# *.pdf
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor specific
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+

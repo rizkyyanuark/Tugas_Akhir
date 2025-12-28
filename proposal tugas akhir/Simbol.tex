@@ -1,0 +1,437 @@
+% ============================================
+% DAFTAR SIMBOL
+% File: Simbol.tex
+% ============================================
+
+% Gunakan package glossaries untuk simbol
+% Pastikan sudah ada \makenomenclature atau \makeglossaries di preamble
+
+% ============================================
+% SIMBOL HIMPUNAN & STRUKTUR DATA
+% ============================================
+
+\newglossaryentry{sym:calT}{
+    type=symbols,
+    name={\ensuremath{\mathcal{T}}},
+    description={Teks input atau dokumen yang akan diproses},
+    sort=T
+}
+
+\newglossaryentry{sym:calS}{
+    type=symbols,
+    name={\ensuremath{\mathcal{S}}},
+    description={Representasi terstruktur hasil ekstraksi informasi},
+    sort=S
+}
+
+\newglossaryentry{sym:E}{
+    type=symbols,
+    name={\ensuremath{E}},
+    description={Himpunan entitas dalam \textit{Knowledge Graph}},
+    sort=E
+}
+
+\newglossaryentry{sym:R}{
+    type=symbols,
+    name={\ensuremath{R}},
+    description={Himpunan relasi dalam \textit{Knowledge Graph}},
+    sort=R
+}
+
+\newglossaryentry{sym:T}{
+    type=symbols,
+    name={\ensuremath{T}},
+    description={Himpunan \textit{triplet} dalam \textit{Knowledge Graph}},
+    sort=T
+}
+
+\newglossaryentry{sym:G}{
+    type=symbols,
+    name={\ensuremath{G}},
+    description={\textit{Knowledge Graph} yang didefinisikan sebagai $G = (E, R, T)$},
+    sort=G
+}
+
+\newglossaryentry{sym:calG}{
+    type=symbols,
+    name={\ensuremath{\mathcal{G}}},
+    description={Graf pengetahuan (\textit{Knowledge Graph}) secara keseluruhan},
+    sort=G
+}
+
+\newglossaryentry{sym:A}{
+    type=symbols,
+    name={\ensuremath{A}},
+    description={Himpunan seluruh kemungkinan respons/jawaban yang dapat dihasilkan},
+    sort=A
+}
+
+% ============================================
+% SIMBOL ENTITAS & TRIPLET
+% ============================================
+
+\newglossaryentry{sym:ei}{
+    type=symbols,
+    name={\ensuremath{e_i}},
+    description={Entitas subjek (\textit{head}) dalam sebuah \textit{triplet}},
+    sort=ei
+}
+
+\newglossaryentry{sym:ej}{
+    type=symbols,
+    name={\ensuremath{e_j}},
+    description={Entitas objek (\textit{tail}) dalam sebuah \textit{triplet}},
+    sort=ej
+}
+
+\newglossaryentry{sym:rij}{
+    type=symbols,
+    name={\ensuremath{r_{ij}}},
+    description={Relasi atau predikat yang menghubungkan entitas $e_i$ dan $e_j$},
+    sort=rij
+}
+
+\newglossaryentry{sym:h}{
+    type=symbols,
+    name={\ensuremath{h}},
+    description={Entitas asal (\textit{head}) dalam format triplet $(h, r, t)$},
+    sort=h
+}
+
+\newglossaryentry{sym:r}{
+    type=symbols,
+    name={\ensuremath{r}},
+    description={Relasi dalam format triplet $(h, r, t)$},
+    sort=r
+}
+
+\newglossaryentry{sym:t}{
+    type=symbols,
+    name={\ensuremath{t}},
+    description={Entitas tujuan (\textit{tail}) dalam format triplet $(h, r, t)$},
+    sort=t
+}
+
+\newglossaryentry{sym:e1}{
+    type=symbols,
+    name={\ensuremath{e_1}},
+    description={\textit{Node} pertama dalam contoh graf sederhana},
+    sort=e1
+}
+
+\newglossaryentry{sym:e2}{
+    type=symbols,
+    name={\ensuremath{e_2}},
+    description={\textit{Node} kedua dalam contoh graf sederhana},
+    sort=e2
+}
+
+\newglossaryentry{sym:r1}{
+    type=symbols,
+    name={\ensuremath{r_1}},
+    description={Relasi pertama yang menghubungkan $e_1$ ke $e_2$},
+    sort=r1
+}
+
+% ============================================
+% SIMBOL LLM & GENERASI TEKS
+% ============================================
+
+\newglossaryentry{sym:Ptheta}{
+    type=symbols,
+    name={\ensuremath{P_\theta}},
+    description={Fungsi probabilitas yang dipelajari oleh model bahasa dengan parameter $\theta$},
+    sort=Ptheta
+}
+
+\newglossaryentry{sym:x}{
+    type=symbols,
+    name={\ensuremath{x}},
+    description={Input teks dari pengguna ke model bahasa},
+    sort=x
+}
+
+\newglossaryentry{sym:yt}{
+    type=symbols,
+    name={\ensuremath{y_t}},
+    description={Token keluaran pada posisi ke-$t$ yang dihasilkan model},
+    sort=yt
+}
+
+\newglossaryentry{sym:y1yt}{
+    type=symbols,
+    name={\ensuremath{y_1, \cdots, y_t}},
+    description={Urutan token keluaran dari posisi pertama hingga ke-$t$},
+    sort=y1yt
+}
+
+\newglossaryentry{sym:theta}{
+    type=symbols,
+    name={\ensuremath{\theta}},
+    description={Parameter model \textit{retriever} yang dapat dilatih},
+    sort=theta
+}
+
+\newglossaryentry{sym:phi}{
+    type=symbols,
+    name={\ensuremath{\phi}},
+    description={Parameter model \textit{generator} yang dapat dilatih},
+    sort=phi
+}
+
+% ============================================
+% SIMBOL GRAPH-RAG
+% ============================================
+
+\newglossaryentry{sym:astar}{
+    type=symbols,
+    name={\ensuremath{a^*}},
+    description={Jawaban optimal yang dihasilkan sistem \textit{Graph-RAG}},
+    sort=astar
+}
+
+\newglossaryentry{sym:a}{
+    type=symbols,
+    name={\ensuremath{a}},
+    description={Jawaban atau respons yang dihasilkan sistem},
+    sort=a
+}
+
+\newglossaryentry{sym:q}{
+    type=symbols,
+    name={\ensuremath{q}},
+    description={Pertanyaan atau kueri dari pengguna},
+    sort=q
+}
+
+\newglossaryentry{sym:Q}{
+    type=symbols,
+    name={\ensuremath{Q}},
+    description={Pertanyaan pengguna dalam notasi proses ekstraksi kata kunci},
+    sort=Q
+}
+
+\newglossaryentry{sym:paq}{
+    type=symbols,
+    name={\ensuremath{p(a \mid q, \mathcal{G})}},
+    description={Distribusi probabilitas jawaban $a$ diberikan pertanyaan $q$ dan graf $\mathcal{G}$},
+    sort=paq
+}
+
+\newglossaryentry{sym:ptheta}{
+    type=symbols,
+    name={\ensuremath{p_\theta(G \mid q, \mathcal{G})}},
+    description={Model \textit{graph retriever} untuk memilih subgraf relevan},
+    sort=ptheta
+}
+
+\newglossaryentry{sym:pphi}{
+    type=symbols,
+    name={\ensuremath{p_\phi(a \mid q, G)}},
+    description={Model \textit{answer generator} untuk menghasilkan jawaban dari subgraf},
+    sort=pphi
+}
+
+\newglossaryentry{sym:Gstar}{
+    type=symbols,
+    name={\ensuremath{G^*}},
+    description={Subgraf optimal yang dipilih oleh \textit{retriever}},
+    sort=Gstar
+}
+
+% ============================================
+% SIMBOL KATA KUNCI & RETRIEVAL
+% ============================================
+
+\newglossaryentry{sym:Kclues}{
+    type=symbols,
+    name={\ensuremath{\mathcal{K}^{clues}}},
+    description={Kata kunci petunjuk awal dari basis data vektor},
+    sort=Kclues
+}
+
+\newglossaryentry{sym:Kl}{
+    type=symbols,
+    name={\ensuremath{\mathcal{K}_l}},
+    description={Kata kunci tingkat rendah (\textit{low-level}) untuk pencarian detail spesifik},
+    sort=Kl
+}
+
+\newglossaryentry{sym:Kh}{
+    type=symbols,
+    name={\ensuremath{\mathcal{K}_h}},
+    description={Kata kunci tingkat tinggi (\textit{high-level}) untuk konteks tema besar},
+    sort=Kh
+}
+
+\newglossaryentry{sym:LLMkeyword}{
+    type=symbols,
+    name={\ensuremath{\text{LLM}_{keyword}}},
+    description={Fungsi LLM untuk mengekstraksi dan mengklasifikasikan kata kunci},
+    sort=LLMkeyword
+}
+
+% ============================================
+% SIMBOL INFORMASI LOKAL & GLOBAL
+% ============================================
+
+\newglossaryentry{sym:Llocal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{L}_{\text{local}}}},
+    description={Informasi lokal hasil ekstraksi dari subgraf},
+    sort=Llocal
+}
+
+\newglossaryentry{sym:Elocal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{E}_{\text{local}}}},
+    description={Himpunan entitas dari ekstraksi informasi lokal},
+    sort=Elocal
+}
+
+\newglossaryentry{sym:Rlocal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{R}_{\text{local}}}},
+    description={Himpunan relasi dari ekstraksi informasi lokal},
+    sort=Rlocal
+}
+
+\newglossaryentry{sym:Tlocal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{T}_{\text{local}}}},
+    description={Himpunan unit teks dari ekstraksi informasi lokal},
+    sort=Tlocal
+}
+
+\newglossaryentry{sym:pipelinelocal}{
+    type=symbols,
+    name={\ensuremath{\text{pipeline}_{\text{local}}}},
+    description={Fungsi \textit{pipeline} untuk ekstraksi informasi lokal},
+    sort=pipelinelocal
+}
+
+\newglossaryentry{sym:Lglobal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{L}_{\text{global}}}},
+    description={Informasi global hasil ekstraksi dari jaringan relasi},
+    sort=Lglobal
+}
+
+\newglossaryentry{sym:Eglobal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{E}_{\text{global}}}},
+    description={Himpunan entitas dari ekstraksi informasi global},
+    sort=Eglobal
+}
+
+\newglossaryentry{sym:Rglobal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{R}_{\text{global}}}},
+    description={Himpunan relasi dari ekstraksi informasi global},
+    sort=Rglobal
+}
+
+\newglossaryentry{sym:Tglobal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{T}_{\text{global}}}},
+    description={Himpunan unit teks dari ekstraksi informasi global},
+    sort=Tglobal
+}
+
+\newglossaryentry{sym:pipelineglobal}{
+    type=symbols,
+    name={\ensuremath{\text{pipeline}_{\text{global}}}},
+    description={Fungsi \textit{pipeline} untuk ekstraksi informasi global},
+    sort=pipelineglobal
+}
+
+% ============================================
+% SIMBOL FUNGSI & OPERATOR
+% ============================================
+
+\newglossaryentry{sym:fIE}{
+    type=symbols,
+    name={\ensuremath{f_{IE}}},
+    description={Fungsi pemetaan \textit{Information Extraction} dari teks ke representasi terstruktur},
+    sort=fIE
+}
+
+\newglossaryentry{sym:argmax}{
+    type=symbols,
+    name={\ensuremath{\arg\max}},
+    description={Operator untuk menemukan argumen yang memaksimalkan suatu fungsi},
+    sort=argmax
+}
+
+\newglossaryentry{sym:sum}{
+    type=symbols,
+    name={\ensuremath{\sum}},
+    description={Operator penjumlahan},
+    sort=sum
+}
+
+\newglossaryentry{sym:subset}{
+    type=symbols,
+    name={\ensuremath{\subseteq}},
+    description={Relasi himpunan bagian (\textit{subset})},
+    sort=subset
+}
+
+\newglossaryentry{sym:in}{
+    type=symbols,
+    name={\ensuremath{\in}},
+    description={Relasi keanggotaan himpunan},
+    sort=in
+}
+
+\newglossaryentry{sym:mid}{
+    type=symbols,
+    name={\ensuremath{\mid}},
+    description={Simbol kondisional (``diberikan'') dalam probabilitas},
+    sort=mid
+}
+
+% ============================================
+% SIMBOL NUMERIK & THRESHOLD
+% ============================================
+
+\newglossaryentry{sym:lessthan50}{
+    type=symbols,
+    name={\ensuremath{<50}},
+    description={Threshold minimum jumlah kata untuk abstrak yang diproses},
+    sort=50
+}
+
+\newglossaryentry{sym:2024chars}{
+    type=symbols,
+    name={2.024 karakter},
+    description={Ukuran \textit{chunk} untuk \textit{text chunking} dalam \textit{vector indexing}},
+    sort=2024
+}
+
+\newglossaryentry{sym:50overlap}{
+    type=symbols,
+    name={50 karakter},
+    description={Ukuran \textit{overlap} antar \textit{chunk} untuk menjaga kontinuitas konteks},
+    sort=50overlap
+}
+
+% ============================================
+% CATATAN PENGGUNAAN
+% ============================================
+% 
+% Untuk menggunakan simbol dalam teks, gunakan perintah:
+%   \gls{sym:namasimbol}
+%
+% Contoh:
+%   Graf pengetahuan \gls{sym:G} terdiri dari himpunan entitas \gls{sym:E}...
+%   Sistem mencari jawaban optimal \gls{sym:astar} berdasarkan \gls{sym:q}...
+%
+% Untuk menampilkan daftar simbol, gunakan:
+%   \printglossary[type=symbols,title={Daftar Simbol}]
+%
+% Pastikan di preamble dokumen sudah ada:
+%   \usepackage[symbols,nogroupskip]{glossaries-extra}
+%   \makeglossaries
+%   \newglossary[slg]{symbols}{syi}{syg}{Daftar Simbol}
+%
