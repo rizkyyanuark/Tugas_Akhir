@@ -1,6 +1,6 @@
 \ProvidesClass{ProposalUnesa}[28/02/2025 v2.5]
 \NeedsTeXFormat{LaTeX2e}
-\LoadClass[a5paper,10pt,twoside,openright]{book}
+\LoadClass[a4paper,12pt,twoside,openright]{book}
 \RequirePackage[hmargin={2.5cm,2cm},vmargin={2.5cm,2cm}]{geometry}
 \RequirePackage{graphicx,sectsty,setspace,amssymb,amsmath,amsthm,amsfonts,newpx,enumitem,indentfirst,tabularx,ifthen,lscape,hyperref,array,mathtools,subcaption,multirow,natbib,tikz,actuarialsymbol,actuarialangle,listings,wrapfig,imakeidx,fancyhdr,pgfplots,setspace,longtable,lipsum}
 % Paket tambahan untuk mengatasi warning
@@ -17,7 +17,7 @@
 % ==============================================================================
 \RequirePackage[toc,nonumberlist,nopostdot]{glossaries}
 \RequirePackage[indonesian]{babel}
-\usetikzlibrary{shapes, arrows, shapes.multipart, positioning}
+\usetikzlibrary{shapes, arrows, shapes.multipart, positioning, shapes.geometric, shapes.symbols, arrows.meta, calc, fit, backgrounds}
 \setstretch{1.15}
 
 \newcommand{\@judul}{Judul Skripsi}
@@ -373,7 +373,7 @@
 	\vspace{10pt}
 		% Informasi mahasiswa
 		\noindent
-		\begin{tabular}{@{}lcp{6.5cm}}
+		\begin{tabular}{@{}lcp{.725\textwidth}}
 			Nama Mahasiswa & : & \@nama\\
 			NIM & : &  \@NIM\\
 			Judul Penelitian & : & \@judul
@@ -407,6 +407,105 @@
 		}
 		\addcontentsline{toc}{chapter}{HALAMAN PERSETUJUAN}
 	}
+
+\newcommand\HalamanLembarRevisi{
+	\clearpage
+\thispagestyle{plain}
+
+% Pastikan variabel fallback didefinisikan jika belum ada
+\makeatletter
+\providecommand{\@pujtiga}{}
+\providecommand{\@NIPpujtiga}{}
+\providecommand{\@pujempat}{}
+\providecommand{\@NIPpujempat}{}
+\makeatother
+
+\begin{center}
+    \large\bfseries\MakeUppercase{LEMBAR PENGESAHAN REVISI PROPOSAL TUGAS AKHIR}
+\end{center}
+
+\vspace{0.2cm}
+
+\makeatletter
+\noindent
+\begin{tabular}{@{}lcp{10cm}}
+    Nama Mahasiswa   & : & \@nama  \\
+    NIM              & : & \@NIM   \\
+    Judul Penelitian & : & \@judul
+\end{tabular}
+\makeatother
+
+\vspace{0.5cm}
+
+\noindent
+\begin{spacing}{1.3}
+    \makeatletter
+    \noindent ini dipertahankan di hadapan dewan penguji pada tanggal \@tglsidang \ dan telah disetujui serta dinyatakan memenuhi syarat untuk dilanjutkan dalam pengambilan data.
+    \makeatother
+\end{spacing}
+
+\vspace{0.2cm}
+
+% Tabel Tanda Tangan
+\renewcommand{\arraystretch}{1.5}
+\makeatletter
+\begin{longtable}{@{}p{7cm}p{4cm}p{4cm}@{}}
+    \textbf{Dewan Penguji,} & \textbf{Tanda Tangan}         & \textbf{Tanggal} \tabularnewline
+                            &                               & \textbf{Selesai/Revisi} \tabularnewline
+    % Pembimbing 1
+    \@pbbsatu               &                               &                                         \\
+    NIP \@NIPpbbsatu        & ............................. & .............................           \\[0.5cm]
+    % Pembimbing 2
+    \@pbbdua                &                               &                                         \\
+    NIP \@NIPpbbdua         & ............................. & .............................           \\[0.5cm]
+    % Penguji 1
+    \ifthenelse{\equal{\@pujsatu}{-}}{}{%
+    \@pujsatu               &                               &                                         \\
+    NIP \@NIPpujsatu        & ............................. & .............................           \\[0.5cm]
+    }
+    % Penguji 2
+    \ifthenelse{\equal{\@pujdua}{-}}{}{%
+    \@pujdua                &                               &                                         \\
+    NIP \@NIPpujdua         & ............................. & .............................           \\[0.5cm]
+    }
+    % Penguji 3
+    \ifthenelse{\equal{\@pujtiga}{}}{}{%
+        \ifthenelse{\equal{\@pujtiga}{-}}{%
+            % Jika dash, tidak ditampilkan
+        }{%
+    \@pujtiga               &                               &                                         \\
+    NIP \@NIPpujtiga        & ............................. & .............................           \\[0.5cm]
+        }%
+    }
+    % Penguji 4
+    \ifthenelse{\equal{\@pujempat}{}}{}{%
+        \ifthenelse{\equal{\@pujempat}{-}}{%
+            % Jika dash, tidak ditampilkan
+        }{%
+    \@pujempat              &                               &                                         \\
+    NIP \@NIPpujempat       & ............................. & .............................           \\[0.5cm]
+        }%
+    }
+\end{longtable}
+
+\vspace{0.2cm}
+
+% Tanda Tangan KPS (Geser agak ke kanan: 7.5cm)
+\noindent
+\hspace{10cm}%
+\begin{minipage}[t]{0.5\textwidth}
+    \noindent
+    Mengetahui, \\
+    Koordinator Program Studi \\
+    \@prodi \\[1.5cm] % Reduced spacing slightly to ensure fit
+    \textbf{\@kps} \\
+    NIP. \@NIPkps
+\end{minipage}
+\makeatother
+
+\addcontentsline{toc}{chapter}{LEMBAR PENGESAHAN REVISI}
+}
+
 	
 \newcommand\HalamanPengesahan{
 	\clearpage

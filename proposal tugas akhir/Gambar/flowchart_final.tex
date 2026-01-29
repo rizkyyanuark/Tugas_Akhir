@@ -1,0 +1,285 @@
+% ============================================
+% FLOWCHART METODOLOGI TUGAS AKHIR
+% Knowledge Graph-RAG untuk Penelusuran Literatur Akademik UNESA
+% ============================================
+
+% Definisi Style Flowchart
+\tikzset{
+    startstop/.style={rectangle, rounded corners=5pt, minimum width=2cm, minimum height=0.7cm, text centered, draw=black, line width=0.6pt, fill=green!20, font=\scriptsize\bfseries},
+    process/.style={rectangle, minimum width=2cm, minimum height=0.7cm, text centered, draw=black, line width=0.6pt, fill=blue!12, font=\scriptsize},
+    predefined/.style={rectangle, minimum width=2cm, minimum height=0.7cm, text centered, draw=black, line width=0.6pt, fill=orange!20, font=\scriptsize,
+            path picture={\draw[line width=0.5pt] ([xshift=3pt]path picture bounding box.north west) -- ([xshift=3pt]path picture bounding box.south west);
+                    \draw[line width=0.5pt] ([xshift=-3pt]path picture bounding box.north east) -- ([xshift=-3pt]path picture bounding box.south east);}},
+    data/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=1.8cm, minimum height=0.6cm, text centered, draw=black, line width=0.6pt, fill=yellow!20, font=\scriptsize},
+    database/.style={cylinder, shape border rotate=90, draw=black, line width=0.6pt, minimum height=0.8cm, minimum width=1.2cm, fill=purple!15, font=\scriptsize, aspect=0.35},
+    decision/.style={diamond, minimum width=1.6cm, minimum height=1.2cm, text centered, draw=black, line width=0.6pt, fill=red!12, font=\scriptsize, inner sep=1pt, aspect=2},
+    onpage/.style={circle, minimum size=0.5cm, draw=black, line width=0.6pt, fill=white, font=\scriptsize\bfseries},
+    offpage/.style={signal, signal to=south, minimum width=0.5cm, minimum height=0.5cm, draw=black, line width=0.6pt, fill=gray!15, font=\scriptsize\bfseries},
+    arrow/.style={thick, -Stealth, line width=0.5pt},
+    subbox/.style={draw=orange!70!black, line width=0.8pt, rounded corners=3pt, fill=orange!5, inner sep=8pt}
+}
+
+% FLOWCHART HALAMAN 1: Data Pipeline
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[node distance=0.55cm and 0.9cm, scale=0.85, transform shape]
+
+        % ALUR UTAMA
+        \node (start) [startstop] {Mulai};
+        \node (studi) [data, below=of start] {Studi Literatur};
+        \node (dec1) [decision, below=0.6cm of studi, text width=1.2cm] {Paham?};
+        \node (loop1) [process, left=1.5cm of dec1, text width=1.5cm] {Review\\Referensi};
+        \node (refA) [onpage, below=0.5cm of dec1] {A};
+
+        \node (datacoll) [predefined, below=of refA, text width=1.8cm] {Data\\Collection};
+        \node (dec2) [decision, below=0.6cm of datacoll, text width=1.2cm] {Lengkap?};
+        \node (loop2) [process, left=1.5cm of dec2, text width=1.5cm] {Scraping\\Ulang};
+        \node (refB) [onpage, below=0.5cm of dec2] {B};
+
+        \node (dataproc) [predefined, below=of refB, text width=1.8cm] {Data\\Preparation};
+        \node (dec3) [decision, below=0.6cm of dataproc, text width=1.2cm] {Valid?};
+        \node (loop3) [process, left=1.5cm of dec3, text width=1.5cm] {Perbaiki\\Data};
+        \node (off1) [offpage, below=0.5cm of dec3] {1};
+
+        % ARROWS
+        \draw [arrow] (start) -- (studi);
+        \draw [arrow] (studi) -- (dec1);
+        \draw [arrow] (dec1) -- node[right, font=\scriptsize] {Ya} (refA);
+        \draw [arrow] (dec1) -- node[above, font=\scriptsize] {Tidak} (loop1);
+        \draw [arrow] (loop1) |- (studi);
+
+        \draw [arrow] (refA) -- (datacoll);
+        \draw [arrow] (datacoll) -- (dec2);
+        \draw [arrow] (dec2) -- node[right, font=\scriptsize] {Ya} (refB);
+        \draw [arrow] (dec2) -- node[above, font=\scriptsize] {Tidak} (loop2);
+        \draw [arrow] (loop2) |- (datacoll);
+
+        \draw [arrow] (refB) -- (dataproc);
+        \draw [arrow] (dataproc) -- (dec3);
+        \draw [arrow] (dec3) -- node[right, font=\scriptsize] {Ya} (off1);
+        \draw [arrow] (dec3) -- node[above, font=\scriptsize] {Tidak} (loop3);
+        \draw [arrow] (loop3) |- (dataproc);
+
+        % DETAIL DATA COLLECTION (kanan atas)
+        \begin{scope}[shift={(4.2cm, -0.5cm)}]
+            \begin{scope}[on background layer]
+                \node [subbox, fit={(0,0.1) (3.8,-4.5)}, label={[font=\scriptsize\bfseries]above:Detail Data Collection}] {};
+            \end{scope}
+
+            \node (subA) [onpage] at (1.9, 0) {A};
+            \node (db1) [database] at (0.7, -0.9) {PDDikti};
+            \node (db2) [database] at (3.1, -0.9) {Scholar};
+            \node (db3) [database] at (0.7, -1.8) {SINTA};
+            \node (db4) [database] at (3.1, -1.8) {Scopus};
+            \node (scrape) [process, text width=1.8cm] at (1.9, -2.7) {Web Scraping};
+            \node (rawdata) [data] at (1.9, -3.6) {Raw Dataset};
+            \node (subB) [onpage] at (1.9, -4.5) {B};
+
+            \draw [arrow] (subA) -- (db1);
+            \draw [arrow] (subA) -- (db2);
+            \draw [arrow] (db1) -- (scrape);
+            \draw [arrow] (db2) -- (scrape);
+            \draw [arrow] (db3) -- (scrape);
+            \draw [arrow] (db4) -- (scrape);
+            \draw [arrow] (scrape) -- (rawdata);
+            \draw [arrow] (rawdata) -- (subB);
+        \end{scope}
+
+        % DETAIL DATA PREPARATION (kanan bawah)
+        \begin{scope}[shift={(4.2cm, -7cm)}]
+            \begin{scope}[on background layer]
+                \node [subbox, fit={(0,0.1) (3.8,-4.7)}, label={[font=\scriptsize\bfseries]above:Detail Data Preparation}] {};
+            \end{scope}
+
+            \node (subB2) [onpage] at (1.9, 0) {B};
+            \node (std1) [process, text width=2.2cm] at (1.9, -0.9) {Standarisasi\\Skema};
+            \node (std2) [process, text width=2.2cm] at (1.9, -1.8) {Pembersihan\\Konten Teks};
+            \node (std3) [process, text width=2.2cm] at (1.9, -2.7) {Validasi Atribut\\Kunci};
+            \node (cleandata) [data, text width=1.8cm] at (1.9, -3.6) {Clean Dataset};
+            \node (subOff) [offpage] at (1.9, -4.5) {1};
+
+            \draw [arrow] (subB2) -- (std1);
+            \draw [arrow] (std1) -- (std2);
+            \draw [arrow] (std2) -- (std3);
+            \draw [arrow] (std3) -- (cleandata);
+            \draw [arrow] (cleandata) -- (subOff);
+        \end{scope}
+
+    \end{tikzpicture}
+    \caption{Flowchart metodologi penelitian bagian 1: \textit{Data Pipeline}}
+    \label{fig:flowchart-pipeline}
+\end{figure}
+
+% FLOWCHART HALAMAN 2: KG dan RAG System
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[node distance=0.55cm and 0.9cm, scale=0.75, transform shape]
+
+        % ALUR UTAMA
+        \node (off1in) [offpage, signal to=north] {1};
+        \node (refC) [onpage, below=0.4cm of off1in] {C};
+
+        \node (kgconst) [predefined, below=of refC, text width=1.8cm] {Konstruksi\\Knowledge Graph};
+        \node (dec5) [decision, below=0.6cm of kgconst, text width=1.2cm] {Valid?};
+        \node (loop5) [process, left=1.5cm of dec5, text width=1.5cm] {Perbaiki\\Ekstraksi};
+        \node (refD) [onpage, below=0.5cm of dec5] {D};
+
+        \node (ragsys) [predefined, below=of refD, text width=1.8cm] {Hybrid\\Graph-RAG};
+        \node (refE) [onpage, below=0.5cm of ragsys] {E};
+
+        \node (eval) [process, below=of refE, text width=1.8cm] {System\\Evaluation};
+        \node (dec7) [decision, below=0.6cm of eval, text width=1.2cm] {Akurat?};
+        \node (loop7) [process, left=1.5cm of dec7, text width=1.5cm] {Optimasi\\Parameter};
+
+        \node (gui) [process, below=0.6cm of dec7, text width=1.8cm] {GUI\\Implementation};
+        \node (endnode) [startstop, below=0.5cm of gui] {Selesai};
+
+        % ARROWS
+        \draw [arrow] (off1in) -- (refC);
+        \draw [arrow] (refC) -- (kgconst);
+        \draw [arrow] (kgconst) -- (dec5);
+        \draw [arrow] (dec5) -- node[right, font=\scriptsize] {Ya} (refD);
+        \draw [arrow] (dec5) -- node[above, font=\scriptsize] {Tidak} (loop5);
+        \draw [arrow] (loop5) |- (kgconst);
+
+        \draw [arrow] (refD) -- (ragsys);
+        \draw [arrow] (ragsys) -- (refE);
+
+        \draw [arrow] (refE) -- (eval);
+        \draw [arrow] (eval) -- (dec7);
+        \draw [arrow] (dec7) -- node[right, font=\scriptsize] {Ya} (gui);
+        \draw [arrow] (dec7) -- node[above, font=\scriptsize] {Tidak} (loop7);
+        \draw [arrow] (loop7) |- (ragsys);
+        \draw [arrow] (gui) -- (endnode);
+
+        % DETAIL KG CONSTRUCTION (kanan atas)
+        \begin{scope}[shift={(4.2cm, 0.5cm)}]
+            \begin{scope}[on background layer]
+                \node [subbox, fit={(0,0.1) (4.5,-9.5)}, label={[font=\scriptsize\bfseries]above:Detail KG Construction}] {};
+            \end{scope}
+
+            \node (subC2) [onpage] at (2.25, 0) {C};
+            \node (input) [data] at (2.25, -0.7) {Clean Data};
+
+            % Entity Resolution Section
+            \node (entres) [process, text width=2cm] at (2.25, -1.5) {Entity\\Resolution};
+            \node (res1) [process, text width=1.3cm, font=\tiny] at (0.8, -2.4) {Dosen\\(NIDN)};
+            \node (res2) [process, text width=1.3cm, font=\tiny] at (2.25, -2.4) {Paper\\(DOI)};
+            \node (res3) [process, text width=1.3cm, font=\tiny] at (3.7, -2.4) {Riset\\(Title)};
+
+            % Text Processing
+            \node (textproc) [process, text width=2cm] at (2.25, -3.4) {Text\\Processing};
+            \node (coref) [process, text width=2cm] at (2.25, -4.3) {Coreference\\Resolution};
+
+            % NER & RE
+            \node (ner) [process, text width=1.4cm] at (0.9, -5.2) {NER\\(GLiNER)};
+            \node (re) [process, text width=1.4cm] at (3.6, -5.2) {RE\\(GLiRel)};
+            \node (lexgraph) [data] at (2.25, -6.1) {Lexical Graph};
+
+            % Entity Linking
+            \node (entlink) [process, text width=2cm] at (2.25, -6.9) {Entity Linking\\(Wikifier)};
+
+            % Indexing
+            \node (indexing) [process, text width=2cm] at (2.25, -7.7) {Dual Indexing};
+            \node (vectordb) [database] at (1.0, -8.6) {Vector};
+            \node (graphdb) [database] at (3.5, -8.6) {Graph};
+            \node (subD2) [onpage] at (2.25, -9.4) {D};
+
+            \draw [arrow] (subC2) -- (input);
+            \draw [arrow] (input) -- (entres);
+            \draw [arrow] (entres) -- (res1);
+            \draw [arrow] (entres) -- (res2);
+            \draw [arrow] (entres) -- (res3);
+            \draw [arrow] (res1) |- (textproc);
+            \draw [arrow] (res2) -- (textproc);
+            \draw [arrow] (res3) |- (textproc);
+            \draw [arrow] (textproc) -- (coref);
+            \draw [arrow] (coref) -- (ner);
+            \draw [arrow] (coref) -- (re);
+            \draw [arrow] (ner) -- (lexgraph);
+            \draw [arrow] (re) -- (lexgraph);
+            \draw [arrow] (lexgraph) -- (entlink);
+            \draw [arrow] (entlink) -- (indexing);
+            \draw [arrow] (indexing) -- (vectordb);
+            \draw [arrow] (indexing) -- (graphdb);
+            \draw [arrow] (vectordb) |- (subD2);
+            \draw [arrow] (graphdb) |- (subD2);
+        \end{scope}
+
+        % DETAIL HYBRID GRAPH-RAG (kanan bawah)
+        \begin{scope}[shift={(4.2cm, -10.5cm)}]
+            \begin{scope}[on background layer]
+                \node [subbox, fit={(0,0.1) (4.5,-7.2)}, label={[font=\scriptsize\bfseries]above:Detail Hybrid Graph-RAG}] {};
+            \end{scope}
+
+            \node (subD3) [onpage] at (2.25, 0) {D};
+            \node (qin) [data] at (2.25, -0.8) {Query User};
+            \node (clue) [process, text width=2cm] at (2.25, -1.7) {Semantic Clue\\Extraction};
+            \node (kwd) [process, text width=2cm] at (2.25, -2.6) {Keyword\\Decomposition};
+            \node (local) [process, text width=1.4cm] at (0.9, -3.5) {Local\\Retrieval};
+            \node (globalret) [process, text width=1.4cm] at (3.6, -3.5) {Global\\Retrieval};
+            \node (integrate) [process, text width=2cm] at (2.25, -4.4) {Context\\Integration};
+            \node (llm) [process, text width=2cm] at (2.25, -5.3) {LLM Generation};
+            \node (response) [data] at (2.25, -6.2) {Response};
+            \node (subE2) [onpage] at (2.25, -7.0) {E};
+
+            \draw [arrow] (subD3) -- (qin);
+            \draw [arrow] (qin) -- (clue);
+            \draw [arrow] (clue) -- (kwd);
+            \draw [arrow] (kwd) -- (local);
+            \draw [arrow] (kwd) -- (globalret);
+            \draw [arrow] (local) -- (integrate);
+            \draw [arrow] (globalret) -- (integrate);
+            \draw [arrow] (integrate) -- (llm);
+            \draw [arrow] (llm) -- (response);
+            \draw [arrow] (response) -- (subE2);
+        \end{scope}
+
+    \end{tikzpicture}
+    \caption{Flowchart metodologi penelitian bagian 2: \textit{KG Construction dan Graph-RAG System}}
+    \label{fig:flowchart-kg-rag}
+\end{figure}
+
+% LEGENDA SIMBOL FLOWCHART
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=0.85, transform shape]
+
+        \node[font=\small\bfseries] at (4, 0.5) {Legenda Simbol Flowchart};
+
+        \node (leg1) [startstop] at (1, -0.5) {Start/End};
+        \node[anchor=west, font=\scriptsize] at (2.5, -0.5) {\textbf{Terminator} - Awal/akhir proses};
+
+        \node (leg2) [process] at (1, -1.5) {Process};
+        \node[anchor=west, font=\scriptsize] at (2.5, -1.5) {\textbf{Process} - Langkah pemrosesan};
+
+        \node (leg3) [predefined] at (1, -2.5) {Predefined};
+        \node[anchor=west, font=\scriptsize] at (2.5, -2.5) {\textbf{Predefined Process} - Sub-proses terpisah};
+
+        \node (leg4) [data] at (1, -3.5) {Data};
+        \node[anchor=west, font=\scriptsize] at (2.5, -3.5) {\textbf{Data} - Input/Output data};
+
+        \node (leg5) [database] at (1, -4.7) {Database};
+        \node[anchor=west, font=\scriptsize] at (2.5, -4.5) {\textbf{Database} - Penyimpanan data};
+
+        \node (leg6) [decision, text width=0.8cm] at (1, -5.7) {?};
+        \node[anchor=west, font=\scriptsize] at (2.5, -5.7) {\textbf{Decision} - Percabangan keputusan};
+
+        \node (leg7) [onpage] at (1, -6.8) {A};
+        \node[anchor=west, font=\scriptsize] at (2.5, -6.8) {\textbf{On-page Reference} - Penghubung dalam halaman};
+
+        \node (leg8) [offpage] at (1, -7.8) {1};
+        \node[anchor=west, font=\scriptsize] at (2.5, -7.8) {\textbf{Off-page Reference} - Penghubung antar halaman};
+
+        \draw [arrow] (0.4, -8.8) -- (1.6, -8.8);
+        \node[anchor=west, font=\scriptsize] at (2.5, -8.8) {\textbf{Arrow} - Arah alur proses};
+
+        \begin{scope}[on background layer]
+            \node [subbox, minimum width=1.3cm, minimum height=0.5cm] at (1, -9.8) {};
+        \end{scope}
+        \node[anchor=west, font=\scriptsize] at (2.5, -9.8) {\textbf{Sub-process Box} - Area detail sub-proses};
+
+    \end{tikzpicture}
+    \caption{Legenda simbol flowchart standar ANSI}
+    \label{fig:legenda-flowchart}
+\end{figure}

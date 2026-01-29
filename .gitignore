@@ -10,6 +10,9 @@ wheels/
 .venv
 .ipynb_checkpoints
 
+# jurnal 
+jurnal tugas akhir
+
 # Environment files (contains sensitive data)
 ws.env
 *.env

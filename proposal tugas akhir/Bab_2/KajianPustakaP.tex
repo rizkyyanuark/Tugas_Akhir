@@ -2,43 +2,41 @@
 
 \section{Penelitian Terdahulu}
 
-Pengembangan sistem \textit{Graph-RAG} akademik mengandalkan integrasi antara ekstraksi informasi terstruktur dan mekanisme pencarian hibrida. Rangkuman studi yang menjadi acuan teknis dalam penelitian ini disajikan pada ~\ref{tab:penelitian_terdahulu_revisi}.
+Penelitian ini mengintegrasikan ekstraksi informasi terstruktur dengan metode pencarian hibrida. Rangkuman studi terdahulu yang melandasi penelitian ini disajikan pada \ref{tab:penelitian_terdahulu_revisi}.
 
-\renewcommand{\arraystretch}{1.3} % Memberi jarak vertikal antar baris
-\begin{longtable}{|p{3cm}|p{2cm}|p{5cm}|}
-    \caption{Tinjauan Penelitian Terdahulu} \label{tab:penelitian_terdahulu_revisi} \\
-    
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|p{4cm}|p{2cm}|p{10cm}|}
+    \caption{Tinjauan Penelitian Terdahulu} \label{tab:penelitian_terdahulu_revisi}                                                                                          \\
+
     \hline
-    \textbf{Judul} & \textbf{Penulis} & \textbf{Kesimpulan} \\ \hline
+    \textbf{Judul}                                                                                                                  & \textbf{Penulis} & \textbf{Kesimpulan} \\ \hline
     \endfirsthead
 
     \hline
-    \textbf{Judul} & \textbf{Penulis} & \textbf{Kesimpulan} \\ \hline
+    \textbf{Judul}                                                                                                                  & \textbf{Penulis} & \textbf{Kesimpulan} \\ \hline
     \endhead
 
     \hline
-    \multicolumn{3}{r}{\textit{Bersambung ke halaman berikutnya...}} \\
+    \multicolumn{3}{r}{\textit{Bersambung ke halaman berikutnya...}}                                                                                                         \\
     \endfoot
 
     \hline
     \endlastfoot
 
-    % --- Studi 1 (Sudah Benar) ---
-    \textit{Knowledge Graph Generation and Application for Unstructured Data Using Data Processing Pipeline} &
-    \cite{thushara2024} &
-    Penggunaan model generatif \textit{REBEL} dalam \textit{pipeline} NLP modular terbukti sangat efektif untuk konstruksi \textit{Knowledge Graph} otomatis dengan akurasi 87\%. Metode ini bekerja 3x lebih cepat dibandingkan teknik tradisional dalam mengekstraksi relasi dari teks tidak terstruktur.
+    % --- Studi 1 ---
+    \textit{Swamped with Too Many Articles: GraphRAG Makes Getting Started Easy}                                                    &
+    \cite{Ngangmeni2025SwampedWT}                                                                                                   &
+    Evaluasi komparatif menunjukkan bahwa \textit{GraphRAG} mengungguli \textit{Naive RAG} dan \textit{LightRAG} dalam empat metrik kritis: \textbf{\textit{Comprehensiveness, Diversity, Empowerment,}} dan \textbf{\textit{Directness}}. Temuan ini memvalidasi landasan penelitian bahwa pendekatan berbasis graf menawarkan navigasi semantik yang lebih superior dibandingkan pencarian leksikal untuk mengatasi \textit{literature overload} pada repositori data berskala besar.
     \\ \hline
-
-    % --- Studi 2 (Diperbaiki) ---
-    \textit{HybridRAG: Integrating Knowledge Graphs and Vector Retrieval Augmented Generation for Efficient Information Extraction} & 
-    \cite{10.1145/3677052.3698671} & 
-    Integrasi sistematis antara jalur vektor dan graf (\textit{HybridRAG}) menghasilkan performa paling seimbang dengan skor \textit{Faithfulness} dan \textit{Answer Relevancy} sebesar 0,96. \textit{GraphRAG} unggul dalam menjawab pertanyaan faktual, sementara \textit{VectorRAG} lebih efektif untuk pertanyaan abstraktif.
+    % --- Studi 2 ---
+    \textit{HybridRAG: Integrating Knowledge Graphs and Vector Retrieval Augmented Generation for Efficient Information Extraction} &
+    \cite{10.1145/3677052.3698671}                                                                                                  &
+    Penelitian ini menetapkan standar efektivitas arsitektur hibrida dengan pencapaian skor \textbf{\textit{Faithfulness} dan \textit{Answer Relevance} sebesar 0,96} serta \textbf{\textit{Context Recall} sempurna (1,00)}. Hasil empiris ini menjadi rujukan utama penelitian usulan, yang membuktikan bahwa penggabungan \textit{Knowledge Graph} dan \textit{Vector Retrieval} adalah strategi optimal untuk memitigasi halusinasi dan memaksimalkan presisi jawaban pada dokumen kompleks.
     \\ \hline
-
-    % --- Studi 3 (Diperbaiki) ---
-    \textit{Open-Source Agentic Hybrid RAG Framework for Scientific Literature Review} & 
-    \cite{nagori2025opensourceagentichybridrag} & 
-    Kerangka kerja \textit{Agentic Hybrid RAG} memungkinkan agen otonom untuk secara dinamis memilih jalur \textit{retrieval} terbaik (Graf atau Vektor) berdasarkan karakteristik kueri. Pendekatan ini meningkatkan relevansi jawaban, memitigasi halusinasi, dan menyertakan estimasi ketidakpastian (\textit{uncertainty}).
+    % --- Studi 3 ---
+    \textit{Knowledge Graph Generation and Application for Unstructured Data Using Data Processing Pipeline}                        &
+    \cite{thushara2024}                                                                                                             &
+    Mengembangkan \textit{pipeline} otomatis menggunakan model generatif \textit{REBEL} yang mencapai \textbf{akurasi ekstraksi 87\%} pada data tidak terstruktur. Metrik akurasi ini menyoroti tantangan yang ada, yang dalam penelitian ini akan ditingkatkan melalui strategi \textit{Parallel Processing} (integrasi data terstruktur PDDikti/SINTA dan teks abstrak) untuk melampaui batasan akurasi model generatif tunggal dalam konstruksi KG.
     \\ \hline
 \end{longtable}
 
@@ -46,169 +44,227 @@ Pengembangan sistem \textit{Graph-RAG} akademik mengandalkan integrasi antara ek
 
 \subsection{Scholarly Search}
 
-Saat ini, sistem pencarian ilmiah sering menghadapi tantangan berupa fragmentasi data, di mana informasi penting tersebar di berbagai platform yang tidak saling terhubung. Untuk mengatasi permasalahan ini, telah dikembangkan berbagai sistem pencarian akademik seperti \textit{Google Scholar}, \textit{Semantic Scholar}, \textit{AMiner}, \textit{Microsoft Academic Search}, dan \textit{CiteSeerX}. Di antara platform-platform tersebut, \textit{Google Scholar} memiliki cakupan literatur yang paling luas \citep{10.1007/s11192-020-03690-4}. Namun, masalahnya adalah bahwa Google Scholar dan solusi serupa lainnya sangat bergantung pada jumlah sitasi untuk memberi peringkat pada daftar kandidat artikel yang relevan. Ketika mekanisme pemeringkatan ini kurang efektif, pengguna cenderung beralih ke platform pencarian lain sepert \textit{PubMed}, \textit{Microsoft Academic Search}, atau \textit{Semantic Scholar}. Platform-platform alternatif tersebut mengadopsi berbagai teknik analitik untuk meningkatkan kualitas hasil pencarian, termasuk pengukuran tingkat pengaruh publikasi \citep{Shen2016ModelingTA}.
+\textit{Scholarly search} atau pencarian literatur akademik berfokus pada pengelolaan dan pengambilan dokumen ilmiah dari repositori besar, mencakup artikel jurnal, prosiding, tesis, serta metadata terkait \citep{Kasela_2025}. Saat ini, domain ini menghadapi tantangan \textit{literature overload}. \citet{Larsen2010} melaporkan bahwa volume publikasi di beberapa bidang berlipat ganda setiap 8 hingga 15 tahun. Dengan lebih dari 200 juta artikel tersedia, peneliti menanggung beban kognitif (\textit{cognitive overload}) yang berat saat mencari referensi secara manual.
 
-Tantangan penelitian yang paling mendesak dalam bidang ini adalah bagaimana mendefinisikan serta mengukur kesamaan (\textit{similarity}) dan relevansi semantik antar artikel secara akurat. Beberapa pendekatan sebelumnya mencoba mengatasi hal ini dengan memanfaatkan informasi tekstual dan struktural. Oleh karena itu, diperlukan representasi data berbasis graf yang mampu mengintegrasikan data \textit{heterogen} tersebut guna mendukung penemuan pengetahuan (\textit{knowledge discovery}) yang lebih efisien. Contohnya, studi dari \cite{DBLP:conf/semweb/MaiJY18} mengadopsi penggunaan \textit{embeddings} tekstual dan struktural untuk menemukan makalah yang relevan dengan kueri. Namun, pendekatan-pendekatan tersebut umumnya menggunakan \textit{supervised learning} yang memerlukan data pelatihan berlabel dan penyetelan parameter dalam pengambilan literatur. Hal ini berbeda dengan pendekatan yang diusulkan dalam penelitian ini, yang menitikberatkan pada metode \textit{unsupervised} atau \textit{zero-shot}.
+Sistem pencarian tradisional seperti \textit{Google Scholar}, \textit{PubMed}, dan \textit{CiteSeerX} memiliki keterbatasan karena mengandalkan sinyal leksikal murni seperti algoritma BM25 \citep{10.1007/s11192-020-03690-4}. Pendekatan leksikal tersebut sering kali gagal menangkap hubungan makna kompleks antar konsep, kesulitan mengenali sinonim, dan mengabaikan relasi konektivitas antar dokumen. Akibatnya, hasil pencarian sering berupa daftar panjang dokumen yang harus diverifikasi manual oleh peneliti, tanpa indikasi relevansi langsung terhadap pertanyaan riset.
+
+Dokumen ilmiah memiliki karakteristik unik yang membedakannya dari teks biasa. \citet{Shen2016ModelingTA} menyebutkan bahwa dokumen ilmiah terdiri dari dua dimensi utama: dimensi tekstual (isi dan metadata) serta struktural (jejaring sitasi, ko-sitasi, dan kolaborasi). Keberhasilan pencarian ilmiah di masa depan tidak hanya bergantung pada kemiripan vektor teks (\textit{vector proximity}), tetapi juga pada kemampuan penalaran relasional (\textit{relational reasoning}). Sebagai contoh, \citet{avgoren2025enhancing} menunjukkan bahwa pendekatan relasional mampu menghubungkan metodologi dari satu makalah dengan temuan di makalah lain melalui mekanisme \textit{multi-hop reasoning}.
+
+Dalam implementasi praktis, \citet{9522111} menjelaskan bahwa \textit{scholarly search} telah berkembang menjadi beragam tugas spesifik, mulai dari pencarian berbasis topik, penelusuran sitasi, rekomendasi artikel, hingga \textit{question answering} berbasis literatur. Kompleksitas tugas-tugas tersebut menuntut sistem pencarian yang mampu mengintegrasikan berbagai jenis sinyal semantik dan hubungan struktural antar dokumen secara simultan.
+
+Perkembangan terkini, sebagaimana dicatat oleh \citet{gupta2024comprehensivesurveyretrievalaugmentedgeneration}, menunjukkan pemanfaatan \textit{Scholarly Search} dalam sistem \textit{question answering}. Sistem ini dituntut tidak hanya menampilkan dokumen, tetapi juga menyajikan wawasan lintas bidang, mengidentifikasi celah riset (\textit{research gaps}), dan menyediakan bukti sumber informasi (\textit{traceability}). Urgensi presisi fakta dan navigasi relasional inilah yang mendasari integrasi teknologi \textit{Knowledge Graph} dan \textit{Large Language Models} dalam penelitian ini.
+
+\subsection{Knowledge Graph}
+
+\textit{Knowledge base} adalah kumpulan data terorganisir yang mendeskripsikan entitas dan hubungannya dalam format \textit{triplet}. Ketika himpunan \textit{triplet} ini direpresentasikan sebagai jaringan dengan entitas sebagai titik (\textit{node}) dan hubungan sebagai garis (\textit{edge}), strukturnya disebut \textit{Knowledge Graph} \citep{mondal2021end}. Berbeda dengan basis data relasional yang kaku, \textit{Knowledge Graph} menawarkan representasi pengetahuan yang dinamis. Struktur graf ini memungkinkan mesin memahami hubungan antar potongan informasi, menyerupai mekanisme asosiasi kognitif manusia \citep{cheng2025humancognitioninspiredrag}.
+
+Komponen fundamental dari sebuah \textit{Knowledge Graph} adalah \textit{triplet} faktual yang terdiri dari Subjek-Predikat-Objek atau Head-Relation-Tail. \textit{Knowledge Graph} menyimpan pengetahuan terstruktur sebagai himpunan \textit{triplet}, yang dapat direpresentasikan sebagai berikut:
+
+\begin{equation}
+    G = (E, R, T)
+    \label{eq:kg-definition}
+\end{equation}
+dimana $E$ adalah himpunan entitas (seperti individu atau objek), $R$ adalah himpunan relasi (seperti ``bagian\_dari''), dan $T$ adalah himpunan \textit{triplet} yang membentuk keseluruhan struktur graf tersebut \citep{Hogan_2021}. Setiap elemen di dalam $T$ merepresentasikan satu fakta tunggal yang diformulasikan sebagai:
+
+\begin{equation}
+    (h, r, t) \in T
+    \label{eq:triplet-format}
+\end{equation}
+dimana $h$ adalah entitas sumber atau \textit{head}, $t$ adalah entitas tujuan atau \textit{tail}, dan $r$ adalah relasi yang menghubungkan keduanya \citep{peng2023knowledge}. Contohnya dalam konteks akademik
+\begin{itemize}
+    \item $(\underbrace{\text{\texttt{Dosen\_A}}}_{\text{head}}) \xrightarrow{\underbrace{\text{\small menulis}}_{\text{relation}}} (\underbrace{\text{\texttt{Publikasi\_B}}}_{\text{tail}})$
+    \item $(\underbrace{\text{\texttt{Publikasi\_B}}}_{\text{head}}) \xrightarrow{\underbrace{\text{\small mensitasi}}_{\text{relation}}} (\underbrace{\text{\texttt{Publikasi\_C}}}_{\text{tail}})$
+    \item $(\underbrace{\text{\texttt{Dosen\_A}}}_{\text{head}}) \xrightarrow{\underbrace{\text{\small berafiliasi\_dengan}}_{\text{relation}}} (\underbrace{\text{\texttt{Universitas\_X}}}_{\text{tail}})$
+\end{itemize}
+Struktur ini sangat efektif karena arah panah memberi makna eksplisit, di mana entitas \textit{head} menunjuk langsung ke entitas \textit{tail} melalui garis relasi (\textit{edge}), jika digambarkan sebagai graf akan terlihat seperti pada \ref{fig:simple-kg}.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+            node distance=2cm,
+            every node/.style={font=\small},
+            entity/.style={circle, draw, line width=2pt, minimum size=2cm, align=center, inner sep=2pt},
+            graynode/.style={entity, fill=gray!30},
+            whitenode/.style={entity, fill=white},
+            arrow/.style={->, >=latex, line width=2pt}
+        ]
+
+        % Nodes based on the visual layout
+        % Center group
+        \node[graynode] (dosen_a) at (0,0) {Dosen\_A};
+        \node[graynode] (pub_c) at (4,-1.5) {Publikasi\_C};
+
+        % Surrounding Dosen_A
+        \node[whitenode] (dosen_lain) at (-3,1) {Dosen\_C};
+        \node[whitenode] (univ_x) at (1.5,3) {Univ\_X};
+
+        % Surrounding Univ_X
+        \node[whitenode] (dept_a) at (6,3.5) {dosen\_D};
+        \node[whitenode] (fak_a) at (5.3,1.2) {Fakultas\_A};
+
+        % Surrounding Publikasi_C
+        \node[whitenode] (pub_b) at (7.5,0) {Publikasi\_B};
+        \node[whitenode] (pub_lain) at (0.5,-3) {Publikasi\_A};
+        \node[whitenode] (dosen_penguji) at (7,-3.5) {Dosen\_B};
+
+        % Edges
+        % Dosen_Lain -> Dosen_A
+        \draw[arrow] (dosen_lain) -- (dosen_a);
+
+        % Univ_X -> Dosen_A, Dept_A, Fak_A
+        \draw[arrow] (univ_x) -- (dosen_a);
+        \draw[arrow] (univ_x) -- (dept_a);
+        \draw[arrow] (univ_x) -- (fak_a);
+
+        % Dosen_A -> Pub_C (label: menulis)
+        \draw[arrow] (dosen_a) -- node[above, sloped] {\textit{menulis}} (pub_c);
+
+        % Pub_Lain -> Pub_C
+        \draw[arrow] (pub_lain) -- (pub_c);
+
+        % Pub_C -> Pub_B, Dosen_Penguji
+        \draw[arrow] (pub_c) -- (pub_b);
+        \draw[arrow] (pub_c) -- (dosen_penguji);
+
+    \end{tikzpicture}
+    \caption{Visualisasi \textit{Knowledge Graph} akademik yang menunjukkan relasi antar entitas.}
+    \label{fig:simple-kg}
+\end{figure}
+
+Menurut \citet{Hofer_2024}, pengembangan \textit{Knowledge Graph} (KG) terbagi dalam dua paradigma utama: \textit{Resource Description Framework} (RDF) dan \textit{Labeled Property Graph} (LPG). Penelitian ini mengadopsi struktur LPG (menggunakan Neo4j) karena keunggulannya dalam navigasi hubungan kompleks dan fleksibilitas skema. Keunggulan fundamental KG dibandingkan metode leksikal adalah kemampuan penalaran bertahap (\textit{multi-hop reasoning}), yang memungkinkan sistem menghubungkan entitas yang secara semantik terpisah namun memiliki keterkaitan logis, sebuah fitur vital untuk sintesis akademik.
+
+Dalam lingkungan universitas, penerapan \textit{Scholarly Knowledge Graph} (SKG) memiliki peranan penting dalam mengatasi fenomena \textit{knowledge island} yang dijelaskan oleh \cite{YU201748}, yaitu kondisi di mana pengetahuan terisolasi, tidak saling terhubung, dan sulit untuk mengintegrasikan satu sama lain. \textit{Scholarly Knowledge Graph} (SKG) didefinisikan sebagai representasi graf yang memodelkan entitas akademik (seperti penulis, publikasi, dan institusi) beserta hubungan antar mereka secara eksplisit. Dalam konteks kecerdasan buatan modern, \textit{Knowledge Graph} (KG) menjadi elemen penting dalam arsitektur \textit{Retrieval-Augmented Generation}, di mana struktur graf digunakan untuk menyediakan konteks faktual kepada \textit{LLM}, mengurangi risiko halusinasi, serta mendukung penalaran multi-langkah yang tidak dapat dicapai oleh metode pencarian konvensional.
 
 \subsection{Knowledge Extraction}
-Secara teoretis, \textit{Information Extraction} (IE) merupakan proses dalam \textit{Natural Language Processing} (NLP) yang bertujuan mengekstraksi pengetahuan terstruktur dari teks tidak terstruktur \citep{WANG2018112}. Namun, dalam arsitektur \textit{Graph-RAG}, menurut \cite{mondal2021end}, proses ini secara spesifik diwujudkan sebagai \textit{Knowledge Extraction} (KE), yaitu fase dimana untuk mengonversi informasi mentah menjadi format data terstruktur melalui pengenalan entitas dan ekstraksi relasi. Implementasi \textit{Knowledge Extraction} berfungsi sebagai fondasi untuk membangun basis pengetahuan (\textit{knowledge base}) yang dapat memfasilitasi mekanisme penalaran sistem dalam menghasilkan jawaban yang akurat.
+\textit{Knowledge Extraction} atau ekstraksi pengetahuan merupakan proses krusial untuk mentransformasikan data tidak terstruktur (seperti teks naratif dalam publikasi ilmiah, email, atau dokumen PDF) menjadi representasi pengetahuan yang terorganisir, formal, dan dapat diolah oleh mesin \citep{WANG2018112}. Dalam ekosistem \textit{Knowledge Graph}, \textit{Knowledge Extraction} berperan dalam menyarikan fakta-fakta atomik dari teks untuk mengisi dan memperbarui struktur graf tersebut. Implementasi ini berfungsi sebagai fondasi untuk membangun basis pengetahuan (\textit{knowledge base}) yang dapat memfasilitasi mekanisme penalaran sistem dalam menghasilkan jawaban yang akurat.
 
 Secara formal, tugas \textit{Knowledge Extraction} dapat diformulasikan sebagai fungsi pemetaan dari teks input \(\mathcal{T}\) menjadi representasi terstruktur \(\mathcal{S}\). Representasi ini terdiri dari himpunan entitas \(E\) dan relasi \(R\), sebagaimana dinyatakan dalam Persamaan \ref{eq:ie-mapping}:
 
 \begin{equation}
-\mathcal{S} = f_{IE}(\mathcal{T}) = \{(e_i, r_{ij}, e_j) \mid e_i, e_j \in E, r_{ij} \in R\}
-\label{eq:ie-mapping}
+    \mathcal{S} = f_{IE}(\mathcal{T}) = \{(e_i, r_{ij}, e_j) \mid e_i, e_j \in E, r_{ij} \in R\}
+    \label{eq:ie-mapping}
 \end{equation}
+di mana setiap elemen dalam \(\mathcal{S}\) berupa \textit{triplet} \((e_i, r_{ij}, e_j)\) yang merepresentasikan satu fakta tunggal, dengan \(e_i\) bertindak sebagai entitas subjek, \(r_{ij}\) sebagai predikat atau relasi, dan \(e_j\) sebagai entitas objek.
 
-\noindent di mana setiap elemen dalam \(\mathcal{S}\) berupa \textit{triplet} \((e_i, r_{ij}, e_j)\) yang merepresentasikan satu fakta tunggal, dengan \(e_i\) bertindak sebagai entitas subjek, \(r_{ij}\) sebagai predikat atau relasi, dan \(e_j\) sebagai entitas objek.
-
-Guna mengimplementasikan fungsi pemetaan tersebut pada data berskala besar, diperlukan pendekatan otomatisasi. \cite{Premasiri2025} menyoroti bahwa skalabilitas ekstraksi manual tidak lagi memadai untuk menangani volume data tekstual yang terus berkembang. Oleh karena itu, otomasi IE menjadi esensial untuk mentransformasi teks menjadi \textit{structured knowledge} secara efisien. Agar proses ekstraksi berjalan sistematis, \textit{Knowledge Extraction} umumnya didekomposisi menjadi tiga tahapan fundamental sebagai berikut:
+Implementasi fungsi pemetaan berskala besar menuntut otomatisasi, mengingat ekstraksi manual tidak lagi memadai untuk menangani volume data tekstual yang eksponensial \citep{Premasiri2025}. Secara umum, proses otomatisasi \textit{Knowledge Extraction} didekomposisi menjadi tiga tahapan fundamental:
 
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=10pt]
     \item \textbf{\textit{Named Entity Recognition} (NER)}
-    
-    \hspace*{0.75cm} Sebagai langkah awal dalam \textit{pipeline}, \textit{Named Entity Recognition} (NER) bertugas mengidentifikasi dan mengklasifikasikan entitas penting yang terdapat dalam teks. Proses ini berkaitan langsung dengan penemuan himpunan entitas \(E\) pada Persamaan \ref{eq:ie-mapping}. NER mendeteksi istilah relevan—seperti nama orang, organisasi, lokasi, atau terminologi ilmiah—dan memberikan label kategori yang sesuai \cite{ZHAO2023225}.
+
+          \hspace*{0.75cm} Sebagai langkah awal, \textit{Named Entity Recognition} (NER) bertugas mengidentifikasi dan mengklasifikasikan entitas penting dalam teks untuk menemukan himpunan entitas \(E\) (Persamaan \ref{eq:ie-mapping}). NER mendeteksi istilah relevan seperti nama orang, organisasi, atau terminologi ilmiah, lalu memberikan label kategori yang sesuai \cite{ZHAO2023225}.
 
     \item \textbf{\textit{Relation Extraction} (RE)}
-    
-    \hspace*{0.75cm} Setelah entitas berhasil diidentifikasi, tahap berikutnya adalah \textit{Relation Extraction} (RE). Tugas ini bertujuan menemukan \(r_{ij}\) yang menghubungkan dua entitas (\(e_i\) dan \(e_j\)) secara semantik. RE mengklasifikasikan jenis hubungan yang terjadi, misalnya hubungan ``menggunakan'' dalam kalimat ``Metode A menggunakan Algoritma B'', atau hubungan ``dikembangkan oleh'' pada sitasi penulis.
+
+          \hspace*{0.75cm} \textit{Relation Extraction} (RE) bertujuan mengidentifikasi hubungan semantik (\(r_{ij}\)) antara dua entitas (\(e_i\) dan \(e_j\)) yang ditemukan. Proses ini mengklasifikasikan jenis interaksi yang terjadi, misalnya hubungan ``menggunakan'' antara metode dan algoritma, atau ``ditulis oleh'' antara publikasi dan peneliti.
 
     \item \textbf{\textit{Event Extraction} (EE)}
-    
-    \hspace*{0.75cm} Untuk memperkaya lapisan semantik, IE sering kali dilengkapi dengan \textit{Event Extraction}. Berbeda dengan RE yang memetakan hubungan statis, EE bertujuan mengidentifikasi peristiwa dinamis yang mencakup pemicu kejadian (\textit{trigger}) serta argumen pendukungnya (pelaku, waktu, lokasi, dan hasil).
-    
+
+          \hspace*{0.75cm} Untuk memperkaya lapisan semantik, \textit{Event Extraction} (EE) kerap ditambahkan. Berbeda dengan RE yang memetakan hubungan statis, EE berfokus pada identifikasi peristiwa dinamis yang mencakup pemicu (\textit{trigger}) serta argumen pendukungnya (pelaku, waktu, lokasi).
+
 \end{enumerate}
 
-Dalam konteks penelitian ini, prinsip-prinsip \textit{Knowledge Extraction} tersebut diimplementasikan secara spesifik untuk menstrukturisasi domain literatur akademik. Sebagaimana didemonstrasikan oleh \cite{GAJENDRAN2023107808}, integrasi \textit{NER} dan \textit{RE} mampu mentransformasi data tekstual menjadi \textit{Knowledge Graph} yang koheren dalam basis data graf seperti \textit{Neo4j}. Guna menangani kompleksitas terminologi ilmiah yang rumit, pendekatannya mulai beralih dari metode konvensional menuju model \textit{Deep Learning} berbasis \textit{Transformers} seperti \textit{BERT} (\cite{jain-etal-2020-scirex}) atau \textit{SciBERT} \citep{beltagy-etal-2019-scibert}yang terbukti unggul dalam menangkap konteks semantik. Dengan demikian, arsitektur \textit{KE} dalam penelitian ini berfungsi sebagai komponen vital yang mengonversi abstrak publikasi menjadi \textit{triplet} pengetahuan \((subject, predicate, object)\), yang selanjutnya diintegrasikan menjadi struktur graf komprehensif untuk mendukung pencarian referensi yang relevan.
+Secara metodologis, pendekatan ekstraksi pengetahuan telah berevolusi dari sistem berbasis aturan (\textit{rule-based systems}) dan analisis tata bahasa seperti \textit{dependency parsing} menuju penggunaan model (\textit{Deep Learning}) yang lebih kompleks, seperti arsitektur \textit{BERT} dan \textit{BiLSTM-CRF} \citep{han2025ragvsgraphragsystematic}. Pada paradigma kontemporer, penggunaan Model Bahasa Besar (\textit{Large Language Models}) telah menjadi standar baru melalui teknik \textit{ zero-shot} dan \textit{few-shot prompting} untuk melakukan ekstraksi secara otomatis. \citep{sanmartin2024kgragbridginggapknowledge} membuktikan bahwa LLM terbukti unggul dalam menangkap hubungan semantik yang bersifat implisit dan kaya akan konteks dibandingkan dengan metode tradisional. Meskipun demikian, penggunaan LLM dalam ekstraksi tetap memerlukan mekanisme validasi atau koreksi mandiri (\textit{self-correction}) untuk meminimalkan risiko kesalahan ekstraksi atau halusinasi informasi.
 
-\subsection{Knowledge Graph}
-
-Secara umum, basis pengetahuan (\textit{knowledge base}) adalah kumpulan data yang menggambarkan fakta dunia nyata dan hubungan maknanya dalam bentuk \textit{triplet}. Ketika kumpulan \textit{triplet} tersebut direpresentasikan dalam bentuk jaringan—di mana entitas menjadi titik (\textit{node}) dan hubungannya menjadi garis (\textit{edge})—maka ia disebut sebagai \textit{Knowledge Graph} (KG) \citep{mondal2021end}. Dalam praktiknya, istilah basis pengetahuan dan \textit{knowledge graph} sering kali dianggap sebagai konsep yang sama dan digunakan secara bergantian.
-
-Secara matematis, \textit{Knowledge Graph} dimodelkan sebagai sebuah graf berarah yang dapat didefinisikan melalui Persamaan \ref{eq:kg-definition}:
-
-\begin{equation}
-G = (E, R, T)
-\label{eq:kg-definition}
-\end{equation}
-
-\noindent Di mana $E$ mewakili himpunan entitas (seperti individu atau konsep), $R$ mewakili himpunan relasi (seperti ``bagian\_dari''), dan $T$ merupakan himpunan \textit{triplet} yang membentuk keseluruhan struktur graf tersebut \cite{Hogan_2021}. Setiap elemen di dalam $T$ merepresentasikan satu fakta tunggal yang diformulasikan sebagai berikut:
-
-\begin{equation}
-(h, r, t) \in T
-\label{eq:triplet-format}
-\end{equation}
-
-\noindent Dalam format ini, entitas asal atau \textit{head} ($h$) terhubung ke entitas tujuan atau \textit{tail} ($t$) melalui suatu relasi ($r$) tertentu \cite{peng2023knowledge}. Sebagai contoh, \textit{triplet} (Jakarta, \textit{capitalOf}, Indonesia) secara otomatis menyimpan pengetahuan bahwa Jakarta adalah ibu kota dari Indonesia. Struktur ini sangat efektif karena arah tautan memberikan makna yang jelas; entitas \textit{head} menunjuk langsung ke entitas \textit{tail} melalui garis relasi (\textit{edge}), sebagaimana dapat dilihat pada Gambar \ref{fig:simple-kg}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{Gambar/node.png}
-    \caption{Contoh sederhana dari \textit{knowledge graph}.}
-    \label{fig:simple-kg}
-\end{figure}
-
-Ilustrasi pada Gambar \ref{fig:simple-kg} menunjukkan contoh graf pengetahuan sederhana. Sebagaimana terlihat pada gambar tersebut, \textit{node} $e_1$ dan $e_2$ terhubung oleh relasi $r_1$ yang mengarah dari $e_1$ ke $e_2$. Dengan demikian, $e_1, e_2,$ dan $r_1$ membentuk sebuah \textit{triplet} $(e_1, r_1, e_2)$, di mana $e_1$ bertindak sebagai entitas \textit{head} dan $e_2$ sebagai entitas \textit{tail}. Struktur ini telah diadopsi secara luas di berbagai sektor:
-
-\begin{itemize}
-    \item \textbf{Mesin Pencarian:} Platform seperti \textit{Google Knowledge Graph} menggunakan hubungan antar-data untuk memahami konteks pencarian pengguna, bukan sekadar mencocokkan kata kunci. Hal ini memungkinkan sistem memberikan jawaban yang relevan dan akurat \citep{DBLP:conf/i-semantics/EhrlingerW16}.
-    
-    \item \textbf{Sistem Rekomendasi:} \textit{Knowledge Graph} membantu sistem memahami hubungan antara minat pengguna dan konten yang tersedia. Hasilnya, rekomendasi yang diberikan menjadi lebih tepat sasaran dan alasannya dapat dijelaskan secara logis (\textit{explainable}).
-    
-    \item \textbf{Layanan Kesehatan:} Di bidang medis, KG mengintegrasikan data penyakit, obat, dan genetika dalam satu jaringan. Struktur ini memudahkan peneliti menemukan hubungan baru antar-data untuk pengembangan obat dan pengobatan yang lebih personal.
-\end{itemize}
-
-Berbagai penerapan terbaru telah mengintegrasikan \textit{Knowledge Graph} (KG) dengan \textit{Large Language Models} (\text{LLM}) untuk meningkatkan kemampuan penalaran serta kemampuan \text{LLM} dalam menghasilkan jawaban. Contohnya, arsitektur DRAGON \cite{yasunaga2022deepbidirectionallanguageknowledgegraph} berhasil mencapai performa terbaik pada benchmark pertanyaan kompleks seperti CSQA dan OBQA, dengan melatih \textit{LLM} menggunakan data dari KG sehingga memungkinkan \text{LLM} memberikan jawaban yang terstruktur terhadap pertanyaan yang kompleks (\cite{saha2018complexsequentialquestionanswering, mihaylov2018suitarmorconductelectricity}). Ke depannya, pengembangan KG diperkirakan akan berfokus pada konstruksi berbasis input multimodal dan eksplorasi embedding graf untuk mendukung pengambilan keputusan secara \textit{real-time}.
+Dalam penelitian ini, efektivitas \textit{Knowledge Extraction} sangat berperan dalam menentukan kualitas pengambilan informasi. Proses ekstraksi yang mendalam terhadap kontribusi riset, seperti metode yang diajukan, dataset yang digunakan, serta metrik hasil, memungkinkan sistem untuk mengaitkan berbagai temuan ilmiah yang tersebar, mempermudah penemuan pola baru, serta memastikan bahwa setiap jawaban yang diberikan dapat ditelusuri kembali ke bukti asli dalam literatur (\textit{traceability}).
 
 \subsection{Large Language Models (LLM)}
 
-\textit{Large Language Models} (\text{LLM}) merupakan jenis model \textit{Deep Learning} yang dilatih menggunakan sejumlah besar data teks untuk memahami dan menghasilkan teks yang menyerupai tulisan manusia \citep{zhao2025surveylargelanguagemodels}. Sebagian besar \textit{LLM} didasarkan pada arsitektur \textit{Transformer}, yang terdiri dari modul \textit{encoder} dan \textit{decoder} yang didukung oleh mekanisme \textit{self-attention} dan pertama kali diperkenalkan oleh \cite{NIPS2017_3f5ee243}. Seperti yang ditunjukkan pada \ref{fig:transformer-arch}, mekanisme \textit{self-attention} memungkinkan model memproses seluruh urutan kata secara simultan dan memahami hubungan antar kata meskipun jaraknya berjauhan dalam sebuah kalimat.
-
-\begin{figure}[!t]
-	\centering
-	\makebox[\textwidth][c]{\includegraphics[width=0.8\textwidth]{Gambar/transformer.png}}
-	\caption{Ilustrasi \textit{LLM} berbasis \textit{Transformer} dengan mekanisme \textit{self-attention}}
-	\label{fig:transformer-arch}
-\end{figure}
-
-Perkembangan model bahasa besar telah mengalami perubahan arsitektural yang signifikan. Menurut \cite{devlin2019bertpretrainingdeepbidirectional}, model berbasis \textit{bidirectional} seperti BERT unggul dalam pembelajaran representasi linguistik kontekstual. Sementara itu, menurut \cite{Radford2018ImprovingLU}, model dengan arsitektur \textit{auto-regressive} yang menggunakan \textit{transformer unidirectional} memiliki keunggulan dalam \textit{text generation}. Dengan peningkatan jumlah parameter pada \textit{Large Language Model} dan pelatihan pada dataset yang jauh lebih besar, muncul kemampuan baru yang sebelumnya tidak terprediksi, muncul kemampuan emergen yang meliputi kemampuan belajar dari hanya beberapa contoh (\textit{few-shot learning}) serta melakukan penalaran berantai dengan beberapa langkah (\textit{chain-of-thought reasoning}) \cite{wei2023chainofthoughtpromptingelicitsreasoning}. Meskipun arsitektur \textit{auto-regressive} lebih fleksibel untuk tugas asisten penelitian, model ini memiliki risiko tinggi dalam menghasilkan teks yang fasih namun tidak didukung oleh fakta eksternal.
-
-Model LLM terkini seperti GPT-4 \citep{openai2024gpt4technicalreport} dan Deepseek-R1 \citep{deepseekai2025deepseekr1incentivizingreasoningcapability} menunjukkan performa stabil dalam berbagai pengujian. Mekanisme generasi teksnya didasarkan pada perhitungan probabilitas untuk menentukan token berikutnya dengan probabilitas tertinggi, yang dirumuskan sebagai:
-
-\begin{equation}
-y_t = \arg\max_y P_\theta(y_t \mid y_{t-1}, \cdots, y_1, x)
-\label{eq:llm-generation}
-\end{equation}
-di mana \(P_\theta\) melambangkan fungsi probabilitas yang dipelajari oleh model, \(x\) merupakan input teks dari pengguna, dan \(y_1, \cdots, y_t\) adalah token keluaran yang dihasilkan secara berurutan. Bagaimanapun, \text{LLM} tetap menghadapi Tantangan utama seperti halusinasi \cite{Ji_2022}, keterbatasan pengetahuan temporal, serta kesulitan dalam penalaran yang kompleks \cite{bubeck2023sparksartificialgeneralintelligence}. 
-
-Meskipun teknik penyelarasan seperti \textit{Reinforcement Learning from Human Feedback} (RLHF) \citep{ouyang2022traininglanguagemodelsfollow} dan model \textit{open-source} seperti LLaMA \citep{touvron2023llamaopenefficientfoundation} telah mendemokratisasi akses AI, terdapat celah teoretis (\textit{theoretical gap}) di mana model-model ini masih kesulitan mengakses data akademik spesifik yang bersifat \textit{private} atau lokal, seperti data publikasi dosen Infokom UNESA. Ketergantungan LLM pada ingatan parametrik (\textit{parametric memory}) menyebabkan ketidakmampuan dalam memberikan referensi ilmiah yang valid dan terupdate secara \textit{real-time}
-		
-\subsection{Retrieval-Augmented Generation (RAG)}
-
-\textit{Retrieval-Augmented Generation} (\text{RAG}) merupakan sebuah kerangka kerja yang memungkinkan Model Bahasa Besar untuk mengakses sumber informasi eksternal sebelum memberikan jawaban \citep{lewis2021retrievalaugmentedgenerationknowledgeintensivenlp}. Menurut \cite{Huang_2025}, pendekatan ini secara efektif mengatasi beberapa keterbatasan mendasar \text{LLM}, seperti kecenderungan menghasilkan jawaban yang salah atau mengada-ada (\textit{hallucination}), pengetahuan yang sudah usang, serta kekurangan keahlian dalam domain tertentu. Dengan mendasarkan respons pada dokumen-dokumen yang diambil dari basis pengetahuan, \textit{RAG} memperluas kemampuan \textit{LLM}. Model \textit{LLM }tidak hanya mengandalkan ingatan dari masa pelatihan, tetapi juga dapat mengakses dokumen terbaru secara langsung, sehingga menghasilkan jawaban yang lebih akurat dan dapat dipercaya tanpa perlu melakukan pelatihan ulang yang memakan biaya besar. Saat ini, \text{RAG} telah menjadi solusi di berbagai bidang:
-
-\begin{itemize}
-    \item \textbf{Sistem Tanya Jawab Umum (\textit{Open-Domain QA}):} RAG meningkatkan akurasi jawaban dengan mengambil informasi dari sumber luas seperti \textit{Wikipedia} atau kumpulan data khusus seperti halnya Natural Questions dan TriviaQA \citep{joshi2017triviaqalargescaledistantly}.
-    
-    \item \textbf{Bidang Hukum dan Kesehatan:} RAG digunakan untuk mencari aturan hukum terbaru atau jurnal medis terkini secara cepat[cite: 339]. Hal ini sangat penting untuk memastikan setiap keputusan profesional didasarkan pada bukti yang sah dan referensi yang terpercaya \citep{xiong2024benchmarkingretrievalaugmentedgenerationmedicine}.
-    
-    \item \textbf{Asisten Virtual dan \textit{Chatbot}:} Dengan RAG, asisten digital menjadi lebih pintar karena mampu menarik data terbaru, seperti laporan keuangan atau berita terkini, dari basis data organisasi maupun internet. Hal ini memungkinkan model memberikan jawaban yang selalu diperbarui dan sesuai konteks kebutuhan pengguna.
-\end{itemize}
-
-Dalam perkembangannya, penelitian oleh \cite{gao2024retrievalaugmentedgenerationlargelanguage} mengklasifikasikan evolusi metode \textit{RAG} ke dalam tiga paradigma utama. Pertama, \textbf{Naive RAG} menggunakan pola "\textit{retrieve-read}" sederhana yang mengambil dokumen berdasarkan kesamaan pertanyaan, namun sering kali menghasilkan informasi yang kurang relevan \citep{jiang2025reasoningenhancedhealthcarepredictionsknowledge}. Kedua, \textbf{Advanced RAG} meningkatkan proses pencarian dengan \textit{query expansion} sebelum melakukan pengambilan dan \textit{reranking} dokumen, sehingga data yang diberikan kepada \textit{LLM} menjadi lebih akurat \citep{ma2023queryrewritingretrievalaugmentedlarge}.  Terakhir, \textbf{Modular RAG} menawarkan fleksibilitas melalui modul fungsional yang dapat disesuaikan untuk mengolah data struktural seperti grafik atau tabel, mendukung adaptasi pada beragam tugas \citep{Wang2023KnowledGPTEL}. Alur integrasi dari paradigma-paradigma ini secara visual digambarkan pada \ref{fig:rag-process}.
-
-\begin{figure}[!t]
-	\centering
-	\makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{Gambar/rag new.png}}
-	\caption{Diagram Alur \text{RAG}}
-	\label{fig:rag-process}
-\end{figure}
-
-Secara definisi, \textit{RAG} adalah proses mengidentifikasi dan mengambil dokumen-dokumen relevan dari sekumpulan dokumen berdasarkan pertanyaan pengguna sebagai konteks untuk \textit{LLM}, atau yang disebut oleh \cite{Hambarde_2023} sebagai \textit{information retrieval}. Penelitian oleh \cite{luan2021sparsedenseattentionalrepresentations} menunjukkan bahwa penggunaan satu metode pencarian untuk \textit{Information Retreival} sering kali gagal menemukan informasi relevan apabila pertanyaan pengguna bersifat kompleks. Penelitian terkini juga menunjukkan bahwa penggunaan satu metode pengambilan informasi kurang efektif. Contohnya, penelitan \cite{luan2021sparsedenseattentionalrepresentations} melakukan pengembangan yang menggabungkan dua pendekatan yaitu pencarian berbasis kata kunci (\textit{sparse retrieval}) dan pencarian berdasarkan makna atau konteks (\textit{dense retrieval}). Kolaborasi ini memastikan sistem tetap akurat meskipun pengguna menggunakan istilah berbeda yang memiliki makna serupa.
-
-Meskipun metode \textit{Hybrid Retrieval} sangat membantu, metode \text{RAG} konvensional tetap masih bergantung pada pencocokan vektor yang ditemukan dan mengabaikan hubungan antar informasi di dalamnya. Di sinilah pentingnya penggunaan \textit{Knowledge Graph} untuk membantu \text{RAG} memahami keterkaitan antar konsep secara lebih menyeluruh. Dalam penelitian ini, \textit{Hybrid Retrieval} diarahkan untuk mengisi kekurangan tersebut dengan mengembangkan sistem \text{RAG} yang tidak hanya hibrida dalam pencarian, tetapi juga diperkuat oleh struktur graf guna mendukung pencarian referensi akademik yang lebih mendalam. 
-
-\subsection{Graph-Based RAG}
-
-\textit{Graph-Based Retrieval-Augmented Generation} (Graph-RAG) merupakan evolusi dari arsitektur RAG konvensional yang menggabungkan kekuatan Model Bahasa Besar dengan struktur data graf untuk menangkap hubungan antar informasi yang kompleks \citep{peng2024graphretrievalaugmentedgenerationsurvey}. Berbeda dengan \text{RAG} konvensional yang biasanya mengambil potongan teks yang tidak terstruktur, Graph-RAG secara khusus mengekstraksi elemen-elemen graf yang relevan, termasuk entitas, relasi, atau bahkan subgraf, dengan tujuan memperkaya konteks pada Model Bahasa Besar (\text{LLM}) \citep{guo2023gpt4graphlargelanguagemodels}. Hal ini sangat essential jika di bawah ke ranah Akademik karena domain akademik memerlukan data terstruktur atua berjejaring.
+\textit{Large Language Models} (\text{LLM})  merepresentasikan kelas model \textit{Deep Learning} canggih yang dilatih menggunakan sejumlah besar data teks untuk memahami, memproses, dan menghasilkan teks dengan kualitas yang menyerupai bahasa manusia \citep{zhao2025surveylargelanguagemodels}. Secara struktural, mayoritas \textit{LLM} modern dibangun di atas arsitektur \textit{Transformer} yang memanfaatkan mekanisme \textit{self-attention} (\textit{multi-head attention}) dan \textit{feed-forward networks}, seperti ditunjukkan pada \ref{fig:transformer-arch} dan pertama kali diperkenalkan oleh \cite{NIPS2017_3f5ee243}. Mekanisme ini memungkinkan model untuk memproses seluruh urutan kata dalam suatu kalimat secara simultan dan menangkap ketergantungan jarak jauh (\textit{long-range dependencies}) antar kata, memberikan pemahaman konteks yang jauh lebih dalam dibandingkan model tradisional seperti \textit{RNN} atau \textit{LSTM} yang memproses data secara sekuensial.
 
 \begin{figure}[!t]
     \centering
-    \includegraphics[width=1\textwidth]{Gambar/framework graphrag.png}
+    \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{Gambar/arch transformer.png}}
+    \caption{Arsitektur Transformer \citep{NIPS2017_3f5ee243}}
+    \label{fig:transformer-arch}
+\end{figure}
+
+Evolusi LLM telah melahirkan dua paradigma utama yaitu model \textit{encoder-only} seperti \textit{BERT} yang unggul dalam pemahaman kontekstual dan ekstraksi informasi \cite{devlin2019bertpretrainingdeepbidirectional}, serta model \textit{decoder-only} seperti keluarga \textit{GPT} yang dioptimalkan untuk tugas-tugas generatif autoregresif \cite{Radford2018ImprovingLU}. Melalui proses pre-training pada triliunan token data dari internet, buku, dan artikel ilmiah, LLM menunjukkan fenomena \textit{emergent properties}, di mana kemampuan kompleks seperti penalaran \textit{chain-of-thought}, pemecahan masalah matematika, dan \textit{in-context learning} (ICL) muncul seiring dengan peningkatan skala parameter model \citep{brown2020languagemodelsfewshotlearners}. Kemampuan ICL ini sangat krusial karena memungkinkan model beradaptasi dengan tugas baru melalui instruksi teks tanpa memerlukan pelatihan ulang (\textit{retraining}) yang mahal.
+
+Pada tahap inferensi, LLM menghasilkan token secara autoregresif berdasarkan distribusi probabilitas bersyarat:
+\begin{equation}
+    y_t = \arg\max_{y} P_\theta(y \mid y_{<t}, x),
+    \label{eq:llm-generation}
+\end{equation}
+di mana $y_t$ merupakan token yang dihasilkan pada langkah waktu $t$, yang ditentukan berdasarkan probabilitas bersyarat $P_\theta$ terhadap urutan token sebelumnya ($y_1$ hingga $y_{t-1}$) dan input $x$ yang diberikan.
+
+Namun, terlepas dari kecanggihannya, \textit{LLM} memiliki keterbatasan fundamental yang menjadi tantangan besar dalam domain akademik. Model ini bersifat probabilistik, bukan mesin penalaran logis murni, yang berarti model menghasilkan teks berdasarkan tebakan statistik terhadap kelanjutan kata yang paling mungkin, bukan berdasarkan pemahaman fakta yang absolut. \cite{lála2023paperqaretrievalaugmentedgenerativeagent} menyebutkan bahwa hal ini menyebabkan munculnya halusinasi, di mana model memberikan jawaban yang terdengar meyakinkan namun faktual salah atau sepenuhnya fabrikasi. Selain itu, \textit{LLM} mengalami kendala \textit{knowledge cutoff}, di mana pengetahuan model terbatas pada data pelatihan terakhirnya, sehingga tidak mampu mengakses informasi terkini atau literatur ilmiah terbaru yang diterbitkan setelah masa pelatihannya.
+
+Dalam penelitian ini, \textit{LLM} berperan sebagai "otak" atau unit pemrosesan utama dalam arsitektur sistem. \textit{LLM} memiliki tanggung jawab untuk menghasilkan jawaban. Oleh karena itu, mengintegrasikan \textit{LLM} dengan pengetahuan eksternal menjadi strategi penting untuk mengurangi risiko halusinasi dengan cara memberikan dasar (\textit{grounding}) pada setiap respons generatif menggunakan fakta terstruktur yang dapat diverifikasi dan memiliki jejak data (\textit{provenance}) yang jelas.
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+
+\textit{Retrieval-Augmented Generation (RAG)} adalah sebuah arsitektur yang dirancang untuk meningkatkan performa model bahasa besar (LLM) dengan menggabungkan mekanisme pencarian informasi eksternal ke dalam proses generasi teks \citep{lewis2021retrievalaugmentedgenerationknowledgeintensivenlp}. Secara prinsip, \textit{RAG} berperan sebagai penghubung antara kemampuan penalaran linguistik statis dari \textit{LLM} dengan basis pengetahuan eksternal dinamis yang dapat diperbarui terus menerus. Pendekatan ini menghasilkan konsep yang dikenal sebagai \textit{grounded intelligence} atau kecerdasan yang berlandaskan bukti, di mana model tidak hanya mengandalkan pengetahuan internalnya, tetapi juga melakukan pencarian pada dokumen referensi sebelum memberikan respons \citep{Huang_2025}.
+
+Sebagaimana ditekankan oleh \cite{Huang_2025}, pendekatan ini dirancang secara efektif untuk memitigasi keterbatasan inheren pada \textit{LLM}, seperti fenomena halusinasi (\textit{hallucination}), keterbatasan pengetahuan akibat masa pelatihan yang statis (\textit{knowledge cutoff}), serta kurangnya spesialisasi pada domain tertentu. Dengan menyandarkan respons pada dokumen pendukung yang relevan, \textit{RAG} memungkinkan model untuk menghasilkan jawaban yang lebih akurat dan terverifikasi. Secara umum, alur kerja standar RAG terdiri dari tiga tahapan utama yaitu:
+
+\begin{enumerate}[label=\textbf{\Alph*.}, leftmargin=0.75cm]
+    \item \textbf{Indexing:} Segmentasi teks menjadi \textit{chunks} dan konversi ke representasi vektor (\textit{embedding}) dalam basis data.
+
+    \item \textbf{Retrieval:} Pencarian kemiripan semantik (\textit{semantic similarity}) untuk menemukan potongan teks relevan berdasarkan kueri pengguna.
+
+    \item \textbf{Generation:} Sintesis jawaban oleh LLM menggunakan \textit{augmented prompt} yang menggabungkan kueri asli dan konteks yang ditemukan.
+\end{enumerate}
+
+Evolusi \textit{RAG} telah melahirkan berbagai paradigma, \cite{gao2024retrievalaugmentedgenerationlargelanguage} mengklasifikasikan evolusi metode \textit{RAG} ke dalam tiga paradigma utama. Pertama, \textbf{\textit{Naive RAG}} yang menggunakan pola \textit{retrieve-read} sederhana melalui kesamaan vektor hingga \textbf{\textit{Advanced RAG}} optimasi pra-pengambilan (seperti ekspansi kueri) dan pasca-pengambilan (seperti pemeringkatan ulang/reranking) untuk meningkatkan presisi hasil \citep{ma2023queryrewritingretrievalaugmentedlarge}. Lebih lanjutnya, metode \textbf{\textit{Modular RAG}} menawarkan fleksibilitas melalui integrasi modul fungsional untuk pengolahan data terstruktur seperti grafik atau tabel \citep{Wang2023KnowledGPTEL}. Secara alur besar dari paradigma-paradigma metode tersebut secara visual diilustrasikan pada \ref{fig:rag-process}.
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{Gambar/rag new.png}}
+    \caption{Diagram Alur \textit{Retrieval-Augmented Generation} (RAG)}
+    \label{fig:rag-process}
+\end{figure}
+
+Berbagai penelitian telah dilakukan untuk mengembangkan sistem \textit{RAG}. Penelitian oleh \cite{luan2021sparsedenseattentionalrepresentations} melakukan studi pengembangan metode \textit{Information Retrieval} pada \textit{RAG} dan menemukan bahwa metode tersebut sering kali tidak dapat menemukan informasi relevan apabila pertanyaan bersifat kompleks. Penelitian terkini juga menunjukkan bahwa penggunaan satu metode pengambilan informasi kurang efektif. Mulai berkembang penelitian yang menggabungkan dua pendekatan yaitu pencarian berbasis kata kunci (\textit{sparse retrieval}) dan pencarian berdasarkan makna atau konteks (\textit{dense retrieval}). penggabungan metode ini memungkinkan sistem mengambil informasi yang relevan meskipun penggunaan istilah berbeda tetapi memiliki makna serupa.
+
+Namun, implementasi \textit{RAG} konvensional yang hanya berbasis pada kemiripan vektor (\textit{Vector RAG}) sering menghadapi tantangan berupa fragmentasi konteks, di mana hubungan antar-dokumen yang kompleks atau struktur hierarkis dalam literatur akademik cenderung terabaikan. Keterbatasan dalam melakukan penalaran pencarian pada data yang saling terkait inilah yang mendorong perlunya integrasi struktur data yang lebih kaya dan dapat membaca hubungan antar-dokumen yang kompleks.
+
+\subsection{Graph-Based RAG}
+
+\textit{Graph-Based Retrieval-Augmented Generation} (Graph-RAG) merupakan evolusi dari paradigma \textit{RAG} konvensional yang mengintegrasikan pengetahuan terstruktur dari \textit{Knowledge Graph} ke dalam mekanisme retrieval model bahasa besar \citep{peng2024graphretrievalaugmentedgenerationsurvey}. Berbeda dengan \textit{Vector RAG} tradisional yang hanya mengandalkan potongan teks (\textit{chunks}) terfragmentasi berdasarkan kemiripan vektor, \textit{GraphRAG} secara khusus mengekstraksi hubungan eksplisit antar entitas untuk memperkaya konteks yang akan diberikan kepada model bahasa \citep{guo2023gpt4graphlargelanguagemodels}. Pendekatan ini secara mendasar mengubah cara mesin melakukan navigasi pengambilan informasi dari sekadar mencari "kata-kata yang mirip" menjadi proses penalaran relasional yang mampu menghubungkan poin-poin data yang tersebar di berbagai dokumen.
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{Gambar/framework graphrag.png}}
     \caption{Alur Graph-Based RAG untuk tugas \textit{Question-Answering}
-    \citep{peng2024graphretrievalaugmentedgenerationsurvey}}
+        \citep{peng2024graphretrievalaugmentedgenerationsurvey}}
     \label{fig:graphrag-framework}
 \end{figure}
 
-Kerangka kerja \textit{Graph-Based RAG} secara garis besar terbagi menjadi tiga tahapan utama yang saling terintegrasi dalam satu alur kerja, sebagaimana diilustrasikan pada \ref{fig:graphrag-framework}:
-
-\begin{itemize}
-    \item \textbf{Graph-Based Indexing (G-Indexing):} Merupakan tahap pembangunan basis data graf terstruktur yang berfungsi sebagai sumber pengetahuan. Proses ini mengorganisir entitas (\textit{nodes}) dan relasi (\textit{edges}) sedemikian rupa untuk mengoptimalkan pencarian. Data graf ini dapat berasal dari sumber terbuka seperti Wikidata \cite{wikidata} atau dibangun secara mandiri dari kumpulan dokumen akademik tertentu. Indeksasi adalah tahap paling krusial karena menentukan seberapa detail informasi yang dapat diambil nantinya.
-    
-    \item \textbf{Graph-Guided Retrieval (G-Retrieval):} Alih-alih mengambil potongan teks, sistem bertujuan mengambil elemen graf yang paling relevan, seperti pasangan subjek-predikat-objek (\textit{triples}), jalur hubungan (\textit{paths}), atau subgraf utuh. Metode pengambilannya bisa melalui algoritma penelusuran graf tradisional, pencarian kesamaan semantik, maupun model berbasis Jaringan Saraf Graf (\textit{GNN}).
-    
-    \item \textbf{Graph-Enhanced Generation (G-Generation):} Pada tahap akhir, data graf yang diambil diintegrasikan ke dalam proses pembuatan jawaban. Struktur graf ini dapat diubah menjadi teks naratif atau diproses langsung oleh model \textit{transformer} yang peka terhadap struktur graf agar menghasilkan respons yang koheren, informatif, dan valid.
-\end{itemize}
-
-Untuk memberikan landasan teoretis bagi tahapan-tahapan praktis yang telah dijelaskan sebelumnya, berikut adalah formulasi matematis yang mendasari kerangka kerja Graph-RAG. Secara teoretis, tujuan utama dari \textit{Graph-RAG} adalah menemukan jawaban terbaik ($a^*$) untuk sebuah pertanyaan ($q$) berdasarkan Graf Pengetahuan ($\mathcal{G}$). Hal ini dirumuskan dalam Persamaan \ref{eq:graphrag_goal}:
+Tujuan GraphRAG adalah menemukan jawaban optimal ($a^*$) untuk pertanyaan ($q$) berbasis Graf Pengetahuan ($\mathcal{G}$), diformulasikan sebagai:
 
 \begin{equation}
-	a^* = \operatorname*{arg\,max}_{a \in A} p(a|q, \mathcal{G})
-	\label{eq:graphrag_goal}
+    a^* = \operatorname*{arg\,max}_{a \in A} p(a|q, \mathcal{G})
+    \label{eq:graphrag_goal}
 \end{equation}
 di mana \(A\) merepresentasikan himpunan seluruh kemungkinan respons yang dapat dihasilkan. Untuk mencapai tujuan tersebut, distribusi probabilitas target \(p(a \mid q, \mathcal{G})\) dimodelkan melalui kolaborasi dua komponen utama yaitu model \textit{graph retriever} \(p_\theta(G \mid q, \mathcal{G})\) dan model \textit{answer generator} \(p_\phi(a \mid q, G)\), di mana \(\theta\) dan \(\phi\) adalah parameter yang dapat dilatih.
 
-Untuk mencapai hasil tersebut secara efisien tanpa harus menelusuri seluruh isi graf yang sangat besar, sistem menggunakan pendekatan perkiraan dengan hanya memilih subgraf yang paling relevan ($G^*$). Hubungan antara model pencari (\textit{retriever}) dan (\textit{generator}) ini dapat didekomposisi sebagai berikut:
-
 \begin{equation}
-\begin{split}
-	p(a \mid q, \mathcal{G}) &= \sum_{G \subseteq \mathcal{G}} p_\phi(a \mid q, G)\, p_\theta(G \mid q, \mathcal{G}) \\
-    &\approx p_\phi(a \mid q, G^*)\, p_\theta(G^* \mid q, \mathcal{G})
-\end{split}
-\label{eq:graphrag_decomposition_approx}
+    p(a \mid q, \mathcal{G}) \approx p_\phi(a \mid q, G^*)\, p_\theta(G^* \mid q, \mathcal{G})
+    \label{eq:graphrag_decomposition_approx}
 \end{equation}
 Di sini, $p_\theta$ mewakili parameter model \textit{retriever} yang mencari subgraf relevan, sementara $p_\phi$ adalah model \textit{generator} yang menyusun jawaban berdasarkan subgraf tersebut.
 
-Perkembangan \textit{Graph-based RAG} telah melahirkan berbagai pendekatan dengan kelebihan dan kekurangannya masing-masing, pendekatan berbasis komunitas (\textit{Community-based}) pertama kali dipelopori oleh \cite{edge2025localglobalgraphrag}, metode ini menggunakan \textit{LLM} untuk membangun\textit{Knowledge Graph} (KG) dan algoritma deteksi komunitas untuk membagi graf menjadi kelompok-kelompok informasi. Namun, metode ini memiliki tantangan pada biaya komputasi yang tinggi, masalah skalabilitas saat data bertambah, serta risiko masuknya informasi yang tidak relevan dari laporan komunitas jika terlalu luas. Sebagai perbaikan, model seperti \textit{LightRAG} memperkenalkan pengambilan dua tingkat menggunakan kata kunci lokal dan global \citep{guo2025lightragsimplefastretrievalaugmented}. Teknik ini secara signifikan mengurangi beban penyimpanan dan mempercepat pencarian tetapi kurang fleksibel untuk jenis teks seperti domain akademik dan berisiko melewatkan hubungan antar entitas jika tidak disebutkan secara eksplisit.
+Secara arsitektural, implementasi GraphRAG terbagi menjadi tiga tahapan utama, sebagaimana diilustrasikan pada \ref{fig:graphrag-framework}:
 
-Pengembangan dalam bidang ini masih terbuka lebar. Metode berbasis komunitas \textit{Community-based} \citep{edge2025localglobalgraphrag} terlalu boros sumber daya, metode berbasis aturan \textit{R} \citep{hu2025cgragresearchquestionanswering} sulit diterapkan secara luas, dan metode berbasis kata kunci \textit{Keyword-based} \citep{guo2025lightragsimplefastretrievalaugmented} terkadang masih terkendala pada kualitas hasil akhir jika tidak di sebutkan secara eksplisit. Berdasarkan observasi tersebut, masih diperlukan sistem \textit{Information Retrieval} dengan pendekatan \textit{hybrid retrieval} yang mampu mengombinasikan berbagai metode pengambilan informasi, seperti pengambilan konvensional\textit{semantic retreival} (Vektor) dikombinasikan \textit{Structured Retreival} (Graf). Pendekatan ini bertujuan untuk menyeimbangkan efisiensi komputasi dengan akurasi pencarian, sehingga sistem dapat menyajikan referensi ilmiah yang relevan dan mendalam tanpa terbebani biaya operasional yang besar.
+\begin{enumerate}[label=\textbf{\Alph*.}, leftmargin=0.75cm]
+    \item \textbf{Graph-Based Indexing (G-Indexing):} Tahap pembangunan basis data graf terstruktur yang berfungsi sebagai sumber pengetahuan. Proses ini mengorganisir entitas (\textit{nodes}) dan relasi (\textit{edges}) sedemikian rupa untuk mengoptimalkan pencarian. Data graf ini dapat berasal dari sumber terbuka seperti Wikidata \cite{wikidata} atau dibangun secara mandiri dari kumpulan dokumen akademik tertentu. Indeksasi adalah tahap paling krusial karena menentukan seberapa detail informasi yang dapat diambil nantinya.
+
+    \item \textbf{Graph-Guided Retrieval (G-Retrieval):} Tahap pengambilan, sistem bertujuan mengambil elemen graf yang paling relevan, seperti pasangan subjek-predikat-objek (\textit{triples}), jalur hubungan (\textit{paths}), atau subgraf utuh. yang dapat diformulasikan sebagai:
+          \begin{align}
+              G^{*} & = \mathbf{G\text{-}Retriever}(q, G) \notag                                        \\
+                    & = \arg\max_{G \subseteq \mathcal{R}(G)} p_{\theta}(G|q, G) \notag                 \\
+                    & = \arg\max_{G \subseteq \mathcal{R}(G)} \mathbf{Sim}(q,G), \label{eq:g-retrieval}
+          \end{align}
+
+    \item \textbf{Graph-Enhanced Generation (G-Generation):} Tahap generasi, data graf yang diambil diintegrasikan ke dalam proses pembuatan jawaban. Struktur graf ini dapat diubah menjadi teks naratif atau diproses langsung oleh model \textit{transformer} yang peka terhadap struktur graf agar menghasilkan respons yang koheren, informatif, dan valid yang dapat dinotasikan sebagai:
+          \begin{align}
+              a^{*} & = \mathbf{G\text{-}Generator}(q,G^{*}) \notag                                         \\
+                    & = \arg\max_{a \in \mathcal{A}} p_{\phi}(a|q,G^{*}) \notag                             \\
+                    & = \arg\max_{a \in \mathcal{A}} p_{\phi}(a|\text{F}(q,G^{*})), \label{eq:g-generation}
+          \end{align}
+\end{enumerate}
+
+
+Salah satu inovasi penting dalam domain ini adalah kerangka kerja \textit{Microsoft GraphRAG}, yang memperkenalkan konsep deteksi komunitas hierarkis dengan menggunakan algoritma \textit{Leiden} \citep{edge2025localglobalgraphrag}. Metode ini membagi graf menjadi klaster-klaster yang kemudian diringkas menjadi laporan komunitas (\textit{community reports}) yang memungkinkan sistem untuk menjawab kueri bersifat ``global'' (tema besar dalam satu dataset) yang biasanya gagal ditangani oleh \textit{RAG} berbasis vektor. Namun, pendekatan ini menghadapi tantangan seperti biaya komputasi yang tinggi dan terjadi hambatan ketika data bertambah besar yang berisiko cakupan komunitas menjadi terlalu luas. Sebagai perbaikan dari pendekatan sebelumnya, pendekatan \textit{LightRAG} memitigasi hal ini dengan melakukan pengambilan dua tingkat menggunakan kata kunci \textit{lokal} dan \textit{global} \citep{guo2025lightragsimplefastretrievalaugmented}. Teknik ini secara signifikan mengurangi beban komputasi serta dipercaya dapat mempercepat pencarian. Namun, penerapan metode ini masih jarang dilakukan di dalam lingkup akademik yang memiliki risiko hilangnya hubungan antar entitas jika tidak disambungkan secara eksplisit.
+
+Merespons keterbatasan masing-masing pendekatan tersebut, penelitian ini menerapkan strategi \textit{Hybrid Vector-Graph Retrieval} untuk mengoptimalkan kinerja sistem. Pendekatan hibrida ini diperlukan untuk mengombinasikan keunggulan metode pengambilan informasi konvensional berbasis \textit{semantic retrieval} (vektor) yang cepat dalam pencarian kemiripan, dan \textit{structured retrieval} (graf) yang unggul dalam penalaran relasional. Sinergi ini dirancang untuk menyeimbangkan antara efisiensi komputasi dan akurasi kontekstual, sehingga sistem mampu menyajikan referensi ilmiah yang relevan dan mendalam tanpa menimbulkan \textit{bottleneck} dalam proses \textit{inference}.
