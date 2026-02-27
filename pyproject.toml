@@ -32,6 +32,7 @@ dependencies = [
     "pddiktipy>=2.0.6",
     "plotly>=6.3.0",
     "pyinstrument>=5.1.1",
+    "pymupdf>=1.26.7",
     "pyotp>=2.9.0",
     "pytest-playwright>=0.7.1",
     "python-dotenv>=1.1.1",

@@ -6,6 +6,8 @@ dist/
 wheels/
 *.egg-info
 
+.claude
+
 # Virtual environments
 .venv
 .ipynb_checkpoints
@@ -18,6 +20,8 @@ ws.env
 *.env
 !*.env.template
 !*.env.sample
+credentials_new.json
+credentials.json
 
 # Docker volumes data
 logs/

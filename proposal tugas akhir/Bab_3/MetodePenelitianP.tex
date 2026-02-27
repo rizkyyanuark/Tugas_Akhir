@@ -2,21 +2,21 @@
 
 \section{Dataset}
 
-Penelitian ini menggunakan dataset mandiri yang dikumpulkan khusus untuk merepresentasikan aktivitas akademik domain Infokom di Universitas Negeri Surabaya (UNESA), karena ketiadaan dataset publik yang terintegrasi. Data dipilih berdasarkan relevansi dengan aktivitas dosen untuk mendukung \textit{knowledge base}, dengan setiap atribut dirancang spesifik untuk mekanisme \textit{Question-Answering}.
+Penelitian ini menggunakan dataset primer yang disusun secara mandiri untuk merepresentasikan entitas dan aktivitas akademik pada domain Informatika dan Komputer (Infokom) di Universitas Negeri Surabaya (UNESA). Pengembangan dataset ini dilakukan untuk mengatasi keterbatasan ketersediaan basis data publik yang terintegrasi secara komprehensif. Perancangan atribut data difokuskan untuk mengoptimalisasi mekanisme \textit{Question-Answering} berbasis graf (\textit{GraphRAG}), yang mensyaratkan pelacakan asal-usul informasi (\textit{provenance tracking}) hingga ke dokumen asli guna memitigasi halusinasi \textit{LLM} \cite{zheng2024medsumgraph}.
 
-Dataset dihimpun dari empat sumber: (1) profil dosen \citep{pddikti_db}, (2) publikasi \textit{Google Scholar} \citep{google_scholar}, (3) data riset internal \citep{sinta_database}, dan (4) publikasi \textit{Scopus} \citep{scopus_db}. Fokus data mencakup dosen enam program studi: Sains Data (14 dosen), Kecerdasan Artifisial (5), Teknik Informatika (9), Sistem Informasi (10), Magister Informatika (5), dan Teknik Elektro (13). Struktur atribut dataset dirinci pada \ref{tab:deskripsi-dataset}.
+Dataset dihimpun melalui integrasi data dari tiga sumber utama: (1) profil akademik dosen pada pangkalan data PDDIKTI \citep{pddikti_db}, (2) riwayat publikasi \textit{Google Scholar} \citep{google_scholar}, dan (3) metadata artikel ilmiah dari \textit{Scopus} \citep{scopus_db}. Data yang terkumpul mencakup informasi dari dosen di berbagai program studi di bawah rumpun Infokom UNESA, di antaranya: S1 Sains Data (13 dosen), S1 Kecerdasan Artifisial (5), S1 Teknik Informatika (9), S1 Sistem Informasi (10), S2 Informatika (6), dan S1 Teknik Elektro (24). Selain itu, dataset ini juga mencakup data dari program studi terkait seperti S1 Bisnis Digital dan kependidikan teknik lainnya untuk memperkaya cakupan \textit{knowledge base}. Rincian struktur atribut disajikan pada Tabel \ref{tab:deskripsi-dataset}.
 
 \begin{longtable}{|P{0.15\linewidth}|P{0.22\linewidth}|P{0.13\linewidth}|P{0.4\linewidth}|}
     \caption{Struktur Atribut Dataset Penelitian} \label{tab:deskripsi-dataset}                                                      \\
 
     \hline
-    \textbf{Dataset} & \textbf{Nama Atribut}            & \textbf{Tipe Data} & \textbf{Deskripsi}                                    \\
+    \textbf{Dataset} & \textbf{Nama Atribut} & \textbf{Tipe Data} & \textbf{Deskripsi}                                               \\
     \hline
     \endfirsthead
 
-    \multicolumn{4}{c}{{\textit{ \ref{tab:deskripsi-dataset} (lanjutan).}}}                                                          \\
+    \multicolumn{4}{c}{{\textit{\ref{tab:deskripsi-dataset} (lanjutan).}}}                                                           \\
     \hline
-    \textbf{Dataset} & \textbf{Nama Atribut}            & \textbf{Tipe Data} & \textbf{Deskripsi}                                    \\
+    \textbf{Dataset} & \textbf{Nama Atribut} & \textbf{Tipe Data} & \textbf{Deskripsi}                                               \\
     \hline
     \endhead
 
@@ -26,178 +26,119 @@ Dataset dihimpun dari empat sumber: (1) profil dosen \citep{pddikti_db}, (2) pub
     \hline
     \endlastfoot
 
-    \textbf{Data Profil Dosen}
-                     & id\_sdm                          & String             & ID unik sumber daya manusia.                          \\ \hhline{|~|---|}
-                     & nidn / nip                       & String             & Nomor Induk Dosen Nasional atau Nomor Induk Pegawai.  \\ \hhline{|~|---|}
-                     & nama\_dosen                      & String             & Nama lengkap dosen beserta gelar.                     \\ \hhline{|~|---|}
-                     & nama\_prodi                      & String             & Program studi afiliasi dosen.                         \\ \hhline{|~|---|}
-                     & \seqsplit{jabatan\_akademik}     & String             & Jabatan fungsional akademik (mis.\ Lektor, Profesor). \\ \hhline{|~|---|}
-                     & \seqsplit{pendidikan\_tertinggi} & String             & Jenjang pendidikan terakhir (S2/S3).                  \\ \hhline{|~|---|}
-                     & sinta\_id                        & String             & ID profil pada portal SINTA.                          \\ \hhline{|~|---|}
-                     & scholar\_id                      & String             & ID profil pada Google Scholar.                        \\ \hhline{|~|---|}
-                     & scopus\_id                       & String             & ID penulis pada basis data Scopus.                    \\
-    \hline
+    \multirow{9}{2.2cm}{\centering \textbf{Data Profil Dosen}}
+                     & nama\_dosen           & String             & Nama lengkap dosen beserta gelar terverifikasi.                  \\* \hhline{|~|---|}
+                     & nama\_norm            & String             & Nama dosen yang dinormalisasi tanpa gelar.                       \\* \hhline{|~|---|}
+                     & nip                   & String             & Nomor Induk Pegawai.                                             \\* \hhline{|~|---|}
+                     & nidn                  & String             & Nomor Induk Dosen Nasional.                                      \\* \hhline{|~|---|}
+                     & prodi                 & String             & Program studi penempatan.                                        \\* \hhline{|~|---|}
+                     & scholar\_id           & String             & ID unik profil Google Scholar dosen.                             \\* \hhline{|~|---|}
+                     & scopus\_id            & String             & ID unik profil Scopus dosen.                                     \\* \hhline{|~|---|}
+                     & sinta\_id             & String             & ID unik profil SINTA dosen.                                      \\* \hhline{|~|---|}
+                     & source                & String             & Sumber akuisisi data (mis.\ \textit{WEB+PDDIKTI}, \textit{WEB}). \\
+    \hline \pagebreak \hline
 
-    \textbf{Data Scopus}
-                     & title                            & String             & Judul artikel publikasi.                              \\ \hhline{|~|---|}
-                     & abstract                         & Text               & Ringkasan isi artikel untuk ekstraksi informasi.      \\ \hhline{|~|---|}
-                     & authors                          & String             & Daftar nama penulis artikel.                          \\ \hhline{|~|---|}
-                     & year                             & Integer            & Tahun publikasi artikel.                              \\ \hhline{|~|---|}
-                     & \seqsplit{scopus\_source\_title} & String             & Nama jurnal atau konferensi tempat terbit.            \\ \hhline{|~|---|}
-                     & doi                              & String             & Digital Object Identifier sebagai tautan unik.        \\ \hhline{|~|---|}
-                     & citescore                        & Float              & Metrik dampak sitasi jurnal.                          \\ \hhline{|~|---|}
-                     & \seqsplit{publication\_type}     & String             & Jenis publikasi (mis.\ Article, Conference Paper).    \\
-    \hline
-
-    \textbf{Data Riset Internal}
-                     & judul\_penelitian                & String             & Judul proyek penelitian.                              \\ \hhline{|~|---|}
-                     & ketua\_peneliti                  & String             & Nama dosen yang menjadi ketua peneliti.               \\ \hhline{|~|---|}
-                     & anggota\_peneliti                & String             & Daftar nama anggota tim peneliti.                     \\ \hhline{|~|---|}
-                     & sumber\_dana                     & String             & Skema pendanaan penelitian (mis.\ BIMA, Internal).    \\ \hhline{|~|---|}
-                     & besar\_dana                      & String             & Nominal dana yang disetujui.                          \\ \hhline{|~|---|}
-                     & tahun                            & Integer            & Tahun pelaksanaan penelitian.                         \\ \hhline{|~|---|}
-                     & status                           & String             & Status penyelesaian penelitian (mis.\ Approved).      \\
-    \hline
-
-    \textbf{Data Scholar}
-                     & title                            & String             & Judul publikasi ilmiah.                               \\ \hhline{|~|---|}
-                     & abstract                         & Text               & Abstrak publikasi.                                    \\ \hhline{|~|---|}
-                     & authors                          & String             & Daftar penulis publikasi.                             \\ \hhline{|~|---|}
-                     & journal                          & String             & Nama media publikasi (jurnal/prosiding).              \\ \hhline{|~|---|}
-                     & year                             & Integer            & Tahun terbit.                                         \\ \hhline{|~|---|}
-                     & citations                        & Integer            & Jumlah sitasi yang diperoleh.                         \\ \hhline{|~|---|}
-                     & link                             & String             & Tautan ke halaman publikasi.                          \\
+    \multirow{11}{2.2cm}{\centering \textbf{Data}                                                                                    \\ \textbf{Publikasi} \\ \textbf{Ilmiah} \\ \footnotesize \textit{(Scopus \& Scholar)}}
+                     & Authors               & String             & Daftar nama penulis artikel ilmiah.                              \\* \hhline{|~|---|}
+                     & Author IDs            & String             & Kumpulan ID profil penulis dari paper.                           \\* \hhline{|~|---|}
+                     & Title                 & String             & Judul artikel ilmiah publikasi.                                  \\* \hhline{|~|---|}
+                     & Year                  & Integer            & Tahun publikasi untuk kebutuhan pencarian temporal.              \\* \hhline{|~|---|}
+                     & Journal               & String             & Nama jurnal, konferensi, atau prosiding publikasi.               \\* \hhline{|~|---|}
+                     & Link                  & String             & Tautan langsung menuju halaman \textit{publisher} atau PDF.      \\* \hhline{|~|---|}
+                     & Abstract              & Text               & Ringkasan isi artikel untuk rujukan utama RAG.                   \\* \hhline{|~|---|}
+                     & Keywords              & String             & Kata kunci asli dari penulis untuk perkuatan \textit{graph}.     \\* \hhline{|~|---|}
+                     & Document Type         & String             & Jenis publikasi (mis.\ \textit{Article}, \textit{Conference}).   \\* \hhline{|~|---|}
+                     & DOI                   & String             & \textit{Digital Object Identifier} sebagai resolusi identitas.   \\* \hhline{|~|---|}
+                     & TLDR                  & Text               & \textit{Too Long; Didn't Read}, intisari singkat oleh AI.        \\
 \end{longtable}
 
 \section{Alur Penelitian}
 
-Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) untuk menjamin validitas setiap tahapannya, seperti diilustrasikan pada Gambar \ref{fig:flowchart-utama}. Proses dimulai dengan studi literatur dan pengumpulan data yang bersifat iteratif; jika data dinilai belum lengkap (Decision 2), sistem akan melakukan \textit{looping} kembali ke tahap \textit{scraping}. Demikian pula pada tahap konstruksi graf dan evaluasi sistem, validasi dilakukan secara bertingkat. Jika akurasi sistem di bawah ambang batas (Decision 5), alur akan kembali ke optimasi strategi \textit{retrieval} sebelum sistem diimplementasikan ke dalam antarmuka pengguna (\textit{GUI Implementation}).
+Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \textit{Knowledge Graph} dan mengimplementasikan \textit{Hybrid Vector-Graph Retrieval} dalam pencarian literatur domain Informatika dan Komputer di UNESA. Gambaran umum alur ini ditunjukkan pada \ref{fig:flowchart-utama}.
 
 % ============================================
 % FLOWCHART METODOLOGI TUGAS AKHIR
 % Knowledge Graph-RAG untuk Penelusuran Literatur Akademik UNESA
 % ============================================
 
-% Definisi Style Flowchart
+% Definisi Style Flowchart (ANSI Standard)
+% - Terminator  : Rounded rectangle (Mulai/Selesai)
+% - Process     : Rectangle (aktivitas umum)
+% - Predefined  : Rectangle + garis vertikal (sub-proses berdetail)
+% - Decision    : Diamond (percabangan Ya/Tidak)
+% - Off-page    : Pentagon (rujukan ke diagram detail)
+% - Arrow       : Solid = alur utama, Dashed = rujukan detail
 \tikzset{
-    startstop/.style={rectangle, rounded corners=5pt, minimum width=2cm, minimum height=0.7cm, text centered, draw=black, line width=0.6pt, fill=green!20, font=\scriptsize\bfseries},
-    process/.style={rectangle, minimum width=2cm, minimum height=0.7cm, text centered, draw=black, line width=0.6pt, fill=blue!12, font=\scriptsize},
-    predefined/.style={rectangle, minimum width=2cm, minimum height=0.7cm, text centered, draw=black, line width=0.6pt, fill=orange!20, font=\scriptsize,
+    startstop/.style={rectangle, rounded corners=5pt, minimum width=2.8cm, minimum height=0.8cm, text centered, draw=black, line width=0.6pt, fill=green!20, font=\scriptsize\bfseries},
+    process/.style={rectangle, minimum width=2.8cm, minimum height=0.8cm, text centered, draw=black, line width=0.6pt, fill=blue!12, font=\scriptsize},
+    predefined/.style={rectangle, minimum width=2.8cm, minimum height=0.8cm, text centered, draw=black, line width=0.6pt, fill=orange!20, font=\scriptsize,
             path picture={\draw[line width=0.5pt] ([xshift=3pt]path picture bounding box.north west) -- ([xshift=3pt]path picture bounding box.south west);
                     \draw[line width=0.5pt] ([xshift=-3pt]path picture bounding box.north east) -- ([xshift=-3pt]path picture bounding box.south east);}},
     data/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=1.8cm, minimum height=0.6cm, text centered, draw=black, line width=0.6pt, fill=yellow!20, font=\scriptsize},
     database/.style={cylinder, shape border rotate=90, draw=black, line width=0.6pt, minimum height=0.8cm, minimum width=1.2cm, fill=purple!15, font=\scriptsize, aspect=0.35},
-    decision/.style={diamond, minimum width=1.6cm, minimum height=1.2cm, text centered, draw=black, line width=0.6pt, fill=red!12, font=\scriptsize, inner sep=1pt, aspect=2},
+    decision/.style={diamond, minimum width=1.8cm, minimum height=1.2cm, text centered, draw=black, line width=0.6pt, fill=red!12, font=\scriptsize, inner sep=1pt, aspect=2},
     onpage/.style={circle, minimum size=0.5cm, draw=black, line width=0.6pt, fill=white, font=\scriptsize\bfseries},
     offpage/.style={shape=signal, signal to=south, draw, fill=white, drop shadow, text=black, font=\bfseries\scriptsize, inner sep=3pt, minimum width=0.5cm, minimum height=0.5cm},
     arrow/.style={thick, -Stealth, line width=0.5pt},
     subbox/.style={draw=orange!70!black, line width=0.8pt, rounded corners=3pt, fill=orange!5, inner sep=8pt}
 }
 
-% FLOWCHART UTAMA SIMPLE (Horizontal / Snake Layout)
+% FLOWCHART UTAMA — Vertikal Top-to-Bottom (ANSI Standard)
 \begin{figure}[htbp]
     \centering
-    \begin{tikzpicture}[node distance=0.5cm and 0.5cm, scale=1, transform shape]
-        % Style for Off-page Connectors (Reference to other pages/figures)
-        % Requires \usetikzlibrary{shapes.symbols} in preamble
-        \tikzset{offpage/.style={shape=signal, signal to=south, draw, fill=white, drop shadow, text=black, font=\bfseries\scriptsize, inner sep=3pt}}
+    \begin{tikzpicture}[node distance=0.7cm, scale=1, transform shape]
 
-        % === ROW 1: Left to Right ===
+        % === ALUR UTAMA (Vertikal) ===
         \node (start) [startstop] {Mulai};
-        \node (studi) [data, right=0.6cm of start] {Studi Literatur};
-        \node (dec1) [decision, right=0.6cm of studi, text width=1.3cm] {Terkonsep?};
 
-        \node (datacoll) [predefined, right=0.6cm of dec1, text width=1.8cm] {Pengumpulan\\Data};
-        \node (refA) [offpage, below=0.4cm of datacoll] {A};
-        \draw [densely dashed, ->] (refA) -- (datacoll);
+        \node (datacoll) [predefined, below=of start, text width=2.4cm] {Pengumpulan Data};
 
-        \node (dec2) [decision, right=0.6cm of datacoll, text width=1.3cm] {Lengkap?};
+        \node (dec1) [decision, below=of datacoll, text width=1.5cm] {Data\\Lengkap?};
 
-        % === LOOP 1 & 2 (Above Row 1) ===
-        \node (loop1) [process, above=0.7cm of studi, text width=1.5cm, font=\scriptsize] {Review\\Referensi};
-        \draw [arrow] (dec1) |- node[near start, right, font=\scriptsize] {Tidak} (loop1);
-        \draw [arrow] (loop1) -- (studi);
+        \node (dataprep) [predefined, below=of dec1, text width=2.4cm] {Persiapan Data};
 
-        \node (loop2) [process, above=0.7cm of datacoll, text width=1.5cm, font=\scriptsize] {Scraping\\Ulang};
-        \draw [arrow] (dec2) |- node[near start, right, font=\scriptsize] {Tidak} (loop2);
-        \draw [arrow] (loop2) -- (datacoll);
+        \node (kgconst) [predefined, below=of dataprep, text width=2.4cm] {Konstruksi KG};
 
+        \node (ragsys) [predefined, below=of kgconst, text width=2.4cm] {Hybrid\\GraphRAG};
 
-        % === ROW 2: Right to Left (Snake) ===
-        % Starting below dec2
-        \node (dataproc) [predefined, below=1.8cm of dec2, text width=1.8cm] {Persiapan\\Data};
-        \node (refB) [offpage, right=0.4cm of dataproc] {B}; % Off-page connector B
-        \draw [densely dashed, ->, line width=0.5pt] (refB) -- (dataproc); % Dashed ref line pointing into box, thicker
+        \node (eval) [process, below=of ragsys, text width=2.4cm] {Evaluasi Sistem};
 
-        \node (dec3) [decision, left=0.6cm of dataproc, text width=1.3cm] {Valid?};
+        \node (dec2) [decision, below=of eval, text width=1.5cm] {Memenuhi\\Threshold?};
 
-        \node (kgconst) [predefined, left=0.6cm of dec3, text width=1.8cm] {Konstruksi\\KG};
-        \node (refC) [offpage, above=0.4cm of kgconst] {C}; % Off-page connector C
-        \draw [densely dashed, ->] (refC) -- (kgconst); % Dashed reference line with arrow INTO box
+        \node (gui) [process, below=of dec2, text width=2.4cm] {Implementasi GUI};
 
-        \node (dec4) [decision, left=0.6cm of kgconst, text width=1.3cm] {Valid?};
+        \node (endnode) [startstop, below=of gui] {Selesai};
 
-        \node (ragsys) [predefined, left=0.6cm of dec4, text width=1.8cm] {Hybrid\\Graph-RAG};
-        \node (refD) [offpage, above=0.4cm of ragsys] {D}; % Off-page connector D
-        \draw [densely dashed, ->] (refD) -- (ragsys); % Dashed reference line with arrow INTO box
+        % === OFF-PAGE CONNECTORS (konsisten di kanan) ===
+        \node (refA) [offpage, right=1.0cm of datacoll] {A};
+        \node (refB) [offpage, right=1.0cm of dataprep] {B};
+        \node (refC) [offpage, right=1.0cm of kgconst] {C};
+        \node (refD) [offpage, right=1.0cm of ragsys] {D};
 
-        % === LOOP 3 & 4 (Below Row 2) ===
-        \node (loop3) [process, below=0.7cm of dataproc, text width=1.5cm, font=\scriptsize] {Perbaiki\\Data};
-        \draw [arrow] (dec3) |- node[near start, left, font=\scriptsize] {Tidak} (loop3);
-        \draw [arrow] (loop3) -- (dataproc);
+        % Garis putus-putus: proses → connector (rujukan ke diagram detail)
+        \draw [densely dashed, ->] (datacoll) -- (refA);
+        \draw [densely dashed, ->] (dataprep) -- (refB);
+        \draw [densely dashed, ->] (kgconst) -- (refC);
+        \draw [densely dashed, ->] (ragsys) -- (refD);
 
-        \node (loop4) [process, below=0.7cm of kgconst, text width=1.5cm, font=\scriptsize] {Perbaiki\\Ekstraksi};
-        \draw [arrow] (dec4) |- node[near start, left, font=\scriptsize] {Tidak} (loop4);
-        \draw [arrow] (loop4) -- (kgconst);
-
-
-        % === ROW 3: Left to Right (Snake) ===
-        % Starting below ragsys
-        \node (eval) [process, below=2.8cm of ragsys, text width=1.8cm] {Evaluasi\\Sistem};
-        \node (dec5) [decision, right=0.6cm of eval, text width=1.3cm] {Akurat?};
-
-        \node (gui) [process, right=0.6cm of dec5, text width=1.8cm] {Implementasi\\GUI};
-        \node (endnode) [startstop, right=0.6cm of gui] {Selesai};
-
-        % === LOOP 5 (Below/Right Row 3) ===
-        % Loop (System Evaluation) -> (RAG)
-        % Note: RAG is in Row 2, Eval in Row 3.
-        % Path: Dec5 (No) -> Loop5 -> RAG
-        \node (loop5) [process, below=0.7cm of eval, text width=1.5cm, font=\scriptsize] {Optimasi\\Retrieve};
-
-        \draw [arrow] (dec5) |- node[near start, right, font=\scriptsize] {Tidak} (loop5);
-        % Connect Loop5 back to RAG (above Eval)
-        % Go Left from Loop5 then Up to RAG (Left side)
-        \draw [arrow] (loop5.west) -- ++(-0.8,0) |- (ragsys.west);
-
-
-        % === CONNECTIONS Main Flow ===
-        % Row 1
-        \draw [arrow] (start) -- (studi);
-        \draw [arrow] (studi) -- (dec1);
-        \draw [arrow] (dec1) -- node[above, font=\scriptsize] {Ya} (datacoll);
-        \draw [arrow] (datacoll) -- (dec2);
-
-        % Turn from Row 1 to Row 2
-        \draw [arrow] (dec2) -- node[right, font=\scriptsize] {Ya} (dataproc);
-
-        % Details A (Removed original solid arrow)
-
-        % Row 2
-        \draw [arrow] (dataproc) -- (dec3);
-        \draw [arrow] (dec3) -- node[above, font=\scriptsize] {Ya} (kgconst);
-        \draw [arrow] (kgconst) -- (dec4);
-        \draw [arrow] (dec4) -- node[above, font=\scriptsize] {Ya} (ragsys);
-
-        % Details B, C, D (Removed original solid arrows)
-
-        % Turn from Row 2 to Row 3
+        % === ALUR UTAMA (Panah solid ke bawah) ===
+        \draw [arrow] (start) -- (datacoll);
+        \draw [arrow] (datacoll) -- (dec1);
+        \draw [arrow] (dec1) -- node[right, font=\scriptsize] {Ya} (dataprep);
+        \draw [arrow] (dataprep) -- (kgconst);
+        \draw [arrow] (kgconst) -- (ragsys);
         \draw [arrow] (ragsys) -- (eval);
-
-        % Row 3
-        \draw [arrow] (eval) -- (dec5);
-        \draw [arrow] (dec5) -- node[above, font=\scriptsize] {Ya} (gui);
+        \draw [arrow] (eval) -- (dec2);
+        \draw [arrow] (dec2) -- node[right, font=\scriptsize] {Ya} (gui);
         \draw [arrow] (gui) -- (endnode);
+
+        % === LOOP 1: Data tidak lengkap → kembali ke Pengumpulan Data ===
+        \draw [arrow] (dec1.west) -- node[above, font=\scriptsize] {Tidak} ++(-1.5,0)
+        |- (datacoll.west);
+
+        % === LOOP 2: Evaluasi tidak memenuhi → kembali ke Hybrid GraphRAG ===
+        \draw [arrow] (dec2.west) -- node[above, font=\scriptsize] {Tidak} ++(-1.5,0)
+        |- (ragsys.west);
 
     \end{tikzpicture}
     \caption{Alur metodologi penelitian}
@@ -209,29 +150,35 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
     % 1. Data Collection
     \item \textbf{Pengumpulan Data (\textit{Data Collection})}
 
-          Tahap ini mengumpulkan korpus literatur dan metadata akademik untuk membangun \textit{Scholarly Knowledge Graph} (SKG) yang merepresentasikan ekosistem riset UNESA (Gambar \ref{fig:detail-data-collection}). Strategi akuisisi multi-sumber diterapkan untuk menggabungkan data terstruktur dan tidak terstruktur dari berbagai platform:
+          Tahap ini menghimpun dua kategori data utama: (1) data profil dosen beserta identitas indeksasinya, dan (2) data publikasi ilmiah beserta metadata pendukung. Kedua kategori ini menjadi fondasi untuk membangun \textit{Scholarly Knowledge Graph} (\textit{SKG}) yang merepresentasikan ekosistem publikasi Infokom UNESA. Proses akuisisi data dilakukan secara bertahap melalui \textit{pipeline} modular yang mengintegrasikan enam sumber data, sebagaimana ditunjukkan pada \ref{fig:detail-data-collection}.
 
           \begin{figure}[htbp]
               \centering
               \begin{tikzpicture}[scale=1, transform shape]
-                  \node [subbox, fit={(0,0.1) (3.8,-5.8)}, label={[font=\scriptsize\bfseries]above:Detail Data Collection}] {};
+                  \node [subbox, fit={(-0.2,0.2) (4.8,-6.3)}, label={[font=\scriptsize\bfseries]above:Detail Data Collection}] {};
 
-                  \node (subA) [offpage] at (1.9, -0.1) {A};
-                  \node (db1) [database] at (0.7, -1) {PDDikti};
-                  \node (db2) [database] at (3.1, -1) {Scholar};
-                  \node (db3) [database] at (0.7, -2.2) {SINTA};
-                  \node (db4) [database] at (3.1, -2.2) {Scopus};
-                  \node (scrape) [process, text width=1.8cm] at (1.9, -3.3) {Web Scraping};
-                  \node (rawdata) [data] at (1.9, -4.4) {Raw Dataset};
-                  \node (subB) [offpage] at (1.9, -5.5) {B};
+                  \node (subA) [offpage] at (2.3, -0.1) {A};
+                  % Baris 1: Sumber Data Profil
+                  \node (db1) [database, font=\tiny] at (0.6, -1.3) {Web Prodi};
+                  \node (db2) [database, font=\tiny] at (2.3, -1.3) {PDDikti};
+                  \node (db3) [database, font=\tiny] at (4.0, -1.3) {SimCV};
+                  % Baris 2: Sumber ID \& Publikasi
+                  \node (db4) [database, font=\tiny] at (0.6, -2.5) {SINTA};
+                  \node (db5) [database, font=\tiny] at (2.3, -2.5) {Scholar};
+                  \node (db6) [database, font=\tiny] at (4.0, -2.5) {Scopus};
+                  % Pipeline
+                  \node (pipe) [process, text width=2.2cm] at (2.3, -3.7) {Pipeline\\Modular};
+                  \node (rawdata) [data] at (2.3, -4.9) {Raw Dataset};
+                  \node (subB) [offpage] at (2.3, -6.0) {B};
 
-                  \draw [arrow] (subA) -- (db1);
                   \draw [arrow] (subA) -- (db2);
-                  \draw [arrow] (db1) -- (scrape);
-                  \draw [arrow] (db2) -- (scrape);
-                  \draw [arrow] (db3) -- (scrape);
-                  \draw [arrow] (db4) -- (scrape);
-                  \draw [arrow] (scrape) -- (rawdata);
+                  \draw [arrow] (db1) -- (pipe);
+                  \draw [arrow] (db2) -- (pipe);
+                  \draw [arrow] (db3) -- (pipe);
+                  \draw [arrow] (db4) -- (pipe);
+                  \draw [arrow] (db5) -- (pipe);
+                  \draw [arrow] (db6) -- (pipe);
+                  \draw [arrow] (pipe) -- (rawdata);
                   \draw [arrow] (rawdata) -- (subB);
               \end{tikzpicture}
               \caption{Detail proses \textit{Data Collection}}
@@ -239,31 +186,35 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
           \end{figure}
 
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
-              \item \textbf{Data Identitas (PDDikti \& SimCV):} Profil dosen diambil dari PDDikti dan \textit{cv.unesa.ac.id} untuk mendapatkan identitas unik (NIP, NIDN) dan atribut demografis (Jabatan Fungsional, Prodi). Data ini membentuk node ``Aktor'' dalam graf.
+              \item \textbf{Data Profil Dosen}
 
-              \item \textbf{Publikasi Umum (\textit{Google Scholar}):} \textit{Google Scholar} menjadi sumber utama publikasi. Teknik \textit{rotating proxy} dengan API \textit{ScraperAPI} digunakan untuk mengatasi pembatasan akses (\textit{rate limiting}) saat \textit{scraping}. Dataset yang dikumpulkan meliputi metadata (Judul, Penulis, Tahun, Sitasi) dan Abstrak.
+                    Profil dosen dikumpulkan melalui \textit{pipeline} bertahap yang menggabungkan beberapa sumber. Laman web resmi setiap program studi UNESA dijadikan sebagai sumber utama (\textit{source of truth}) karena memuat nama lengkap beserta gelar, tautan profil akademik (\textit{Google Scholar}, \textit{Scopus}, \textit{SINTA}), serta NIP dosen. Data ini kemudian diperkaya secara bertahap: API PDDikti \citep{pddikti_db} menyediakan NIDN dan NIP yang otoritatif, dilanjutkan dengan verifikasi identitas melalui \textit{SimCV UNESA} (\textit{cv.unesa.ac.id}) untuk memastikan keakuratan nama dan afiliasi program studi.
 
-              \item \textbf{Riset Institusional (SINTA):} Data riwayat hibah penelitian diambil dari portal SINTA menggunakan \textit{SINTA ID} \citep{sinta_database}. Data ini (Judul, Ketua, Anggota, Sumber Dana) memetakan kolaborasi dan topik riset yang mungkin tidak tercatat dalam publikasi formal.
+                    Selanjutnya, ID indeksasi dosen yang belum tersedia dari sumber sebelumnya dilengkapi melalui halaman departemen SINTA \citep{sinta_database} untuk memperoleh \textit{SINTA ID}, \textit{SciVal} \citep{scopus_db} untuk \textit{Scopus ID}, serta verifikasi profil \textit{Google Scholar} \citep{google_scholar} untuk \textit{Scholar ID}. Setiap tahap melakukan pencocokan nama (\textit{fuzzy matching}) untuk mengasosiasikan data dari sumber berbeda ke entitas dosen yang sama, sehingga menghindari duplikasi.
 
-              \item \textbf{Publikasi Global (Scopus/SciVal):} Metadata publikasi terindeks internasional yang berafiliasi dengan UNESA diekspor dari SciVal \citep{scopus_db} sebagai pelengkap literatur global.
+              \item \textbf{Data Publikasi Ilmiah}
+
+                    Data publikasi dihimpun dari dua sumber utama. Pertama, metadata publikasi terindeks \textit{Scopus} diekspor secara otomatis melalui antarmuka \textit{SciVal} \citep{scopus_db} untuk setiap dosen yang telah memiliki \textit{Scopus ID}. Data yang diperoleh meliputi judul, penulis, tahun, jurnal, DOI, dan tipe dokumen.
+
+                    Kedua, publikasi dari \textit{Google Scholar} \citep{google_scholar} diakuisisi menggunakan \textit{SerpAPI} berdasarkan \textit{Scholar ID} masing-masing dosen. Sebelum disimpan, dilakukan deduplikasi silang terhadap data \textit{Scopus} untuk mencegah data ganda. Seluruh publikasi kemudian diperkaya metadatanya: \textit{CrossRef API} digunakan untuk memverifikasi DOI dan memperoleh kata kunci, \textit{scraping} halaman \textit{publisher} untuk mengekstrak abstrak, serta \textit{Semantic Scholar API} untuk menghasilkan ringkasan singkat (\textit{TLDR}). Strategi pengayaan bertingkat ini memaksimalkan kelengkapan data meskipun tidak semua sumber memberikan informasi yang sama.
           \end{enumerate}
 
           % 2. Data preparation
     \item \textbf{Persiapan Data (\textit{Data Preparation})}
 
-          \hspace*{0.75cm} Data mentah diproses untuk menjamin kualitas \textit{retrieval}, seperti ditunjukkan pada Gambar \ref{fig:detail-data-preparation}, yang meliputi tahapan:
+          \hspace*{0.75cm}Data mentah dari tahap sebelumnya selanjutnya diproses untuk menjamin kualitas \textit{retrieval} (\ref{fig:detail-data-preparation}), melalui tahapan berikut:
 
           \begin{figure}[htbp]
               \centering
               \begin{tikzpicture}[scale=1, transform shape]
-                  \node [subbox, fit={(0,0.1) (3.8,-6.4)}, label={[font=\scriptsize\bfseries]above:Detail Data Preparation}] {};
+                  \node [subbox, fit={(0,0.2) (3.8,-6.3)}, label={[font=\scriptsize\bfseries]above:Detail Data Preparation}] {};
 
                   \node (subB2) [offpage] at (1.9, -0.1) {B};
-                  \node (std1) [process, text width=2.2cm] at (1.9, -1.2) {Data Cleaning\\\& Normalization};
+                  \node (std1) [process, text width=2.2cm] at (1.9, -1.3) {Data Cleaning\\\& Normalization};
                   \node (std2) [process, text width=2.2cm] at (1.9, -2.5) {Text\\Chunking};
-                  \node (std3) [process, text width=2.2cm] at (1.9, -3.8) {Embedding\\Generation};
-                  \node (cleandata) [data, text width=1.8cm] at (1.9, -5) {Clean Data};
-                  \node (subOff) [offpage] at (1.9, -6.1) {C};
+                  \node (std3) [process, text width=2.2cm] at (1.9, -3.7) {Embedding\\Generation};
+                  \node (cleandata) [data, text width=1.8cm] at (1.9, -4.9) {Clean Data};
+                  \node (subOff) [offpage] at (1.9, -6.0) {C};
 
                   \draw [arrow] (subB2) -- (std1);
                   \draw [arrow] (std1) -- (std2);
@@ -276,58 +227,58 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
           \end{figure}
 
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=4pt]
-              \item \textbf{Data Cleaning \& Normalization:} Memproses data mentah untuk menangani \textit{missing values} dan menstandarisasi variasi penulisan nama institusi atau singkatan gelar, langkah ini krusial untuk mencegah duplikasi entitas yang tidak perlu di dalam graf.
+              \item \textbf{\textit{Data Cleaning} \& \textit{Normalization}:} Menangani \textit{missing values} dan menstandarisasi variasi penulisan nama institusi serta singkatan gelar untuk mencegah duplikasi entitas dalam graf.
 
-              \item \textbf{Text Chunking (Pemotongan Teks):} Mengingat keterbatasan \textit{context window} pada LLM, dokumen panjang seperti abstrak perlu dipecah menjadi segmen semantik yang lebih kecil (misal 512 token) dengan metode \textit{semantic chunking}. Strategi ini memastikan bahwa unit informasi yang diambil sistem tetap utuh dan spesifik, menghindari \textit{noise} dari teks yang tidak relevan.
+              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Dokumen panjang seperti abstrak dipecah menjadi segmen semantik (misalnya 512 token) menggunakan \textit{semantic chunking}, mengingat keterbatasan \textit{context window} \textit{LLM}. Strategi ini menjaga keutuhan unit informasi sekaligus mengurangi \textit{noise}.
 
-              \item \textbf{Embedding Generation:} Mengonversi setiap \textit{chunk} teks menjadi representasi vektor numerik berdimensi tinggi menggunakan model \textit{embedding} (misal: \textit{all-MiniLM-L6-v2}). Vektor ini memungkinkan sistem melakukan pencarian berbasis makna (\textit{semantic search}) yang melampaui sekadar pencocokan kata kunci leksikal.
+              \item \textbf{\textit{Embedding Generation}:} Setiap \textit{chunk} dikonversi menjadi vektor berdimensi tinggi menggunakan model \textit{embedding} (misalnya \textit{all-MiniLM-L6-v2}), memungkinkan pencarian berbasis makna (\textit{semantic search}) yang melampaui pencocokan kata kunci leksikal.
           \end{enumerate}
 
 
           % 3. Construction of the Knowledge Graph
     \item \textbf{Konstruksi \textit{Knowledge Graph}}
 
-          \hspace*{0.75cm}Tahapan konstruksi \textit{Knowledge Graph} (KG) merupakan proses transformasi data mentah menjadi basis pengetahuan terstruktur yang memungkinkan sistem melakukan penalaran relasional. Seperti diilustrasikan pada \ref{fig:detail-kg-construction}, penelitian ini menerapkan pendekatan hibrida yang memproses data terstruktur (metadata dosen/publikasi) dan data tidak terstruktur (abstrak) melalui jalur pemrosesan paralel yang kemudian disatukan melalui \textit{Entity Linking}.
+          \hspace*{0.75cm}Tahap ini mentransformasi data yang telah dibersihkan menjadi basis pengetahuan terstruktur untuk penalaran relasional. Seperti ditunjukkan pada \ref{fig:detail-kg-construction}, data terstruktur (metadata dosen/publikasi) dan tidak terstruktur (abstrak) diproses melalui dua jalur paralel yang disatukan melalui \textit{Entity Linking}.
 
           \begin{figure}[htbp]
               \centering
               \begin{tikzpicture}[scale=1, transform shape]
-                  \node [subbox, fit={(-0.6,0.1) (7.1,-12.3)}, label={[font=\scriptsize\bfseries]above:Detail KG Construction}] {};
+                  % Outer box — widened to fit all 2.8cm-wide process nodes with margin
+                  \node [subbox, fit={(-1.0,0.3) (8.0,-12.9)}, label={[font=\scriptsize\bfseries]above:Detail KG Construction}] {};
 
-                  \node (subC2) [offpage] at (2.75, -0.1) {C};
+                  \node (subC2) [offpage] at (3.0, -0.1) {C};
 
-                  % 1. Ontology Modeling (New Node)
-                  \node (ontmod) [process, text width=2.2cm] at (2.75, -1.2) {Ontology\\Modeling};
+                  % 1. Ontology Modeling
+                  \node (ontmod) [process, text width=2.2cm] at (3.0, -1.3) {Ontology\\Modeling};
 
-                  \node (input) [process, text width=2.2cm] at (2.75, -2.4) {Parallel\\Processing};
+                  \node (input) [process, text width=2.2cm] at (3.0, -2.6) {Parallel\\Processing};
 
                   % === TWO INPUT SOURCES ===
-                  \node (structured) [data, fill=gray!30, text width=1.4cm] at (0.5, -3.5) {Structured\\Data};
-                  \node (unstructured) [data, fill=gray!30, text width=1.4cm] at (5.0, -3.5) {Unstructured\\Data};
+                  \node (structured) [data, fill=gray!30, text width=1.4cm] at (1.0, -3.9) {Structured\\Data};
+                  \node (unstructured) [data, fill=gray!30, text width=1.4cm] at (5.5, -3.9) {Unstructured\\Data};
 
-                  % === STRUCTURED PATH (Left) - Direct to Graph DB ===
-                  \node (entres_struct) [process, text width=1.8cm] at (0.5, -4.7) {Entity\\Resolution};
+                  % === STRUCTURED PATH (Left) ===
+                  \node (entres_struct) [process, text width=1.8cm] at (1.0, -5.3) {Entity\\Resolution};
 
-                  % === UNSTRUCTURED PATH (Right) - Full Pipeline ===
-                  % Text Processing
-                  \node (textproc) [process, text width=1.8cm] at (5.0, -4.7) {Text\\Processing};
-                  \node (coref) [process, text width=1.8cm] at (5.0, -5.9) {Coreference\\Resolution};
+                  % === UNSTRUCTURED PATH (Right) ===
+                  \node (textproc) [process, text width=1.8cm] at (5.5, -5.3) {Text\\Processing};
+                  \node (coref) [process, text width=1.8cm] at (5.5, -6.7) {Coreference\\Resolution};
 
-                  % NER & RE
-                  \node (ner) [process, minimum width=1.9cm, minimum height=0.6cm, text width=1cm] at (4.0, -7.1) {NER\\(GLiNER)};
-                  \node (re) [process, minimum width=1.9cm, minimum height=0.6cm, text width=1cm] at (6.0, -7.1) {RE\\(GLiRel)};
-                  \node (lexgraph) [data, text width=1.6cm] at (5.0, -8.4) {Lexical\\Graph};
+                  % NER & RE — shifted outward, explicit min-width to avoid 2.8cm default
+                  \node (ner) [process, minimum width=1.9cm, minimum height=0.7cm, text width=1.1cm] at (4.5, -8.1) {NER\\(GLiNER)};
+                  \node (re) [process, minimum width=1.9cm, minimum height=0.7cm, text width=1.1cm] at (6.5, -8.1) {RE\\(GLiRel)};
+                  \node (lexgraph) [data, text width=1.6cm] at (5.5, -9.4) {Lexical\\Graph};
 
-                  % Entity Linking
-                  \node (entlink) [process, text width=1.8cm] at (2.5, -8.4) {Entity Linking};
+                  % Entity Linking — moved left for clear separation from Lexical Graph
+                  \node (entlink) [process, text width=2.2cm] at (2.0, -9.4) {Entity Linking};
 
                   % Indexing
-                  \node (indexing) [process, text width=1.8cm] at (2.5, -9.6) {Dual Indexing};
+                  \node (indexing) [process, text width=2.2cm] at (3.0, -10.7) {Dual Indexing};
 
                   % === OUTPUT DATABASES ===
-                  \node (vectordb) [database] at (4.0, -11.2) {Vector DB};
-                  \node (graphdb) [database] at (1.0, -11.2) {Graph DB};
-                  \node (subD2) [offpage] at (2.5, -11.8) {D};
+                  \node (graphdb) [database] at (1.5, -11.9) {Graph DB};
+                  \node (vectordb) [database] at (4.5, -11.9) {Vector DB};
+                  \node (subD2) [offpage] at (3.0, -12.6) {D};
 
                   % === ARROWS - Input Split ===
                   \draw [arrow] (subC2) -- (ontmod);
@@ -337,7 +288,7 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
 
                   % === ARROWS - Structured Path (Left) ===
                   \draw [arrow] (structured) -- (entres_struct);
-                  \draw [arrow] (entres_struct) |- (entlink);
+                  \draw [arrow] (entres_struct.south) -- (1.0, -7.5) -| (entlink.north);
 
                   % === ARROWS - Unstructured Path (Right) ===
                   \draw [arrow] (unstructured) -- (textproc);
@@ -347,11 +298,11 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
                   \draw [arrow] (ner) -- (lexgraph);
                   \draw [arrow] (re) -- (lexgraph);
                   \draw [arrow] (lexgraph) -- (entlink);
-                  \draw [arrow] (entlink) -- (indexing);
-                  \draw [arrow] (indexing) -- (vectordb);
+                  \draw [arrow] (entlink.south) -- (2.0, -10.1) -| (indexing.north);
                   \draw [arrow] (indexing) -- (graphdb);
-                  \draw [arrow] (vectordb) |- (subD2);
+                  \draw [arrow] (indexing) -- (vectordb);
                   \draw [arrow] (graphdb) |- (subD2);
+                  \draw [arrow] (vectordb) |- (subD2);
               \end{tikzpicture}
               \caption{Detail tahapan konstruksi \textit{Knowledge Graph}}
               \label{fig:detail-kg-construction}
@@ -473,66 +424,66 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
                         \label{fig:ontology-design}
                     \end{figure}
 
-                    \hspace*{0.75cm}Sebelum ekstraksi data, skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph}. Skema ini mendefinisikan komponen inti graf, seperti diilustrasikan pada Gambar \ref{fig:ontology-design}. Implementasi difokuskan pada 8 relasi utama: \textit{publishes, cites, has\_author, has\_topic, uses\_method, has\_affiliation, belongs\_to\_domain,} dan \textit{collaborates\_with}. Relasi tambahan disiapkan untuk pengembangan lanjut. Konsistensi skema membatasi ruang pencarian model ekstraksi agar tetap relevan dengan domain Infokom UNESA.
+                    \hspace*{0.75cm}Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi dimulai (\ref{fig:ontology-design}). Implementasi difokuskan pada delapan relasi utama: \textit{publishes}, \textit{cites}, \textit{has\_author}, \textit{has\_topic}, \textit{uses\_method}, \textit{has\_affiliation}, \textit{belongs\_to\_domain}, dan \textit{collaborates\_with}. Konsistensi skema ini membatasi ruang pencarian model ekstraksi agar tetap relevan dengan domain Infokom UNESA.
 
               \item \textbf{\textit{Parallel Processing Pipeline}}
 
-                    \hspace*{0.75cm}Sistem memproses data akademik melalui dua jalur paralel, masing-masing dioptimalkan untuk karakteristik data yang berbeda. Kedua jalur berjalan secara independen namun menghasilkan output yang saling melengkapi pembangunan knowledge graph. Alur lengkap ditunjukkan pada \ref{fig:detail-kg-construction}.
+                    \hspace*{0.75cm}Data akademik diproses melalui dua jalur paralel yang dioptimalkan untuk karakteristik data berbeda. Kedua jalur berjalan independen namun menghasilkan keluaran yang saling melengkapi (\ref{fig:detail-kg-construction}).
 
                     \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
 
-                        \item \textbf{Jalur Data Terstruktur: Entity Resolution}
+                        \item \textbf{Jalur Data Terstruktur: \textit{Entity Resolution}}
 
-                              \hspace*{0.75cm}Data terstruktur (profil dosen, afiliasi) melewati \textit{Entity Resolution} untuk menyatukan referensi duplikat. Tantangan utama variasi penulisan nama (misal ``Aditya Prapanca'', ``A. Prapanca'') diselesaikan untuk menghasilkan satu \textit{canonical node} per dosen. Hal ini menjamin akumulasi publikasi yang akurat pada satu entitas peneliti.
+                              \hspace*{0.75cm}Data terstruktur (profil dosen dan afiliasi) diproses melalui \textit{Entity Resolution} untuk menyatukan referensi duplikat. Variasi penulisan nama (misalnya ``Aditya Prapanca'' vs. ``A. Prapanca'') diselesaikan untuk menghasilkan satu \textit{canonical node} per dosen, menjamin akumulasi publikasi yang akurat pada satu entitas.
 
-                        \item \textbf{Jalur Data Tidak Terstruktur: NLP-Based Extraction}
+                        \item \textbf{Jalur Data Tidak Terstruktur: \textit{NLP-Based Extraction}}
 
-                              \hspace*{0.75cm}Tahap awal \textbf{Text Processing \& Coreference Resolution} membersihkan abstrak dari \textit{noise} dan menerapkan \textit{coreference resolution} untuk mengganti kata ganti (``metode ini'', ``itu'') dengan entitas referensinya. Langkah ini krusial untuk mempertahankan konteks penuh saat pemrosesan kalimat.
+                              \hspace*{0.75cm}Tahap awal \textbf{\textit{Text Processing} \& \textit{Coreference Resolution}} membersihkan abstrak dari \textit{noise} dan mengganti kata ganti (``metode ini'', ``itu'') dengan entitas referensinya untuk mempertahankan konteks penuh.
 
-                              \hspace*{0.75cm}Selanjutnya, \textbf{Ekstraksi Entitas dan Relasi} menggunakan model \textit{GLiNER (Generalist NER)} \cite{zaratiana2023gliner} dan \textit{GLiRel (Generalist Relation Extraction)} \cite{boylan2025glirelgeneralistmodel}. \textit{GLiNER} bekerja secara \textit{zero-shot} tanpa \textit{fine-tuning} spesifik, sementara \textit{GLiRel} menangani ekstraksi relasi. Kombinasi ini dipilih karena adaptabilitasnya yang tinggi untuk \textit{knowledge graph} tanpa memerlukan dataset pelatihan teranotasi besar. Output tahap ini berupa \textit{Lexical Graph} berisi triplet kandidat.
+                              \hspace*{0.75cm}Selanjutnya, \textbf{Ekstraksi Entitas dan Relasi} dilakukan menggunakan \textit{GLiNER} \cite{zaratiana2023gliner} untuk \textit{Named Entity Recognition} secara \textit{zero-shot} dan \textit{GLiRel} \cite{boylan2025glirelgeneralistmodel} untuk ekstraksi relasi. Kombinasi ini dipilih karena tidak memerlukan dataset pelatihan teranotasi. Keluaran berupa \textit{Lexical Graph} berisi triplet kandidat.
 
                     \end{enumerate}
 
               \item \textbf{\textit{Entity Linking}}
 
-                    \hspace*{0.75cm}Tahap ini berfungsi sebagai jembatan antara kedua jalur di atas. Entitas yang diekstraksi dari teks abstrak seperti penyebutan nama dosen atau topik riset dipetakan ke entitas kanonikal yang telah divalidasi pada jalur data terstruktur. Proses \textit{Entity Linking} ini memastikan bahwa ketika sebuah abstrak menyebutkan ``Deep Learning'', sistem menghubungkannya ke node topik ``Deep Learning'' yang sudah ada di graf, bukan membuat node baru yang duplikat. Hasil dari tahap ini adalah \textit{Scholarly Knowledge Graph} yang utuh, di mana entitas terverifikasi dari jalur \textit{Structured} bersatu dengan relasi dan topik dari teks \textit{Unstructured}, tanpa duplikasi node.
+                    \hspace*{0.75cm}Tahap ini menjembatani kedua jalur dengan memetakan entitas hasil ekstraksi teks (nama dosen, topik riset) ke entitas kanonikal dari jalur terstruktur. Misalnya, penyebutan ``Deep Learning'' dalam abstrak dihubungkan ke node topik yang sudah ada, bukan membentuk node duplikat. Hasilnya adalah \textit{Scholarly Knowledge Graph} utuh yang mengintegrasikan entitas terverifikasi dengan relasi dari teks tanpa duplikasi.
 
               \item \textbf{\textit{Dual Indexing}}
 
-                    \hspace*{0.75cm}Untuk mendukung \textit{Hybrid Retrieval}, hasil konstruksi KG disimpan dalam dua format:
+                    \hspace*{0.75cm}Untuk mendukung \textit{Hybrid Retrieval}, hasil konstruksi \textit{KG} disimpan dalam dua format berikut:
 
                     \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
                         \item \textbf{\textit{Vector Indexing}}
 
-                              \hspace*{0.75cm}Teks abstrak diindeks dalam \textit{Vector Store} untuk pencarian kemiripan semantik. Teks dipotong (\textit{chunking}) (2.024 karakter, overlap 50 karakter), dilanjutkan dengan proses menyisipkan vektor \textit{embedding} menggunakan model \texttt{all-MiniLM-L6-v2} (384 dimensi), dan disimpan di \textit{Weaviate} untuk performa tinggi.
+                              \hspace*{0.75cm}Teks abstrak dipotong menjadi segmen 2.024 karakter dengan \textit{overlap} 50 karakter, dikonversi ke vektor \textit{embedding} menggunakan \texttt{all-MiniLM-L6-v2} (384 dimensi), dan disimpan di \textit{Weaviate} untuk pencarian kemiripan semantik.
 
                         \item \textbf{\textit{Graph Indexing}}
 
-                              \hspace*{0.75cm}Struktur \textit{knowledge graph} disimpan di basis data graf \textit{Neo4j}. Triplet entitas dan relasi hasil ekstraksi dimuat otomatis melalui \textit{Neo4j Python driver} atau \textit{Cypher queries} yang membuat node dan edge. Indexing ini memfasilitasi pencarian berbasis struktur relasional dan \textit{graph traversal}.
-
+                              \hspace*{0.75cm}Triplet entitas dan relasi dimuat ke basis data graf \textit{Neo4j} melalui \textit{Cypher queries}, memfasilitasi pencarian berbasis struktur relasional dan \textit{graph traversal}.
                     \end{enumerate}
 
           \end{enumerate}
 
-    \item \textit{\textbf{Hybrid Retrieval pada Graph-RAG Model}}
+    \item \textit{\textbf{Hybrid Retrieval pada GraphRAG Model}}
 
-          \hspace*{0.75cm}Tahapan ini merupakan komponen utama dalam arsitektur sistem yang diusulkan, di mana mekanisme \textit{Retrieval-Augmented Generation} tidak hanya bergantung pada pencarian vektor standar, melainkan diperkuat dengan struktur \textit{Knowledge Graph}. Seperti yang diilustrasikan pada \ref{fig:detail-hybrid-rag}, penelitian ini menerapkan pendekatan \textit{Hybrid Retrieval} yang memproses kueri pengguna melalui serangkaian tahapan optimasi sebelum melakukan pengambilan data.
+          \hspace*{0.75cm}Berbeda dengan \textit{RAG} konvensional yang hanya mengandalkan pencarian vektor, pendekatan ini memperkuat \textit{retrieval} dengan struktur \textit{Knowledge Graph} (\ref{fig:detail-hybrid-rag}). Kueri pengguna diproses melalui serangkaian tahap optimasi sebelum pengambilan data.
 
           \begin{figure}[htbp]
               \centering
               \begin{tikzpicture}[scale=1, transform shape]
-                  \node [subbox, fit={(0,0.1) (4.5,-9.8)}, label={[font=\scriptsize\bfseries]above:Detail Hybrid Graph-RAG}] {};
+                  % Outer box — widened so Local/Global nodes (2.0cm) fit with margin
+                  \node [subbox, fit={(-0.5,0.3) (5.3,-9.3)}, label={[font=\scriptsize\bfseries]above:Detail Hybrid Graph-RAG}] {};
 
-                  \node (subD3) [offpage] at (2.25, -0.1) {D};
-                  \node (qin) [data] at (2.25, -1.1) {User Query};
-                  \node (clue) [process, text width=2cm] at (2.25, -2.3) {Semantic Clue\\Extraction};
-                  \node (kwd) [process, text width=2cm] at (2.25, -3.5) {Keyword\\Decomposition};
-                  \node (local) [process, text width=1.4cm] at (0.9, -5) {Local\\Retrieval};
-                  \node (globalret) [process, text width=1.4cm] at (3.6, -5) {Global\\Retrieval};
-                  \node (integrate) [process, text width=2cm] at (2.25, -6.5) {Context\\Fusion};
-                  \node (llm) [process, text width=2cm] at (2.25, -8) {LLM Generation};
-                  \node (response) [data] at (2.25, -9.3) {Response};
-                  % Removed orphan connector E
+                  \node (subD3) [offpage] at (2.4, -0.1) {D};
+                  \node (qin) [data] at (2.4, -1.3) {User Query};
+                  \node (clue) [process, text width=2.2cm] at (2.4, -2.5) {Semantic Clue\\Extraction};
+                  \node (kwd) [process, text width=2.2cm] at (2.4, -3.8) {Keyword\\Decomposition};
+                  % Local/Global — override minimum width to 2.0cm (default 2.8cm overflows box)
+                  \node (local) [process, text width=1.6cm, minimum width=2.0cm] at (1.0, -5.2) {Local\\Retrieval};
+                  \node (globalret) [process, text width=1.6cm, minimum width=2.0cm] at (3.8, -5.2) {Global\\Retrieval};
+                  \node (integrate) [process, text width=2.2cm] at (2.4, -6.5) {Context\\Fusion};
+                  \node (llm) [process, text width=2.4cm] at (2.4, -7.7) {LLM Generation};
+                  \node (response) [data] at (2.4, -8.9) {Response};
 
                   \draw [arrow] (subD3) -- (qin);
                   \draw [arrow] (qin) -- (clue);
@@ -552,22 +503,21 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
 
               \item \textbf{Pengambilan Petunjuk Semantik (\textit{Clues}) pada \textit{Vector Database}}
 
-                    \hspace*{0.75cm}Tahap ini mengidentifikasi entitas kunci dan istilah penting dari pertanyaan pengguna menggunakan pencarian berbasis vektor. Tujuannya adalah memetakan maksud pengguna ke terminologi yang konsisten dengan ontologi graf seperti misalnya, memetakan ``AI'' ke entitas topik ``Kecerdasan Buatan''
+                    \hspace*{0.75cm}Tahap ini mengidentifikasi entitas kunci dari pertanyaan pengguna via pencarian vektor, lalu memetakannya ke terminologi ontologi graf (misalnya ``AI'' dipetakan ke ``Kecerdasan Buatan'').
 
-                    \hspace*{0.75cm}Pengambilan petunjuk ini diawali dengan proses pencarian kesamaan (\textit{similarity search}) pada \textit{vector database}. Sistem memanfaatkan fungsi \textit{embedding} untuk memetakan pertanyaan pengguna $Q$ ke dalam ruang vektor, kemudian mengukur kedekatannya dengan \textit{keyword} dalam korpus menggunakan metrik \textit{cosine similarity}. Proses seleksi kandidat \textit{clues} didefinisikan secara formal sebagai berikut:
+                    \hspace*{0.75cm}Pertanyaan pengguna $Q$ dipetakan ke ruang vektor menggunakan fungsi \textit{embedding}, kemudian diukur kedekatannya dengan \textit{keyword} korpus via \textit{cosine similarity}. Seleksi kandidat \textit{clues} didefinisikan sebagai:
 
                     \begin{equation}
                         K^{\text{clues}} = \{k \in K^{\text{content}} \mid \text{sim}(f_{\text{embed}}(Q), f_{\text{embed}}(k)) \geq \tau\}
                     \end{equation}
 
-                    \hspace*{0.75cm}Setelah clues diekstraksi, Model bahasa besar (\textit{LLM}) mengubahnya menjadi dua tingkat kata kunci yang saling melengkapi:
+                    \hspace*{0.75cm}Setelah \textit{clues} diekstraksi, model bahasa besar (\textit{LLM}) mengubahnya menjadi dua tingkat kata kunci yang saling melengkapi:
 
                     \begin{equation}
                         (\mathcal{K}_h, \mathcal{K}_l) = \text{LLM}_{keyword}(Q, K^{\text{clues}})
                     \end{equation}
 
-                    Kata kunci \textit{High-level} $\mathcal{K}_h$ menangkap konsep abstrak dan tema umum
-                    penelitian (mis. ``Deep Learning'', ``Sequence Processing''), sementara kata kunci \textit{Low-level} $\mathcal{K}_l$ menangkap detail teknis spesifik (mis. ``Attention Mechanism'', ``Encoder-Decoder Models''). Strategi dua tingkat ini memastikan bahwa sistem dapat menjawab pertanyaan dengan dua jenis spektrum: pertanyaan yang memerlukan pemahaman holistik (menggunakan $\mathcal{K}_h$) dan pertanyaan yang memerlukan presisi tinggi (menggunakan $\mathcal{K}_l$).
+                    Kata kunci \textit{High-level} $\mathcal{K}_h$ menangkap konsep abstrak (misalnya ``Deep Learning'', ``Sequence Processing''), sementara \textit{Low-level} $\mathcal{K}_l$ menangkap detail teknis spesifik (misalnya ``Attention Mechanism'', ``Encoder-Decoder Models''). Strategi dua tingkat ini memungkinkan sistem menjawab pertanyaan holistik ($\mathcal{K}_h$) maupun presisi tinggi ($\mathcal{K}_l$).
                     \begin{figure}[htbp]
                         \centering
                         \begin{tikzpicture}[
@@ -652,7 +602,7 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
                         \label{fig:contoh_ekstraksi_kata_kunci}
                     \end{figure}
 
-                    \hspace*{0.75cm}Visualisasi dari proses ekstraksi kata kunci bertingkat ini disajikan pada Gambar \ref{fig:contoh_ekstraksi_kata_kunci}. Dalam skema tersebut, LLM difungsikan sebagai mesin penalaran (\textit{reasoning engine}) yang mensintesis informasi dari pertanyaan asli dan petunjuk semantik. Melalui proses inferensi, LLM memecah kompleksitas pertanyaan menjadi komponen-komponen penyusunnya, memastikan bahwa pencarian informasi selanjutnya tidak hanya relevan secara leksikal tetapi juga selaras secara kontekstual dengan intensi pengguna. Pendekatan hierarkis ini secara signifikan meningkatkan cakupan pencarian (\textit{recall}) sekaligus menjaga ketepatan (\textit{precision}) hasil akhir.
+                    \hspace*{0.75cm}\ref{fig:contoh_ekstraksi_kata_kunci} mengilustrasikan proses ini. \textit{LLM} berfungsi sebagai \textit{reasoning engine} yang mensintesis pertanyaan asli dengan petunjuk semantik, memecah kompleksitas kueri menjadi komponen pencarian yang relevan secara leksikal dan kontekstual. Pendekatan hierarkis ini meningkatkan \textit{recall} sekaligus menjaga \textit{precision}.
 
               \item \textbf{Ekstraksi Informasi Lokal Berbasis Subgraf (\textit{Local Retrieval})}
                     % Diagram Tahapan Pembentukan Subgraf (TikZ) - Academic Style
@@ -780,27 +730,25 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
                         \label{fig:pembentukan-subgraf}
                     \end{figure}
 
-                    \hspace*{0.75cm}Tahap ini difokuskan untuk menjawab pertanyaan yang membutuhkan ketepatan tinggi terhadap entitas tertentu. Sistem melakukan \textit{anchor node matching} pada graf untuk menemukan entitas yang relevan dengan petunjuk (\textit{clues}) yang telah diekstrak sebelumnya. Setelah node ditemukan, sistem melakukan \textit{graph traversal} (penelusuran graf) sejauh 1-hop atau 2-hop untuk mengambil konteks tetangga terdekat.
-
-                    \hspace*{0.75cm}Untuk menjawab pertanyaan yang memerlukan pemahaman lokal, sistem menggunakan metode ekstraksi subgraf yang diarahkan oleh kata kunci \textit{low level} $K^l$. Detailnya dijelaskan sebagai berikut:
+                    \hspace*{0.75cm}Tahap ini menjawab pertanyaan yang membutuhkan ketepatan tinggi terhadap entitas tertentu. Sistem melakukan \textit{anchor node matching} untuk menemukan entitas relevan, lalu menelusuri graf sejauh 1--2 hop untuk mengambil konteks tetangga. Metode ekstraksi subgraf diarahkan oleh kata kunci \textit{low-level} $\mathcal{K}_l$ dengan tahapan berikut:
 
                     \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=6pt]
 
-                        \item \textbf{\textit{Node Matching} (Pencocokan Entitas):} \textit{Graph nodes} dicocokkan dengan kata kunci \textit{low level} ($\mathcal{K}_l$) menggunakan metrik \textit{vector similarity}, dengan memprioritaskan \textit{nodes} yang memiliki \textit{cosine similarity} lebih tinggi terhadap \textit{keyword embeddings}.
+                        \item \textbf{\textit{Node Matching} (Pencocokan Entitas):} \textit{Graph nodes} dicocokkan dengan kata kunci \textit{low level} ($\mathcal{K}_l$) menggunakan metrik \textit{vector similarity} yang memprioritaskan \textit{nodes} dengan nilai \textit{cosine similarity} tertinggi terhadap \textit{keyword embeddings}.
 
-                        \item \textbf{\textit{Subgraph Construction}:} Setelah titik jangkar ditetapkan, sistem melakukan penelusuran jalur untuk menghubungkan simpul-simpul tersebut. Algoritma pencarian jalur terpendek (\textit{shortest path algorithms}) diterapkan untuk menemukan rute paling efisien yang menghubungkan entitas-entitas terkait.
+                        \item \textbf{\textit{Subgraph Construction}:} Simpul-simpul jangkar dihubungkan menggunakan \textit{shortest path algorithms} untuk menemukan rute paling efisien antar entitas terkait.
 
-                        \item \textbf{\textit{Pruning}:} Untuk menjaga fokus informasi, sistem mengeliminasi \textit{node} atau \textit{edge} yang dianggap \textit{outlier} atau memiliki relevansi rendah terhadap konteks utama, sehingga subgraf menjadi lebih padat dan bermakna.
+                        \item \textbf{\textit{Pruning}:} \textit{Node} atau \textit{edge} dengan relevansi rendah dieliminasi agar subgraf tetap padat dan bermakna.
 
-                        \item \textbf{\textit{Text Unit Extraction}:} \textit{Textual chunks} yang diasosiasikan dengan \textit{retained edges} dan muncul dalam \textit{one-hop ego-graph} dari \textit{nodes} diperingkat berdasarkan frekuensi dalam subgraf, dengan segmen peringkat teratas diprioritaskan untuk \textit{retrieval}.
+                        \item \textbf{\textit{Text Unit Extraction}:} \textit{Textual chunks} yang terasosiasi dengan \textit{retained edges} dalam lingkup \textit{one-hop ego-graph} diperingkat berdasarkan frekuensi kemunculannya. Segmen teratas diprioritaskan untuk \textit{retrieval}.
 
-                        \item \textbf{\textit{Edge Expansion}:} Subgraf diperluas secara iteratif dengan menggabungkan \textit{one-hop neighbors} dari \textit{matched nodes}, memperkenalkan \textit{additional edges} yang memenuhi kriteria relevansi.
+                        \item \textbf{\textit{Edge Expansion}:} Subgraf diperluas dengan menggabungkan \textit{one-hop neighbors} dari \textit{matched nodes} beserta \textit{edges} yang memenuhi kriteria relevansi.
 
-                        \item \textbf{\textit{Data Truncation}:} Untuk mematuhi batasan komputasi, seluruh data yang diekstraksi, termasuk \textit{nodes}, \textit{edges}, dan \textit{text units}, dipangkas secara bertahap hingga total jumlah token memenuhi ambang batas yang telah ditentukan.
+                        \item \textbf{\textit{Data Truncation}:} Data yang diekstraksi (\textit{nodes}, \textit{edges}, \textit{text units}) dipangkas hingga total token memenuhi ambang batas komputasi.
 
                     \end{enumerate}
 
-                    \hspace*{0.75cm}Rangkaian proses sebelumnya menghasilkan keluaran berupa konteks lokal terstruktur yang akan dikirimkan ke model generasi. \ref{fig:pembentukan-subgraf} menunjukan bagaimana subgraf diambil dan secara matematis, hasil akhir dari \textit{pipeline local retrieval} ini dinotasikan sebagai himpunan tiga komponen utama: entitas ($\mathcal{E}$), relasi ($\mathcal{R}$), dan unit teks ($\mathcal{T}$), sebagaimana dinyatakan dalam persamaan berikut:
+                    \hspace*{0.75cm}Proses ini menghasilkan konteks lokal terstruktur (\ref{fig:pembentukan-subgraf}). Hasil akhir dinotasikan sebagai tiga komponen: entitas ($\mathcal{E}$), relasi ($\mathcal{R}$), dan unit teks ($\mathcal{T}$):
 
                     \begin{equation}
                         \mathcal{L}_{\text{local}} = (\mathcal{E}_{\text{local}}, \mathcal{R}_{\text{local}}, \mathcal{T}_{\text{local}})
@@ -808,14 +756,12 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
                     \end{equation}
 
                     \noindent
-                    dimana persamaan ini menegaskan bahwa konteks lokal $\mathcal{L}_{\text{local}}$ adalah fungsi dari kata kunci spesifik dan struktur graf global, yang telah direduksi menjadi subset informasi yang paling signifikan untuk menjawab kueri pengguna.
+                    di mana $\mathcal{L}_{\text{local}}$ merupakan fungsi dari kata kunci spesifik dan struktur graf, yang direduksi menjadi subset informasi paling signifikan untuk menjawab kueri.
 
 
               \item \textbf{Ekstraksi Jejaring Global (\textit{Global Edge Network Retrieval})}
 
-                    \hspace*{0.75cm}Jalur ini dirancang untuk menjawab pertanyaan yang bersifat eksploratif atau membutuhkan pemahaman tematik yang luas (\textit{sensemaking}), di mana jawaban tidak bergantung pada satu entitas spesifik melainkan pada sintesis dari berbagai hubungan antar konsep. Sistem memanfaatkan Kata Kunci Tingkat Tinggi (\textit{High-level Keywords}) $\mathcal{K}_h$ sebagai basis pencarian untuk mengekstraksi \textit{Global Edge Network}. Berbeda dengan metode lokal yang menelusuri graf berdasarkan kedekatan topologi (\textit{hops}), metode ini menggunakan pendekatan berbasis vektor untuk menemukan relasi yang relevan secara semantik di seluruh graf, tanpa batasan jarak antar \textit{nodes}.
-
-                    \hspace*{0.75cm}Proses ekstraksi informasi global ini terdiri dari rangkaian tahapan sistematis sebagai berikut:
+                    \hspace*{0.75cm}Jalur ini menjawab pertanyaan eksploratif yang membutuhkan pemahaman tematik luas (\textit{sensemaking}). Sistem menggunakan \textit{High-level Keywords} $\mathcal{K}_h$ untuk mengekstraksi \textit{Global Edge Network} berbasis vektor, tanpa batasan jarak topologi antar \textit{nodes}. Tahapannya meliputi:
 
                     \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=6pt]
 
@@ -823,66 +769,65 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
 
                         \item \textbf{\textit{Nodes Retrieval}:} \textit{Nodes} yang terkait dengan \textit{edges} terpilih diekstraksi, kemudian diurutkan berdasarkan derajat keterhubungannya (\textit{degree}).
 
-                        \item \textbf{\textit{Edge Data Processing}:} \textit{Edges} yang terambil dianalisis untuk mengekstraksi metadata, meliputi \textit{degree} (jumlah derajat antara \textit{source node} dan \textit{target node}) serta \textit{weight} (bobot kekuatan hubungan semantik), guna mengkuantifikasi signifikansi struktural dan kontekstualnya.
+                        \item \textbf{\textit{Edge Data Processing}:} Metadata \textit{edges} diekstraksi, meliputi \textit{degree} (jumlah koneksi \textit{source/target node}) dan \textit{weight} (kekuatan hubungan semantik) untuk mengkuantifikasi signifikansinya.
 
-                        \item \textbf{\textit{Integration and Ranking}:} \textit{Edges} dikumpulkan dan diperingkat (\textit{ranked}) menggunakan metrik komposit yang menggabungkan skor relevansi (berdasarkan keselarasan kata kunci) dan bobot koneksi, untuk memastikan bahwa tautan konseptual yang dominan diprioritaskan.
+                        \item \textbf{\textit{Integration and Ranking}:} \textit{Edges} diperingkat menggunakan metrik komposit yang menggabungkan skor relevansi dan bobot koneksi, memprioritaskan tautan konseptual dominan.
 
-                        \item \textbf{\textit{Text Unit Extraction}:} \textit{Text chunks} yang diasosiasikan dengan \textit{edges} diperingkat berdasarkan kemiripan antara \textit{edges} tersebut dengan kata kunci tingkat tinggi, kemudian diambil sebagai konteks pendukung.
+                        \item \textbf{\textit{Text Unit Extraction}:} \textit{Text chunks} terasosiasi dengan \textit{edges} diperingkat berdasarkan kemiripan dengan kata kunci \textit{global} dan diambil sebagai konteks pendukung.
 
-                        \item \textbf{\textit{Data Truncation}:} Untuk mematuhi batasan komputasi, seluruh data yang diekstraksi, termasuk \textit{nodes}, \textit{edges}, dan \textit{text units}, dipangkas secara bertahap hingga total jumlah token memenuhi ambang batas yang telah ditentukan.
+                        \item \textbf{\textit{Data Truncation}:} Data dipangkas hingga total token memenuhi ambang batas komputasi.
 
                     \end{enumerate}
 
                     \noindent
-                    Mekanisme ini menghasilkan konteks global yang kaya akan pola hubungan, yang diformulasikan dalam persamaan:
+                    Mekanisme ini menghasilkan konteks global yang kaya akan informasi hubungan, yang diformulasikan dalam persamaan:
                     \begin{equation}
                         \mathcal{L}_{\text{global}} = (\mathcal{E}_{\text{global}}, \mathcal{R}_{\text{global}}, \mathcal{T}_{\text{global}})
                         = \text{pipeline}_{\text{global}}(\mathcal{K}_h, G).
                     \end{equation}
                     \noindent
-                    Kombinasi antara presisi tinggi dari \textit{Local Retrieval} dan wawasan luas dari \textit{Global Retrieval} inilah yang menjadi keunggulan arsitektur \textit{Graph-RAG} dalam menangani kompleksitas literatur ilmiah.
+                    Sinergi antara presisi tinggi \textit{Local Retrieval} dan cakupan luas \textit{Global Retrieval} menjadi keunggulan utama arsitektur \textit{GraphRAG} dalam menangani kompleksitas literatur ilmiah.
 
-              \item \textbf{LLM Generation \& Response}
-
-                    \hspace*{0.75cm}Tahap akhir mengirimkan augmented prompt ke \textit{LLM} yang berisi: (1) user query asli, (2) konteks terintegrasi dari tahap sebelumnya, dan (3) instruction untuk menghasilkan jawaban berdasarkan konteks. Karena konteks sudah melalui validasi dual-path (\textit{graph traversal} + \textit{vector similarity}), \textit{LLM} dapat menghasilkan jawaban yang lebih akurat dan terfokus dari \textit{knowledge graph}.
+              \item \textbf{\textit{LLM Generation} \& \textit{Response}}
+                    \hspace*{0.75cm}Tahap ini merupakan fase akhir, di mana informasi yang telah diekstraksi dari \textit{local} dan \textit{global} disintesis. Konteks yang terintegrasi ini kemudian disatukan dengan kueri asli pengguna untuk membentuk sebuah \textit{augmented prompt}. \textit{Augmented prompt} ini kemudian dikirimkan ke \textit{LLM} untuk menghasilkan jawaban akhir.
           \end{enumerate}
 
     \item \textbf{Evaluasi Sistem}
           \label{subsec:system-evaluation}
 
-          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan standar \textit{RAGAS (Retrieval-Augmented Generation Assessment System)}, yang menyediakan metrik komprehensif untuk menilai dua dimensi utama: kemampuan pengambilan informasi relevan (\emph{retrieval quality}) dan kualitas jawaban (\emph{generation quality}).
+          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan kerangka \textit{RAGAS (Retrieval-Augmented Generation Assessment System)} yang menyediakan metrik komprehensif untuk menilai dua dimensi utama, yaitu: kemampuan pengambilan informasi relevan (\textit{retrieval quality}) dan kualitas jawaban yang dihasilkan (\textit{generation quality}).
 
-          \hspace*{0.75cm}Skenario eksperimen membandingkan \textit{Graph-RAG} dan \textit{Vector-RAG} menggunakan 40 pertanyaan akademik yang mencakup aspek faktual, relasional, dan sintesis, dilengkapi \textit{ground truth} manual. Lima metrik utama digunakan sebagai tolok ukur:
+          \hspace*{0.75cm}Skenario eksperimen dirancang untuk membandingkan \textit{GraphRAG} dan \textit{Vector RAG} menggunakan 40 pertanyaan akademik yang mencakup aspek faktual, relasional, dan sintesis, yang masing-masing dilengkapi dengan \textit{ground truth} manual. Lima metrik utama digunakan sebagai tolok ukur:
 
           \begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=3pt]
 
-              \item \textbf{Context Precision}: Relevansi dokumen terhadap pertanyaan
+              \item \textbf{\textit{Context Precision}}: Relevansi dokumen terhadap pertanyaan
                     \begin{equation}
                         \textit{Context Precision} = \frac{\sum_{k=1}^{K} \textit{Precision}(k) \cdot v_k}{\text{Total item relevan}}
                     \end{equation}
 
-              \item \textbf{Context Recall}: Rasio ground truth yang didukung konteks
+              \item \textbf{\textit{Context Recall}}: Rasio \textit{ground truth} yang didukung konteks
                     \begin{equation}
                         \textit{Context Recall} = \frac{\text{Kalimat GT didukung}}{\text{Total kalimat GT}}
                     \end{equation}
 
-              \item \textbf{Answer Correctness}: Kecocokan jawaban dengan ground truth
+              \item \textbf{\textit{Answer Correctness}}: Kecocokan jawaban dengan \textit{ground truth}
                     \begin{equation}
                         \textit{Answer Correctness} = \frac{\text{TP}}{\text{TP} + 0.5 \cdot \text{FP} + \text{FN}}
                     \end{equation}
 
-              \item \textbf{Faithfulness}: Rasio klaim terverifikasi (kontrol halusinasi)
+              \item \textbf{\textit{Faithfulness}}: Rasio klaim terverifikasi (kontrol halusinasi)
                     \begin{equation}
-                        \textit{Faithfulness} = \frac{V_S}{\text{V}_S}
+                        \textit{Faithfulness} = \frac{|V|}{|S|}
                     \end{equation}
 
-              \item \textbf{Answer Relevancy}: Keselarasan jawaban dengan pertanyaan
+              \item \textbf{\textit{Answer Relevancy}}: Keselarasan jawaban dengan pertanyaan
                     \begin{equation}
-                        \textit{Answer Relevancy} = 1 - \frac{1}{n} \sum_{i=1}^{n} \text{sim}(q, q_i)
+                        \textit{Answer Relevancy} = \frac{1}{n} \sum_{i=1}^{n} \cos(E_{q_i}, E_q)
                     \end{equation}
 
           \end{enumerate}
-          Penelitian menetapkan target keberhasilan sistem berdasarkan threshold berikut:
+          Penelitian menetapkan target keberhasilan sistem berdasarkan \textit{threshold} berikut:
           \begin{itemize}[leftmargin=0.75cm]
               \item \textit{Context Precision} $> 0.85$ (relevansi tinggi)
               \item \textit{Context Recall} $> 0.80$ (cakupan informasi luas)
@@ -890,18 +835,18 @@ Alur penelitian dirancang dengan mekanisme umpan balik (\textit{feedback loop}) 
               \item \textit{Answer Correctness} $> 0.75$ (keakuratan jawaban)
           \end{itemize}
 
-          Sistem dianggap berhasil jika memenuhi standar pada seluruh metrik tersebut. Untuk validasi efektivitas, dilakukan perbandingan benchmarking antara Baseline (Standard Vector-RAG) dengan sistem Hybrid Graph-RAG yang diusulkan.
+          Sistem dianggap berhasil apabila memenuhi standar seluruh metrik tersebut. Untuk memvalidasi efektivitas, dilakukan perbandingan \textit{benchmarking} antara \textit{Baseline} (\textit{Standard Vector RAG}) dengan sistem \textit{Hybrid GraphRAG} yang diusulkan.
 
 
           % 6. GUI Implementation
     \item \textbf{Implementasi GUI (\textit{GUI Implementation})}
 
-          \hspace*{0.75cm}Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan menggunakan \textit{Streamlit} untuk memfasilitasi interaksi pengguna. Sistem menampilkan jawaban, referensi sumber, dan visualisasi \textit{sub-graf} secara \textit{real-time} untuk memberikan transparansi kepada pengguna mengenai proses perolehan jawaban.
+          \hspace*{0.75cm}Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan menggunakan \textit{Streamlit} untuk memfasilitasi interaksi pengguna dengan sistem. Antarmuka ini menampilkan jawaban, referensi sumber, dan visualisasi subgraf secara \textit{real-time}, sehingga memberikan transparansi terhadap proses perolehan jawaban.
 \end{enumerate}
 
 \section{JADWAL PENELITIAN}
 
-Jadwal penelitian disusun dalam Tabel \ref{tab:jadwal-penelitian}, mencakup seluruh tahapan dari persiapan hingga penyelesaian skripsi selama tiga bulan, namun tetap fleksibel menyesuaikan perkembangan progres.
+Jadwal penelitian disusun dalam \ref{tab:jadwal-penelitian}, mencakup seluruh tahapan dari persiapan hingga penyelesaian skripsi selama enam bulan, namun tetap fleksibel menyesuaikan perkembangan progres.
 
 \begin{table}[htbp]
     \centering
@@ -909,26 +854,23 @@ Jadwal penelitian disusun dalam Tabel \ref{tab:jadwal-penelitian}, mencakup selu
     \label{tab:jadwal-penelitian}
     \renewcommand{\arraystretch}{1.3}
     \small
-    \begin{tabular}{|p{3.5cm}|c|c|c|c|c|c|c|c|c|c|c|c|}
+    \begin{tabular}{@{}|l|c|c|c|c|c|c|@{}}
         \hline
-        \multirow{2}{*}{\textbf{Kegiatan}} & \multicolumn{4}{c|}{\textbf{Bulan I}} & \multicolumn{4}{c|}{\textbf{Bulan II}} & \multicolumn{4}{c|}{\textbf{Bulan III}}                                                                                                                                                                                                       \\
-        \cline{2-13}
-                                           & 1                                     & 2                                      & 3                                       & 4                   & 1                   & 2                   & 3                   & 4                   & 1                   & 2                   & 3                   & 4                   \\
+        \textbf{Kegiatan}       & \textbf{Januari}    & \textbf{Februari}   & \textbf{Maret}      & \textbf{April}      & \textbf{Mei}        & \textbf{Juni}       \\
         \hline
-        Studi Literatur                    & \cellcolor{gray!40}                   & \cellcolor{gray!40}                    &                                         &                     &                     &                     &                     &                     &                     &                     &                     &                     \\
+        Studi Literatur         & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     &                     &                     \\
         \hline
-        Pengumpulan Data                   &                                       &                                        & \cellcolor{gray!40}                     & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     &                     &                     &                     &                     &                     \\
+        Pengumpulan Data        &                     & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     &                     \\
         \hline
-        Persiapan Data                     &                                       &                                        &                                         &                     & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     &                     &                     &                     \\
+        Persiapan Data          &                     &                     & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     \\
         \hline
-        Konstruksi KG                      &                                       &                                        &                                         &                     &                     & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     &                     \\
+        Konstruksi KG           &                     &                     &                     & \cellcolor{gray!40} & \cellcolor{gray!40} &                     \\
         \hline
-        Implementasi Hybrid RAG            &                                       &                                        &                                         &                     &                     &                     &                     & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} &                     &                     \\
+        Implementasi Hybrid RAG &                     &                     &                     &                     & \cellcolor{gray!40} & \cellcolor{gray!40} \\
         \hline
-        Evaluasi Sistem                    &                                       &                                        &                                         &                     &                     &                     &                     &                     &                     & \cellcolor{gray!40} & \cellcolor{gray!40} &                     \\
+        Evaluasi Sistem         &                     &                     &                     &                     &                     & \cellcolor{gray!40} \\
         \hline
-
-        Penulisan Skripsi                  &                                       &                                        &                                         &                     & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} \\
+        Penulisan Skripsi       &                     & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} & \cellcolor{gray!40} \\
         \hline
     \end{tabular}
 \end{table}

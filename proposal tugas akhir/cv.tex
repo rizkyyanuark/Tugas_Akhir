@@ -1,0 +1,213 @@
+\documentclass[10pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fontawesome5}
+\usepackage{helvet} % Use Helvetica-like font
+
+% Formatting
+\renewcommand{\familydefault}{\sfdefault} % Set default font to Sans-Serif
+\pagestyle{empty} % No page numbers
+\setlength{\parindent}{0pt} % No indentation
+
+% Section Formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large\bfseries
+}{}{0em}{}[\color{black}\titlerule \vspace{-4pt}]
+
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-1pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textbf{#3} & #4 \\ % Changed to Bold for Role/Degree based on image impression, or keep as is? Let's format as Title (Bold) + details
+    \end{tabular*}\vspace{-5pt}
+}
+
+% Redefining to match the image: 
+% The image has:
+% EMPLYOYER ................. LOCATION
+% ROLE ...................... DATE
+% Both Employer and Role look prominent. 
+% Actually, looking at the image: "Bachelor of Informatics" is Bold. "Marketing Campaign Analyst" is NOT Bold.
+% So:
+% School: Bold
+% Degree: Bold
+% Employer: Bold
+% Job Title: Normal?
+% Let's try to make it flexible or just follow the standard "Jake's Resume" which is usually:
+% Bold School, Italic Degree. 
+% The user said "layout nya seperti gambar ini". The image uses Sans Serif. 
+% Let's stick to ResumeSubheading being: #1 Bold, #2 Normal, #3 Italic/Normal, #4 Italic/Normal.
+% But I will switch to Sans Serif which is the biggest change.
+
+\renewcommand{\resumeSubheading}[4]{
+  \vspace{2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      #3 & #4 \\
+    \end{tabular*}\vspace{-4pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \vspace{2pt}\item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+    \end{tabular*}\vspace{-4pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.0in, label={}]} % Changed margin to 0 to align with section headers
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.2in]} % Adjusted bullet indentation
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-4pt}}
+
+\begin{document}
+\begin{center}
+    \textbf{\Huge \scshape Rizky Yanuar Kristianto} \\ \vspace{5pt}
+    Surabaya, Jawa Timur, Indonesia \\
+    Phone: +6289676257683 \\
+    E-mail: \href{mailto:rizkyyanuarkristianto@gmail.com}{rizkyyanuarkristianto@gmail.com} \\
+    \href{https://linkedin.com/in/rizkyyanuark}{www.linkedin.com/in/rizkyyanuark} \\
+    \href{https://github.com/rizkyyanuark}{https://github.com/rizkyyanuark}
+\end{center}
+
+\vspace{-10pt}
+\begin{center}
+    \small \parbox{0.95\textwidth}{
+        Mahasiswa Sains Data semester akhir dengan pengalaman magang sebagai \textbf{AI Engineer} dan \textbf{Data Engineer}. Terampil membangun solusi AI/ML end-to-end, mulai dari ETL pipeline hingga chatbot berbasis NLP. Siap berkontribusi dalam transformasi digital dan inovasi berbasis data.
+    }
+\end{center}
+
+%-----------EDUCATION-----------
+\section{Pendidikan}
+\resumeSubHeadingListStart
+\resumeSubheading
+{Universitas Negeri Surabaya}{Surabaya, Jawa Timur}
+{\textbf{Sarjana Sains Data (S1)}}{Agu 2022 -- Sekarang}
+\resumeItemListStart
+\resumeItem{\textbf{IPK}: 3.53/4.00 (103 SKS)}
+\resumeItem{Mata Kuliah Relevan: Sains Data, Struktur Data dan Algoritma, Statistika, Kecerdasan Buatan (AI), Machine Learning, Computer Vision, Generative AI.}
+\resumeItemListEnd
+\resumeSubHeadingListEnd
+
+%-----------EXPERIENCE-----------
+\section{Pengalaman Kerja}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Dinas Komunikasi dan Informatika Provinsi Jawa Timur}{Surabaya, Jawa Timur}
+{\textbf{AI Engineer Intern}}{Sep 2024 -- Jan 2025}
+\resumeItemListStart
+\resumeItem{Terlibat dalam program \textbf{Percepatan 100 Hari Kerja Gubernur Jawa Timur} bersama tim pengembangan layanan digital.}
+\resumeItem{Membantu pengembangan fitur chatbot berbasis AI untuk aplikasi \textbf{Majadigi}, melayani \textbf{1.000+} query harian.}
+\resumeItem{Mengimplementasikan komponen \textbf{NLP} untuk memproses pertanyaan pengguna secara otomatis.}
+\resumeItem{Menyusun dokumentasi teknis dan membantu pelatihan \textbf{5} anggota tim operasional.}
+\resumeItemListEnd
+
+\resumeSubheading
+{PT PLN Icon Plus}{Surabaya, Jawa Timur}
+{\textbf{Data Engineer Intern}}{Feb 2024 -- Jun 2024}
+\resumeItemListStart
+\resumeItem{Membangun \textbf{ETL pipeline} menggunakan Apache Airflow dan PySpark untuk mengotomatisasi pengolahan \textbf{50.000+} data operasional harian.}
+\resumeItem{Mengembangkan prototipe chatbot berbasis \textbf{RAG} untuk \textbf{20+} staf, mempercepat akses informasi internal.}
+\resumeItem{Melakukan integrasi data dari \textbf{3} sumber ke dalam \textbf{Data Warehouse} PostgreSQL untuk kebutuhan pelaporan.}
+\resumeItem{Berkolaborasi dengan tim dalam iterasi perbaikan model AI berdasarkan feedback pengguna.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Universitas Negeri Surabaya}{Surabaya, Jawa Timur}
+{\textbf{Asisten Peneliti (Ketua Tim Mahasiswa)}}{Jun 2023 -- Des 2023}
+\resumeItemListStart
+\resumeItem{Memimpin tim \textbf{4} mahasiswa dalam proyek riset deteksi depresi berbasis analisis suara.}
+\resumeItem{Membangun model \textbf{CNN-LSTM} dengan TensorFlow pada \textbf{800+} sampel audio, mencapai akurasi \textbf{85\%}.}
+\resumeItem{Berkontribusi dalam penulisan laporan riset dan pendaftaran \textbf{HKI}.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------ORGANIZATIONAL EXPERIENCE-----------
+\section{Pengalaman Organisasi}
+\resumeSubHeadingListStart
+\resumeSubheading
+{Himpunan Mahasiswa Sains Data}{Surabaya, Jawa Timur}
+{\textbf{Staf Divisi Advokasi dan Kesejahteraan Mahasiswa}}{Jan 2024 -- Jan 2025}
+\resumeItemListStart
+\resumeItem{Membantu penyelenggaraan program \textbf{InSCAW} (Career Workshop) untuk pengembangan karir mahasiswa.}
+\resumeItem{Menjadi penghubung antara mahasiswa dan fakultas dalam koordinasi kegiatan akademik.}
+\resumeItemListEnd
+\resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Proyek}
+\resumeSubHeadingListStart
+\resumeProjectHeading
+{\textbf{Academic Search Assistant with Knowledge Graph RAG (Tugas Akhir)}}{Jan 2025 -- Saat Ini}
+\resumeItemListStart
+\resumeItem{Mengembangkan sistem pencarian literatur akademik menggunakan pendekatan \textbf{Hybrid Vector-Graph RAG}.}
+\resumeItem{Membangun \textbf{Knowledge Graph} untuk meningkatkan konteks dan keterlacakan referensi dalam respons LLM.}
+\resumeItemListEnd
+\resumeProjectHeading
+{\textbf{NV-Bite: Android App with Cloud \& ML Integration (Bangkit Academy)}}{Agu 2024 -- Des 2024}
+\resumeItemListStart
+\resumeItem{Mengikuti program \textbf{Bangkit Academy 2024} dan meraih penghargaan \textbf{Best Presenting Group} dalam presentasi capstone project.}
+\resumeItem{Berkontribusi dalam pengembangan model klasifikasi gambar menggunakan TensorFlow dan deployment di \textbf{Google Cloud Platform}.}
+\resumeItemListEnd
+\resumeProjectHeading
+{\textbf{KIPK Scholarship Sentiment Analysis}}{Jun 2024}
+\resumeItemListStart
+\resumeItem{Membangun pipeline analisis sentimen pada data Twitter menggunakan model \textbf{BiLSTM} dengan Python.}
+\resumeItem{Membuat visualisasi hasil analisis dalam dashboard \textbf{Looker Studio} untuk presentasi kepada stakeholder.}
+\resumeItemListEnd
+\resumeProjectHeading
+{\textbf{Smart Sudoku Solver dengan Computer Vision}}{Jan 2024 -- Agu 2024}
+\resumeItemListStart
+\resumeItem{Mengembangkan aplikasi penyelesai Sudoku otomatis menggunakan \textbf{OpenCV} untuk deteksi grid dan \textbf{CNN} untuk pengenalan digit.}
+\resumeItem{Mengimplementasikan algoritma backtracking untuk menyelesaikan puzzle secara programatis.}
+\resumeItemListEnd
+\resumeSubHeadingListEnd
+
+%-----------SKILLS-----------
+\section{Keahlian}
+\textbf{Keahlian Teknis:}
+\begin{itemize}[leftmargin=0.2in, itemsep=-2pt, topsep=0pt]
+    \small\item \textbf{Bahasa Pemrograman:} Python, SQL, Bash, R.
+    \item \textbf{AI \& Machine Learning:} TensorFlow, PyTorch, Keras, Scikit-learn, Langchain (LLM), OpenCV (Computer Vision), NLP.
+    \item \textbf{Data Engineering \& Cloud:} Apache Airflow, PySpark, PostgreSQL, MySQL, Google Cloud Platform (GCP), BigQuery, Docker.
+    \item \textbf{Visualisasi Data:} Matplotlib, Looker Studio, Tableau, Excel.
+    \item \textbf{Keahlian Non-Teknis:} Manajemen Proyek, Kepemimpinan Tim, Komunikasi Strategis, Pemecahan Masalah, Adaptabilitas.
+\end{itemize}
+\vspace{2pt} % Positive spacing to separate categories
+
+\textbf{Sertifikasi \& Pelatihan:}
+\begin{itemize}[leftmargin=0.2in, itemsep=-2pt, topsep=0pt]
+    \small\item \textbf{JuaraGCP Session 11} -- Google Cloud
+    \item \textbf{DeepLearning.AI TensorFlow Developer} -- DeepLearning.AI
+    \item \textbf{TensorFlow: Data and Deployment} -- DeepLearning.AI
+    \item \textbf{Generative AI for Everyone} -- DeepLearning.AI
+    \item \textbf{Learn Data Analysis with Python} -- Dicoding
+\end{itemize}
+\vspace{2pt} % Positive spacing to separate categories
+
+\textbf{Bahasa:}
+\begin{itemize}[leftmargin=0.2in, itemsep=-2pt, topsep=0pt]
+    \small\item \textbf{Fasih:} Bahasa Indonesia, Bahasa Inggris (\textbf{IELTS: 7.5})
+    \item \textbf{Konversasional:} Bahasa Jawa
+\end{itemize}
+
+\end{document}

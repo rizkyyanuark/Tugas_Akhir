@@ -34,6 +34,9 @@ Teknik Elektro
 Sistem Informasi
 Pendidikan Teknologi Informasi
 Teknik Informatika
+Bisnis Digital
+D4 Manajemen Informatika
+
 
 
 # ================================================
