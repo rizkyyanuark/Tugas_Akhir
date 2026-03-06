@@ -1,0 +1,63 @@
+flowchart TD
+    Start((Mulai Ekstraksi\nInput: Judul Paper)) --> Phase1
+
+    %% --- PHASE 1: SEMANTIC SCHOLAR + SCRAPING ---
+    subgraph PHASE1 ["Phase 1: Semantic Scholar + Publisher Scraping"]
+        Phase1[Cari Judul di S2 API]
+        Phase1 --> S2_Check{Ditemukan?}
+        S2_Check -- Ya --> S2_Extract["Ekstrak:\n- DOI\n- Abstract\n- TLDR\n- DocType\n- Open Access PDF Link"]
+        S2_Check -- Tidak --> P1_End
+        S2_Extract --> S2_Note["S2 url = halaman S2\nBUKAN publisher"]
+        S2_Note --> HasLink{"DOI atau\nPDF Link\nada?"}
+        HasLink -- Ya --> ScrapeP1["Langsung Scrape Publisher:\n1. Open Access PDF\n2. DOI redirect ke publisher"]
+        HasLink -- Tidak --> P1_End
+        ScrapeP1 --> KnownP1{"Publisher\nTerkenal?"}
+        KnownP1 -- "IEEE" --> IEEE1["Author Keywords saja\n(skip IEEE Keywords\ndan INSPEC)"]
+        KnownP1 -- "Lainnya" --> General1["Parsing umum:\nHTML keywords lalu PDF"]
+        IEEE1 --> P1_End
+        General1 --> P1_End
+    end
+
+    %% --- PHASE 2: OPENALEX + CONDITIONAL SCRAPING ---
+    P1_End --> P2_Gate
+    subgraph PHASE2 ["Phase 2: OpenAlex + Conditional Scraping"]
+        P2_Gate{"Author IDs, Keywords,\nDOI, Abstract, DocType\nAda Yang KOSONG?"}
+        P2_Gate -- YA --> P2_Search["Cari via DOI atau Judul\n(Validasi kemiripan judul)"]
+        P2_Search --> OA_Check{Ditemukan?}
+        OA_Check -- Ya --> OA_Extract["Ekstrak:\n- Author IDs\n- DOI (jika S2 gagal)\n- Abstract (Rekonstruksi)\n- DocType"]
+        OA_Check -- Tidak --> P2_End
+        OA_Extract --> OA_KW["Keywords Concepts\nDISIMPAN sebagai fallback\n(bukan dari penulis)"]
+        OA_KW --> NewDOI{"OpenAlex memberi\nDOI BARU dan\nKeywords kosong?"}
+        NewDOI -- Ya --> ScrapeP2["Scrape publisher\nvia DOI baru"]
+        NewDOI -- Tidak --> CheckFallback
+        ScrapeP2 --> CheckFallback{"Keywords\nmasih kosong?"}
+        CheckFallback -- Ya --> UseFallback["Pakai OpenAlex Concepts\nsebagai fallback"]
+        CheckFallback -- Tidak --> P2_End
+        UseFallback --> P2_End
+        P2_Gate -- LENGKAP --> P2_Skip["Lewati Phase 2"] --> P2_End
+    end
+
+    %% --- PHASE 3: GOOGLE SCHOLAR ---
+    P2_End --> P3_Gate
+    subgraph PHASE3 ["Phase 3: Google Scholar (Proxy Berbayar)"]
+        P3_Gate{"Author IDs, Abstract,\nKeywords, atau DOI\nMasih KOSONG?"}
+        P3_Gate -- YA --> P3_Search["Cari via Google Scholar\n(1x Proxy Call)"]
+        P3_Search --> P3_Check{Ditemukan?}
+        P3_Check -- Ya --> P3_Extract["Ekstrak yg kosong:\n- Abstract (Snippet)\n- Author IDs (Regex)\n- Keywords"]
+        P3_Check -- Tidak --> P3_End
+        P3_Extract --> DosenMatch{"Scholar ID cocok\ndi dosen CSV?"}
+        DosenMatch -- Ya --> FormatDosen["Format:\nNama (Scholar ID)"] --> P3_End
+        DosenMatch -- Tidak --> AbaikanDosen["ID Dibuang"] --> P3_End
+        P3_Gate -- LENGKAP --> P3_Skip["HEMAT PROXY!\nLewati Phase 3"] --> P3_End
+    end
+
+    %% --- HASIL ---
+    P3_End --> Finish(((Hasil Akhir:\nDOI + Abstract\n+ Keywords\n+ Author IDs\n+ DocType)))
+
+    style Start fill:#f9f,stroke:#333,stroke-width:2px
+    style Finish fill:#bbf,stroke:#333,stroke-width:4px
+    style PHASE1 fill:#e6f3ff,stroke:#0066cc
+    style PHASE2 fill:#fff2cc,stroke:#d6b656
+    style PHASE3 fill:#f8cecc,stroke:#b85450
+    style S2_Note fill:#ffe6e6,stroke:#cc0000
+    style OA_KW fill:#fff0d0,stroke:#e6a000

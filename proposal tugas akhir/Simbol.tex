@@ -1,0 +1,151 @@
+% ============================================
+% DAFTAR SIMBOL
+% File: Simbol.tex
+% ============================================
+
+% Gunakan package glossaries untuk simbol
+
+% ============================================
+% 1. SIMBOL GRAF & STRUKTUR DATA
+% ============================================
+
+\newglossaryentry{sym:G}{
+    type=symbols,
+    name={\ensuremath{G}},
+    description={\textit{Knowledge Graph} yang didefinisikan sebagai $G = (E, R)$},
+    sort=G
+}
+
+\newglossaryentry{sym:E}{
+    type=symbols,
+    name={\ensuremath{E}},
+    description={Himpunan entitas dalam \textit{Knowledge Graph}},
+    sort=E
+}
+
+\newglossaryentry{sym:R}{
+    type=symbols,
+    name={\ensuremath{R}},
+    description={Himpunan relasi dalam \textit{Knowledge Graph}},
+    sort=R
+}
+
+\newglossaryentry{sym:T}{
+    type=symbols,
+    name={\ensuremath{T}},
+    description={Himpunan \textit{triplet} pengetahuan $(h,r,t)$},
+    sort=T
+}
+
+\newglossaryentry{sym:Nraw}{
+    type=symbols,
+    name={\ensuremath{N_{\text{raw}}}},
+    description={Jumlah total data mentah publikasi yang dikumpulkan},
+    sort=Nraw
+}
+
+
+% ============================================
+% 2. SIMBOL ENTITAS & TRIPLET
+% ============================================
+
+\newglossaryentry{sym:h}{
+    type=symbols,
+    name={\ensuremath{h}},
+    description={Entitas asal (\textit{head}) dalam \textit{triplet}},
+    sort=h
+}
+
+\newglossaryentry{sym:r}{
+    type=symbols,
+    name={\ensuremath{r}},
+    description={Relasi atau predikat dalam \textit{triplet}},
+    sort=r
+}
+
+\newglossaryentry{sym:t}{
+    type=symbols,
+    name={\ensuremath{t}},
+    description={Entitas tujuan (\textit{tail}) dalam \textit{triplet}},
+    sort=t
+}
+
+
+% ============================================
+% 3. SIMBOL SYSTEM FLOW (RAG)
+% ============================================
+
+\newglossaryentry{sym:q}{
+    type=symbols,
+    name={\ensuremath{q}},
+    description={Pertanyaan atau kueri dari pengguna},
+    sort=q
+}
+
+\newglossaryentry{sym:a}{
+    type=symbols,
+    name={\ensuremath{a}},
+    description={Jawaban atau respons yang dihasilkan sistem},
+    sort=a
+}
+
+\newglossaryentry{sym:Kclues}{
+    type=symbols,
+    name={\ensuremath{\mathcal{K}^{clues}}},
+    description={Kata kunci petunjuk awal (\textit{semantic clues})},
+    sort=Kclues
+}
+
+\newglossaryentry{sym:Kl}{
+    type=symbols,
+    name={\ensuremath{\mathcal{K}_l}},
+    description={Kata kunci spesifik (\textit{Low-level Keywords})},
+    sort=Kl
+}
+
+\newglossaryentry{sym:Kh}{
+    type=symbols,
+    name={\ensuremath{\mathcal{K}_h}},
+    description={Kata kunci tema besar (\textit{High-level Keywords})},
+    sort=Kh
+}
+
+\newglossaryentry{sym:Llocal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{L}_{\text{local}}}},
+    description={Konteks informasi lokal dari subgraf},
+    sort=Llocal
+}
+
+\newglossaryentry{sym:Lglobal}{
+    type=symbols,
+    name={\ensuremath{\mathcal{L}_{\text{global}}}},
+    description={Konteks informasi global dari agregasi relasi},
+    sort=Lglobal
+}
+
+
+% ============================================
+% 4. METRIK EVALUASI
+% ============================================
+
+\newglossaryentry{sym:absV}{
+    type=symbols,
+    name={\ensuremath{|V|}},
+    description={Jumlah klaim yang terverifikasi (\textit{verified claims})},
+    sort=V
+}
+
+\newglossaryentry{sym:absS}{
+    type=symbols,
+    name={\ensuremath{|S|}},
+    description={Total jumlah klaim dalam jawaban (\textit{total statements})},
+    sort=S
+}
+
+\newglossaryentry{sym:sim}{
+    type=symbols,
+    name={\ensuremath{\text{sim}(q, \hat{q})}},
+    description={Fungsi kemiripan (\textit{similarity}) antara dua teks},
+    sort=sim
+}

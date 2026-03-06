@@ -1,0 +1,563 @@
+\makeglossaries
+
+% ============================================
+% ISTILAH STATISTIKA DASAR
+% ============================================
+\newglossaryentry{statistik}
+{
+	name={statistik},
+	description={teknik pengumpulan, pengolahan, penyajian serta penarikan kesimpulan dari suatu data yang digunakan dalam proses pengambilan keputusan}
+}
+\newglossaryentry{statistika}
+{
+	name={statistika},
+	description={ilmu yang mempelajari teknik pengumpulan, pengolahan, penyajian serta penarikan kesimpulan dari suatu data yang digunakan dalam proses pengambilan keputusan}
+}
+\newglossaryentry{variabel}
+{
+	name={variabel},
+	description={suatu karakteristik atau atribut yang dapat diasumsikan dengan nilai yang berbeda}
+}
+\newglossaryentry{populasi}
+{
+	name={populasi},
+	description={kumpulan dari individu atau item yang mungkin diperoleh dari suatu pengamatan atau percobaan}
+}
+\newglossaryentry{sampel}
+{
+	name={sampel},
+	description={bagian dari populasi yang diambil untuk keperluan analisis data}
+}
+\newglossaryentry{mean}
+{
+	name={mean},
+	description={rata-rata atau jumlahan dari seluruh nilai observasi dibagi banyaknya obeservasi}
+}
+\newglossaryentry{modus}
+{
+	name={modus},
+	description={data yang memiliki frekuensi terjadinya paling tinggi, data yang paling sering muncul}
+}
+\newglossaryentry{median}
+{
+	name={median},
+	description={nilai yang terletak di tengah setelah data diurutkan}
+}
+\newglossaryentry{varians}
+{
+	name={varians},
+	description={seberapa jauh perbedaan atau jarak setiap nilai observasi dalam suatu populasi dari rata-ratanya}
+}
+\newglossaryentry{standardeviasi}
+{
+	name={standar deviasi},
+	description={akar kuadrat dari variansi}
+}
+\newglossaryentry{histogram}
+{
+	name={histogram},
+	description={diagram batang yang digunakan untuk menyajikan data agar lebih mudah membaca dan memahami data}
+}
+\newglossaryentry{boxplot}
+{
+	name={boxplot},
+	description={gambar yang digunakan untukmenjelaskan letak kuartil-kuartil, nilai maksimum, nilai minimum serta pencilan}
+}
+\newglossaryentry{korelasi}
+{
+	name={korelasi},
+	description={metode statistika yang digunakan untuk menentukan ada atau tidaknya hubungan linear antarvariabel}
+}
+\newglossaryentry{koefisienkorelasi}
+{
+	name={koefisien korelasi},
+	description={ukuran numerik untuk menentukan apakah dua atau lebih variabel terkait secara linear}
+}
+
+% ============================================
+% ISTILAH KNOWLEDGE GRAPH & GRAPH DATABASE
+% ============================================
+\newglossaryentry{knowledgegraph}
+{
+	name={\textit{Knowledge Graph}},
+	description={representasi pengetahuan terstruktur dalam bentuk graf yang terdiri dari entitas (node) dan relasi (edge), di mana setiap fakta direpresentasikan sebagai triplet (subjek, predikat, objek)}
+}
+\newglossaryentry{triplet}
+{
+	name={\textit{triplet}},
+	description={unit dasar dalam \textit{Knowledge Graph} yang terdiri dari tiga elemen: entitas asal (\textit{head}), relasi (\textit{relation}), dan entitas tujuan (\textit{tail}), misalnya (Jakarta, \textit{capitalOf}, Indonesia)}
+}
+\newglossaryentry{node}
+{
+	name={\textit{node}},
+	description={titik atau simpul dalam struktur graf yang merepresentasikan entitas atau konsep tertentu}
+}
+\newglossaryentry{edge}
+{
+	name={\textit{edge}},
+	description={garis penghubung antar \textit{node} dalam graf yang merepresentasikan relasi atau hubungan antara dua entitas}
+}
+\newglossaryentry{subgraph}
+{
+	name={\textit{subgraph}},
+	description={bagian dari graf yang lebih besar, terdiri dari subset node dan edge yang saling terhubung}
+}
+\newglossaryentry{graphdatabase}
+{
+	name={\textit{graph database}},
+	description={basis data yang menggunakan struktur graf untuk menyimpan, memetakan, dan melakukan kueri pada hubungan antar data, contohnya Neo4j}
+}
+
+% ============================================
+% ISTILAH LARGE LANGUAGE MODEL (LLM)
+% ============================================
+\newglossaryentry{llm}
+{
+	name={\textit{Large Language Model} (LLM)},
+	description={model \textit{deep learning} berskala besar yang dilatih pada korpus teks masif untuk memahami dan menghasilkan teks yang menyerupai tulisan manusia}
+}
+\newglossaryentry{transformer}
+{
+	name={\textit{Transformer}},
+	description={arsitektur jaringan saraf yang menggunakan mekanisme \textit{self-attention} untuk memproses urutan data secara paralel, menjadi dasar bagi model bahasa modern seperti BERT dan GPT}
+}
+\newglossaryentry{selfattention}
+{
+	name={\textit{self-attention}},
+	description={mekanisme dalam arsitektur \textit{Transformer} yang memungkinkan model mempertimbangkan hubungan antar kata dalam sebuah kalimat secara simultan, terlepas dari jarak posisinya}
+}
+\newglossaryentry{encoder}
+{
+	name={\textit{encoder}},
+	description={komponen dalam arsitektur \textit{Transformer} yang bertugas mengubah input menjadi representasi vektor kontekstual}
+}
+\newglossaryentry{decoder}
+{
+	name={\textit{decoder}},
+	description={komponen dalam arsitektur \textit{Transformer} yang bertugas menghasilkan output berdasarkan representasi dari \textit{encoder}}
+}
+\newglossaryentry{halusinasi}
+{
+	name={\textit{hallucination}},
+	description={fenomena di mana model bahasa menghasilkan informasi yang terdengar meyakinkan tetapi tidak faktual atau tidak didukung oleh sumber pengetahuan yang valid}
+}
+\newglossaryentry{fewshotlearning}
+{
+	name={\textit{few-shot learning}},
+	description={kemampuan model untuk belajar dan mengerjakan tugas baru hanya dengan beberapa contoh, tanpa perlu pelatihan ulang secara ekstensif}
+}
+\newglossaryentry{chainofthought}
+{
+	name={\textit{chain-of-thought reasoning}},
+	description={teknik prompting yang memandu model bahasa untuk menunjukkan langkah-langkah penalaran secara bertahap sebelum memberikan jawaban akhir}
+}
+\newglossaryentry{parametricmemory}
+{
+	name={\textit{parametric memory}},
+	description={pengetahuan yang tersimpan dalam parameter (bobot) model bahasa yang diperoleh selama proses pelatihan}
+}
+\newglossaryentry{tokenization}
+{
+	name={\textit{tokenization}},
+	description={proses memecah teks menjadi unit-unit kecil (\textit{token}) yang dapat diproses oleh model bahasa}
+}
+\newglossaryentry{token}
+{
+	name={\textit{token}},
+	description={unit dasar teks yang diproses oleh model bahasa, dapat berupa kata, subkata, atau karakter}
+}
+\newglossaryentry{prompt}
+{
+	name={\textit{prompt}},
+	description={instruksi atau masukan teks yang diberikan kepada model bahasa untuk memandu pembuatan respons}
+}
+
+% ============================================
+% ISTILAH RETRIEVAL-AUGMENTED GENERATION (RAG)
+% ============================================
+\newglossaryentry{rag}
+{
+	name={\textit{Retrieval-Augmented Generation} (RAG)},
+	description={kerangka kerja yang memungkinkan model bahasa besar untuk mengakses dan memanfaatkan sumber informasi eksternal sebelum menghasilkan jawaban, guna meningkatkan akurasi dan mengurangi halusinasi}
+}
+\newglossaryentry{graphrag}
+{
+	name={\textit{Graph-Based RAG}},
+	description={evolusi dari RAG konvensional yang mengintegrasikan \textit{Knowledge Graph} sebagai sumber pengetahuan terstruktur untuk menangkap hubungan kompleks antar informasi}
+}
+\newglossaryentry{hybridretrieval}
+{
+	name={\textit{Hybrid Retrieval}},
+	description={strategi pengambilan informasi yang menggabungkan beberapa metode pencarian, seperti pencarian berbasis vektor (\textit{dense}) dan berbasis kata kunci (\textit{sparse}), untuk meningkatkan relevansi hasil}
+}
+\newglossaryentry{denseretrieval}
+{
+	name={\textit{dense retrieval}},
+	description={metode pencarian informasi berdasarkan kemiripan semantik menggunakan representasi vektor padat (\textit{embeddings})}
+}
+\newglossaryentry{sparseretrieval}
+{
+	name={\textit{sparse retrieval}},
+	description={metode pencarian informasi berbasis kata kunci menggunakan representasi vektor jarang seperti TF-IDF atau BM25}
+}
+\newglossaryentry{vectorstore}
+{
+	name={\textit{Vector Store}},
+	description={basis data khusus yang menyimpan dan mengindeks vektor \textit{embedding} untuk mendukung pencarian kemiripan semantik yang efisien}
+}
+\newglossaryentry{embedding}
+{
+	name={\textit{embedding}},
+	description={representasi numerik dalam bentuk vektor berdimensi tinggi yang menangkap makna semantik dari teks, kata, atau entitas}
+}
+\newglossaryentry{chunk}
+{
+	name={\textit{chunk}},
+	description={potongan atau segmen teks yang lebih kecil hasil dari pemecahan dokumen panjang untuk memudahkan pemrosesan oleh model}
+}
+\newglossaryentry{grounding}
+{
+	name={\textit{grounding}},
+	description={proses mendasarkan respons model pada sumber informasi eksternal yang terverifikasi untuk meningkatkan akurasi faktual}
+}
+\newglossaryentry{contextwindow}
+{
+	name={\textit{context window}},
+	description={jumlah maksimum token yang dapat diproses oleh model bahasa dalam satu kali inferensi}
+}
+
+% ============================================
+% ISTILAH INFORMATION EXTRACTION & NLP
+% ============================================
+\newglossaryentry{nlp}
+{
+	name={\textit{Natural Language Processing} (NLP)},
+	description={cabang kecerdasan buatan yang berfokus pada interaksi antara komputer dan bahasa manusia, mencakup pemahaman, analisis, dan generasi teks}
+}
+\newglossaryentry{informationextraction}
+{
+	name={\textit{Information Extraction} (IE)},
+	description={proses mengekstraksi informasi terstruktur dari teks tidak terstruktur secara otomatis}
+}
+\newglossaryentry{knowledgeextraction}
+{
+	name={\textit{Knowledge Extraction} (KE)},
+	description={proses mengonversi informasi mentah menjadi format data terstruktur melalui pengenalan entitas dan ekstraksi relasi}
+}
+\newglossaryentry{ner}
+{
+	name={\textit{Named Entity Recognition} (NER)},
+	description={tugas NLP untuk mengidentifikasi dan mengklasifikasikan entitas bernama dalam teks, seperti nama orang, organisasi, lokasi, atau terminologi teknis}
+}
+\newglossaryentry{relationextraction}
+{
+	name={\textit{Relation Extraction} (RE)},
+	description={tugas NLP untuk mengidentifikasi dan mengklasifikasikan hubungan semantik antara dua atau lebih entitas dalam teks}
+}
+\newglossaryentry{eventextraction}
+{
+	name={\textit{Event Extraction} (EE)},
+	description={tugas NLP untuk mengidentifikasi peristiwa dinamis dalam teks beserta argumen pendukungnya seperti pelaku, waktu, lokasi, dan hasil}
+}
+\newglossaryentry{coreferenceresolution}
+{
+	name={\textit{Coreference Resolution}},
+	description={tugas NLP untuk mengidentifikasi semua ekspresi dalam teks yang merujuk pada entitas yang sama, misalnya menghubungkan kata ganti dengan nama yang dirujuknya}
+}
+\newglossaryentry{entitylinking}
+{
+	name={\textit{Entity Linking}},
+	description={proses menghubungkan entitas yang disebutkan dalam teks ke entitas yang sesuai dalam basis pengetahuan seperti Wikipedia atau Wikidata}
+}
+\newglossaryentry{entityresolution}
+{
+	name={\textit{Entity Resolution}},
+	description={proses menggabungkan rekaman dari berbagai sumber yang merujuk pada entitas dunia nyata yang sama untuk menghindari duplikasi}
+}
+
+% ============================================
+% ISTILAH INFORMATION RETRIEVAL
+% ============================================
+\newglossaryentry{informationretrieval}
+{
+	name={\textit{Information Retrieval} (IR)},
+	description={bidang ilmu yang mempelajari pencarian dan pengambilan informasi relevan dari koleksi dokumen berdasarkan kebutuhan pengguna}
+}
+\newglossaryentry{scholarlysearch}
+{
+	name={\textit{scholarly search}},
+	description={sistem pencarian yang dirancang khusus untuk menemukan literatur ilmiah seperti jurnal, prosiding, dan publikasi akademik}
+}
+\newglossaryentry{ranking}
+{
+	name={\textit{ranking}},
+	description={proses mengurutkan hasil pencarian berdasarkan tingkat relevansi terhadap kueri pengguna}
+}
+\newglossaryentry{reranking}
+{
+	name={\textit{reranking}},
+	description={proses mengurutkan ulang hasil pencarian awal menggunakan model atau kriteria tambahan untuk meningkatkan relevansi}
+}
+\newglossaryentry{queryexpansion}
+{
+	name={\textit{query expansion}},
+	description={teknik memperluas kueri pencarian dengan menambahkan istilah terkait untuk meningkatkan cakupan hasil}
+}
+\newglossaryentry{similarity}
+{
+	name={\textit{similarity}},
+	description={ukuran kemiripan antara dua objek, dalam konteks IR biasanya mengacu pada kemiripan semantik antara kueri dan dokumen}
+}
+\newglossaryentry{relevance}
+{
+	name={\textit{relevance}},
+	description={tingkat kesesuaian atau kecocokan antara dokumen yang ditemukan dengan kebutuhan informasi pengguna}
+}
+
+% ============================================
+% ISTILAH DEEP LEARNING & MACHINE LEARNING
+% ============================================
+\newglossaryentry{deeplearning}
+{
+	name={\textit{Deep Learning}},
+	description={cabang \textit{machine learning} yang menggunakan jaringan saraf tiruan dengan banyak lapisan (\textit{deep neural networks}) untuk mempelajari representasi data secara hierarkis}
+}
+\newglossaryentry{neuralnetwork}
+{
+	name={\textit{neural network}},
+	description={model komputasi yang terinspirasi dari struktur otak manusia, terdiri dari node-node (neuron) yang saling terhubung untuk memproses informasi}
+}
+\newglossaryentry{pretraining}
+{
+	name={\textit{pre-training}},
+	description={tahap pelatihan awal model pada dataset besar untuk mempelajari representasi umum sebelum dilakukan \textit{fine-tuning} untuk tugas spesifik}
+}
+\newglossaryentry{finetuning}
+{
+	name={\textit{fine-tuning}},
+	description={proses melatih ulang model yang sudah di-\textit{pretrain} pada dataset spesifik untuk menyesuaikan dengan tugas tertentu}
+}
+\newglossaryentry{supervisedlearning}
+{
+	name={\textit{supervised learning}},
+	description={paradigma pembelajaran mesin di mana model dilatih menggunakan data yang telah diberi label}
+}
+\newglossaryentry{unsupervisedlearning}
+{
+	name={\textit{unsupervised learning}},
+	description={paradigma pembelajaran mesin di mana model belajar menemukan pola dari data tanpa label}
+}
+\newglossaryentry{zeroshot}
+{
+	name={\textit{zero-shot}},
+	description={kemampuan model untuk mengerjakan tugas baru tanpa pernah melihat contoh dari tugas tersebut selama pelatihan}
+}
+\newglossaryentry{rlhf}
+{
+	name={\textit{Reinforcement Learning from Human Feedback} (RLHF)},
+	description={teknik pelatihan model bahasa menggunakan umpan balik dari manusia untuk menyelaraskan output model dengan preferensi manusia}
+}
+
+% ============================================
+% ISTILAH GRAPH NEURAL NETWORK & GRAPH ALGORITHM
+% ============================================
+\newglossaryentry{gnn}
+{
+	name={\textit{Graph Neural Network} (GNN)},
+	description={arsitektur jaringan saraf yang dirancang khusus untuk memproses data dalam struktur graf dengan memanfaatkan hubungan antar node}
+}
+\newglossaryentry{shortestpath}
+{
+	name={\textit{shortest path}},
+	description={jalur dengan jumlah edge minimum atau bobot total minimum yang menghubungkan dua node dalam graf}
+}
+\newglossaryentry{graphtraversal}
+{
+	name={\textit{graph traversal}},
+	description={proses mengunjungi semua node dalam graf secara sistematis menggunakan algoritma seperti BFS atau DFS}
+}
+\newglossaryentry{onehop}
+{
+	name={\textit{one-hop}},
+	description={node yang terhubung langsung dengan node tertentu melalui satu edge}
+}
+
+% ============================================
+% ISTILAH BIBLIOMETRIK & AKADEMIK
+% ============================================
+\newglossaryentry{bibliometrik}
+{
+	name={bibliometrik},
+	description={analisis kuantitatif terhadap publikasi ilmiah dan pola sitasi untuk mengukur dampak dan tren penelitian}
+}
+\newglossaryentry{sitasi}
+{
+	name={sitasi},
+	description={referensi atau pengutipan terhadap publikasi ilmiah lain dalam sebuah karya akademik}
+}
+\newglossaryentry{kositasi}
+{
+	name={ko-sitasi},
+	description={hubungan antara dua publikasi yang dikutip bersama-sama oleh publikasi ketiga}
+}
+\newglossaryentry{abstrak}
+{
+	name={abstrak},
+	description={ringkasan singkat dari isi suatu publikasi ilmiah yang mencakup tujuan, metode, hasil, dan kesimpulan}
+}
+\newglossaryentry{metadata}
+{
+	name={metadata},
+	description={data yang mendeskripsikan data lain, dalam konteks publikasi mencakup judul, penulis, tahun, afiliasi, dan sebagainya}
+}
+\newglossaryentry{doi}
+{
+	name={\textit{Digital Object Identifier} (DOI)},
+	description={identitas unik dan permanen yang diberikan kepada objek digital seperti artikel jurnal untuk memudahkan pelacakan dan pengutipan}
+}
+\newglossaryentry{afiliasi}
+{
+	name={afiliasi},
+	description={institusi atau organisasi tempat seorang peneliti bekerja atau terdaftar}
+}
+\newglossaryentry{quartile}
+{
+	name={\textit{quartile}},
+	description={pengelompokan jurnal berdasarkan peringkat dampak (Q1-Q4), di mana Q1 menunjukkan jurnal dengan dampak tertinggi dalam bidangnya}
+}
+\newglossaryentry{citescore}
+{
+	name={\textit{CiteScore}},
+	description={metrik dampak jurnal yang dihitung berdasarkan rata-rata sitasi per dokumen dalam periode tiga tahun}
+}
+
+% ============================================
+% ISTILAH DATA PROCESSING & PIPELINE
+% ============================================
+\newglossaryentry{pipeline}
+{
+	name={\textit{pipeline}},
+	description={rangkaian proses atau tahapan yang saling terhubung di mana output dari satu tahap menjadi input untuk tahap berikutnya}
+}
+\newglossaryentry{datacleansing}
+{
+	name={\textit{data cleansing}},
+	description={proses membersihkan data dari kesalahan, inkonsistensi, dan nilai yang hilang untuk meningkatkan kualitas data}
+}
+\newglossaryentry{datavalidation}
+{
+	name={\textit{data validation}},
+	description={proses memverifikasi bahwa data memenuhi kriteria kualitas dan konsistensi yang ditetapkan}
+}
+\newglossaryentry{ingestion}
+{
+	name={\textit{ingestion}},
+	description={proses mengumpulkan dan memasukkan data dari berbagai sumber ke dalam sistem untuk diproses lebih lanjut}
+}
+\newglossaryentry{webscraping}
+{
+	name={\textit{web scraping}},
+	description={teknik ekstraksi data secara otomatis dari halaman web menggunakan program atau skrip}
+}
+\newglossaryentry{indexing}
+{
+	name={\textit{indexing}},
+	description={proses membuat struktur data yang memungkinkan pencarian dan pengambilan informasi secara efisien}
+}
+
+% ============================================
+% ISTILAH EVALUASI MODEL
+% ============================================
+\newglossaryentry{precision}
+{
+	name={\textit{precision}},
+	description={metrik evaluasi yang mengukur proporsi hasil positif yang benar-benar relevan dari semua hasil yang dikembalikan}
+}
+\newglossaryentry{recall}
+{
+	name={\textit{recall}},
+	description={metrik evaluasi yang mengukur proporsi hasil relevan yang berhasil ditemukan dari semua hasil yang seharusnya relevan}
+}
+\newglossaryentry{faithfulness}
+{
+	name={\textit{faithfulness}},
+	description={metrik yang mengukur seberapa konsisten jawaban yang dihasilkan model dengan informasi dari sumber konteks yang diberikan}
+}
+\newglossaryentry{answerrelevance}
+{
+	name={\textit{answer relevance}},
+	description={metrik yang mengukur seberapa relevan dan sesuai jawaban model dengan pertanyaan yang diajukan}
+}
+\newglossaryentry{traceability}
+{
+	name={\textit{traceability}},
+	description={kemampuan untuk melacak sumber atau referensi yang mendukung suatu jawaban atau informasi}
+}
+\newglossaryentry{baseline}
+{
+	name={\textit{baseline}},
+	description={model atau metode pembanding standar yang digunakan untuk mengevaluasi performa sistem yang dikembangkan}
+}
+\newglossaryentry{benchmark}
+{
+	name={\textit{benchmark}},
+	description={dataset atau tugas standar yang digunakan untuk mengukur dan membandingkan performa model atau sistem}
+}
+
+% ============================================
+% ISTILAH SISTEM & APLIKASI
+% ============================================
+\newglossaryentry{questionanswering}
+{
+	name={\textit{Question-Answering} (QA)},
+	description={tugas NLP di mana sistem menerima pertanyaan dan menghasilkan jawaban berdasarkan konteks atau basis pengetahuan yang tersedia}
+}
+\newglossaryentry{chatbot}
+{
+	name={\textit{chatbot}},
+	description={program komputer yang dapat melakukan percakapan dengan pengguna dalam bahasa alami}
+}
+\newglossaryentry{gui}
+{
+	name={\textit{Graphical User Interface} (GUI)},
+	description={antarmuka pengguna grafis yang memungkinkan interaksi dengan sistem melalui elemen visual seperti tombol, menu, dan ikon}
+}
+\newglossaryentry{realtime}
+{
+	name={\textit{real-time}},
+	description={pemrosesan atau respons yang terjadi secara langsung atau hampir instan tanpa penundaan yang signifikan}
+}
+
+% ============================================
+% ISTILAH TEKNIS LAINNYA
+% ============================================
+\newglossaryentry{cognitiveoverload}
+{
+	name={\textit{cognitive overload}},
+	description={kondisi di mana beban informasi yang diterima melebihi kapasitas pemrosesan kognitif seseorang}
+}
+\newglossaryentry{heterogen}
+{
+	name={heterogen},
+	description={terdiri dari elemen-elemen yang beragam atau berbeda jenisnya}
+}
+\newglossaryentry{inferensi}
+{
+	name={inferensi},
+	description={proses menjalankan model untuk menghasilkan prediksi atau output berdasarkan input yang diberikan}
+}
+\newglossaryentry{modular}
+{
+	name={modular},
+	description={pendekatan desain sistem yang membagi fungsionalitas ke dalam komponen-komponen terpisah yang dapat dikembangkan dan dikelola secara independen}
+}
+\newglossaryentry{opensource}
+{
+	name={\textit{open-source}},
+	description={perangkat lunak yang kode sumbernya tersedia untuk umum dan dapat digunakan, dimodifikasi, serta didistribusikan secara bebas}
+}
+\newglossaryentry{api}
+{
+	name={\textit{Application Programming Interface} (API)},
+	description={antarmuka yang memungkinkan komunikasi dan pertukaran data antar aplikasi atau sistem perangkat lunak}
+}

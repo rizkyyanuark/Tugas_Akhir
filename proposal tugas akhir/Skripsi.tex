@@ -1,0 +1,157 @@
+\PassOptionsToPackage{table}{xcolor}
+\documentclass{SkripsiUnesa}
+\loadglsentries{Istilah.tex}
+
+\begin{document}
+
+\input{DataSkripsi}
+
+\Awal
+\HalamanJudul
+\SampulDalam
+
+%Abstrak
+\begin{Abstrak}
+	
+\lipsum[1-2]
+	\katakunci{Minyak mentah, \textit{Geometric Brownian Motion}, Kalman Filter}
+l\end{Abstrak}
+\newpage
+
+%Abstrak dalam Bahasa Inggris
+\begin{Abstract}
+	
+\lipsum[1-2]
+\keywords{Stability analysis, Ebola virus, compartment diagram, the equilibrium point, linearization}
+\end{Abstract}
+
+\SuratPernyataan
+%-------------------------------
+\HalamanPersetujuan %digunakan untuk sidang skripsi
+\HalamanPengesahan %digunakan untuk buku skripsi A5
+
+\Prakata
+
+Proses penciptaan karya ini merupakan kolaborasi tak kasat mata. Ada sumber-sumber yang menjadi pijakan, namun ide yang dihasilkan merupakan akumulasi dari berbagai perspektif yang bersinggungan. Ada berbagai sumber inspirasi yang tak terhitung dan karya ini adalah output dari sintesis tersebut. Oleh karena itu, terima kasih pada semua yang sudah membersamai penulis dalam penciptaan karya ini. karya ini disajikan dengan semangat apa adanya. Ia tak berpretensi menjadi sumber kebenaran tunggal, namun lebih sebagai jembatan untuk memicu pemikiran kritis. Terkadang, penemuan terbesar muncul dari interpretasi yang tak terduga.
+
+\DaftarIsi
+\DaftarTabel
+\DaftarGambar
+\DaftarSimbol
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{p{0.15\textwidth} p{0.75\textwidth}}
+    % ===== SINGKATAN =====
+    \multicolumn{2}{l}{\textbf{Singkatan}} \\[0.5em]
+    Graph-RAG & \textit{Graph-Based Retrieval-Augmented Generation}, teknik yang menggabungkan RAG dengan \textit{Knowledge Graph} \\
+    KG & \textit{Knowledge Graph}, representasi pengetahuan berbasis graf \\
+    LLM & \textit{Large Language Model}, model bahasa berskala besar \\
+    RAG & \textit{Retrieval-Augmented Generation}, teknik augmentasi LLM dengan pengambilan dokumen \\
+    NER & \textit{Named Entity Recognition}, pengenalan entitas bernama \\
+    RE & \textit{Relation Extraction}, ekstraksi relasi antar entitas \\
+    IE & \textit{Information Extraction}, ekstraksi informasi dari teks \\
+    NLP & \textit{Natural Language Processing}, pemrosesan bahasa alami \\
+    GNN & \textit{Graph Neural Network}, jaringan saraf berbasis graf \\
+    \\[0.5em]
+    % ===== SIMBOL HIMPUNAN & STRUKTUR =====
+    \multicolumn{2}{l}{\textbf{Simbol Himpunan \& Struktur}} \\[0.5em]
+    $\mathcal{T}$ & Teks input atau dokumen yang akan diproses \\
+    $\mathcal{S}$ & Representasi terstruktur hasil ekstraksi informasi \\
+    $E$ & Himpunan entitas dalam \textit{Knowledge Graph} \\
+    $R$ & Himpunan relasi dalam \textit{Knowledge Graph} \\
+    $T$ & Himpunan \textit{triplet} dalam \textit{Knowledge Graph} \\
+    $G$ & \textit{Knowledge Graph} yang didefinisikan sebagai $G = (E, R, T)$ \\
+    $\mathcal{G}$ & Graf pengetahuan (\textit{Knowledge Graph}) secara keseluruhan \\
+    $A$ & Himpunan seluruh kemungkinan respons/jawaban \\
+    \\[0.5em]
+    % ===== SIMBOL ENTITAS & TRIPLET =====
+    \multicolumn{2}{l}{\textbf{Simbol Entitas \& Triplet}} \\[0.5em]
+    $e_i$ & Entitas subjek (\textit{head}) dalam sebuah \textit{triplet} \\
+    $e_j$ & Entitas objek (\textit{tail}) dalam sebuah \textit{triplet} \\
+    $r_{ij}$ & Relasi atau predikat yang menghubungkan entitas $e_i$ dan $e_j$ \\
+    $h$ & Entitas asal (\textit{head}) dalam format triplet $(h, r, t)$ \\
+    $r$ & Relasi dalam format triplet $(h, r, t)$ \\
+    $t$ & Entitas tujuan (\textit{tail}) dalam format triplet $(h, r, t)$ \\
+    $(h, r, t)$ & Format \textit{triplet} pengetahuan: subjek, predikat, objek \\
+    \\[0.5em]
+    % ===== SIMBOL LLM & GENERASI =====
+    \multicolumn{2}{l}{\textbf{Simbol LLM \& Generasi Teks}} \\[0.5em]
+    $P_\theta$ & Fungsi probabilitas model bahasa dengan parameter $\theta$ \\
+    $x$ & Input teks dari pengguna ke model bahasa \\
+    $y_t$ & Token keluaran pada posisi ke-$t$ yang dihasilkan model \\
+    $y_1, \cdots, y_t$ & Urutan token keluaran dari posisi pertama hingga ke-$t$ \\
+    $\theta$ & Parameter model \textit{retriever} yang dapat dilatih \\
+    $\phi$ & Parameter model \textit{generator} yang dapat dilatih \\
+    \\[0.5em]
+    % ===== SIMBOL GRAPH-RAG =====
+    \multicolumn{2}{l}{\textbf{Simbol Graph-RAG}} \\[0.5em]
+    $a^*$ & Jawaban optimal yang dihasilkan sistem \textit{Graph-RAG} \\
+    $a$ & Jawaban atau respons yang dihasilkan sistem \\
+    $q$ & Pertanyaan atau kueri dari pengguna \\
+    $Q$ & Pertanyaan pengguna dalam notasi proses ekstraksi kata kunci \\
+    $p(a \mid q, \mathcal{G})$ & Distribusi probabilitas jawaban $a$ diberikan pertanyaan $q$ dan graf $\mathcal{G}$ \\
+    $p_\theta(G \mid q, \mathcal{G})$ & Model \textit{graph retriever} untuk memilih subgraf relevan \\
+    $p_\phi(a \mid q, G)$ & Model \textit{answer generator} untuk menghasilkan jawaban dari subgraf \\
+    $G^*$ & Subgraf optimal yang dipilih oleh \textit{retriever} \\
+    \\[0.5em]
+    % ===== SIMBOL KATA KUNCI & RETRIEVAL =====
+    \multicolumn{2}{l}{\textbf{Simbol Kata Kunci \& Retrieval}} \\[0.5em]
+    $\mathcal{K}^{clues}$ & Kata kunci petunjuk awal dari basis data vektor \\
+    $\mathcal{K}_l$ & Kata kunci tingkat rendah (\textit{low-level}) untuk pencarian detail \\
+    $\mathcal{K}_h$ & Kata kunci tingkat tinggi (\textit{high-level}) untuk konteks tema besar \\
+    $\text{LLM}_{keyword}$ & Fungsi LLM untuk mengekstraksi dan mengklasifikasikan kata kunci \\
+    \\[0.5em]
+    % ===== SIMBOL INFORMASI LOKAL & GLOBAL =====
+    \multicolumn{2}{l}{\textbf{Simbol Informasi Lokal \& Global}} \\[0.5em]
+    $\mathcal{L}_{\text{local}}$ & Informasi lokal hasil ekstraksi dari subgraf \\
+    $\mathcal{E}_{\text{local}}$ & Himpunan entitas dari ekstraksi informasi lokal \\
+    $\mathcal{R}_{\text{local}}$ & Himpunan relasi dari ekstraksi informasi lokal \\
+    $\mathcal{T}_{\text{local}}$ & Himpunan unit teks dari ekstraksi informasi lokal \\
+    $\text{pipeline}_{\text{local}}$ & Fungsi \textit{pipeline} untuk ekstraksi informasi lokal \\
+    $\mathcal{L}_{\text{global}}$ & Informasi global hasil ekstraksi dari jaringan relasi \\
+    $\mathcal{E}_{\text{global}}$ & Himpunan entitas dari ekstraksi informasi global \\
+    $\mathcal{R}_{\text{global}}$ & Himpunan relasi dari ekstraksi informasi global \\
+    $\mathcal{T}_{\text{global}}$ & Himpunan unit teks dari ekstraksi informasi global \\
+    $\text{pipeline}_{\text{global}}$ & Fungsi \textit{pipeline} untuk ekstraksi informasi global \\
+    \\[0.5em]
+    % ===== SIMBOL FUNGSI & OPERATOR =====
+    \multicolumn{2}{l}{\textbf{Simbol Fungsi \& Operator}} \\[0.5em]
+    $f_{IE}$ & Fungsi pemetaan \textit{Information Extraction} dari teks ke struktur \\
+    $\arg\max$ & Operator untuk menemukan argumen yang memaksimalkan fungsi \\
+    $\sum$ & Operator penjumlahan \\
+    $\subseteq$ & Relasi himpunan bagian (\textit{subset}) \\
+    $\in$ & Relasi keanggotaan himpunan \\
+    $\mid$ & Simbol kondisional (``diberikan'') dalam probabilitas \\
+\end{longtable}
+\newpage
+
+\Inti
+
+\include{Bab_1/Pendahuluan}
+
+\include{Bab_2/KajianPustaka}
+
+\include{Bab_3/MetodePenelitian}
+
+\include{Bab_4/HasilPenelitian}
+
+\include{Bab_5/Simpulan}
+
+\nocite{*}
+
+\DaftarPustaka{Pustaka}
+\Glosarium
+\BukaLampiran
+
+\lampiran{Surat Keterangan Uji Ahli} %gunakan ini jika memerlukan keterangan uji ahli, misal kuesioner
+\UjiAhli
+
+\lampiran{\textit{Source code}}
+\lstinputlisting[language=python]{epidemiology.py}
+
+\lampiran{Biodata Penulis}
+\biodata{Gambar/foto}
+% Ryan took part in the BBC series Strictly Come Dancing. He was partnered with professional dancer Nadiya Bychkova and was the second contestant to be eliminated on 7 October 2018. In 2019, Ryan starred in Celebs Go Dating on E4 and released his first single after nine years called "Ghost". Ryan subsequently released two further solo singles in 2020, "Mockingbirds" and Swayed".
+
+% Ryan reunited with Blue in 2011 and in 2022 they released singles "Haven't Found You Yet" and "Dance with Me" from their sixth studio album Heart \& Soul.
+
+\end{document}
