@@ -30,6 +30,14 @@
 # PROGRAM STUDI AKTIF (UNCOMMENT UNTUK AKTIFKAN)
 Sains Data
 Kecerdasan Artifisial
+Teknik Elektro
+Sistem Informasi
+Pendidikan Teknologi Informasi
+Teknik Informatika
+Bisnis Digital
+D4 Manajemen Informatika
+
+
 
 # ================================================
 # CATATAN DEVELOPER:

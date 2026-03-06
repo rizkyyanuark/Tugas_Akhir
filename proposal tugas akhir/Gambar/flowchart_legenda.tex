@@ -1,0 +1,57 @@
+% ============================================
+% LEGENDA SIMBOL FLOWCHART
+% ============================================
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[scale=0.85, transform shape]
+    
+    % Title
+    \node[font=\small\bfseries] at (4.5, 0.5) {Legenda Simbol Flowchart};
+    
+    % Row 1: Terminator
+    \node (leg1) [startstop] at (0.8, -0.3) {Start/End};
+    \node[anchor=west, font=\scriptsize] at (2.2, -0.3) {\textbf{Terminator} - Awal/akhir proses};
+    
+    % Row 2: Process
+    \node (leg2) [process] at (0.8, -1) {Process};
+    \node[anchor=west, font=\scriptsize] at (2.2, -1) {\textbf{Process} - Langkah pemrosesan/aktivitas};
+    
+    % Row 3: Predefined Process
+    \node (leg3) [predefined] at (0.8, -1.7) {Predefined};
+    \node[anchor=west, font=\scriptsize] at (2.2, -1.7) {\textbf{Predefined Process} - Sub-proses terpisah};
+    
+    % Row 4: Data
+    \node (leg4) [data] at (0.8, -2.4) {Data};
+    \node[anchor=west, font=\scriptsize] at (2.2, -2.4) {\textbf{Data} - Input/Output data};
+    
+    % Row 5: Database
+    \node (leg5) [database] at (0.8, -3.1) {Database};
+    \node[anchor=west, font=\scriptsize] at (2.2, -3.1) {\textbf{Database} - Penyimpanan data};
+    
+    % Row 6: Decision
+    \node (leg6) [decision, text width=0.8cm] at (0.8, -4) {?};
+    \node[anchor=west, font=\scriptsize] at (2.2, -4) {\textbf{Decision} - Percabangan keputusan};
+    
+    % Row 7: On-page Reference
+    \node (leg7) [onpage] at (0.8, -4.8) {A};
+    \node[anchor=west, font=\scriptsize] at (2.2, -4.8) {\textbf{On-page Reference} - Penghubung dalam halaman};
+    
+    % Row 8: Off-page Reference
+    \node (leg8) [offpage] at (0.8, -5.5) {1};
+    \node[anchor=west, font=\scriptsize] at (2.2, -5.5) {\textbf{Off-page Reference} - Penghubung antar halaman};
+    
+    % Row 9: Arrow
+    \draw [arrow] (0.3, -6.2) -- (1.3, -6.2);
+    \node[anchor=west, font=\scriptsize] at (2.2, -6.2) {\textbf{Arrow} - Arah alur proses};
+    
+    % Row 10: Sub-process box
+    \begin{scope}[on background layer]
+        \node [subbox, minimum width=1.2cm, minimum height=0.5cm] at (0.8, -6.9) {};
+    \end{scope}
+    \node[anchor=west, font=\scriptsize] at (2.2, -6.9) {\textbf{Sub-process Box} - Area detail sub-proses};
+    
+    \end{tikzpicture}
+    \caption{Legenda simbol flowchart standar ANSI}
+    \label{fig:legenda-flowchart}
+\end{figure}

@@ -1,0 +1,73 @@
+\PassOptionsToPackage{table}{xcolor}
+\documentclass{ProposalUnesa}
+
+\pgfplotsset{compat=1.18}
+\usepackage{seqsplit}
+
+%==================================================================
+% COMPILE CEPAT - Uncomment SATU baris untuk compile bab tertentu
+% LaTeX akan pakai cache .aux sehingga nomor halaman tetap benar
+%==================================================================
+%\includeonly{Bab_1/PendahuluanP}
+%\includeonly{Bab_2/KajianPustakaP}
+%\includeonly{Bab_3/MetodePenelitianP}
+%==================================================================
+
+\loadglsentries{Istilah.tex}
+
+% TikZ Layer Setup for Flowcharts
+\pgfdeclarelayer{background}
+\pgfsetlayers{background,main}
+\usetikzlibrary{shadows} % Required for drop shadow in flowcharts
+
+\begin{document}
+
+\input{DataSkripsi}
+
+\Awal
+
+\HalamanJudul
+
+\HalamanPersetujuan
+\HalamanLembarRevisi
+
+\DaftarIsi
+\DaftarTabel
+\DaftarGambar
+\DaftarSimbol
+\renewcommand{\arraystretch}{1.5}
+\begin{longtable}{p{0.15\textwidth} p{0.75\textwidth}}
+	% ===== STRUKTUR PENGETAHUAN =====
+	$G$                            & \textit{Knowledge Graph} akademik yang didefinisikan sebagai himpunan entitas ($E$), relasi ($R$), dan \textit{triplet} ($T$).                      \\
+	$(h, r, t)$                    & \textit{Triplet} pengetahuan yang terdiri dari \textit{head entity} (subjek), \textit{relation} (predikat), dan \textit{tail entity} (objek).       \\
+	$N_{\text{raw}}$               & Jumlah total data mentah publikasi yang dikumpulkan dari berbagai sumber sebelum pemrosesan.                                                        \\
+
+	% ===== PEMODELAN ACADEMIC RAG =====
+	$q$                            & Pertanyaan atau kueri yang diajukan oleh pengguna ke dalam sistem.                                                                                  \\
+	$\mathcal{K}_l, \mathcal{K}_h$ & Kata kunci hierarkis; tingkat rendah (\textit{low-level}) untuk pencarian detail dan tingkat tinggi (\textit{high-level}) untuk konteks tema besar. \\
+	$\mathcal{L}_{\text{local}}$   & Informasi lokal (mikro) yang mencakup detail spesifik entitas dan relasi dari subgraf.                                                              \\
+	$\mathcal{L}_{\text{global}}$  & Informasi global (makro) yang mencakup pola konseptual dan tren riset lintas domain.                                                                \\
+
+	% ===== METRIK EVALUASI =====
+	$|V|$                          & Jumlah klaim yang terverifikasi (\textit{verified claims}) dalam jawaban sistem, digunakan untuk menghitung \textit{Faithfulness}.                  \\
+	$|S|$                          & Total jumlah klaim (\textit{total statements}) yang terdapat dalam jawaban yang dihasilkan sistem.                                                  \\
+	$\text{sim}(q, \hat{q})$       & Skor kemiripan (\textit{similarity score}) antara pertanyaan asli pengguna dengan pertanyaan sintetis untuk mengukur relevansi jawaban.             \\
+\end{longtable}
+
+\Inti
+
+\include{Bab_1/PendahuluanP}
+
+\include{Bab_2/KajianPustakaP}
+
+\include{Bab_3/MetodePenelitianP}
+
+\nocite{*}
+
+\DaftarPustaka{Pustaka}
+\Glosarium
+\BukaLampiran
+
+\lampiran{Data dan lain-lain}
+
+\end{document}
