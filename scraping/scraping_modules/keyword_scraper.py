@@ -31,7 +31,7 @@ from bs4 import BeautifulSoup
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from .config import PROXY_URL, SERPAPI_KEY, BD_USER, BD_PASS, BRIGHT_DATA_HOST
+from .config import SERPAPI_KEY, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SERP, BD_PASS_SERP, BRIGHT_DATA_HOST
 
 
 # ================================================================
@@ -58,6 +58,45 @@ def _needs_proxy(url):
     return any(d in url.lower() for d in _PROXY_DOMAINS)
 
 
+def _detect_anti_bot(resp):
+    """
+    Detect Cloudflare / anti-bot challenge from HTTP response.
+    Returns (is_blocked: bool, reason: str).
+    """
+    if resp is None:
+        return False, ""
+
+    # 1. Cloudflare status codes + header
+    if resp.status_code in (403, 503) and 'cf-ray' in resp.headers:
+        return True, f"Cloudflare {resp.status_code}"
+
+    # 2. Cloudflare challenge header
+    if resp.headers.get('cf-mitigated', '').lower() == 'challenge':
+        return True, "Cloudflare Challenge"
+
+    # 3. HTML content signals (hanya jika bukan stream)
+    try:
+        text = resp.text[:2000].lower()
+    except Exception:
+        return False, ""
+
+    _ANTI_BOT_SIGNALS = [
+        ("just a moment",        "Cloudflare Interstitial"),
+        ("checking your browser", "Cloudflare IUAM"),
+        ("attention required",   "Cloudflare Block"),
+        ("access denied",        "Access Denied"),
+        ("please enable cookies", "Cookie Wall"),
+        ("unusual traffic",      "Rate Limited"),
+        ("captcha",              "CAPTCHA"),
+        ("ray id",               "Cloudflare Ray"),
+    ]
+    for signal, reason in _ANTI_BOT_SIGNALS:
+        if signal in text:
+            return True, reason
+
+    return False, ""
+
+
 def _get_headers(referer="https://scholar.google.com/"):
     return {
         "User-Agent": random.choice(_UA_LIST),
@@ -67,12 +106,20 @@ def _get_headers(referer="https://scholar.google.com/"):
     }
 
 
-def _build_session_proxy():
+def _build_session_proxy(proxy_type="UNLOCKER"):
     """Build session-based proxy dict (matching notebook's pattern)."""
-    if not BD_USER or not BD_PASS or not BRIGHT_DATA_HOST:
+    if proxy_type == "SERP":
+        bd_user = BD_USER_SERP
+        bd_pass = BD_PASS_SERP
+    else:
+        bd_user = BD_USER_UNLOCKER
+        bd_pass = BD_PASS_UNLOCKER
+
+    if not bd_user or not bd_pass or not BRIGHT_DATA_HOST:
         return None
+        
     session_id = str(random.randint(10000, 99999))
-    proxy_auth = f"{BD_USER}-session-{session_id}:{BD_PASS}"
+    proxy_auth = f"{bd_user}-session-{session_id}:{bd_pass}"
     return {
         "http": f"http://{proxy_auth}@{BRIGHT_DATA_HOST}",
         "https": f"http://{proxy_auth}@{BRIGHT_DATA_HOST}",
@@ -85,14 +132,18 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
     """
     HTTP GET matching notebook's request_hybrid_stealth.
     1. If use_proxy=True, try BrightData session proxy first (120s timeout)
-    2. Fallback to direct request (30s timeout)
+    2. Fallback to direct request (15s timeout)
     """
     headers = _get_headers(referer)
 
-    # 1) Proxy request (session-based, like notebook)
-    proxy_success = False
     if use_proxy:
-        proxies = _build_session_proxy()
+        # Determine route based on URL
+        if "scholar.google" in url.lower():
+            proxy_type = "SERP"
+        else:
+            proxy_type = "UNLOCKER"
+
+        proxies = _build_session_proxy(proxy_type)
         if proxies:
             try:
                 resp = requests.get(
@@ -102,9 +153,9 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
                 )
                 if resp.status_code == 200:
                     if not stream:
-                        text_low = resp.text[:500].lower()
-                        if "unusual traffic" in text_low or "captcha" in text_low:
-                            print("      ⛔ Proxy got CAPTCHA (Silent Block). Falling back to direct...")
+                        is_blocked, reason = _detect_anti_bot(resp)
+                        if is_blocked:
+                            print(f"      ⛔ Proxy blocked ({reason}). Falling back to direct...")
                         else:
                             return resp
                     else:
@@ -114,13 +165,20 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
             except Exception as e:
                 print(f"      💥 Proxy Error: {e}. Falling back to direct...")
 
-    # 2) Direct request (Fallback if proxy was not used, or if proxy failed)
-
-    # 2) Direct request
+    # 2) Direct request (fallback)
     try:
+        # Quick DNS/Connection Ping (Fail Fast for dead servers)
+        try:
+            requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
+        except requests.exceptions.ConnectionError:
+            print(f"      ⛔ Koneksi Server Mati / DNS Error ({url[:40]}). Skip!")
+            return None
+        except requests.exceptions.Timeout:
+            pass  # Lanjut saja jika cuma head timeout
+
         resp = requests.get(
             url, headers=headers, verify=False,
-            timeout=30, stream=stream, allow_redirects=True
+            timeout=15, stream=stream, allow_redirects=True
         )
         if resp.status_code == 200:
             return resp
@@ -131,46 +189,61 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
 
 def request_smart(url, timeout=30, stream=False):
     """
-    Smart HTTP GET with proxy fallback.
-    1. Try direct for local/open-access journals
-    2. Use proxy for known protected sites
-    3. Fallback to proxy if direct fails
+    Smart HTTP GET with anti-bot detection + proxy fallback.
+    Flow: known-proxy-domain? → direct request → detect Cloudflare → Web Unlocker
     """
     headers = _get_headers()
 
     # If it's a known protected site, go proxy first
-    if _needs_proxy(url) and PROXY_URL:
+    if _needs_proxy(url):
         resp = _request_with_proxy(url, headers, timeout, stream)
         if resp:
             return resp
 
     # Try direct first
     try:
+        # Quick DNS ping (fail fast for dead servers)
+        try:
+            requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
+        except requests.exceptions.ConnectionError:
+            print(f"      ⛔ Koneksi Server Mati / DNS Error ({url[:40]}). Skip!")
+            return None
+        except requests.exceptions.Timeout:
+            pass
+
         resp = requests.get(
             url, headers=headers, verify=False,
-            timeout=timeout, stream=stream,
+            timeout=15, stream=stream,
             allow_redirects=True
         )
+        # Check for anti-bot on success (Cloudflare can return 200 with challenge)
         if resp.status_code == 200:
-            text_preview = resp.text[:500].lower() if not stream else ""
-            if "unusual traffic" in text_preview or "captcha" in text_preview:
-                pass  # Fall through to proxy
+            if not stream:
+                is_blocked, reason = _detect_anti_bot(resp)
+                if is_blocked:
+                    print(f"      🛡️ Anti-Bot Detected ({reason}). Escalating to Web Unlocker...")
+                else:
+                    return resp
             else:
                 return resp
+        # Check for anti-bot on 403/503 (Cloudflare block)
+        elif resp.status_code in (403, 503):
+            is_blocked, reason = _detect_anti_bot(resp)
+            if is_blocked:
+                print(f"      🛡️ Anti-Bot Detected ({reason}). Escalating to Web Unlocker...")
+            else:
+                print(f"      ⚠️ HTTP {resp.status_code} (non-CF). Trying Web Unlocker...")
     except Exception:
         pass
 
-    # Fallback to proxy if available
-    if PROXY_URL:
-        return _request_with_proxy(url, headers, timeout, stream)
+    # Fallback to proxy (Web Unlocker) if available
+    return _request_with_proxy(url, headers, timeout, stream)
 
-    return None
-
-
-def _request_with_proxy(url, headers, timeout=30, stream=False):
-    """Make request through BrightData proxy."""
+def _request_with_proxy(url, headers, timeout=20, stream=False):
+    """Make request through BrightData Web Unlocker proxy."""
     try:
-        proxies = {"http": PROXY_URL, "https": PROXY_URL}
+        proxies = _build_session_proxy("UNLOCKER")
+        if not proxies: return None
         resp = requests.get(
             url, headers=headers, proxies=proxies,
             verify=False, timeout=timeout, stream=stream,
@@ -498,12 +571,22 @@ def search_scholar_proxy_query(title, max_retries=2):
                 elif result["year"] and str(result["year"]) not in middle_part:
                     result["journal"] = middle_part
             
-            # Author IDs
+            # Author IDs dari baris hijau (biasanya tidak ada, tapi untuk berjaga-jaga)
             for a in a_line.find_all('a', href=True):
                 if 'user=' in a['href']:
                     match = re.search(r'user=([^&]+)', a['href'])
                     if match:
                         result["author_ids"].append(match.group(1))
+
+        # Author IDs dari seluruh kotak hasil pencarian (menangkap elemen seperti <div class="gs_fmaa">)
+        for a in first_res.find_all('a', href=True):
+            if 'user=' in a['href']:
+                match = re.search(r'user=([^&]+)', a['href'])
+                if match:
+                    result["author_ids"].append(match.group(1))
+        
+        # Hapus duplikat ID jika Dosen muncul di .gs_a dan .gs_fmaa
+        result["author_ids"] = list(set(result["author_ids"]))
 
         # Snippet
         fma = first_res.select_one('.gs_fma_snp')
@@ -546,6 +629,53 @@ def search_scholar_proxy_query(title, max_retries=2):
 
     print("      ⚠️ No results found on Scholar Search.")
     return None
+
+
+def scrape_scholar_citation_page(url):
+    """
+    Directly scrapes a Google Scholar Citation Profile Page to get the abstract and publisher links.
+    URL Format: https://scholar.google.com/citations?view_op=view_citation...
+    """
+    print(f"   [Scholar Profile] Scraping citation page directly...")
+    resp = request_hybrid_stealth(url, use_proxy=True)
+    if not resp:
+        return {}
+        
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    result = {
+        "abstract": None,
+        "publisher_link": None,
+        "pdf_link": None
+    }
+    
+    # Description / Abstract usually in .gsh_small or #gsc_oci_descr
+    desc_field = soup.find('div', class_='gsh_small') or soup.find('div', class_='gsh_csp')
+    if not desc_field:
+        desc_container = soup.find(id='gsc_oci_descr')
+        if desc_container:
+            # Sometime the abstract is inside a div holding value
+            desc_field = desc_container.find('div', class_='gsc_oci_value') or desc_container
+            
+    if desc_field:
+        # Extract the text and remove "Description" prefix if present
+        abs_text = desc_field.get_text(separator=' ', strip=True)
+        if abs_text.lower().startswith('description'):
+            abs_text = abs_text[11:].strip()
+        result["abstract"] = abs_text
+        
+    # Find publisher link
+    pub_link_el = soup.find('a', class_='gsc_oci_title_link')
+    if pub_link_el:
+        result["publisher_link"] = pub_link_el.get('href')
+        
+    # PDF link
+    pdf_div = soup.find('div', id='gsc_oci_title_gg')
+    if pdf_div:
+        pdf_a = pdf_div.find('a')
+        if pdf_a:
+             result["pdf_link"] = pdf_a.get('href')
+             
+    return result
 
 
 # ================================================================
@@ -753,7 +883,7 @@ def _extract_keywords_impl(html):
     raw_text = re.sub(r'\s+', ' ', raw_text)
     kw_pattern = re.compile(
         r'(?:Kata\s+Kunci|Keywords?|Key\s+Words?|Index\s+Terms?)'
-        r'[\s:\-—–\.]+(.+?)(?:\.\s*(?:Abstract|Abstrak|Pendahuluan|Introduction|I\.\s|1\.\s)|$)',
+        r'[\s:\-\.\u2014\u2013]+(.*?)(?:\.?\s+(?:Abstract|Abstrak|Pendahuluan|Introduction|I\.?\s*[A-Z]|1\.?\s*[A-Z])|\n|\r|\.|$)',
         re.IGNORECASE
     )
     m = kw_pattern.search(raw_text)
@@ -1087,13 +1217,39 @@ def extract_keywords_robust(html):
         # We also need to get abstract if called from scrape_publisher_page, but this robust function is just for keywords.
         meta = soup.find('meta', attrs={'name': k}) or soup.find('meta', attrs={'name': k.lower()})
         if meta and meta.get('content'): return f"[Meta] {meta['content']}"
-    # 3. Text
-    for c in soup.find_all(string=lambda t: t and any(x in t.lower() for x in ["kata kunci", "keywords", "key words", "index terms"])):
+    # 2.5 Raw-text search (handles PDF-converted HTML with fragmented spans)
+    raw_text = soup.get_text(" ", strip=True)
+    raw_text = re.sub(r'\s+', ' ', raw_text)
+    kw_pattern = re.compile(
+        r'(?:Kata\s+Kunci|Keywords?|Key\s+Words?|Index\s+Terms?)'
+        r'[\s:\-\.\u2014\u2013]+(.*?)(?:\.?\s+(?:Abstract|Abstrak|Pendahuluan|Introduction|I\.?\s*[A-Z]|1\.?\s*[A-Z])|\n|\r|\.|$)',
+        re.IGNORECASE
+    )
+    m = kw_pattern.search(raw_text)
+    if m:
+        kw_text = m.group(1).strip().rstrip('.')
+        if len(kw_text) > 8 and len(kw_text) < 500:
+            parts = [p.strip() for p in re.split(r'[,;]', kw_text) if p.strip()]
+            if len(parts) >= 2:
+                word_counts = [len(p.split()) for p in parts]
+                if sum(word_counts) / len(parts) <= 4 and max(word_counts) <= 6:
+                    return kw_text
+
+    # 3. Text container search
+    for c in soup.find_all(
+        string=lambda t: t and any(
+            x in t.lower() for x in ["kata kunci", "keywords", "key words", "subject terms", "index terms"]
+        )
+    ):
         container = c.parent
         for _ in range(3):
             txt = re.sub(r'\s+', ' ', container.get_text(" ", strip=True))
-            # Extract only the keywords part
-            match = re.search(r'(?:kata kunci|keywords?|key words?|subject terms?|index terms?)[:\-\s\.\u2014]+(.*?)(?:\n|\r|\.|$|Abstract|Abstrak)(?=\s|$)', txt, re.IGNORECASE)
+            # Extract only the keywords part (support em-dash \u2014, en-dash \u2013, and flexible endings like "I. PENDAHULUAN")
+            match = re.search(
+                r'(?:kata kunci|keywords?|key words?|subject terms?|index terms?)'
+                r'[\s:\-\.\u2014\u2013]+(.*?)(?:\.?\s+(?:Abstract|Abstrak|Pendahuluan|Introduction|I\.?\s*[A-Z]|1\.?\s*[A-Z])|\n|\r|\.|$)',
+                txt, re.IGNORECASE
+            )
             if match:
                 kw_text = match.group(1).strip()
                 if len(kw_text) > 8 and "," in kw_text or len(kw_text.split()) > 1:
@@ -1181,9 +1337,9 @@ def scrape_publisher_page(url, force_proxy=True):
     Enhanced with: PMC API, IEEE PDF→stamp, OJS meta tags,
     interstitial deep-link, PDF parsing.
 
-    Returns dict: {keywords, abstract, doi}
+    Returns dict: {keywords, abstract, doi, doc_type}
     """
-    result = {"abstract": "", "keywords": "", "doi": ""}
+    result = {"abstract": "", "keywords": "", "doi": "", "doc_type": ""}
 
     if not url:
         return result
@@ -1210,6 +1366,17 @@ def scrape_publisher_page(url, force_proxy=True):
         if bn.isdigit():
             url = f"https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber={bn}"
 
+    # OJS PDF Viewer to Direct Download conversion
+    # example: https://ejournal.unesa.ac.id/index.php/jinacs/article/view/56670/44521
+    # want:    https://ejournal.unesa.ac.id/index.php/jinacs/article/download/56670/44521
+    if "/article/view/" in url:
+        parts = url.split("/article/view/")
+        if len(parts) == 2:
+            base, ids = parts[0], parts[1]
+            if len(ids.strip('/').split('/')) >= 2:
+                url = f"{base}/article/download/{ids}"
+                print(f"      [Publisher] 🔄 Converted OJS Viewer link to Direct Download: {url}")
+
     try:
         if force_proxy:
             resp = request_hybrid_stealth(url, use_proxy=True, stream=True)
@@ -1231,7 +1398,8 @@ def scrape_publisher_page(url, force_proxy=True):
             html = pdf_to_html_memory(resp.content)
             if html:
                 if not result["keywords"]:
-                    result["keywords"] = extract_keywords_from_html(html)
+                    # Menggunakan extract_keywords_robust karena ini bisa mencari "Kata Kunci - ..." dalam plain text PDF
+                    result["keywords"] = extract_keywords_robust(html)
                 if not result["abstract"]:
                     result["abstract"] = extract_abstract_from_html(html)
                 if result["keywords"]:
@@ -1281,9 +1449,41 @@ def scrape_publisher_page(url, force_proxy=True):
             if not result["doi"]:
                 result["doi"] = _extract_doi_from_meta(text)
 
-            # Strategy C: Deep PDF link fallback
+            # --- Extract Doc Type (OJS Sections / Meta) ---
+            if not result.get("doc_type"):
+                soup_doc = BeautifulSoup(text, 'html.parser')
+                # 1. Check meta tags
+                for meta_name in ['DC.Type.articleType', 'citation_article_type', 'DC.type']:
+                    meta = soup_doc.find('meta', attrs={'name': re.compile(f'^{meta_name}$', re.IGNORECASE)})
+                    if meta and meta.get('content') and meta['content'].strip():
+                        result["doc_type"] = meta['content'].strip()
+                        print(f"      [Publisher] ✅ Doc Type dari meta tags: {result['doc_type']}")
+                        break
+                # 2. Check OJS sub_item sections for "Section"
+                if not result.get("doc_type"):
+                    for section in soup_doc.find_all('section', class_='sub_item'):
+                        h2 = section.find(['h2', 'span'], class_='label')
+                        if h2 and "Section" in h2.get_text(strip=True):
+                            val_div = section.find('div', class_='value')
+                            if val_div and val_div.get_text(strip=True):
+                                result["doc_type"] = val_div.get_text(strip=True).strip()
+                                print(f"      [Publisher] ✅ Doc Type dari HTML: {result['doc_type']}")
+                                break
+
+            # Strategy C: Deep PDF link fallback (Meta tags or Scored Links)
             if not result["keywords"]:
-                deep = find_best_pdf_link_scored(text, final_url)
+                deep = None
+                
+                # C.1 Check meta citation_pdf_url first (Standard OJS/Highwire Press)
+                soup_doc = BeautifulSoup(text, 'html.parser')
+                meta_pdf = soup_doc.find('meta', attrs={'name': 'citation_pdf_url'})
+                if meta_pdf and meta_pdf.get('content'):
+                    deep = meta_pdf['content'].strip()
+                
+                # C.2 Fallback to scored visible links
+                if not deep:
+                    deep = find_best_pdf_link_scored(text, final_url)
+                    
                 if deep and deep != url and deep not in url:
                     print(f"      [Publisher] 🔍 Deep PDF ditemukan: "
                           f"{deep[:60]}...")
@@ -1473,17 +1673,15 @@ def _openalex_lookup(doi="", title=""):
             result["keywords"] = ", ".join([k for k in keywords if k])
 
         # Extract authors
-        author_ids = []
+        author_names = []
         for authorship in data.get("authorships", []):
             author = authorship.get("author", {})
-            auth_id = author.get("id", "").replace("https://openalex.org/", "")
             auth_name = author.get("display_name", "")
-            if auth_id or auth_name:
-                # Save as 'Name (ID)' format
-                author_ids.append(f"{auth_name} ({auth_id})" if auth_id else auth_name)
+            if auth_name:
+                author_names.append(auth_name)
         
-        if author_ids:
-            result["author_ids"] = author_ids
+        if author_names:
+            result["author_names"] = author_names
 
         # Extract document type
         raw_type = data.get("type", "")

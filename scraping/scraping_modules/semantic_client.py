@@ -60,7 +60,7 @@ class SemanticScholarClient:
         url = f"{self.base_url}/paper/{paper_id}"
         # Fetch comprehensive metadata as requested by user
         params = {
-            'fields': 'title,tldr,abstract,externalIds,url,openAccessPdf,publicationTypes'
+            'fields': 'title,tldr,abstract,externalIds,url,openAccessPdf,publicationTypes,year,venue'
         }
         
         try:

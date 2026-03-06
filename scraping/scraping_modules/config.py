@@ -48,15 +48,22 @@ try:
             SERPAPI_KEY = serpapi.get('api_key', '')
 
             # Bright Data
-            bd = config.get('bright_data', {}).get('proxy', {})
-            if bd.get('host') and bd.get('user'):
-                BRIGHT_DATA_HOST = bd.get('host')
-                BD_USER = bd.get('user', '')
-                BD_PASS = bd.get('password', '')
-                PROXY_URL = f"http://{bd['user']}:{bd['password']}@{bd['host']}"
-                print(f"✅ Config: Loaded Credentials (Proxy: {BRIGHT_DATA_HOST})")
+            bd_unlocker = config.get('bright_data', {}).get('proxy_unlocker', {})
+            bd_serp = config.get('bright_data', {}).get('proxy_serp', {})
+            
+            # Unlocker credentials
+            BRIGHT_DATA_HOST = bd_unlocker.get('host', 'brd.superproxy.io:33335')
+            BD_USER_UNLOCKER = bd_unlocker.get('user', '')
+            BD_PASS_UNLOCKER = bd_unlocker.get('password', '')
+
+            # SERP API credentials
+            BD_USER_SERP = bd_serp.get('user', '')
+            BD_PASS_SERP = bd_serp.get('password', '')
+
+            if BD_USER_UNLOCKER and BD_USER_SERP:
+                print(f"✅ Config: Loaded Dual-Proxy Credentials (Unlocker + SERP)")
             else:
-                print("ℹ️ Config: Proxy credentials missing or incomplete.")
+                print("ℹ️ Config: Dual-Proxy credentials missing or incomplete.")
 
             # Supabase
             sb = config.get('supabase', {})
