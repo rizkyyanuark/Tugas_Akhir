@@ -520,115 +520,103 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
 
 def search_scholar_proxy_query(title, max_retries=2):
     """
-    Search Google Scholar for a title and extract snippet, authors, journal, year, and best links.
-    Used as a fallback when direct Publisher/CrossRef extraction fails.
+    Search Google Scholar using BrightData SERP API via REST POST request.
+    Extracts snippet, authors, journal, year, and best links.
     """
-    print(f"   [BrightData] Searching Scholar for: {title[:50]}...")
-    url = f"https://scholar.google.com/scholar?hl=en&q={urllib.parse.quote(title)}"
+    print(f"   [BrightData SERP API] Searching Scholar for: {title[:50]}...")
+    
+    # Check if we have the SERP API Token
+    # Config parser stores the key in BD_PASS_SERP since it was passed as password in the JSON
+    api_token = getattr(sys.modules.get('scraping_modules.config', None), 'BD_PASS_SERP', None)
+    if not api_token:
+        try:
+            from .config import BD_PASS_SERP
+            api_token = BD_PASS_SERP
+        except ImportError:
+            pass
+
+    if not api_token:
+        print("      ⚠️ BrightData SERP API Token is missing! Check credentials_new.json.")
+        return None
+
+    api_url = "https://api.brightdata.com/serp/req"
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "search_engine": "google_scholar",
+        "query": title,
+        "num": 5
+    }
 
     for attempt in range(max_retries):
         if attempt > 0:
             print(f"      🔄 Retry {attempt+1}/{max_retries}...")
-        resp = request_hybrid_stealth(url, use_proxy=True)
-        if not resp:
-            continue
-        
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        first_res = soup.select_one('.gs_r.gs_or.gs_scl') or soup.find('div', class_='gs_r')
-        if not first_res:
-             # Could be blocked or no results
-            continue
-            
-        result = {
-            "title_link": None, "pdf_link": None, "html_direct": None,
-            "cached_html": None,
-            "snippet": None, "author_ids": [], "journal": None, "year": None,
-            "title_text": None,
-        }
-        
-        # Title and publisher link
-        title_tag = first_res.select_one('.gs_rt a')
-        if title_tag:
-            result["title_text"] = title_tag.get_text(" ", strip=True)
-            result["title_link"] = title_tag['href']
-
-        # Metadata line (Authors, Journal, Year)
-        a_line = first_res.select_one('.gs_a')
-        if a_line:
-            a_text = a_line.get_text(" ", strip=True)
-            parts = [p.strip() for p in a_text.split('-')]
-            if len(parts) >= 2:
-                # Year is usually a 4-digit number in the middle or last part
-                year_match = re.search(r'\b(19|20)\d{2}\b', a_text)
-                if year_match:
-                    result["year"] = int(year_match.group(0))
+        try:
+            resp = requests.post(api_url, headers=headers, json=payload, timeout=60)
+            if resp.status_code == 200:
+                data = resp.json()
                 
-                # Journal is often the part before the year
-                middle_part = parts[1]
-                if ',' in middle_part and result["year"] and str(result["year"]) in middle_part.split(',')[-1]:
-                    # "Jurnal Jupiter, 2021" -> "Jurnal Jupiter"
-                    result["journal"] = ",".join(middle_part.split(',')[:-1]).strip()
-                elif result["year"] and str(result["year"]) not in middle_part:
-                    result["journal"] = middle_part
-            
-            # Author IDs dari baris hijau (biasanya tidak ada, tapi untuk berjaga-jaga)
-            for a in a_line.find_all('a', href=True):
-                if 'user=' in a['href']:
-                    match = re.search(r'user=([^&]+)', a['href'])
-                    if match:
-                        result["author_ids"].append(match.group(1))
-
-        # Author IDs dari seluruh kotak hasil pencarian (menangkap elemen seperti <div class="gs_fmaa">)
-        for a in first_res.find_all('a', href=True):
-            if 'user=' in a['href']:
-                match = re.search(r'user=([^&]+)', a['href'])
-                if match:
-                    result["author_ids"].append(match.group(1))
-        
-        # Hapus duplikat ID jika Dosen muncul di .gs_a dan .gs_fmaa
-        result["author_ids"] = list(set(result["author_ids"]))
-
-        # Snippet
-        fma = first_res.select_one('.gs_fma_snp')
-        if fma:
-            result["snippet"] = fma.get_text(" ", strip=True)
-        else:
-            rs = first_res.select_one('.gs_rs')
-            if rs:
-                result["snippet"] = rs.get_text(" ", strip=True)
-
-        # PDF/HTML links on the right
-        ctg_links = first_res.select('.gs_ctg2')
-        for ctg in ctg_links:
-            parent = ctg.parent
-            if parent and parent.name == 'a':
-                href = parent['href']
-                ctg_text = ctg.get_text(strip=True).upper()
-                if '[PDF]' in ctg_text:
-                    result["pdf_link"] = href
-                elif '[HTML]' in ctg_text:
-                    result["html_direct"] = href
-            
-        # Also check generic a tags wrapping the right side
-        right_side = first_res.select('.gs_or_ggsm a')
-        for a in right_side:
-            if not result["pdf_link"] and ('pdf' in a.get_text().lower() or a['href'].endswith('.pdf')):
-                result["pdf_link"] = a['href']
-        
-        # Cached HTML version link (contains full text with abstract & keywords)
-        # Scholar shows "Versi HTML" or "HTML Version" link to googleusercontent cache
-        for a in first_res.find_all('a', href=True):
-            if 'scholar.googleusercontent.com/scholar' in a['href'] and 'cache:' in a['href']:
-                result["cached_html"] = a['href']
-                break
+                # Check for organic results
+                results = data.get('organic', [])
+                if not results:
+                    continue # No results found, might retry
                 
-        print(f"      ✅ Found Search Result: {str(result.get('title_text', ''))[:40]}...")
-        if result['pdf_link']:
-            print(f"      📄 PDF Link: {str(result['pdf_link'])[:50]}...")
-        return result
+                # Take the first result
+                first_res = results[0]
+                
+                result = {
+                    "title_link": first_res.get('link'), 
+                    "pdf_link": None, 
+                    "html_direct": None,
+                    "cached_html": None,
+                    "snippet": first_res.get('snippet'), 
+                    "author_ids": [], 
+                    "journal": None, 
+                    "year": None,
+                    "title_text": first_res.get('title')
+                }
+                
+                # Extract PDF Link if available
+                if first_res.get('link_pdf'):
+                    result['pdf_link'] = first_res.get('link_pdf')
 
-    print("      ⚠️ No results found on Scholar Search.")
+                # Google Scholar often puts author/journal info in the 'publication_info' or 'authors'
+                pub_info = first_res.get('publication_info', {})
+                if pub_info:
+                    if 'summary' in pub_info:
+                        a_text = pub_info['summary']
+                        parts = [p.strip() for p in a_text.split('-')]
+                        if len(parts) >= 2:
+                            # Year is usually a 4-digit number
+                            year_match = re.search(r'\b(19|20)\d{2}\b', a_text)
+                            if year_match:
+                                result["year"] = int(year_match.group(0))
+                            
+                            middle_part = parts[1]
+                            if ',' in middle_part and result["year"] and str(result["year"]) in middle_part.split(',')[-1]:
+                                result["journal"] = ",".join(middle_part.split(',')[:-1]).strip()
+                            elif result["year"] and str(result["year"]) not in middle_part:
+                                result["journal"] = middle_part
+                                
+                    if 'authors' in pub_info:
+                        for author in pub_info['authors']:
+                            if 'author_id' in author:
+                                result['author_ids'].append(author['author_id'])
+                
+                print(f"      ✅ Found Search Result: {str(result.get('title_text', ''))[:40]}...")
+                if result['pdf_link']:
+                    print(f"      📄 PDF Link: {str(result['pdf_link'])[:50]}...")
+                return result
+            else:
+                print(f"      ⚠️ API Error {resp.status_code}: {resp.text}")
+        except Exception as e:
+            print(f"      💥 Network Error: {e}")
+            
+    print("      ⚠️ No results found via BrightData SERP API.")
     return None
+
 
 
 def scrape_scholar_citation_page(url):
