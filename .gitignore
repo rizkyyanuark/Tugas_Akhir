@@ -20,6 +20,7 @@ ws.env
 *.env
 !*.env.template
 !*.env.sample
+!*.env.example
 credentials_new.json
 credentials.json
 
