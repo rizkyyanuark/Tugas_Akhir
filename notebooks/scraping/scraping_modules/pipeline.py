@@ -261,10 +261,15 @@ def run_smart_merge():
     print("\n🔄 STARTING SMART MERGE (WEB-FIRST)...")
     try:
         df_web = pd.read_csv(RAW_WEB_CSV, dtype=ID_COLUMN_TYPES)
-        df_pddikti = pd.read_csv(RAW_PDDIKTI_CSV, dtype=ID_COLUMN_TYPES)
-    except FileNotFoundError:
-        print("   ❌ Missing Raw Files. Run Steps 1 & 2 first.")
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        print("   ❌ Web Data missing/empty. Run Step 1 first.")
         return None
+        
+    try:
+        df_pddikti = pd.read_csv(RAW_PDDIKTI_CSV, dtype=ID_COLUMN_TYPES)
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        print("   ⚠️ PDDIKTI Data empty. Proceeding without PDDIKTI enrichment.")
+        df_pddikti = pd.DataFrame(columns=['nama_norm', 'nidn', 'prodi_name', 'nip'])
         
     # A. BASE: Web Data (source of truth)
     web_data = {}

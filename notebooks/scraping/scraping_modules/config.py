@@ -20,14 +20,19 @@ HEADERS = {
 ENABLE_SCIVAL = True
 
 # --- CREDENTIALS LOADING ---
-SCIVAL_EMAIL = ""
-SCIVAL_PASS = ""
+# Load from OS Env first, then JSON, then OVERRIDE with Airflow Variables
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+SCIVAL_EMAIL = os.environ.get("SCIVAL_EMAIL", "")
+SCIVAL_PASS = os.environ.get("SCIVAL_PASS", "")
 PROXY_URL = None
 BRIGHT_DATA_HOST = ""
-BD_USER = ""
-BD_PASS = ""
+BD_USER_UNLOCKER = ""
+BD_PASS_UNLOCKER = ""
+BD_USER_SERP = os.environ.get("BD_PASS_SERP", "")
+BD_PASS_SERP = os.environ.get("BD_PASS_SERP", "")
 DECODO_AUTH = ""
-SERPAPI_KEY = ""
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
 
 try:
     if CREDENTIALS_FILE.exists():
@@ -36,47 +41,60 @@ try:
             
             # SciVal
             unesa = config.get('unesa', {})
-            SCIVAL_EMAIL = unesa.get('email', '')
-            SCIVAL_PASS = unesa.get('password', '')
+            if not SCIVAL_EMAIL: SCIVAL_EMAIL = unesa.get('email', '')
+            if not SCIVAL_PASS: SCIVAL_PASS = unesa.get('password', '')
             
             # Decodo
             decodo = config.get('decodo', {})
-            DECODO_AUTH = decodo.get('auth', '')
+            if not DECODO_AUTH: DECODO_AUTH = decodo.get('auth', '')
 
             # SerpAPI
             serpapi = config.get('serpapi', {})
-            SERPAPI_KEY = serpapi.get('api_key', '')
+            if not SERPAPI_KEY: SERPAPI_KEY = serpapi.get('api_key', '')
 
-            # Bright Data
+            # Bright Data (Assume Proxy Unlocker + SERP are often similar)
             bd_unlocker = config.get('bright_data', {}).get('proxy_unlocker', {})
             bd_serp = config.get('bright_data', {}).get('proxy_serp', {})
             
-            # Unlocker credentials
             BRIGHT_DATA_HOST = bd_unlocker.get('host', 'brd.superproxy.io:33335')
-            BD_USER_UNLOCKER = bd_unlocker.get('user', '')
-            BD_PASS_UNLOCKER = bd_unlocker.get('password', '')
-
-            # SERP API credentials
-            BD_USER_SERP = bd_serp.get('user', '')
-            BD_PASS_SERP = bd_serp.get('password', '')
-
-            if BD_USER_UNLOCKER and BD_USER_SERP:
-                print(f"✅ Config: Loaded Dual-Proxy Credentials (Unlocker + SERP)")
-            else:
-                print("ℹ️ Config: Dual-Proxy credentials missing or incomplete.")
+            if not BD_USER_UNLOCKER: BD_USER_UNLOCKER = bd_unlocker.get('user', '')
+            if not BD_PASS_UNLOCKER: BD_PASS_UNLOCKER = bd_unlocker.get('password', '')
+            if not BD_USER_SERP: BD_USER_SERP = bd_serp.get('user', '')
+            if not BD_PASS_SERP: BD_PASS_SERP = bd_serp.get('password', '')
 
             # Supabase
             sb = config.get('supabase', {})
-            SUPABASE_URL = sb.get('url', '')
-            SUPABASE_KEY = sb.get('key', '')
-            if SUPABASE_URL and SUPABASE_KEY:
-                print(f"✅ Config: Loaded Credentials (Supabase: {SUPABASE_URL})")
-            else:
-                print("ℹ️ Config: Supabase credentials missing.")
-    else:
-        print(f"⚠️ Config: Credentials file not found at {CREDENTIALS_FILE}")
+            if not SUPABASE_URL: SUPABASE_URL = sb.get('url', '').strip()
+            if not SUPABASE_KEY: SUPABASE_KEY = sb.get('key', '').strip()
 except Exception as e:
-    print(f"❌ Config Error: {e}")
+    pass
+
+# --- Airflow Variables Override (Highest Priority) ---
+try:
+    from airflow.models import Variable
+    def _av(name, fallback):
+        v = Variable.get(name, default_var=None)
+        return v if v is not None else fallback
+
+    SUPABASE_URL = _av('SUPABASE_URL', SUPABASE_URL).strip() if _av('SUPABASE_URL', SUPABASE_URL) else ""
+    SUPABASE_KEY = _av('SUPABASE_KEY', SUPABASE_KEY).strip() if _av('SUPABASE_KEY', SUPABASE_KEY) else ""
+    SERPAPI_KEY = _av('SERPAPI_KEY', SERPAPI_KEY)
+    BD_PASS_SERP = _av('BD_PASS_SERP', BD_PASS_SERP)
+    SCIVAL_EMAIL = _av('SCIVAL_EMAIL', SCIVAL_EMAIL)
+    SCIVAL_PASS = _av('SCIVAL_PASS', SCIVAL_PASS)
+except ImportError:
+    pass
+
+# Diagnostics
+if BD_USER_UNLOCKER and BD_USER_SERP:
+    print(f"✅ Config: Loaded Dual-Proxy Credentials (Unlocker + SERP)")
+else:
+    print("ℹ️ Config: Dual-Proxy credentials missing or incomplete.")
+
+if SUPABASE_URL and SUPABASE_KEY:
+    print(f"✅ Config: Loaded Credentials (Supabase: {SUPABASE_URL})")
+else:
+    print("ℹ️ Config: Supabase credentials missing/incomplete.")
 
 # --- PRODI CONFIGURATION ---
 # Schema: (kode, display_name, url, pddikti_keyword, parser_type)

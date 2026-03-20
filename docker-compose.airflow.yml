@@ -22,10 +22,9 @@ services:
     restart: always
 
   airflow-init:
-    build: 
-      context: .
-      dockerfile: Dockerfile.airflow # Optional, can use image directly
     image: apache/airflow:2.8.1
+    env_file:
+      - .env
     environment:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
@@ -35,16 +34,29 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: version
+    command: >
+      bash -c "airflow db migrate &&
+      airflow users create
+      --username airflow
+      --password airflow
+      --firstname Airflow
+      --lastname Admin
+      --role Admin
+      --email admin@example.com"
 
   airflow-webserver:
-    image: apache/airflow:2.8.1
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
     restart: always
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       airflow-init:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
@@ -53,29 +65,38 @@ services:
       - "8080:8080"
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./etl_pipeline:/opt/airflow/etl_pipeline
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
-    command: webserver
+      - ./notebooks:/opt/airflow/notebooks
+    command: airflow webserver
 
   airflow-scheduler:
-    image: apache/airflow:2.8.1
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
     restart: always
+    user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
       airflow-init:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./etl_pipeline:/opt/airflow/etl_pipeline
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
-    command: scheduler
+      - ./notebooks:/opt/airflow/notebooks
+    command: airflow scheduler
 
 volumes:
   postgres-db-volume:

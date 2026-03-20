@@ -14,7 +14,7 @@ def _normalize(text: str) -> str:
     return str(text).lower().strip().replace(' ', '')
 
 
-def extract_s2_metadata(doi: str | None = None, title: str | None = None) -> dict | None:
+def extract_s2_metadata(doi: str = None, title: str = None) -> dict:
     """
     Fetch paper details from Semantic Scholar API.
     Tries DOI first, falls back to title search.

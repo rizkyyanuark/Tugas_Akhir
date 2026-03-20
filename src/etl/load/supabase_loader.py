@@ -22,12 +22,33 @@ class SupabaseLoader:
     - Junction table linking (paper_lecturers)
     """
 
-    def __init__(self, url: str | None = None, key: str | None = None):
+    def __init__(self, url: str = None, key: str = None):
         self.url = url or SUPABASE_URL
         self.key = key or SUPABASE_KEY
         if not self.url or not self.key:
             raise ValueError("❌ SUPABASE_URL or SUPABASE_KEY missing!")
-        self.client: Client = create_client(self.url, self.key)
+            
+        # --- DOCKER/SUPABASE-PY PATCH ---
+        # supabase-py > 2.0 strictly validates the key via regex matching JWTs.
+        # However, some modern Supabase keys use the `sb_publishable_...` format.
+        # We temporarily disable the regex check.
+        import re
+        import supabase._sync.client as sc
+        original_match = re.match
+        
+        def mock_match(pattern, string, flags=0):
+            # If it's the JWT regex check coming from supabase client, bypass it
+            if isinstance(string, str) and string.startswith("sb_publishable_"):
+                return True # Pretend it matches
+            return original_match(pattern, string, flags)
+            
+        re.match = mock_match
+        try:
+            self.client: Client = create_client(self.url, self.key)
+        finally:
+            re.match = original_match # Restore
+        # --- END PATCH ---
+        
         print(f"✅ SupabaseLoader connected to {self.url}")
 
     # ─── Value Cleaning ──────────────────────────────────────────────
@@ -52,70 +73,97 @@ class SupabaseLoader:
             return float(value)
         if isinstance(value, str):
             v = value.strip()
-            return v if v and v.lower() not in ('nan', 'none') else None
+            if not v or v.lower() in ('nan', 'none', 'null'):
+                return None
+            # Strip '.0' suffix from ID-like values (NIP, NIDN, Scopus IDs)
+            if v.endswith('.0') and v[:-2].isdigit():
+                v = v[:-2]
+            return v
         return value
 
     # ─── Lecturers ───────────────────────────────────────────────────
 
     def upsert_lecturers(self, df: pd.DataFrame) -> int:
         """
-        Upsert lecturers to 'lecturers' table using NIP as conflict key.
-
-        Returns:
-            Number of successfully upserted rows.
+        Upsert lecturers to 'lecturers' table using NIP as Primary Key (conflict key).
         """
         count = 0
         total = len(df)
         print(f"\n👨‍🏫 Upserting {total} lecturers...")
 
+        # Prepare records
+        records = []
         for _, row in df.iterrows():
+            nip = self._clean_value(row.get('nip'))
             name = self._clean_value(row.get('nama_dosen'))
-            if not name:
+            
+            # Wajib punya NIP & Nama
+            if not nip or not name:
                 continue
 
-            data = {
+            records.append({
+                "nip": nip,
                 "nama_dosen": name,
                 "nama_norm": self._clean_value(row.get('nama_norm')),
-                "nip": self._clean_value(row.get('nip')),
                 "nidn": self._clean_value(row.get('nidn')),
                 "prodi": self._clean_value(row.get('prodi')),
                 "scopus_id": self._clean_value(row.get('scopus_id')),
                 "scholar_id": self._clean_value(row.get('scholar_id')),
                 "sinta_id": self._clean_value(row.get('sinta_id')),
-            }
+            })
 
+        print(f"   📋 Valid records to upsert: {len(records)}/{total}")
+        
+        # Batch insert
+        for i in range(0, len(records), 100):
+            chunk = records[i:i + 100]
             try:
-                json.dumps(data)  # Validate JSON safety
+                # Validate JSON safety first
+                json.dumps(chunk)  
                 self.client.table("lecturers").upsert(
-                    data, on_conflict="nip"
+                    chunk, on_conflict="nip"
                 ).execute()
-                count += 1
+                count += len(chunk)
             except Exception as e:
-                print(f"   ⚠️ Error upserting {name}: {e}")
+                print(f"   ⚠️ Error upserting lecturer batch at {i}: {e}")
 
-        print(f"   ✅ Upserted {count}/{total} lecturers")
+        print(f"   ✅ Upserted {count}/{total} lecturers via NIP")
         return count
 
     # ─── Papers ──────────────────────────────────────────────────────
 
+    def _generate_paper_id(self, doi: str, title: str, year: int) -> str:
+        """
+        Generate a Deterministic Hash (MD5) for a paper.
+        If DOI exists, hash the DOI. Else, hash Title + Year.
+        """
+        import hashlib
+        import re
+        
+        if doi:
+            unik = f"doi:{str(doi).strip().lower()}"
+        else:
+            clean_title = re.sub(r'[^a-zA-Z0-9]', '', str(title).lower())
+            unik = f"title:{clean_title}_year:{str(year).strip() if year else 'None'}"
+            
+        return hashlib.md5(unik.encode('utf-8')).hexdigest()
+
     def upsert_papers(self, df: pd.DataFrame, chunk_size: int = 100) -> int:
         """
-        Batch upsert papers to 'papers' table using DOI as conflict key.
-        Papers without DOI are skipped (cannot guarantee uniqueness).
-
-        Returns:
-            Number of successfully upserted rows.
+        Batch upsert papers to 'papers' table using deterministic `paper_id` as PK.
+        Papers missing DOI are now gracefully handled via Title+Year hashes.
         """
         records = []
         skipped = 0
 
         for _, row in df.iterrows():
-            doi = self._clean_value(row.get('DOI') or row.get('doi'))
-            if not doi:
+            title = self._clean_value(row.get('Title') or row.get('title'))
+            if not title:
                 skipped += 1
                 continue
 
-            title = self._clean_value(row.get('Title') or row.get('title'))
+            doi = self._clean_value(row.get('DOI') or row.get('doi'))
+            
             year_val = row.get('Year') or row.get('year')
             year = None
             try:
@@ -124,7 +172,11 @@ class SupabaseLoader:
             except (ValueError, TypeError):
                 pass
 
+            # Generate Deterministic ID
+            paper_id = self._generate_paper_id(doi, title, year)
+
             records.append({
+                "paper_id": paper_id,
                 "doi": doi,
                 "title": title,
                 "abstract": self._clean_value(row.get('Abstract') or row.get('abstract')),
@@ -138,78 +190,80 @@ class SupabaseLoader:
                 "tldr": self._clean_value(row.get('TLDR') or row.get('tldr')),
             })
 
-        if not records:
-            print(f"   ⚠️ No valid papers with DOI (skipped {skipped})")
-            return 0
+        print(f"\n📄 Upserting {len(records)} papers using MD5 Hashes (chunk={chunk_size})...")
 
         total_upserted = 0
-        print(f"\n📄 Upserting {len(records)} papers (chunk={chunk_size})...")
-
         for i in range(0, len(records), chunk_size):
             chunk = records[i:i + chunk_size]
             try:
                 self.client.table("papers").upsert(
-                    chunk, on_conflict="doi"
+                    chunk, on_conflict="paper_id"
                 ).execute()
                 total_upserted += len(chunk)
                 print(f"   ✅ Batch {i // chunk_size + 1}: {len(chunk)} papers")
             except Exception as e:
                 print(f"   ❌ Batch error at {i}: {e}")
 
-        print(f"   ✅ Total: {total_upserted} upserted, {skipped} skipped (no DOI)")
+        print(f"   ✅ Total: {total_upserted} upserted, {skipped} skipped (no title)")
         return total_upserted
 
     # ─── Junction Table ──────────────────────────────────────────────
 
     def link_papers_to_lecturers(self, df: pd.DataFrame) -> int:
         """
-        Populate paper_lecturers junction table.
-        Maps Author IDs (Scholar/Scopus IDs) to lecturer NIPs.
-
-        Returns:
-            Number of links created.
+        Populate paper_lecturers junction table. (M:M relasi menggunakan paper_id dan nip).
         """
-        # Get lecturer mapping: {scopus_id/scholar_id -> nip}
+        # 1. Get lecturer mapping: lookup NIP using scopus_id & scholar_id
         res = self.client.table("lecturers").select("nip, scopus_id, scholar_id").execute()
         id_to_nip = {}
         for item in res.data:
-            if item.get('scopus_id') and item.get('nip'):
-                id_to_nip[item['scopus_id']] = item['nip']
-            if item.get('scholar_id') and item.get('nip'):
-                id_to_nip[item['scholar_id']] = item['nip']
-
-        # Get valid DOIs in DB
-        res = self.client.table("papers").select("doi").execute()
-        valid_dois = {p['doi'] for p in res.data if p.get('doi')}
+            nip = item.get('nip')
+            if not nip: continue
+            if item.get('scopus_id'):
+                id_to_nip[item['scopus_id']] = nip
+            if item.get('scholar_id'):
+                id_to_nip[item['scholar_id']] = nip
 
         links = set()
+        
+        # 2. Extract links locally from DataFrame
         for _, row in df.iterrows():
+            title = self._clean_value(row.get('Title') or row.get('title'))
+            if not title: continue
+                
             doi = self._clean_value(row.get('DOI') or row.get('doi'))
-            if not doi or doi not in valid_dois:
-                continue
-
+            year_val = row.get('Year') or row.get('year')
+            year = None
+            try:
+                if year_val and not pd.isna(year_val): year = int(float(str(year_val)))
+            except: pass
+            
+            # Recreate the exact same paper_id hash
+            paper_id = self._generate_paper_id(doi, title, year)
+            
             author_ids = str(row.get('Author IDs') or row.get('author_ids') or '')
-            if not author_ids or author_ids.lower() == 'nan':
+            if not author_ids or author_ids.lower() in ('nan', 'none', ''):
                 continue
 
             for aid in author_ids.replace(',', ';').split(';'):
-                aid = aid.strip()
+                aid = str(aid).strip().replace('.0', '')
                 if aid in id_to_nip:
-                    links.add((doi, id_to_nip[aid]))
+                    links.add((paper_id, id_to_nip[aid]))
 
         if not links:
             print("   ⚠️ No lecturer-paper links to insert.")
             return 0
 
-        link_data = [{"paper_doi": d, "lecturer_nip": n} for d, n in links]
+        # 3. Batch Upsert to Junction Table
+        link_data = [{"paper_id": p, "nip": n} for p, n in links]
         total = 0
 
-        print(f"\n🔗 Linking {len(link_data)} paper-lecturer relationships...")
+        print(f"\n🔗 Linking {len(link_data)} paper-lecturer relationships (Hash <-> NIP)...")
         for i in range(0, len(link_data), 500):
             chunk = link_data[i:i + 500]
             try:
                 self.client.table("paper_lecturers").upsert(
-                    chunk, on_conflict="paper_doi,lecturer_nip",
+                    chunk, on_conflict="paper_id,nip",
                     ignore_duplicates=True
                 ).execute()
                 total += len(chunk)

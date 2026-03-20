@@ -14,7 +14,7 @@ def _normalize(text: str) -> str:
     return str(text).lower().strip().replace(' ', '')
 
 
-def extract_openalex_metadata(doi: str | None = None, title: str | None = None) -> dict | None:
+def extract_openalex_metadata(doi: str = None, title: str = None) -> dict:
     """
     Look up a paper in OpenAlex by DOI or title.
 
@@ -79,10 +79,20 @@ def extract_openalex_metadata(doi: str | None = None, title: str | None = None) 
         kw_list = [c["display_name"] for c in concepts if c.get("score", 0) > 0.3]
         result["keywords"] = ", ".join(kw_list) if kw_list else ""
 
-    # Author names
+    # Author names + structured IDs
     authorships = work.get("authorships", [])
     result["author_names"] = [
         a.get("author", {}).get("display_name", "")
+        for a in authorships if a.get("author")
+    ]
+    # OpenAlex structured author IDs (e.g., "https://openalex.org/A5023888391")
+    result["author_ids_openalex"] = [
+        a.get("author", {}).get("id", "")
+        for a in authorships if a.get("author", {}).get("id")
+    ]
+    # ORCID (useful for cross-database matching)
+    result["author_orcids"] = [
+        (a.get("author", {}).get("orcid") or "")
         for a in authorships if a.get("author")
     ]
 

@@ -199,12 +199,21 @@ class ScopusPaperClient:
         for idx, scopus_id in enumerate(target_ids):
             print(f"   [{idx+1}/{len(target_ids)}] Processing ID: {scopus_id} (Cutoff: >{cutoff_year})")
             
+            # Proactive driver restart every 10 iterations to prevent memory leaks / connection resets
+            if idx > 0 and idx % 10 == 0:
+                print("      🔄 Proactive driver restart (memory clearance)...")
+                self.restart_driver()
+            
+            # Small buffer between profiles
+            time.sleep(2)
+            
             max_retries = 3
             for attempt in range(max_retries):
                 try:
                     url = f"https://www.scopus.com/authid/detail.uri?authorId={scopus_id}"
                     # ... navigation ...
                     self.driver.get(url)
+                    time.sleep(1) # Let the initial JS load
                     break # Success, proceed to scraping
                 except (InvalidSessionIdException, WebDriverException) as e:
                     print(f"      ⚠️ Driver Error (Attempt {attempt+1}/{max_retries}): {e}")
@@ -310,15 +319,24 @@ class ScopusPaperClient:
                     # E. Wait for file
                     txt_file = None
                     start_wait = time.time()
-                    while time.time() - start_wait < 20:
-                        files = sorted(list(SAVE_DIR.glob("scopus*.txt")), key=os.path.getmtime, reverse=True)
+                    
+                    # Directories to check
+                    check_dirs = [Path("/opt/airflow/data/scopus_temp"), Path("/tmp/scopus_downloads"), SAVE_DIR]
+                    
+                    while time.time() - start_wait < 90:
+                        all_found_files = []
+                        for d in check_dirs:
+                            if d.exists():
+                                all_found_files.extend(list(d.glob("scopus*.txt")))
+                                
+                        files = sorted(all_found_files, key=os.path.getmtime, reverse=True)
                         if files:
                             # Check if valid (not empty, not crdownload)
                             f = files[0]
                             if f.stat().st_size > 0 and (time.time() - f.stat().st_mtime) < 30:
                                 txt_file = f
                                 break
-                        time.sleep(1)
+                        time.sleep(2)
                     
                     if txt_file:
                         time.sleep(1) # Ensure write complete
@@ -337,8 +355,6 @@ class ScopusPaperClient:
             except Exception as e:
                 print(f"      ❌ Error: {e}")
                     
-        self.driver.quit()
-            
         return all_papers
 
 def deduplicate_papers(df):

@@ -60,7 +60,13 @@ class SciValClient:
             }
             opts.add_experimental_option("prefs", prefs)
             
-            service = Service(ChromeDriverManager().install())
+            # Use explicit CHROMEDRIVER_PATH if available (fixes Docker v146/v114 mismatch)
+            chromedriver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+            if os.path.exists(chromedriver_path):
+                service = Service(chromedriver_path)
+            else:
+                service = Service(ChromeDriverManager().install())
+            
             driver = webdriver.Chrome(service=service, options=opts)
             driver.execute_cdp_cmd("Page.setDownloadBehavior", {
                 "behavior": "allow", "downloadPath": str(self.save_dir.absolute())
