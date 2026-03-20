@@ -30,8 +30,8 @@ class WebProdiScraper:
             
             for attempt in range(max_retries):
                 try:
-                    # Timeout 30s as requested
-                    r = requests.get(url, headers=self.headers, timeout=30, verify=False)
+                    # Increased timeout to 90s to accommodate slow FMIPA subdomains
+                    r = requests.get(url, headers=self.headers, timeout=90, verify=False)
                     r.raise_for_status()
                     success = True
                     break # Success!

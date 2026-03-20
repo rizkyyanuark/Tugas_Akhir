@@ -55,3 +55,14 @@ dependencies = [
     "watermark>=2.5.0",
     "webdriver-manager>=4.0.2",
 ]
+
+[tool.uv]
+override-dependencies = [
+    "seqeval>=0.0.10",
+]
+
+[tool.uv.extra-build-dependencies]
+flatdict = ["setuptools"]
+
+[tool.uv.sources]
+

@@ -23,7 +23,7 @@ def _trigrams(text: str) -> set:
 
 def deduplicate_papers(
     df: pd.DataFrame,
-    existing_titles: set | None = None,
+    existing_titles = None,
     fuzzy_threshold: float = 0.80,
 ) -> pd.DataFrame:
     """

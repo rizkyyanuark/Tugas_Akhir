@@ -1,0 +1,50 @@
+# Custom Airflow Image with Chrome for Selenium-based Scopus Extraction
+# =====================================================================
+# Base: Official Apache Airflow 2.8.1 (Python 3.8)
+# Added: Chromium + ChromeDriver for headless Selenium scraping
+FROM apache/airflow:2.8.1
+
+# Switch to root to install system dependencies
+USER root
+
+# Install Chromium, ChromeDriver, and required libs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    chromium-driver \
+    # Required for Chromium
+    fonts-liberation \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    # Clean up to reduce image size
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Chrome environment variables for headless mode
+ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+
+# Switch back to airflow user for security
+USER airflow
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    supabase \
+    pandas \
+    python-dotenv \
+    urllib3==1.26.15 \
+    selenium \
+    webdriver-manager \
+    beautifulsoup4 \
+    lxml \
+    requests \
+    pddiktipy
+
+# TLDR Generation: Qwen2.5-0.5B-Instruct (CPU-optimized)
+RUN pip install --no-cache-dir \
+    transformers \
+    sentencepiece \
+    accelerate \
+    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
