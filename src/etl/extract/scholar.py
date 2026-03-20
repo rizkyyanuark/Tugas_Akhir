@@ -65,9 +65,10 @@ def _serpapi_fetch_author(api_key: str, scholar_id: str, start: int = 0,
     return [], False
 
 
+
 def extract_scholar_papers(
-    targets: list[dict],
-    api_key: str | None = None,
+    targets: list,
+    api_key: str = None,
     limit_per_author: int = 500,
     resume_from_temp: bool = True,
 ) -> pd.DataFrame:
@@ -76,18 +77,19 @@ def extract_scholar_papers(
 
     Args:
         targets: List of dicts with keys 'id' (scholar_id) and 'name'.
-        api_key: SerpAPI key. Falls back to config.
+        api_key: SerpAPI Key. Falls back to config SERPAPI_KEY.
         limit_per_author: Max papers per author profile.
         resume_from_temp: Whether to resume from a temp checkpoint file.
 
     Returns:
         DataFrame with raw scholar paper data.
     """
-    api_key = api_key or SERPAPI_KEY
-    if not api_key:
+    from ..config import SERPAPI_KEY
+    token = api_key or SERPAPI_KEY
+    if not token:
         raise ValueError("❌ SERPAPI_KEY not configured!")
 
-    print(f"\n📡 EXTRACT: Google Scholar ({len(targets)} authors)")
+    print(f"\n📡 EXTRACT: Google Scholar via SerpAPI ({len(targets)} authors)")
     print("=" * 60)
 
     TEMP_CSV = RAW_DATA_DIR / "scholar_extract_temp.csv"
@@ -116,7 +118,7 @@ def extract_scholar_papers(
 
         while author_count < limit_per_author:
             articles, has_next = _serpapi_fetch_author(
-                api_key, t["id"], start=start, num=100
+                token, t["id"], start=start, num=100
             )
             if not articles:
                 break
@@ -127,7 +129,8 @@ def extract_scholar_papers(
                     "Year": str(art.get("year", "")),
                     "Journal": art.get("publication", ""),
                     "Link": art.get("link", ""),
-                    "Authors_raw": art.get("authors", ""),
+                    "Authors": art.get("authors", ""),
+                    "Author IDs": t["id"],
                     "citation_id": art.get("citation_id", ""),
                     "scholar_id": t["id"],
                     "dosen": t["name"],

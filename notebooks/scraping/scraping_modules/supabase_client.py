@@ -13,7 +13,27 @@ class SupabaseClient:
     def __init__(self):
         if not SUPABASE_URL or not SUPABASE_KEY:
             raise ValueError("❌ Supabase URL or Key missing in config.py!")
-        self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+            
+        # --- DOCKER/SUPABASE-PY PATCH ---
+        # supabase-py > 2.0 strictly validates the key via regex matching JWTs.
+        # However, some modern Supabase keys use the `sb_publishable_...` format.
+        # We temporarily disable the regex check during initialization.
+        import re
+        import supabase._sync.client as sc
+        original_match = re.match
+        
+        def mock_match(pattern, string, flags=0):
+            # If it's the JWT regex check coming from supabase client, bypass it
+            if isinstance(string, str) and string.startswith("sb_publishable_"):
+                return True # Pretend it matches
+            return original_match(pattern, string, flags)
+            
+        re.match = mock_match
+        try:
+            self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        finally:
+            re.match = original_match # Restore
+            
         print(f"✅ Supabase Client Connected to {SUPABASE_URL}")
 
     # ─── Cleaning Helpers ────────────────────────────────────────────
