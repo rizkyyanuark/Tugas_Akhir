@@ -18,6 +18,10 @@ def clean_text(text: str) -> str:
     if not isinstance(text, str) or pd.isna(text):
         return ""
         
+    import html
+    # Tolak ukur awal: kembalikan entitas HTML (seperti &#x0D;, &amp;) ke bentuk aslinya
+    text = html.unescape(text)
+    
     # Remove HTML tags (e.g. <br>, <i>)
     text = re.sub(r'<[^>]+>', ' ', text)
     # Remove zero-width characters and invisible unicode spaces
@@ -30,6 +34,18 @@ def clean_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text)
     
     return text.strip()
+
+
+def clean_abstract_text(text: str) -> str:
+    """Apply deep noise removal specifically for abstracts (removes Abstrak-, trailing keywords)."""
+    if not text: return ""
+    c = str(text)
+    # 1. Hapus noise awalan
+    c = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-—–:.]+[\s]*', '', c)
+    # 2. Hapus keyword di ekor
+    c = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-—–\.].*$', '', c, flags=re.DOTALL)
+    # 3. Clean general HTML/whitespaces
+    return clean_text(c)
 
 
 def clean_id_value(val) -> str:
@@ -84,21 +100,26 @@ def _normalize_name_for_matching(name: str) -> str:
     return name
 
 
-# Singleton lecturer map for cleaner
-_cleaner_lecturer_map = None
+# ─── Dual-Indexed Lecturer Database ──────────────────────────────
+# Two singletons:
+#   _lec_by_name:  {normalized_name: entry}  → for name-based matching
+#   _lec_by_sid:   {scholar_id: entry}       → for ID-based matching
+_lec_by_name = None
+_lec_by_sid = None
 
-def _load_cleaner_lecturer_map() -> dict:
-    """Load lecturer data for the cleaner. Returns {norm_name: entry}."""
-    global _cleaner_lecturer_map
-    if _cleaner_lecturer_map is not None:
-        return _cleaner_lecturer_map
+def _load_lecturer_db():
+    """Load lecturer data into dual-indexed maps. Called once (singleton)."""
+    global _lec_by_name, _lec_by_sid
+    if _lec_by_name is not None:
+        return _lec_by_name, _lec_by_sid
 
-    _cleaner_lecturer_map = {}
+    _lec_by_name = {}
+    _lec_by_sid = {}
     
     csv_paths = [
         Path("/opt/airflow/notebooks/scraping/file_tabulars/dosen_infokom_final.csv"),
-        Path(__file__).resolve().parent.parent.parent / "notebooks" / "scraping" / "file_tabulars" / "dosen_infokom_final.csv",
-        Path(__file__).resolve().parent.parent.parent / "data" / "raw" / "dosen_infokom_final.csv",
+        Path(__file__).resolve().parent.parent.parent.parent / "notebooks" / "scraping" / "file_tabulars" / "dosen_infokom_final.csv",
+        Path(__file__).resolve().parent.parent.parent.parent / "data" / "raw" / "dosen_infokom_final.csv",
     ]
     
     for csv_path in csv_paths:
@@ -121,189 +142,194 @@ def _load_cleaner_lecturer_map() -> dict:
                         'nama_norm': norm if norm and norm != 'nan' else nama,
                     }
                     
-                    # Index by multiple variants
-                    norm_full = _normalize_name_for_matching(nama)
-                    if norm_full:
-                        _cleaner_lecturer_map[norm_full] = entry
-                    if norm and norm != 'nan':
-                        norm_clean = _normalize_name_for_matching(norm)
-                        if norm_clean:
-                            _cleaner_lecturer_map[norm_clean] = entry
+                    # --- Index 1: By normalized name (for name-based matching) ---
+                    clean_norm = _normalize_name_for_matching(norm) if (norm and norm != 'nan') else _normalize_name_for_matching(nama)
+                    if clean_norm:
+                        _lec_by_name[clean_norm] = entry
                     
-                    # Index by reversed name (Scopus convention)
-                    parts = norm_full.split()
-                    if len(parts) >= 2:
-                        _cleaner_lecturer_map[f"{parts[-1]} {parts[0]}"] = entry
-                        # Also support first-initial matching (e.g., "y yamasari" → "yuni yamasari")
-                        for i, p in enumerate(parts):
-                            if len(p) == 1:  # It's an initial
-                                # This handles "Y Yamasari" → match to "Yuni Yamasari"
-                                continue
+                    # --- Index 2: By scholar_id (for ID-based matching) ---
+                    if scholar_id and scholar_id != 'nan':
+                        _lec_by_sid[scholar_id] = entry
+                    
+                    # --- Index 3: By scopus_id ---
+                    if scopus_id and scopus_id != 'nan':
+                        _lec_by_sid[scopus_id] = entry
                 
-                print(f"✅ Cleaner lecturer map loaded: {len(_cleaner_lecturer_map)} name variants")
+                print(f"✅ Lecturer DB loaded: {len(_lec_by_name)} names, {len(_lec_by_sid)} IDs")
                 break
             except Exception as e:
-                print(f"⚠️ Could not load lecturer CSV for cleaner: {e}")
+                print(f"⚠️ Could not load lecturer CSV: {e}")
     
-    return _cleaner_lecturer_map
+    return _lec_by_name, _lec_by_sid
+
+
+# Legacy alias for backward compatibility
+def _load_cleaner_lecturer_map() -> dict:
+    name_map, _ = _load_lecturer_db()
+    return name_map
 
 
 def _match_name_to_lecturer(author_name: str, threshold: float = 0.75) -> dict:
     """Match a single author name against known lecturers.
     
-    Handles:
-    - Exact match: "Yuni Yamasari" → match
-    - Reversed names: "Yamasari, Yuni" → flipped → match
-    - Abbreviated: "Y Yamasari" → fuzzy match to "Yuni Yamasari"
-    - Partial: "Elly Matul Imah" vs "elly matul imah" → match
+    Priority order:
+      1. Exact normalized name match ONLY.
+         Fuzzy matching has been DISABLED due to false positives
+         (e.g. MW Aditya -> Aditya C.H.) per user request.
     
     Returns: {'name': str, 'scopus_id': str, 'scholar_id': str, 'matched': bool}
     """
-    lec_map = _load_cleaner_lecturer_map()
+    lec_map, _ = _load_lecturer_db()
     if not lec_map:
         return {'name': author_name, 'matched': False}
     
-    # Flip if Scopus format
     flipped = _flip_author_name(author_name)
     norm = _normalize_name_for_matching(flipped)
     
     if not norm:
         return {'name': author_name, 'matched': False}
     
-    # Strategy 1: Exact match
+    # Strategy 1: Exact match ONLY
     if norm in lec_map:
         entry = lec_map[norm]
         return {'name': entry['nama_norm'], 'scopus_id': entry['scopus_id'],
                 'scholar_id': entry['scholar_id'], 'matched': True}
     
-    # Strategy 2: Containment (handles shortened vs full names)
-    for lec_name, entry in lec_map.items():
-        if norm in lec_name or lec_name in norm:
-            # Avoid very short matches (e.g. "Ali" in "Alim")
-            if len(norm) > 5 and len(lec_name) > 5:
-                return {'name': entry['nama_norm'], 'scopus_id': entry['scopus_id'],
-                        'scholar_id': entry['scholar_id'], 'matched': True}
-    
-    # Strategy 3: Initial matching with relaxed length (e.g., "RE Putra" -> "Ricky Eka Putra")
-    norm_parts = norm.split()
-    if len(norm_parts) >= 2:
-        for lec_name, entry in lec_map.items():
-            lec_parts = lec_name.split()
-            if len(norm_parts) <= len(lec_parts):
-                # Check first part alignment
-                np0 = norm_parts[0]
-                lp0 = lec_parts[0]
+    # Strategy 2: Initial + Surname matching (e.g. "rdi puspitasari" -> "ratih dian i p")
+    abbr_parts = norm.split()
+    if len(abbr_parts) >= 2:
+        abbr_last = abbr_parts[-1]
+        abbr_inits = "".join(abbr_parts[:-1]).replace(".", "")
+        
+        # Cari kecocokan di seluruh database dosen
+        for db_norm, entry in lec_map.items():
+            db_parts = db_norm.split()
+            if len(db_parts) >= 2:
+                db_last = db_parts[-1]
+                # Ambil huruf pertama dari setiap kata (kecuali kata terakhir) sebagai inisial
+                db_inits = "".join([p[0] for p in db_parts[:-1]])
                 
-                f_match = False
-                consumed_lec_parts = 0
+                # Check last name: exact match or abbreviation (e.g. "p" vs "puspitasari")
+                last_name_match = (
+                    (db_last == abbr_last) or 
+                    (len(db_last) == 1 and abbr_last.startswith(db_last)) or
+                    (len(abbr_last) == 1 and db_last.startswith(abbr_last))
+                )
                 
-                if np0 == lp0 or (len(np0) == 1 and lp0.startswith(np0)):
-                    f_match = True
-                    consumed_lec_parts = 1
-                elif len(np0) >= 2 and len(np0) <= len(lec_parts) - 1:
-                    # Try to see if 're' matches 'ricky' 'eka'
-                    # Actually just check initials: r==r, e==e
-                    sub_match = True
-                    for i, char in enumerate(np0):
-                        if i >= len(lec_parts) or not lec_parts[i].startswith(char):
-                            sub_match = False
-                            break
-                    if sub_match:
-                        f_match = True
-                        consumed_lec_parts = len(np0)
-                
-                if f_match:
-                    # Check last part alignment
-                    nplast = norm_parts[-1]
-                    lplast = lec_parts[-1]
-                    l_match = (nplast == lplast) or (len(nplast) == 1 and lplast.startswith(nplast))
-                    
-                    if l_match:
-                        # Success!
-                        return {'name': entry['nama_norm'], 'scopus_id': entry['scopus_id'],
-                                'scholar_id': entry['scholar_id'], 'matched': True}
+                if last_name_match and (db_inits.startswith(abbr_inits) or abbr_inits.startswith(db_inits)):
+                    return {'name': entry['nama_norm'], 'scopus_id': entry['scopus_id'],
+                            'scholar_id': entry['scholar_id'], 'matched': True}
 
-    # Strategy 4: Fuzzy matching
-    best_score = 0
-    best_entry = None
-    for lec_name, entry in lec_map.items():
-        score = SequenceMatcher(None, norm, lec_name).ratio()
-        if score > best_score:
-            best_score = score
-            best_entry = entry
-    
-    if best_entry and best_score >= threshold:
-        return {'name': best_entry['nama_norm'], 'scopus_id': best_entry['scopus_id'],
-                'scholar_id': best_entry['scholar_id'], 'matched': True}
-    
     return {'name': flipped, 'matched': False}
 
 
-def _normalize_authors_and_ids(authors_str: str, author_ids_str: str) -> tuple:
+def _normalize_authors_and_ids(authors_str: str, author_ids_str: str, 
+                                paper_scholar_id: str = "", paper_dosen: str = "") -> tuple:
     """
-    Normalize the Authors + Author IDs columns for a single paper row.
+    Hybrid Author Matching System.
     
-    For EACH author name:
-    1. Flip reversed names ("Last, First" → "First Last")
-    2. Match against known UNESA lecturers
-    3. If matched → use canonical nama_norm + populate scopus_id/scholar_id
+    Converts abbreviated Scholar names ("EM Imah, A Prapanca") into full names
+    ("Elly Matul Imah, Aditya Prapanca") and populates Author IDs.
+    DISCARDS any author that does not match the database.
     
-    Returns: (normalized_authors: str, enriched_author_ids: str)
+    Returns: (normalized_authors: str, enriched_author_ids: str) joined by commas.
     """
     if not authors_str or str(authors_str).lower() in ('nan', 'none', ''):
         return authors_str, author_ids_str
     
-    # Parse existing author IDs (semicolon-separated)
-    existing_ids = []
-    if author_ids_str and str(author_ids_str).lower() not in ('nan', 'none', ''):
-        existing_ids = [aid.strip().replace('.0', '') for aid in str(author_ids_str).replace(',', ';').split(';') if aid.strip()]
+    lec_by_name, lec_by_sid = _load_lecturer_db()
     
-    # Parse author names
-    raw_names = [n.strip() for n in str(authors_str).replace(',', ';').split(';') if n.strip()]
+    # --- Parse author names (handle both comma and semicolon separators) ---
+    raw_authors_str = str(authors_str)
+    # Remove the trailing '...' if Scholar truncated it
+    raw_authors_str = re.sub(r'\.\.\.$', '', raw_authors_str).strip()
     
-    # BUT: Scopus uses "Last, First" format with commas INSIDE names
-    # Re-parse considering that pattern: "Yamasari, Y.; Imah, E.M."
-    if ';' in str(authors_str):
-        raw_names = [n.strip() for n in str(authors_str).split(';') if n.strip()]
+    if ';' in raw_authors_str:
+        raw_names = [n.strip() for n in raw_authors_str.split(';') if n.strip()]
+    else:
+        raw_names = [n.strip() for n in raw_authors_str.split(',') if n.strip()]
     
-    new_names = []
-    new_ids = []
+    # --- Priority 1: Identify the "owner" dosen via scholar_id ---
+    owner_entry = None
+    paper_sid = str(paper_scholar_id).strip() if paper_scholar_id else ""
+    if paper_sid and paper_sid not in ('', 'nan', 'None') and paper_sid in lec_by_sid:
+        owner_entry = lec_by_sid[paper_sid]
     
-    for idx, name in enumerate(raw_names):
-        if not name:
+    # --- Process each author name ---
+    final_names = []
+    final_ids = []
+    
+    # FORCE INJECT PROFILE OWNER FIRST
+    # Google Scholar explicitly truncates long author lists with "...", which often cuts off
+    # the actual profile owner we scraped this from! By injecting them forcefully, we guarantee 
+    # they are not randomly lost.
+    if owner_entry:
+        owner_name = owner_entry.get('nama_norm', '')
+        owner_id = owner_entry.get('scholar_id') or owner_entry.get('scopus_id') or ''
+        if owner_name:
+            final_names.append(owner_name)
+        if owner_id:
+            final_ids.append(owner_id)
+            
+    for raw_name in raw_names:
+        if not raw_name or raw_name == '...':
             continue
         
-        match = _match_name_to_lecturer(name)
+        matched_entry = None
         
-        if match['matched']:
-            # 1. Canonical names (No abbreviation, full name!)
-            if match['name'] not in new_names:
-                new_names.append(match['name'])
+        # Priority 1: If this abbreviated name matches the profile owner's initials,
+        # directly assign the owner (we KNOW they authored this paper since it's on their profile)
+        if owner_entry:
+            owner_norm = _normalize_name_for_matching(owner_entry['nama_norm'])
+            abbr_norm = _normalize_name_for_matching(_flip_author_name(raw_name))
             
-            # 2. Robust ID Assignment
-            # Priority: Scholar ID (per user request) -> Scopus ID -> Anything else.
-            # We explicitly skip using the 'idx' to index 'existing_ids' because
-            # raw data often has mismatched counts (e.g. 6 authors, 1 ID).
-            lecturer_id = match.get('scholar_id') or match.get('scopus_id')
+            if owner_norm and abbr_norm:
+                # Check if abbreviated name matches owner via initials
+                abbr_parts = abbr_norm.split()
+                owner_parts = owner_norm.split()
+                
+                if abbr_norm == owner_norm:
+                    matched_entry = owner_entry
+                elif len(abbr_parts) >= 2 and len(owner_parts) >= 2:
+                    abbr_last = abbr_parts[-1]
+                    abbr_inits = "".join(abbr_parts[:-1]).replace(".", "")
+                    owner_inits = "".join([p[0] for p in owner_parts[:-1]])
+                    
+                    last_name_match_owner = (
+                        (owner_parts[-1] == abbr_last) or 
+                        (len(owner_parts[-1]) == 1 and abbr_last.startswith(owner_parts[-1])) or
+                        (len(abbr_last) == 1 and owner_parts[-1].startswith(abbr_last))
+                    )
+                    
+                    if last_name_match_owner and (owner_inits.startswith(abbr_inits) or abbr_inits.startswith(owner_inits)):
+                        matched_entry = owner_entry
+        
+        # Priority 2: General name-based matching against ALL lecturers
+        if not matched_entry:
+            result = _match_name_to_lecturer(raw_name)
+            if result['matched']:
+                matched_entry = {
+                    'nama_norm': result['name'],
+                    'scholar_id': result.get('scholar_id', ''),
+                    'scopus_id': result.get('scopus_id', ''),
+                }
+        
+        # --- Append result ONLY if matched (Discard non-Infokom authors) ---
+        if matched_entry:
+            full_name = matched_entry['nama_norm']
+            lecturer_id = matched_entry.get('scholar_id') or matched_entry.get('scopus_id') or ''
             
-            if lecturer_id and lecturer_id not in new_ids:
-                new_ids.append(lecturer_id)
+            if full_name and full_name not in final_names:
+                final_names.append(full_name)
+            # Selalu masukkan ID meskipun kosong agar sejalan dengan urutan nama (opsional)
+            # Namun kita cukup mengisi ID valid atau kosong. Scholar kadang tidak butuh sejajar per nama.
+            if lecturer_id and lecturer_id not in final_ids:
+                final_ids.append(lecturer_id)
         else:
-            # User specifically wants: "hanya dosen infokom saja yang d matching"
-            # So we intentionally DO NOT append unmatched authors or their IDs.
+            # DISCARD: Do not append unmatched raw authors
             pass
-
-    # Safety fallback: if no lecturers matched (e.g. edge case in name parsing),
-    # we don't want an empty string. Fallback to original raw names.
-    if not new_names:
-        new_names = [n.strip() for n in raw_names if n.strip()]
-        new_ids = existing_ids
-
-    # Final string formatting
-    final_authors = "; ".join(new_names)
-    final_ids = "; ".join(new_ids)
     
-    return final_authors, final_ids
+    return ", ".join(final_names), ", ".join(final_ids)
 
 
 def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
@@ -331,6 +357,10 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
                 print(f"   🧼 Column {col}: cleaned {after_empty - before_empty} trash entries into empty strings.")
 
     # Specific formatting rules:
+    # 0. Abstract: Deep Clean Noise (Abstrak—, trailing Keywords)
+    if 'Abstract' in df.columns:
+        df['Abstract'] = df['Abstract'].apply(clean_abstract_text)
+
     # 1. Keywords: lowercase, remove trailing commas
     if 'Keywords' in df.columns:
         df['Keywords'] = df['Keywords'].str.lower().str.strip(',')
@@ -352,11 +382,16 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
         for idx, row in df.iterrows():
             authors_str = str(row.get('Authors', '')).strip()
             author_ids_str = str(row.get('Author IDs', '')).strip()
+            paper_sid = str(row.get('scholar_id', '')).strip()
+            paper_dosen = str(row.get('dosen', '')).strip()
             
             if not authors_str or authors_str.lower() in ('nan', 'none', ''):
                 continue
             
-            new_authors, new_ids = _normalize_authors_and_ids(authors_str, author_ids_str)
+            new_authors, new_ids = _normalize_authors_and_ids(
+                authors_str, author_ids_str,
+                paper_scholar_id=paper_sid, paper_dosen=paper_dosen
+            )
             
             df.at[idx, 'Authors'] = new_authors
             if 'Author IDs' in df.columns:

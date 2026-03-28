@@ -134,7 +134,6 @@ def extract_scholar_papers(
                     "citation_id": art.get("citation_id", ""),
                     "scholar_id": t["id"],
                     "dosen": t["name"],
-                    "source": "scholar",
                 })
                 author_count += 1
 

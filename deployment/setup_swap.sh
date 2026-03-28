@@ -1,0 +1,27 @@
+#!/bin/bash
+# ==========================================
+# 🚀 AWS EC2 SWAP SETUP (4GB)
+# ==========================================
+# This script enables 4GB of SWAP on 4GB RAM 
+# instance to prevent Out of Memory (OOM).
+
+SWAP_FILE="/swapfile"
+SWAP_SIZE="4G"
+
+if [ -f "$SWAP_FILE" ]; then
+    echo "✅ Swap file already exists. Skipping."
+    exit 0
+fi
+
+echo "📦 Creating $SWAP_SIZE swap file..."
+sudo fallocate -l $SWAP_SIZE $SWAP_FILE
+sudo chmod 600 $SWAP_FILE
+sudo mkswap $SWAP_FILE
+sudo swapon $SWAP_FILE
+
+# Make it persistent after reboot
+echo "$SWAP_FILE none swap sw 0 0" | sudo tee -a /etc/fstab
+
+echo "🚀 SWAP Status:"
+free -h
+swapon --show
