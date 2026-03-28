@@ -1,4 +1,8 @@
-# Python-generated files
+# ==============================================================================
+# 🚀 TUGAS AKHIR - GITIGNORE
+# ==============================================================================
+
+# === Python ===
 __pycache__/
 *.py[oc]
 build/
@@ -6,35 +10,67 @@ dist/
 wheels/
 *.egg-info
 
-.claude
+# === Virtual environments ===
+.venv/
+.ipynb_checkpoints/
 
-# Virtual environments
-.venv
-.ipynb_checkpoints
-
-# jurnal 
-jurnal tugas akhir
-
-# Environment files (contains sensitive data)
-ws.env
+# === Environment & Secrets ===
 *.env
 !*.env.template
 !*.env.sample
 !*.env.example
 credentials_new.json
 credentials.json
+AWS/
 
-# Docker volumes data
+# === ML Models & Large Binary Files ===
+data/models/
+*.gguf
+*.bin
+*.safetensors
+*.h5
+*.pt
+*.pth
+
+# === Data Files (reproducible via pipeline) ===
+data/raw/
+data/processed/
+data/scopus_temp/
+data/golden_dataset/
+notebooks/scraping/file_tabulars/
+notebooks/scraping/rps_pdfs/
+notebooks/scraping/tldr_results.json
+notebooks/scraping/dosen_data.csv
+data/*.py
+data/*.txt
+data/*.md
+
+# === Submodule / Cloned Repos ===
+academicRAG/
+strwythura/
+
+# === Personal Files ===
+cv*.pdf
+
+# === PDF Documents (large) ===
+Knowledge_Graph_Generation_and_Application_for_Unstructured_Data_Using_Data_Processing_Pipeline.pdf
+
+# === Docker volumes data ===
 logs/
-data/
-
-# Neo4j specific
 neo4j_data/
 neo4j_logs/
 neo4j_plugins/
 neo4j_import/
 
-# OS generated files
+# === IDE & Editor ===
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+
+# === OS generated files ===
 .DS_Store
 .DS_Store?
 ._*
@@ -42,24 +78,18 @@ neo4j_import/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Jupyter notebook outputs
+# === Jupyter notebook outputs ===
 *.ipynb_checkpoints
 
-# Temporary files
+# === Temporary files ===
 *.tmp
 *.temp
 *.log
 
-# LaTeX compilation artifacts
+# === LaTeX compilation artifacts ===
 *.aux
-*.log
 *.out
 *.toc
 *.lof
@@ -81,65 +111,21 @@ Thumbs.db
 *.gls
 *.glo
 *.glg
-
-# LaTeX package test files
-__package_test__.*
-
-# Dependency cache
-.latex_deps_cache/
-
-# macOS
-.DS_Store
-
-# VS Code
-.vscode/
-
-# IDE files
-*.swp
-*.swo
-*~
-
-# Core auxiliary files
-*.aux
-*.lof
-*.log
-*.lot
-*.fls
-*.out
-*.toc
 *.fmt
 *.fot
 *.cb
 *.cb2
 .*.lb
-
-# Bibliography
-*.bbl
-*.bcf
-*.blg
 *-blx.aux
 *-blx.bib
-*.run.xml
-
-# Glossary
 *.acn
 *.acr
 *.alg
-*.glg
-*.glo
-*.gls
 *.glsdefs
-*.ist
-
-# Index
 *.idx
 *.ilg
 *.ind
-
-# Listings
 *.lol
-
-# Minitoc
 *.maf
 *.mlf
 *.mlt
@@ -147,48 +133,20 @@ __package_test__.*
 *.slf[0-9]*
 *.slt[0-9]*
 *.stc[0-9]*
-
-# Package specific
-*.fdb_latexmk
 *.synctex
 *.synctex(busy)
-*.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
-
-# TikZ/PGF
 *.dpth
 *.md5
 *.auxlock
-
-# Beamer
-*.nav
 *.pre
-*.snm
-*.vrb
-
-# Build directories (if using output directory)
-build/
-_minted*/
 *.pyg
+_minted*/
 
-# Generated PDF (optional - uncomment if you don't want to track PDFs)
-# *.pdf
+# === LaTeX package test files ===
+__package_test__.*
+.latex_deps_cache/
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
-# Editor specific
-*.swp
-*.swo
-*~
-\#*\#
-.\#*
-
+# === Jurnal ===
+jurnal tugas akhir

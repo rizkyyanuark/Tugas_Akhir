@@ -1,8 +1,9 @@
 # Custom Airflow Image with Chrome for Selenium-based Scopus Extraction
 # =====================================================================
-# Base: Official Apache Airflow 2.8.1 (Python 3.8)
+# Base: Official Apache Airflow 2.8.1 (Python 3.10)
 # Added: Chromium + ChromeDriver for headless Selenium scraping
-FROM apache/airflow:2.8.1
+FROM apache/airflow:2.8.1-python3.10
+
 
 # Switch to root to install system dependencies
 USER root
@@ -11,6 +12,7 @@ USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
+    git \
     # Required for Chromium
     fonts-liberation \
     libnss3 \
@@ -29,22 +31,13 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 # Switch back to airflow user for security
 USER airflow
 
-# Install Python dependencies
-RUN pip install --no-cache-dir \
-    supabase \
-    pandas \
-    python-dotenv \
-    urllib3==1.26.15 \
-    selenium \
-    webdriver-manager \
-    beautifulsoup4 \
-    lxml \
-    requests \
-    pddiktipy
+# Copy requirements separately for better caching
+COPY requirements.txt /requirements.txt
+RUN pip install --no-cache-dir -r /requirements.txt
 
-# TLDR Generation: Qwen2.5-0.5B-Instruct (CPU-optimized)
-RUN pip install --no-cache-dir \
-    transformers \
-    sentencepiece \
-    accelerate \
-    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# Create necessary directories and set permissions
+USER root
+RUN mkdir -p /opt/airflow/dags /opt/airflow/logs /opt/airflow/plugins /opt/airflow/data
+RUN chown -R airflow: /opt/airflow
+
+USER airflow

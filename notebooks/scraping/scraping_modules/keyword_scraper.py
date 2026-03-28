@@ -33,6 +33,39 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from .config import SERPAPI_KEY, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SERP, BD_PASS_SERP, BRIGHT_DATA_HOST
 
+import sys
+from pathlib import Path
+
+# --- INJECT DEEP CLEANING FUNCTIONS FROM ETL ---
+try:
+    src_path = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
+    if src_path not in sys.path:
+        sys.path.append(src_path)
+    from etl.transform import cleaner
+except Exception as e:
+    print(f"⚠️ Could not import ETL cleaner: {e}")
+    cleaner = None
+
+def _deep_clean_abstract(text):
+    if not text: return ""
+    import re
+    cleaned = str(text).strip()
+    # Hapus noise awalan seperti "Abstrak—", "Abstract:" walau ada spasi di awal
+    cleaned = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-—–:.]+[\s]*', '', cleaned)
+    # Hapus blok "Kata Kunci - ..." yang nyangkut di akhir abstract
+    cleaned = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-—–\.].*$', '', cleaned, flags=re.DOTALL)
+    
+    return cleaner.clean_text(cleaned) if cleaner else cleaned.strip()
+
+def _clean_keywords(text):
+    if not text: return ""
+    import re
+    cleaned = re.sub(r'[;|]', ',', str(text))
+    cleaned = re.sub(r',+', ',', cleaned)
+    if cleaner:
+        cleaned = cleaner.clean_text(cleaned).lower().strip(',')
+    return ', '.join([k.strip() for k in cleaned.split(',') if k.strip()])
+
 
 # ================================================================
 # HTTP HELPERS (from notebook: request_hybrid_stealth)
@@ -518,104 +551,95 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
     return None
 
 
-def search_scholar_proxy_query(title, max_retries=2):
+def search_scholar_proxy_query_html(title, max_retries=2):
     """
-    Search Google Scholar using BrightData SERP API via REST POST request.
-    Extracts snippet, authors, journal, year, and best links.
+    Search Google Scholar via HTML parsing (Fallback for SERP API).
     """
-    print(f"   [BrightData SERP API] Searching Scholar for: {title[:50]}...")
-    
-    # Check if we have the SERP API Token
-    # Config parser stores the key in BD_PASS_SERP since it was passed as password in the JSON
-    api_token = getattr(sys.modules.get('scraping_modules.config', None), 'BD_PASS_SERP', None)
-    if not api_token:
-        try:
-            from .config import BD_PASS_SERP
-            api_token = BD_PASS_SERP
-        except ImportError:
-            pass
-
-    if not api_token:
-        print("      ⚠️ BrightData SERP API Token is missing! Check credentials_new.json.")
-        return None
-
-    api_url = "https://api.brightdata.com/serp/req"
-    headers = {
-        "Authorization": f"Bearer {api_token}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "search_engine": "google_scholar",
-        "query": title,
-        "num": 5
-    }
+    print(f"   [BrightData] Searching Scholar (HTML) for: {title[:50]}...")
+    url = f"https://scholar.google.com/scholar?hl=en&q={urllib.parse.quote(title)}"
 
     for attempt in range(max_retries):
         if attempt > 0:
             print(f"      🔄 Retry {attempt+1}/{max_retries}...")
-        try:
-            resp = requests.post(api_url, headers=headers, json=payload, timeout=60)
-            if resp.status_code == 200:
-                data = resp.json()
-                
-                # Check for organic results
-                results = data.get('organic', [])
-                if not results:
-                    continue # No results found, might retry
-                
-                # Take the first result
-                first_res = results[0]
-                
-                result = {
-                    "title_link": first_res.get('link'), 
-                    "pdf_link": None, 
-                    "html_direct": None,
-                    "cached_html": None,
-                    "snippet": first_res.get('snippet'), 
-                    "author_ids": [], 
-                    "journal": None, 
-                    "year": None,
-                    "title_text": first_res.get('title')
-                }
-                
-                # Extract PDF Link if available
-                if first_res.get('link_pdf'):
-                    result['pdf_link'] = first_res.get('link_pdf')
-
-                # Google Scholar often puts author/journal info in the 'publication_info' or 'authors'
-                pub_info = first_res.get('publication_info', {})
-                if pub_info:
-                    if 'summary' in pub_info:
-                        a_text = pub_info['summary']
-                        parts = [p.strip() for p in a_text.split('-')]
-                        if len(parts) >= 2:
-                            # Year is usually a 4-digit number
-                            year_match = re.search(r'\b(19|20)\d{2}\b', a_text)
-                            if year_match:
-                                result["year"] = int(year_match.group(0))
-                            
-                            middle_part = parts[1]
-                            if ',' in middle_part and result["year"] and str(result["year"]) in middle_part.split(',')[-1]:
-                                result["journal"] = ",".join(middle_part.split(',')[:-1]).strip()
-                            elif result["year"] and str(result["year"]) not in middle_part:
-                                result["journal"] = middle_part
-                                
-                    if 'authors' in pub_info:
-                        for author in pub_info['authors']:
-                            if 'author_id' in author:
-                                result['author_ids'].append(author['author_id'])
-                
-                print(f"      ✅ Found Search Result: {str(result.get('title_text', ''))[:40]}...")
-                if result['pdf_link']:
-                    print(f"      📄 PDF Link: {str(result['pdf_link'])[:50]}...")
-                return result
-            else:
-                print(f"      ⚠️ API Error {resp.status_code}: {resp.text}")
-        except Exception as e:
-            print(f"      💥 Network Error: {e}")
+        resp = request_hybrid_stealth(url, use_proxy=True)
+        if not resp:
+            continue
+        
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        first_res = soup.select_one('.gs_r.gs_or.gs_scl') or soup.find('div', class_='gs_r')
+        if not first_res:
+            continue
             
-    print("      ⚠️ No results found via BrightData SERP API.")
+        result = {
+            "title_link": None, "pdf_link": None, "html_direct": None,
+            "cached_html": None,
+            "snippet": None, "author_ids": [], "journal": None, "year": None,
+            "title_text": None,
+            "abstract": None
+        }
+        
+        title_tag = first_res.select_one('.gs_rt a')
+        if title_tag:
+            result["title_text"] = title_tag.get_text(" ", strip=True)
+            result["title_link"] = title_tag['href']
+
+        a_line = first_res.select_one('.gs_a')
+        if a_line:
+            a_text = a_line.get_text(" ", strip=True)
+            parts = [p.strip() for p in a_text.split('-')]
+            if len(parts) >= 2:
+                year_match = re.search(r'\b(19|20)\d{2}\b', a_text)
+                if year_match: result["year"] = int(year_match.group(0))
+                middle_part = parts[1]
+                if ',' in middle_part and result["year"] and str(result["year"]) in middle_part.split(',')[-1]:
+                    result["journal"] = ",".join(middle_part.split(',')[:-1]).strip()
+                elif result["year"] and str(result["year"]) not in middle_part:
+                    result["journal"] = middle_part
+            for a in a_line.find_all('a', href=True):
+                if 'user=' in a['href']:
+                    match = re.search(r'user=([^&]+)', a['href'])
+                    if match: result["author_ids"].append(match.group(1))
+
+        fma = first_res.select_one('.gs_fma_snp')
+        if fma:
+            result["snippet"] = fma.get_text(" ", strip=True)
+        else:
+            rs = first_res.select_one('.gs_rs')
+            if rs: result["snippet"] = rs.get_text(" ", strip=True)
+        result["abstract"] = result["snippet"]
+
+        ctg_links = first_res.select('.gs_ctg2')
+        for ctg in ctg_links:
+            parent = ctg.parent
+            if parent and parent.name == 'a':
+                href = parent['href']
+                ctg_text = ctg.get_text(strip=True).upper()
+                if '[PDF]' in ctg_text: result["pdf_link"] = href
+                elif '[HTML]' in ctg_text: result["html_direct"] = href
+            
+        right_side = first_res.select('.gs_or_ggsm a')
+        for a in right_side:
+            if not result["pdf_link"] and ('pdf' in a.get_text().lower() or a['href'].endswith('.pdf')):
+                result["pdf_link"] = a['href']
+        
+        for a in first_res.find_all('a', href=True):
+            if 'scholar.googleusercontent.com/scholar' in a['href'] and 'cache:' in a['href']:
+                result["cached_html"] = a['href']
+                break
+                
+        print(f"      ✅ Found HTML Search Result: {str(result.get('title_text', ''))[:40]}...")
+        if result['pdf_link']: print(f"      📄 PDF Link: {str(result['pdf_link'])[:50]}...")
+        return result
+    print("      ⚠️ No results found on Scholar Search (HTML).")
     return None
+
+def search_scholar_proxy_query(title, max_retries=2):
+    """
+    Search Google Scholar using BrightData Web Unlocker (HTML).
+    Redirects to HTML scraping as the direct SERP API often fails for Scholar.
+    """
+    return search_scholar_proxy_query_html(title, max_retries=max_retries)
+
 
 
 
@@ -1327,7 +1351,7 @@ def scrape_publisher_page(url, force_proxy=True):
 
     Returns dict: {keywords, abstract, doi, doc_type}
     """
-    result = {"abstract": "", "keywords": "", "doi": "", "doc_type": ""}
+    result = {"abstract": "", "keywords": "", "doi": "", "doc_type": "", "raw_content": ""}
 
     if not url:
         return result
@@ -1398,26 +1422,26 @@ def scrape_publisher_page(url, force_proxy=True):
             # HTML page
             text = resp.content.decode('utf-8', errors='ignore')
             
+            # Store raw text for AI parsing fallback
+            result["raw_content"] = text[:8000] # Limit to avoid bloat
+            
             # Strategy A: HTML body parsing PERTAMA (extract_keywords_from_html)
             # Ini menangkap Author Keywords asli dari Springer, IEEE, Elsevier dll.
             if not result["keywords"]:
                 result["keywords"] = extract_keywords_from_html(text)
                 if result["keywords"]:
                     print(f"      [Publisher] ✅ Keywords dari HTML: {result['keywords'][:60]}...")
-            
-            # Strategy B: Meta tags (citation_keywords / DC.subject)
-            # HANYA untuk publisher kecil / OJS yang tidak punya keywords di body HTML
-            # Publisher besar (Springer, Elsevier, Wiley) pakai citation_keywords
-            # untuk KATEGORI JURNAL, bukan keyword paper!
-            if not result["keywords"]:
-                is_major_publisher = any(p in final_url for p in [
-                    'springer.com', 'elsevier.com', 'sciencedirect.com',
-                    'wiley.com', 'ieee.org', 'nature.com', 'sagepub.com',
-                    'tandfonline.com', 'mdpi.com', 'frontiersin.org'
-                ])
-                if not is_major_publisher:
-                    soup_meta = BeautifulSoup(text, 'html.parser')
-                    meta_kws = []
+                
+                # Strategy B: Meta tags (citation_keywords / DC.subject)
+                if not result["keywords"]:
+                    is_major_publisher = any(p in final_url for p in [
+                        'springer.com', 'elsevier.com', 'sciencedirect.com',
+                        'wiley.com', 'ieee.org', 'nature.com', 'sagepub.com',
+                        'tandfonline.com', 'mdpi.com', 'frontiersin.org'
+                    ])
+                    if not is_major_publisher:
+                        soup_meta = BeautifulSoup(text, 'html.parser')
+                        meta_kws = []
                     for meta in soup_meta.find_all('meta', attrs={'name': 'citation_keywords'}):
                         content = meta.get('content', '').strip()
                         if content:
@@ -1497,6 +1521,12 @@ def scrape_publisher_page(url, force_proxy=True):
 
     except Exception as e:
         print(f"      [Publisher] Error: {e}")
+
+    # --- APPLY DEEP CLEANING ---
+    if result.get("abstract"):
+        result["abstract"] = _deep_clean_abstract(result["abstract"])
+    if result.get("keywords"):
+        result["keywords"] = _clean_keywords(result["keywords"])
 
     return result
 
@@ -1712,6 +1742,12 @@ def _openalex_lookup(doi="", title=""):
             oa_url = oa_obj.get("oa_url", "")
             if oa_url and "oa_pdf_url" not in result and "oa_landing_url" not in result:
                 result["oa_landing_url"] = oa_url
+
+        # --- APPLY DEEP CLEANING ---
+        if result.get("abstract"):
+            result["abstract"] = _deep_clean_abstract(result["abstract"])
+        if result.get("keywords"):
+            result["keywords"] = _clean_keywords(result["keywords"])
 
         return result
 

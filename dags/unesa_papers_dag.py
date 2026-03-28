@@ -152,7 +152,7 @@ def enrich(merged_csv_path: str):
     # Process in micro-batches of 200
     BATCH_SIZE = 200
     for start in range(0, len(df), BATCH_SIZE):
-        df = enrich_paper_batch(df, batch_size=BATCH_SIZE, start_idx=start)
+        df = enrich_paper_batch(df, batch_size=BATCH_SIZE, start_idx=start, allow_paid_proxy=True)
 
     output_path = str(PROCESSED_DATA_DIR / "unesa_papers_enriched.csv")
     df.to_csv(output_path, index=False)
