@@ -26,7 +26,8 @@ deploy_to_aws:
   stage: deploy
   image: alpine:latest
   before_script:
-    - apk add --no-cache openssh-client
+    - apk add --no-cache openssh-client aws-cli
+
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
@@ -65,12 +66,15 @@ deploy_to_aws:
       ENVEOF"
 
     # 4. Deploy Docker Compose
+    - |
+      aws ecr get-login-password --region ${AWS_REGION} | \
+      ssh ubuntu@${EC2_IP} "docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     - ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
-        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com &&
         docker compose -f docker-compose.prod.yml pull &&
         docker compose -f docker-compose.prod.yml up -d --remove-orphans
       "
+
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   environment:
