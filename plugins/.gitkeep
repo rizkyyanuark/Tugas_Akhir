@@ -1,0 +1,2 @@
+# This file ensures the plugins directory is tracked by Git
+# even when it's empty (Git doesn't track empty directories)
