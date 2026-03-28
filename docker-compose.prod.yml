@@ -59,8 +59,9 @@ services:
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
     env_file:
       - .env
-    ports:
-      - "8080:8080"
+    # ports:
+    #   - "8080:8080" # No longer needed as we use Nginx on port 80
+
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
