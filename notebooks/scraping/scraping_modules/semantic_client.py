@@ -6,6 +6,30 @@ from tqdm import tqdm
 from difflib import SequenceMatcher
 from .config import SAVE_DIR
 
+import sys
+from pathlib import Path
+
+# --- INJECT DEEP CLEANING FUNCTIONS FROM ETL ---
+try:
+    src_path = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
+    if src_path not in sys.path:
+        sys.path.append(src_path)
+    from etl.transform import cleaner
+except Exception as e:
+    print(f"⚠️ Could not import ETL cleaner: {e}")
+    cleaner = None
+
+def _deep_clean_abstract(text):
+    if not text: return ""
+    import re
+    cleaned = str(text).strip()
+    # Hapus noise awalan seperti "Abstrak—", "Abstract:" walau ada spasi di awal
+    cleaned = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-—–:.]+[\s]*', '', cleaned)
+    # Hapus blok "Kata Kunci - ..." yang nyangkut di akhir abstract
+    cleaned = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-—–\.].*$', '', cleaned, flags=re.DOTALL)
+    
+    return cleaner.clean_text(cleaned) if cleaner else cleaned.strip()
+
 def _normalize_text(text):
     if not text or not isinstance(text, str): return ""
     return re.sub(r'[^a-z0-9]', '', text.lower())
@@ -66,12 +90,19 @@ class SemanticScholarClient:
         try:
             response = requests.get(url, headers=self.headers, params=params, timeout=10)
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                if data.get("abstract"):
+                    data["abstract"] = _deep_clean_abstract(data["abstract"])
+                return data
             elif response.status_code == 429:
                 time.sleep(5)
                 # Retry once
                 response = requests.get(url, headers=self.headers, params=params, timeout=10)
-                if response.status_code == 200: return response.json()
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("abstract"):
+                        data["abstract"] = _deep_clean_abstract(data["abstract"])
+                    return data
         except: pass
         return None
 

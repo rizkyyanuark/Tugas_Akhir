@@ -27,9 +27,9 @@ SCIVAL_EMAIL = os.environ.get("SCIVAL_EMAIL", "")
 SCIVAL_PASS = os.environ.get("SCIVAL_PASS", "")
 PROXY_URL = None
 BRIGHT_DATA_HOST = ""
-BD_USER_UNLOCKER = ""
-BD_PASS_UNLOCKER = ""
-BD_USER_SERP = os.environ.get("BD_PASS_SERP", "")
+BD_USER_UNLOCKER = os.environ.get("BD_USER_UNLOCKER", "")
+BD_PASS_UNLOCKER = os.environ.get("BD_PASS_UNLOCKER", "")
+BD_USER_SERP = os.environ.get("BD_USER_SERP", "")
 BD_PASS_SERP = os.environ.get("BD_PASS_SERP", "")
 DECODO_AUTH = ""
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
@@ -62,6 +62,10 @@ try:
             if not BD_USER_SERP: BD_USER_SERP = bd_serp.get('user', '')
             if not BD_PASS_SERP: BD_PASS_SERP = bd_serp.get('password', '')
 
+            # Also ensure Unlocker credentials flow securely
+            if not BD_USER_UNLOCKER: BD_USER_UNLOCKER = bd_unlocker.get('user', '')
+            if not BD_PASS_UNLOCKER: BD_PASS_UNLOCKER = bd_unlocker.get('password', '')
+            
             # Supabase
             sb = config.get('supabase', {})
             if not SUPABASE_URL: SUPABASE_URL = sb.get('url', '').strip()
