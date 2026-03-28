@@ -5,7 +5,7 @@
 # This script ensures the server is ready for 
 # Docker Compose V2 and cleans up old data.
 
-echo "🔍 Checking Docker installation..."
+echo "🔍 Checking Docker and AWS CLI installation..."
 
 # 1. Update package list if needed
 sudo apt-get update -y
@@ -16,6 +16,12 @@ if ! command -v docker &> /dev/null; then
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
     sudo apt install -y docker-compose-plugin
+fi
+
+# 2.5 Ensure AWS CLI exists for ECR login
+if ! command -v aws &> /dev/null; then
+    echo "📦 Installing AWS CLI..."
+    sudo apt-get install -y awscli
 fi
 
 # 3. Add user 'ubuntu' to docker group so we don't need 'sudo' every time
@@ -29,11 +35,12 @@ fi
 # Only removes dead containers, dangling images, and unused networks.
 # Does NOT remove volumes (your data is safe).
 echo "🧹 Performing gentle cleanup of unused Docker resources..."
-docker system prune -f
+sudo docker system prune -f
 
 # 5. Verify versions
 echo "✅ Versions installed:"
 docker --version
 docker compose version
+aws --version
 
 echo "🚀 Server is ready!"
