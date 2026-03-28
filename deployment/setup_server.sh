@@ -18,11 +18,6 @@ if ! command -v docker &> /dev/null; then
     sudo apt install -y docker-compose-plugin
 fi
 
-# 2.5 Ensure AWS CLI exists for ECR login
-if ! command -v aws &> /dev/null; then
-    echo "📦 Installing AWS CLI..."
-    sudo apt-get install -y awscli
-fi
 
 # 3. Add user 'ubuntu' to docker group so we don't need 'sudo' every time
 if ! groups ubuntu | grep -q "\bdocker\b"; then
