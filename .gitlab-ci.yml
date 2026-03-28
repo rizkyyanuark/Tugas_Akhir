@@ -19,8 +19,8 @@ build_airflow_image:
   script:
     - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f Dockerfile.airflow .
     - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
 
 deploy_to_aws:
   stage: deploy
@@ -32,47 +32,46 @@ deploy_to_aws:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
   script:
-    # 1. Update project files on server
-    - scp -r docker-compose.prod.yml deployment dags plugins src ubuntu@$EC2_IP:~/tugas_akhir/
-    
-    # 2. RUN setup_server.sh & setup_swap.sh
-    - ssh ubuntu@$EC2_IP "
-        bash ~/tugas_akhir/deployment/setup_server.sh && 
-        bash ~/tugas_akhir/deployment/setup_swap.sh
-      "
+    # 0. Ensure target directory exists
+    - ssh ubuntu@$EC2_IP "mkdir -p ~/tugas_akhir"
 
-    # 3. Create .env on server from GitLab variables
-    - ssh ubuntu@$EC2_IP "
-        cd ~/tugas_akhir &&
-        echo 'SUPABASE_URL=$SUPABASE_URL' > .env &&
-        echo 'SUPABASE_KEY=$SUPABASE_KEY' >> .env &&
-        echo 'SCIVAL_EMAIL=$SCIVAL_EMAIL' >> .env &&
-        echo 'SCIVAL_PASS=$SCIVAL_PASS' >> .env &&
-        echo 'SERPAPI_KEY=$SERPAPI_KEY' >> .env &&
-        echo 'BD_PASS_SERP=$BD_PASS_SERP' >> .env &&
-        echo 'BD_USER_SERP=$BD_USER_SERP' >> .env &&
-        echo 'BD_PASS_UNLOCKER=$BD_PASS_UNLOCKER' >> .env &&
-        echo 'BD_USER_UNLOCKER=$BD_USER_UNLOCKER' >> .env &&
-        echo 'NEO4J_AUTH=$NEO4J_AUTH' >> .env &&
-        echo 'NEO4J_PASSWORD=$NEO4J_PASSWORD' >> .env &&
-        echo 'GRAFANA_ADMIN_PASSWORD=$GRAFANA_ADMIN_PASSWORD' >> .env &&
-        echo 'HF_TOKEN=$HF_TOKEN' >> .env &&
-        echo 'OPENROUTER_API_KEY=$OPENROUTER_API_KEY' >> .env &&
-        echo 'GROQ_API_KEY=$GROQ_API_KEY' >> .env &&
-        echo 'AIRFLOW_FERNET_KEY=$AIRFLOW_FERNET_KEY' >> .env &&
-        echo 'AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID' >> .env &&
-        echo 'AWS_REGION=$AWS_REGION' >> .env
-      "
+    # 1. Update project files on server
+    - scp -r docker-compose.prod.yml deployment dags plugins src requirements.txt ubuntu@$EC2_IP:~/tugas_akhir/
+
+    # 2. RUN setup_server.sh & setup_swap.sh
+    - ssh ubuntu@$EC2_IP "bash ~/tugas_akhir/deployment/setup_server.sh && bash ~/tugas_akhir/deployment/setup_swap.sh"
+
+    # 3. Create .env on server from GitLab variables (DOUBLE QUOTES for expansion!)
+    - |
+      ssh ubuntu@$EC2_IP "cat > ~/tugas_akhir/.env << 'ENVEOF'
+      SUPABASE_URL=${SUPABASE_URL}
+      SUPABASE_KEY=${SUPABASE_KEY}
+      SCIVAL_EMAIL=${SCIVAL_EMAIL}
+      SCIVAL_PASS=${SCIVAL_PASS}
+      SERPAPI_KEY=${SERPAPI_KEY}
+      BD_PASS_SERP=${BD_PASS_SERP}
+      BD_USER_SERP=${BD_USER_SERP}
+      BD_PASS_UNLOCKER=${BD_PASS_UNLOCKER}
+      BD_USER_UNLOCKER=${BD_USER_UNLOCKER}
+      NEO4J_AUTH=${NEO4J_AUTH}
+      NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      HF_TOKEN=${HF_TOKEN}
+      OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      GROQ_API_KEY=${GROQ_API_KEY}
+      AIRFLOW_FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
+      AWS_REGION=${AWS_REGION}
+      ENVEOF"
 
     # 4. Deploy Docker Compose
     - ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
-        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com &&
+        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com &&
         docker compose -f docker-compose.prod.yml pull &&
         docker compose -f docker-compose.prod.yml up -d --remove-orphans
       "
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
   environment:
     name: production
-    url: http://$EC2_IP
