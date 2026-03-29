@@ -74,6 +74,7 @@ deploy_to_aws:
         cd ~/tugas_akhir &&
         docker compose -f docker-compose.prod.yml --profile monitoring pull &&
         docker compose -f docker-compose.prod.yml --profile monitoring up -d --remove-orphans &&
+        docker exec grafana grafana-cli admin reset-admin-password ${GRAFANA_ADMIN_PASSWORD:-admin} &&
         docker compose -f docker-compose.prod.yml restart nginx
       "
 
