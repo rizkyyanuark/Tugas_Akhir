@@ -9,8 +9,15 @@ SWAP_FILE="/swapfile"
 SWAP_SIZE="4G"
 
 if [ -f "$SWAP_FILE" ]; then
-    echo "✅ Swap file already exists. Skipping."
-    exit 0
+    CURRENT_SIZE=$(du -m $SWAP_FILE | cut -f1)
+    if [ "$CURRENT_SIZE" -lt 4000 ]; then
+        echo "⚠️ Swap file is smaller than 4G. Recreating..."
+        sudo swapoff $SWAP_FILE || true
+        sudo rm -f $SWAP_FILE
+    else
+        echo "✅ Swap file already exists and is 4G. Skipping."
+        exit 0
+    fi
 fi
 
 echo "📦 Creating $SWAP_SIZE swap file..."
