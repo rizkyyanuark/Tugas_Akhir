@@ -154,7 +154,7 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=72h"
-      - "--web.external-url=http://54.236.131.70/prometheus/"
+      - "--web.external-url=https://prometheus.tugasakhir.space/"
     deploy:
       resources:
         limits:
@@ -172,8 +172,8 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
-      - GF_SERVER_ROOT_URL=http://54.236.131.70/grafana/
-      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_SERVER_ROOT_URL=https://grafana.tugasakhir.space/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
     deploy:
       resources:
         limits:
