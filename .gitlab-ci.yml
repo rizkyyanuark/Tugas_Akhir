@@ -37,7 +37,7 @@ deploy_to_aws:
     - ssh ubuntu@$EC2_IP "mkdir -p ~/tugas_akhir"
 
     # 1. Update project files on server
-    - scp -r docker-compose.prod.yml deployment dags plugins src requirements.txt ubuntu@$EC2_IP:~/tugas_akhir/
+    - scp -r docker-compose.prod.yml deployment dags plugins src monitoring requirements.txt ubuntu@$EC2_IP:~/tugas_akhir/
 
     # 2. RUN setup_server.sh & setup_swap.sh
     - ssh ubuntu@$EC2_IP "bash ~/tugas_akhir/deployment/setup_server.sh && bash ~/tugas_akhir/deployment/setup_swap.sh"
@@ -63,6 +63,7 @@ deploy_to_aws:
       AIRFLOW_FERNET_KEY=${AIRFLOW_FERNET_KEY}
       AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
       AWS_REGION=${AWS_REGION}
+      EC2_IP=${EC2_IP}
       ENVEOF"
 
     # 4. Deploy Docker Compose
