@@ -74,10 +74,10 @@ deploy_to_aws:
       ssh ubuntu@${EC2_IP} "docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     - ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
-        docker compose -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring pull &&
-        docker compose -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d --remove-orphans &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring pull &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d --remove-orphans &&
         docker exec grafana grafana-cli admin reset-admin-password ${GRAFANA_ADMIN_PASSWORD:-admin} &&
-        docker compose -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
       "
 
   rules:
