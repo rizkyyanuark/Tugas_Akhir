@@ -3,21 +3,15 @@ version: '3.8'
 # ==========================================
 # UNIFIED DOCKER COMPOSE FILE UNESA INFOKOM
 # ==========================================
-# HOW TO RUN:
+# HOW TO RUN (from project root):
 # 1. Base Project (Airflow + Neo4j):
-#    docker compose up -d
+#    make dev
 #
-# 2. With Vector DB (Weaviate for GraphRAG):
-#    docker compose --profile vectordb up -d
+# 2. With All Profiles:
+#    make dev-all
 #
-# 3. With Monitoring (Grafana + Prometheus):
-#    docker compose --profile monitoring up -d
-#
-# 4. All profiles at once:
-#    docker compose --profile vectordb --profile monitoring up -d
-#
-# 5. Stop Everything:
-#    docker compose down
+# 3. Stop Everything:
+#    make down
 # ==========================================
 
 services:
@@ -29,7 +23,7 @@ services:
     image: postgres:13
     environment:
       - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-airflow}
       - POSTGRES_DB=airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
@@ -42,13 +36,13 @@ services:
   airflow-init:
     image: apache/airflow:2.8.1-python3.10
     env_file:
-      - .env
+      - ../../.env
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:-airflow}@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - _AIRFLOW_WWW_USER_CREATE=true
       - _AIRFLOW_WWW_USER_USERNAME=airflow
-      - _AIRFLOW_WWW_USER_PASSWORD=airflow
+      - _AIRFLOW_WWW_USER_PASSWORD=${AIRFLOW_ADMIN_PASSWORD:-airflow}
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +50,7 @@ services:
       bash -c "airflow db migrate &&
       airflow users create 
       --username admin 
-      --password rizkyyk715 
+      --password ${AIRFLOW_ADMIN_PASSWORD:-rizkyyk715} 
       --firstname Airflow 
       --lastname Admin 
       --role Admin 
@@ -64,8 +58,8 @@ services:
 
   airflow-webserver:
     build:
-      context: .
-      dockerfile: Dockerfile.airflow
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.airflow
     restart: always
     user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
@@ -74,26 +68,26 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env
+      - ../../.env
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:-airflow}@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
     ports:
       - "8080:8080"
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./src:/opt/airflow/src
-      - ./data:/opt/airflow/data
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./notebooks:/opt/airflow/notebooks
+      - ../../dags:/opt/airflow/dags
+      - ../../src:/opt/airflow/src
+      - ../../data:/opt/airflow/data
+      - ../../logs:/opt/airflow/logs
+      - ../../plugins:/opt/airflow/plugins
+      - ../../notebooks:/opt/airflow/notebooks
     command: airflow webserver
 
   airflow-scheduler:
     build:
-      context: .
-      dockerfile: Dockerfile.airflow
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.airflow
     restart: always
     user: "${AIRFLOW_UID:-50000}:0"
     depends_on:
@@ -102,18 +96,18 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env
+      - ../../.env
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:-airflow}@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./src:/opt/airflow/src
-      - ./data:/opt/airflow/data
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./notebooks:/opt/airflow/notebooks
+      - ../../dags:/opt/airflow/dags
+      - ../../src:/opt/airflow/src
+      - ../../data:/opt/airflow/data
+      - ../../logs:/opt/airflow/logs
+      - ../../plugins:/opt/airflow/plugins
+      - ../../notebooks:/opt/airflow/notebooks
     command: airflow scheduler
 
   # ==========================================
@@ -122,7 +116,7 @@ services:
   neo4j:
     image: neo4j:5.15-enterprise
     environment:
-      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/rizkyyk123}
+      - NEO4J_AUTH=${NEO4J_AUTH}
       - NEO4J_server_memory_heap_initial__size=256m
       - NEO4J_server_memory_heap_max__size=1G
       - NEO4J_server_memory_pagecache_size=256m
@@ -225,7 +219,7 @@ services:
     profiles: ["monitoring"]
     image: prom/prometheus:latest
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
@@ -247,8 +241,8 @@ services:
       - prometheus
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_SECURITY_DISABLE_INITIAL_ADMIN_PASSWORD_CHANGE=true
