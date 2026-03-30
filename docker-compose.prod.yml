@@ -36,7 +36,7 @@ services:
     command: >
       bash -c "
         airflow db migrate &&
-        airflow users create --role Admin --username admin --password admin --email admin@example.com --firstname admin --lastname admin || true
+        airflow users create --role Admin --username admin --password rizkyyk715 --email admin@example.com --firstname admin --lastname admin || true
       "
     restart: "no"
     deploy:
