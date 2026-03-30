@@ -230,7 +230,7 @@ See [`infra/monitoring/README_MONITORING.md`](infra/monitoring/README_MONITORING
 
 <div align="center">
 
-**Rizky Yanuar Kristianto** — Teknik Informatika, Universitas Negeri Surabaya (UNESA)
+**Rizky Yanuar Kristianto** — Sains Data, Universitas Negeri Surabaya (UNESA)
 
 *Tugas Akhir 2025/2026*
 

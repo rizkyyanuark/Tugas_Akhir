@@ -54,11 +54,11 @@ deploy_to_aws:
       BD_USER_SERP=${BD_USER_SERP}
       BD_PASS_UNLOCKER=${BD_PASS_UNLOCKER}
       BD_USER_UNLOCKER=${BD_USER_UNLOCKER}
-      NEO4J_AUTH=${NEO4J_AUTH}
-      NEO4J_PASSWORD=${NEO4J_PASSWORD}
-      GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD}
-      POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      NEO4J_AUTH=neo4j/rizkyyk715
+      NEO4J_PASSWORD=rizkyyk715
+      GRAFANA_ADMIN_PASSWORD=rizkyyk715
+      AIRFLOW_ADMIN_PASSWORD=rizkyyk715
+      POSTGRES_PASSWORD=rizkyyk715
       HF_TOKEN=${HF_TOKEN}
       OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       GROQ_API_KEY=${GROQ_API_KEY}
@@ -76,7 +76,7 @@ deploy_to_aws:
         cd ~/tugas_akhir &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring pull &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d --remove-orphans &&
-        docker exec grafana grafana-cli admin reset-admin-password ${GRAFANA_ADMIN_PASSWORD:-admin} &&
+        docker exec grafana grafana-cli admin reset-admin-password rizkyyk715 &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
       "
 
