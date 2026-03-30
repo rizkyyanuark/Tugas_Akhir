@@ -1,3 +1,4 @@
+name: tugas_akhir
 services:
   # --- CORE DATABASE ---
   postgres:
