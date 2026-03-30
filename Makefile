@@ -5,8 +5,8 @@
 # Usage: make <command>
 # ==============================================================================
 
-COMPOSE_DEV  = docker compose -f infra/docker/docker-compose.yml
-COMPOSE_PROD = docker compose -f infra/docker/docker-compose.prod.yml
+COMPOSE_DEV  = docker compose -f infra/docker/docker-compose.yml --env-file .env
+COMPOSE_PROD = docker compose -f infra/docker/docker-compose.prod.yml --env-file .env
 
 # --- Development ---
 .PHONY: dev dev-all down logs ps
