@@ -34,13 +34,16 @@ deploy_to_aws:
     - ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
   script:
     # 0. Ensure target directory exists
-    - ssh ubuntu@$EC2_IP "mkdir -p ~/tugas_akhir"
+    - ssh ubuntu@$EC2_IP "mkdir -p ~/tugas_akhir/data/raw ~/tugas_akhir/data/processed ~/tugas_akhir/notebooks/scraping"
 
     # 1. Update project files on server (mirror infra/ structure)
     - scp -r infra dags plugins src requirements.txt ubuntu@$EC2_IP:~/tugas_akhir/
+    - scp data/raw/dosen_infokom_final.csv ubuntu@$EC2_IP:~/tugas_akhir/data/raw/ || true
+    - scp -r notebooks/scraping/scraping_modules ubuntu@$EC2_IP:~/tugas_akhir/notebooks/scraping/
 
-    # 2. RUN setup scripts
+    # 2. RUN setup scripts and fix permissions for Airflow (UID 50000)
     - ssh ubuntu@$EC2_IP "bash ~/tugas_akhir/infra/scripts/setup_server.sh && bash ~/tugas_akhir/infra/scripts/setup_swap.sh"
+    - ssh ubuntu@$EC2_IP "sudo chown -R 50000:0 ~/tugas_akhir/data ~/tugas_akhir/logs ~/tugas_akhir/dags ~/tugas_akhir/plugins ~/tugas_akhir/src ~/tugas_akhir/notebooks || true"
 
     # 3. Create .env on server from GitLab variables
     - |
@@ -54,7 +57,7 @@ deploy_to_aws:
       BD_USER_SERP=${BD_USER_SERP}
       BD_PASS_UNLOCKER=${BD_PASS_UNLOCKER}
       BD_USER_UNLOCKER=${BD_USER_UNLOCKER}
-      NEO4J_AUTH=${NEO4J_AUTH}
+      NEO4J_AUTH=neo4j/${PASSWORD}
       NEO4J_PASSWORD=${PASSWORD}
       GRAFANA_ADMIN_PASSWORD=${PASSWORD}
       AIRFLOW_ADMIN_PASSWORD=${PASSWORD}
@@ -76,7 +79,6 @@ deploy_to_aws:
         cd ~/tugas_akhir &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring pull &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d --remove-orphans &&
-        docker exec grafana grafana-cli admin reset-admin-password rizkyyk715 &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
       "
 
