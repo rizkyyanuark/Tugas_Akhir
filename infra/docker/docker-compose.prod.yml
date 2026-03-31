@@ -59,6 +59,7 @@ services:
       - AIRFLOW__WEBSERVER__WORKERS=2
       - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - PYTHONPATH=/opt/airflow:/opt/airflow/notebooks/scraping
     env_file:
       - ../../.env
     # ports:
@@ -68,6 +69,9 @@ services:
       - ../../dags:/opt/airflow/dags
       - ../../logs:/opt/airflow/logs
       - ../../plugins:/opt/airflow/plugins
+      - ../../src:/opt/airflow/src
+      - ../../data:/opt/airflow/data
+      - ../../notebooks:/opt/airflow/notebooks
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,12 +93,16 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      - PYTHONPATH=/opt/airflow:/opt/airflow/notebooks/scraping
     env_file:
       - ../../.env
     volumes:
       - ../../dags:/opt/airflow/dags
       - ../../logs:/opt/airflow/logs
       - ../../plugins:/opt/airflow/plugins
+      - ../../src:/opt/airflow/src
+      - ../../data:/opt/airflow/data
+      - ../../notebooks:/opt/airflow/notebooks
     depends_on:
       postgres:
         condition: service_healthy
