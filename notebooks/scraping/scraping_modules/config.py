@@ -26,7 +26,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 SCIVAL_EMAIL = os.environ.get("SCIVAL_EMAIL", "")
 SCIVAL_PASS = os.environ.get("SCIVAL_PASS", "")
 PROXY_URL = None
-BRIGHT_DATA_HOST = ""
+BRIGHT_DATA_HOST = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")
 BD_USER_UNLOCKER = os.environ.get("BD_USER_UNLOCKER", "")
 BD_PASS_UNLOCKER = os.environ.get("BD_PASS_UNLOCKER", "")
 BD_USER_SERP = os.environ.get("BD_USER_SERP", "")
@@ -84,6 +84,8 @@ try:
     SUPABASE_KEY = _av('SUPABASE_KEY', SUPABASE_KEY).strip() if _av('SUPABASE_KEY', SUPABASE_KEY) else ""
     SERPAPI_KEY = _av('SERPAPI_KEY', SERPAPI_KEY)
     BD_PASS_SERP = _av('BD_PASS_SERP', BD_PASS_SERP)
+    BD_USER_UNLOCKER = _av('BD_USER_UNLOCKER', BD_USER_UNLOCKER)
+    BD_PASS_UNLOCKER = _av('BD_PASS_UNLOCKER', BD_PASS_UNLOCKER)
     SCIVAL_EMAIL = _av('SCIVAL_EMAIL', SCIVAL_EMAIL)
     SCIVAL_PASS = _av('SCIVAL_PASS', SCIVAL_PASS)
 except ImportError:

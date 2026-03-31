@@ -6,6 +6,9 @@ Removes duplicate papers using exact + trigram fuzzy matching.
 import pandas as pd
 from collections import defaultdict
 from difflib import SequenceMatcher
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_text(text) -> str:
@@ -40,7 +43,7 @@ def deduplicate_papers(
     if df.empty:
         return df
 
-    print(f"\n🔍 DEDUP: {len(df)} papers")
+    logger.info(f"\n🔍 DEDUP: {len(df)} papers")
 
     df = df.copy()
     df['_title_norm'] = df['Title'].apply(_normalize_text)
@@ -51,15 +54,15 @@ def deduplicate_papers(
         mask = df['_title_norm'].isin(existing_titles)
         removed = mask.sum()
         df = df[~mask].reset_index(drop=True)
-        print(f"   ✅ Cross-source exact dedup: {removed} removed")
+        logger.info(f"   ✅ Cross-source exact dedup: {removed} removed")
 
     # 2. Self exact dedup
     before = len(df)
     df = df.drop_duplicates(subset='_title_norm', keep='first').reset_index(drop=True)
-    print(f"   ✅ Self exact dedup: {before - len(df)} removed")
+    logger.info(f"   ✅ Self exact dedup: {before - len(df)} removed")
 
     # 3. Fuzzy dedup via trigram Jaccard (O(N) amortized with inverted index)
-    print(f"   🔄 Fuzzy dedup on {len(df)} papers...")
+    logger.info(f"   🔄 Fuzzy dedup on {len(df)} papers...")
     trigram_index = defaultdict(set)
     trigram_cache = {}
     dup_indices = set()
@@ -97,10 +100,10 @@ def deduplicate_papers(
                 trigram_index[t].add(idx)
 
     df = df.drop(index=dup_indices).reset_index(drop=True)
-    print(f"   ✅ Fuzzy dedup: {len(dup_indices)} removed")
+    logger.info(f"   ✅ Fuzzy dedup: {len(dup_indices)} removed")
 
     df = df.drop(columns=['_title_norm'], errors='ignore')
     total_after = len(df)
-    print(f"   📊 Summary: {total_before} → {total_after} ({total_before - total_after} removed)")
+    logger.info(f"   📊 Summary: {total_before} → {total_after} ({total_before - total_after} removed)")
 
     return df

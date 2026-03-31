@@ -8,9 +8,12 @@ Includes author name normalization (Scopus "Last, First" → "First Last").
 """
 import pandas as pd
 import numpy as np
+import logging
 import re
 from pathlib import Path
 from difflib import SequenceMatcher
+
+logger = logging.getLogger(__name__)
 
 
 def clean_text(text: str) -> str:
@@ -155,10 +158,10 @@ def _load_lecturer_db():
                     if scopus_id and scopus_id != 'nan':
                         _lec_by_sid[scopus_id] = entry
                 
-                print(f"✅ Lecturer DB loaded: {len(_lec_by_name)} names, {len(_lec_by_sid)} IDs")
+                logger.info(f"✅ Lecturer DB loaded: {len(_lec_by_name)} names, {len(_lec_by_sid)} IDs")
                 break
             except Exception as e:
-                print(f"⚠️ Could not load lecturer CSV: {e}")
+                logger.warning(f"⚠️ Could not load lecturer CSV: {e}")
     
     return _lec_by_name, _lec_by_sid
 
@@ -338,7 +341,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
     Also applies ID-safe cleaning to Author IDs and DOI.
     Includes author name normalization and multi-ID enrichment.
     """
-    print(f"🧹 Starting data cleaning for {len(df)} records...")
+    logger.info(f"🧹 Starting data cleaning for {len(df)} records...")
     
     dirty_columns = ['Title', 'Abstract', 'Keywords', 'Journal', 'TLDR']
     
@@ -354,7 +357,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
             
             after_empty = (df[col] == '').sum()
             if after_empty > before_empty:
-                print(f"   🧼 Column {col}: cleaned {after_empty - before_empty} trash entries into empty strings.")
+                logger.info(f"   🧼 Column {col}: cleaned {after_empty - before_empty} trash entries into empty strings.")
 
     # Specific formatting rules:
     # 0. Abstract: Deep Clean Noise (Abstrak—, trailing Keywords)
@@ -375,7 +378,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
 
     # 3. AUTHORS NORMALIZATION: Flip names + match to lecturers + enrich IDs
     if 'Authors' in df.columns:
-        print("👩‍🏫 Normalizing author names & enriching Author IDs...")
+        logger.info("👩‍🏫 Normalizing author names & enriching Author IDs...")
         matched_count = 0
         total_authors = 0
         
@@ -405,8 +408,8 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
                 if old != new:
                     matched_count += 1
         
-        print(f"   ✅ Normalized {matched_count}/{total_authors} author names to canonical lecturer names")
+        logger.info(f"   ✅ Normalized {matched_count}/{total_authors} author names to canonical lecturer names")
 
-    print("✅ Data cleaning complete. No more messy whitespaces/newlines.")
+    logger.info("✅ Data cleaning complete. No more messy whitespaces/newlines.")
     return df
 

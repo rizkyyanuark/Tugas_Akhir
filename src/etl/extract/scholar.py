@@ -5,9 +5,12 @@ Fetches paper metadata from Google Scholar Author profiles.
 Designed for Airflow micro-batch execution.
 """
 import time
+import logging
 import requests
 import pandas as pd
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from ..config import SERPAPI_KEY, RAW_DATA_DIR
 
@@ -46,17 +49,17 @@ def _serpapi_fetch_author(api_key: str, scholar_id: str, start: int = 0,
                 if articles or attempt == max_retries:
                     return articles, has_next
 
-                print(f"      ⚠️ SerpAPI empty (attempt {attempt+1}), retry 3s...")
+                logger.warning(f"      ⚠️ SerpAPI empty (attempt {attempt+1}), retry 3s...")
                 time.sleep(3)
             else:
                 error = resp.json().get("error", resp.text[:200])
-                print(f"      ⚠️ SerpAPI HTTP {resp.status_code}: {error}")
+                logger.warning(f"      ⚠️ SerpAPI HTTP {resp.status_code}: {error}")
                 if attempt < max_retries:
                     time.sleep(3)
                 else:
                     return [], False
         except Exception as e:
-            print(f"      ⚠️ SerpAPI Error: {e}")
+            logger.error(f"      ⚠️ SerpAPI Error: {e}")
             if attempt < max_retries:
                 time.sleep(3)
             else:
@@ -89,8 +92,8 @@ def extract_scholar_papers(
     if not token:
         raise ValueError("❌ SERPAPI_KEY not configured!")
 
-    print(f"\n📡 EXTRACT: Google Scholar via SerpAPI ({len(targets)} authors)")
-    print("=" * 60)
+    logger.info(f"\n📡 EXTRACT: Google Scholar via SerpAPI ({len(targets)} authors)")
+    logger.info("=" * 60)
 
     TEMP_CSV = RAW_DATA_DIR / "scholar_extract_temp.csv"
 
@@ -103,16 +106,16 @@ def extract_scholar_papers(
             df_temp = pd.read_csv(TEMP_CSV, dtype=str).fillna("")
             all_raw = df_temp.to_dict('records')
             scraped_ids = set(df_temp['scholar_id'].unique())
-            print(f"   🔄 [RESUME] {len(all_raw)} papers from checkpoint.")
+            logger.info(f"   🔄 [RESUME] {len(all_raw)} papers from checkpoint.")
         except Exception:
             pass
 
     for i, t in enumerate(targets):
         if t['id'] in scraped_ids:
-            print(f"[{i+1}/{len(targets)}] {t['name']}... ⏭️ [Resume]")
+            logger.info(f"[{i+1}/{len(targets)}] {t['name']}... ⏭️ [Resume]")
             continue
 
-        print(f"[{i+1}/{len(targets)}] {t['name']} ({t['id']})...")
+        logger.info(f"[{i+1}/{len(targets)}] {t['name']} ({t['id']})...")
         start = 0
         author_count = 0
 
@@ -142,14 +145,14 @@ def extract_scholar_papers(
             start += 100
             time.sleep(0.3)
 
-        print(f"      📄 {author_count} papers fetched.")
+        logger.info(f"      📄 {author_count} papers fetched.")
 
         # Auto-save checkpoint
         pd.DataFrame(all_raw).to_csv(TEMP_CSV, index=False)
         time.sleep(1)
 
     if not all_raw:
-        print("   ⚠️ No papers extracted.")
+        logger.warning("   ⚠️ No papers extracted.")
         return pd.DataFrame()
 
     df = pd.DataFrame(all_raw)
@@ -157,7 +160,7 @@ def extract_scholar_papers(
     # Save final raw output
     output_path = RAW_DATA_DIR / "scholar_papers_raw.csv"
     df.to_csv(output_path, index=False)
-    print(f"\n   ✅ Extracted {len(df)} papers -> {output_path}")
+    logger.info(f"\n   ✅ Extracted {len(df)} papers -> {output_path}")
 
     # Clean up temp
     if TEMP_CSV.exists():
