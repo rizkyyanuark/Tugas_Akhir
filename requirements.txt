@@ -19,6 +19,7 @@ groq>=0.4.0
 # System & Monitoring
 psutil>=5.9.0
 psycopg2-binary>=2.9.0
+neo4j>=5.15.0
 
 # NLP (if used in enricher)
 # gliner-spacy # Optional, comment out if not needed for production base
