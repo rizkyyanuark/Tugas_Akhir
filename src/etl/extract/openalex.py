@@ -6,6 +6,9 @@ Fetches paper metadata from the free OpenAlex API.
 import time
 import requests
 from difflib import SequenceMatcher
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize(text: str) -> str:
@@ -36,7 +39,7 @@ def extract_openalex_metadata(doi: str = None, title: str = None) -> dict:
             if resp.status_code == 200:
                 work = resp.json()
         except Exception as e:
-            print(f"      ⚠️ [OpenAlex] DOI error: {e}")
+            logger.warning(f"      ⚠️ [OpenAlex] DOI error: {e}")
         time.sleep(0.3)
 
     # Strategy 2: Title search
@@ -63,9 +66,9 @@ def extract_openalex_metadata(doi: str = None, title: str = None) -> dict:
                     sim = SequenceMatcher(
                         None, _normalize(title), _normalize(best.get("title", ""))
                     ).ratio()
-                    print(f"      ⚠️ [OpenAlex] Best match sim={sim:.2f}. Skip.")
+                    logger.warning(f"      ⚠️ [OpenAlex] Best match sim={sim:.2f}. Skip.")
         except Exception as e:
-            print(f"      ⚠️ [OpenAlex] Title error: {e}")
+            logger.error(f"      ⚠️ [OpenAlex] Title error: {e}")
 
     if not work:
         return None

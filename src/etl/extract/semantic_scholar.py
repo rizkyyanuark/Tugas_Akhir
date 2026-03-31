@@ -5,6 +5,9 @@ Fetches paper metadata (Abstract, DOI, TLDR) from Semantic Scholar's free API.
 """
 import time
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 from difflib import SequenceMatcher
 
 
@@ -33,10 +36,10 @@ def extract_s2_metadata(doi: str = None, title: str = None) -> dict:
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get('title'):
-                    print(f"      ✅ [S2] DOI match: {data['title'][:50]}...")
+                    logger.info(f"      ✅ [S2] DOI match: {data['title'][:50]}...")
                     return data
         except Exception as e:
-            print(f"      ⚠️ [S2] DOI lookup error: {e}")
+            logger.warning(f"      ⚠️ [S2] DOI lookup error: {e}")
         time.sleep(0.5)
 
     # Strategy 2: Title search
@@ -57,13 +60,13 @@ def extract_s2_metadata(doi: str = None, title: str = None) -> dict:
                         None, _normalize(title), _normalize(r_title)
                     ).ratio()
                     if sim >= 0.85:
-                        print(f"      ✅ [S2] Title match (sim={sim:.2f})")
+                        logger.info(f"      ✅ [S2] Title match (sim={sim:.2f})")
                         return r
 
                 if results:
                     best = results[0].get('title', '')
-                    print(f"      ⚠️ [S2] No strict match. Best: '{best[:50]}...'")
+                    logger.warning(f"      ⚠️ [S2] No strict match. Best: '{best[:50]}...'")
         except Exception as e:
-            print(f"      ⚠️ [S2] Title search error: {e}")
+            logger.warning(f"      ⚠️ [S2] Title search error: {e}")
 
     return None

@@ -9,6 +9,7 @@ Enriches papers with metadata from multiple APIs in priority order:
 Designed for Airflow micro-batch execution with idempotency.
 """
 import time
+import logging
 import pandas as pd
 from .cleaner import clean_abstract_text
 
@@ -33,6 +34,8 @@ except ImportError:
     search_scholar_proxy_query = None
     scrape_publisher_page = None
     search_scholar_proxy_query_html = None
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Groq API Client ──────────────────────────────────────────
@@ -60,19 +63,19 @@ def _get_groq_client():
                 from airflow.models import Variable
                 groq_api_key = Variable.get("GROQ_API_KEY", default_var=None)
                 if groq_api_key:
-                    print("      ✅ GROQ_API_KEY loaded from Airflow Variables.")
+                    logger.info("      ✅ GROQ_API_KEY loaded from Airflow Variables.")
             except ImportError:
                 pass  # Not running in Airflow
         
         if not groq_api_key:
-            print("      ⚠️ GROQ_API_KEY is not set in environment, .env, or Airflow Variables.")
+            logger.warning("      ⚠️ GROQ_API_KEY is not set in environment, .env, or Airflow Variables.")
             return None
             
         _groq_client = Groq(api_key=groq_api_key)
-        print("      ✅ Groq API Client initialized successfully.")
+        logger.info("      ✅ Groq API Client initialized successfully.")
         return _groq_client
     except Exception as e:
-        print(f"      ⚠️ Failed to initialize Groq client: {e}")
+        logger.warning(f"      ⚠️ Failed to initialize Groq client: {e}")
         return None
 
 
@@ -127,7 +130,7 @@ CRITICAL RULES:
         time.sleep(3)  # Rate Limit Cooldown (30 RPM limit on free tier)
         return tldr if len(tldr) > 10 else ""
     except Exception as e:
-        print(f"      ⚠️ TLDR generation error (Groq Llama-3.1-8B): {e}")
+        logger.warning(f"      ⚠️ TLDR generation error (Groq Llama-3.1-8B): {e}")
         return ""
 
 
@@ -177,10 +180,10 @@ def extract_metadata_via_llm(title: str, raw_text: str) -> dict:
             if extracted.get("abstract"): res["abstract"] = extracted["abstract"]
             if extracted.get("keywords"): res["keywords"] = extracted["keywords"]
             if extracted.get("doi"): res["doi"] = extracted["doi"]
-            print(f"      ✨ Agentic AI Success: Extracted {len(res['abstract'])} chars of abstract.")
+            logger.info(f"      ✨ Agentic AI Success: Extracted {len(res['abstract'])} chars of abstract.")
             
     except Exception as e:
-        print(f"      ⚠️ Agentic Extraction error (Groq): {e}")
+        logger.warning(f"      ⚠️ Agentic Extraction error (Groq): {e}")
         
     return res
 
@@ -223,7 +226,7 @@ STRICT RULES:
         time.sleep(3)  # Rate Limit Cooldown (30 RPM limit on free tier)
         return kw
     except Exception as e:
-        print(f"      ⚠️ Keyword generation error (Groq Llama-3.1-8B): {e}")
+        logger.warning(f"      ⚠️ Keyword generation error (Groq Llama-3.1-8B): {e}")
         return ""
 
 
@@ -367,14 +370,14 @@ def enrich_paper_batch(
     pending_indices = df[mask].index.tolist()
 
     if start_idx >= len(pending_indices):
-        print("   ✅ All papers already enriched!")
+        logger.info("   ✅ All papers already enriched!")
         return df
 
     batch_indices = pending_indices[start_idx:start_idx + batch_size]
     total = len(batch_indices)
 
-    print(f"\n🔧 ENRICH: Processing batch of {total} papers (idx {start_idx}-{start_idx + total})")
-    print("=" * 60)
+    logger.info(f"\n🔧 ENRICH: Processing batch of {total} papers (idx {start_idx}-{start_idx + total})")
+    logger.info("=" * 60)
 
     stats = {"s2": 0, "oa": 0, "abs": 0, "kw": 0, "doi": 0, "tldr": 0, "tldr_local": 0, "auth_resolved": 0}
     t_start = time.time()
@@ -392,7 +395,7 @@ def enrich_paper_batch(
         authors = str(row.get("Authors", "")).strip()
         author_ids = str(row.get("Author IDs", "")).strip()
 
-        print(f"\n[{count}/{total}] {title[:60]}...")
+        logger.info(f"\n[{count}/{total}] {title[:60]}...")
         
         # Track author IDs collected throughout different phases for final resolution
         collected_author_ids = []
@@ -400,7 +403,7 @@ def enrich_paper_batch(
         time.sleep(0.5)  # Rate limiting
 
         # ── Phase 1: Semantic Scholar ──
-        print(f"   [Phase 1] Semantic Scholar...")
+        logger.info(f"   [Phase 1] Semantic Scholar...")
         s2 = extract_s2_metadata(doi=doi if doi else None, title=title)
         if s2:
             stats["s2"] += 1
@@ -422,8 +425,8 @@ def enrich_paper_batch(
                 for auth in s2['authors']:
                     if auth.get('authorId'): collected_author_ids.append(auth['authorId'])
         else:
-            print(f"      -> MISS: Not found in S2")
-        print(f"   [Phase 2] OpenAlex...")
+            logger.info(f"      -> MISS: Not found in S2")
+        logger.info(f"   [Phase 2] OpenAlex...")
         oa = extract_openalex_metadata(doi=doi if doi else None, title=title)
         if oa:
             stats["oa"] += 1
@@ -448,11 +451,11 @@ def enrich_paper_batch(
                         aid = auth['author']['id'].split('/')[-1]
                         if aid not in collected_author_ids: collected_author_ids.append(aid)
         else:
-            print(f"      -> MISS: Not found in OpenAlex")
+            logger.info(f"      -> MISS: Not found in OpenAlex")
 
         # ── Phase 2.5: BrightData Google Scholar (PAID) ──
         if allow_paid_proxy and search_scholar_proxy_query and (not abstract or not keywords or not doi):
-            print(f"   [Phase 2.5] BrightData Scholar (PAID Proxy)...")
+            logger.info(f"   [Phase 2.5] BrightData Scholar (PAID Proxy)...")
             try:
                 bd = search_scholar_proxy_query(title)
                 if bd:
@@ -467,7 +470,7 @@ def enrich_paper_batch(
                     
                     # Scholar -> Web scraping fallback (Proxy)
                     if (not keywords or not abstract) and bd.get("title_link"):
-                        print(f"      -> Scholar-Web (Proxy): {bd['title_link'][:40]}...")
+                        logger.info(f"      -> Scholar-Web (Proxy): {bd['title_link'][:40]}...")
                         scrape_res = scrape_publisher_page(bd["title_link"], force_proxy=True)
                         if scrape_res:
                             if scrape_res.get("keywords") and not keywords: keywords = scrape_res["keywords"]
@@ -476,40 +479,40 @@ def enrich_paper_batch(
                             
                             # Agentic AI Fallback (LLM-based)
                             if (not abstract or not keywords) and scrape_res.get("raw_content"):
-                                print(f"   [Phase 2.6] Agentic AI Fallback (Qwen-Extract)...")
+                                logger.info(f"   [Phase 2.6] Agentic AI Fallback (Qwen-Extract)...")
                                 ai_res = extract_metadata_via_llm(title, scrape_res["raw_content"])
                                 if not abstract and ai_res.get("abstract"): abstract = clean_abstract_text(ai_res["abstract"])
                                 if not keywords and ai_res.get("keywords"): keywords = ai_res["keywords"]
                     
                     if not abstract and bd.get("snippet"): abstract = clean_abstract_text(bd["snippet"])
-                    print(f"      -> ✓ BD fallback performed")
+                    logger.info(f"      -> ✓ BD fallback performed")
                 else:
-                    print(f"      -> MISS: Not found in BD Scholar")
+                    logger.info(f"      -> MISS: Not found in BD Scholar")
             except Exception as e:
-                print(f"      ⚠️ BD Fallback error: {e}")
+                logger.warning(f"      ⚠️ BD Fallback error: {e}")
 
         # ── Phase 3: Local TLDR Generation (PEFT Qwen2.5 SciTLDR) ──
         if not tldr and abstract and len(abstract) > 30:
-            print(f"   [Phase 3] Local SciTLDR (Qwen2.5-0.5B PEFT)...")
+            logger.info(f"   [Phase 3] Local SciTLDR (Qwen2.5-0.5B PEFT)...")
             local_tldr = generate_local_tldr(title, abstract)
             if local_tldr:
                 tldr = local_tldr
                 stats["tldr_local"] += 1
-                print(f"      ✨ Generated: {tldr[:60]}...")
+                logger.info(f"      ✨ Generated: {tldr[:60]}...")
 
         # ── Phase 3.5: AI Keyword Generation Fallback ──
         if not keywords and abstract and len(abstract) > 30:
-            print(f"   [Phase 3.5] AI Keyword Generation (Groq)...")
+            logger.info(f"   [Phase 3.5] AI Keyword Generation (Groq)...")
             ai_keywords = generate_keywords_from_abstract(abstract)
             if ai_keywords:
                 keywords = ai_keywords
-                print(f"      ✨ Generated Keywords: {keywords}")
+                logger.info(f"      ✨ Generated Keywords: {keywords}")
 
         # ── Phase 4: Scholar ID-Based Author Resolution (using data from Phase 2.5) ──
         paper_sid = str(row.get("scholar_id", "")).strip()
         paper_dosen = str(row.get("dosen", "")).strip()
         
-        print(f"   [Phase 4] Author Resolution (ID Matching)...")
+        logger.info(f"   [Phase 4] Author Resolution (ID Matching)...")
         resolved_authors, resolved_ids = _resolve_authors_by_scholar_id(
             authors, paper_sid, paper_dosen, title=title,
             existing_author_ids=collected_author_ids
@@ -519,9 +522,9 @@ def enrich_paper_batch(
             authors = resolved_authors
             author_ids = resolved_ids
             stats["auth_resolved"] += 1
-            print(f"      ✅ Resolved: {authors} | IDs: {author_ids}")
+            logger.info(f"      ✅ Resolved: {authors} | IDs: {author_ids}")
         else:
-            print(f"      ⚠️ No updates made to authors or IDs")
+            logger.info(f"      ⚠️ No updates made to authors or IDs")
 
         # ── Fallback defaults ──
         if not doc_type:
@@ -548,19 +551,19 @@ def enrich_paper_batch(
         elapsed = time.time() - t_start
         avg = elapsed / count
         eta = ((total - count) * avg) / 60
-        print(f"   ✅ [{count}/{total}] ETA: {eta:.1f} min")
+        logger.info(f"   ✅ [{count}/{total}] ETA: {eta:.1f} min")
 
     # Final report
-    print(f"\n{'=' * 60}")
-    print(f"ENRICHMENT BATCH DONE - {total} papers processed")
-    print(f"   S2 hits        : {stats['s2']}/{total}")
-    print(f"   OA hits        : {stats['oa']}/{total}")
-    print(f"   Abstract       : {stats['abs']}/{total}")
-    print(f"   Keywords       : {stats['kw']}/{total}")
-    print(f"   DOI            : {stats['doi']}/{total}")
-    print(f"   TLDR (total)   : {stats['tldr']}/{total}")
-    print(f"   TLDR (local)   : {stats['tldr_local']}/{total}")
-    print(f"   Authors resolved: {stats['auth_resolved']}/{total}")
-    print(f"{'=' * 60}")
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"ENRICHMENT BATCH DONE - {total} papers processed")
+    logger.info(f"   S2 hits        : {stats['s2']}/{total}")
+    logger.info(f"   OA hits        : {stats['oa']}/{total}")
+    logger.info(f"   Abstract       : {stats['abs']}/{total}")
+    logger.info(f"   Keywords       : {stats['kw']}/{total}")
+    logger.info(f"   DOI            : {stats['doi']}/{total}")
+    logger.info(f"   TLDR (total)   : {stats['tldr']}/{total}")
+    logger.info(f"   TLDR (local)   : {stats['tldr_local']}/{total}")
+    logger.info(f"   Authors resolved: {stats['auth_resolved']}/{total}")
+    logger.info(f"{'=' * 60}")
 
     return df

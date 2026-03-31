@@ -1,7 +1,10 @@
 import os
 import json
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Base Directory Setup
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -31,6 +34,10 @@ BD_PASS_SERP = os.environ.get("BD_PASS_SERP")
 SCIVAL_EMAIL = os.environ.get("SCIVAL_EMAIL")
 SCIVAL_PASS = os.environ.get("SCIVAL_PASS")
 
+NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://neo4j:7687")
+NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "password")
+
 # --- Layer 2: credentials_new.json fallback (fills MISSING values only) ---
 try:
     creds_path = BASE_DIR / "notebooks" / "scraping" / "credentials_new.json"
@@ -45,7 +52,7 @@ try:
         if not SCIVAL_EMAIL: SCIVAL_EMAIL = creds.get('unesa', {}).get('email') or creds.get('SCIVAL_EMAIL')
         if not SCIVAL_PASS: SCIVAL_PASS = creds.get('unesa', {}).get('password') or creds.get('SCIVAL_PASS')
 except Exception as e:
-    print(f"Warning loading credentials JSON: {e}")
+    logger.warning(f"Warning loading credentials JSON: {e}")
 
 # --- Layer 3: Airflow UI Variables (HIGHEST PRIORITY - always overrides) ---
 try:
@@ -62,11 +69,14 @@ try:
     BD_PASS_SERP = _av('BD_PASS_SERP', BD_PASS_SERP)
     SCIVAL_EMAIL = _av('SCIVAL_EMAIL', SCIVAL_EMAIL)
     SCIVAL_PASS = _av('SCIVAL_PASS', SCIVAL_PASS)
+    NEO4J_URI = _av('NEO4J_URI', NEO4J_URI)
+    NEO4J_USER = _av('NEO4J_USER', NEO4J_USER)
+    NEO4J_PASSWORD = _av('NEO4J_PASSWORD', NEO4J_PASSWORD)
 except ImportError:
     pass  # Not running in Airflow environment
 
 # --- Diagnostics ---
 if not SUPABASE_URL or not SUPABASE_KEY:
-    print("⚠️ WARNING: SUPABASE_URL or SUPABASE_KEY is missing.")
+    logger.warning("⚠️ WARNING: SUPABASE_URL or SUPABASE_KEY is missing.")
 else:
-    print(f"✅ Config: Loaded Credentials (Supabase: {SUPABASE_URL})")
+    logger.info(f"✅ Config: Loaded Credentials (Supabase: {SUPABASE_URL})")
