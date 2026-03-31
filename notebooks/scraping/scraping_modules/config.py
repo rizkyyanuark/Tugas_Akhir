@@ -27,12 +27,12 @@ SCIVAL_EMAIL = os.environ.get("SCIVAL_EMAIL", "")
 SCIVAL_PASS = os.environ.get("SCIVAL_PASS", "")
 PROXY_URL = None
 BRIGHT_DATA_HOST = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")
-BD_USER_UNLOCKER = os.environ.get("BD_USER_UNLOCKER", "")
-BD_PASS_UNLOCKER = os.environ.get("BD_PASS_UNLOCKER", "")
-BD_USER_SERP = os.environ.get("BD_USER_SERP", "")
-BD_PASS_SERP = os.environ.get("BD_PASS_SERP", "")
+BD_USER_UNLOCKER = os.environ.get("BD_USER_UNLOCKER", "").strip()
+BD_PASS_UNLOCKER = os.environ.get("BD_PASS_UNLOCKER", "").strip()
+BD_USER_SERP = os.environ.get("BD_USER_SERP", "").strip()
+BD_PASS_SERP = os.environ.get("BD_PASS_SERP", "").strip()
 DECODO_AUTH = ""
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "").strip()
 
 try:
     if CREDENTIALS_FILE.exists():
@@ -83,9 +83,10 @@ try:
     SUPABASE_URL = _av('SUPABASE_URL', SUPABASE_URL).strip() if _av('SUPABASE_URL', SUPABASE_URL) else ""
     SUPABASE_KEY = _av('SUPABASE_KEY', SUPABASE_KEY).strip() if _av('SUPABASE_KEY', SUPABASE_KEY) else ""
     SERPAPI_KEY = _av('SERPAPI_KEY', SERPAPI_KEY)
-    BD_PASS_SERP = _av('BD_PASS_SERP', BD_PASS_SERP)
-    BD_USER_UNLOCKER = _av('BD_USER_UNLOCKER', BD_USER_UNLOCKER)
-    BD_PASS_UNLOCKER = _av('BD_PASS_UNLOCKER', BD_PASS_UNLOCKER)
+    BD_PASS_SERP = _av('BD_PASS_SERP', BD_PASS_SERP).strip() if _av('BD_PASS_SERP', BD_PASS_SERP) else ""
+    BD_USER_UNLOCKER = _av('BD_USER_UNLOCKER', BD_USER_UNLOCKER).strip() if _av('BD_USER_UNLOCKER', BD_USER_UNLOCKER) else ""
+    BD_PASS_UNLOCKER = _av('BD_PASS_UNLOCKER', BD_PASS_UNLOCKER).strip() if _av('BD_PASS_UNLOCKER', BD_PASS_UNLOCKER) else ""
+    BRIGHT_DATA_HOST = _av('BRIGHT_DATA_HOST', BRIGHT_DATA_HOST).strip() if _av('BRIGHT_DATA_HOST', BRIGHT_DATA_HOST) else "brd.superproxy.io:33335"
     SCIVAL_EMAIL = _av('SCIVAL_EMAIL', SCIVAL_EMAIL)
     SCIVAL_PASS = _av('SCIVAL_PASS', SCIVAL_PASS)
 except ImportError:
