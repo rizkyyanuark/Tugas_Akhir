@@ -69,6 +69,9 @@ deploy_to_aws:
       OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       GROQ_API_KEY=${GROQ_API_KEY}
       AIRFLOW_FERNET_KEY=${AIRFLOW_FERNET_KEY}
+      NEO4J_URI=bolt://${EC2_IP}:7687
+      WEAVIATE_HOST=${EC2_IP}
+      WEAVIATE_PORT=8081
       AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
       AWS_REGION=${AWS_REGION}
       EC2_IP=${EC2_IP}
@@ -80,8 +83,8 @@ deploy_to_aws:
       ssh ubuntu@${EC2_IP} "docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     - ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring pull &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d --remove-orphans &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring --profile vectordb pull &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring --profile vectordb up -d --remove-orphans &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
       "
 
