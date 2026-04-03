@@ -6,7 +6,7 @@ services:
     container_name: airflow-postgres
     environment:
       - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-airflow_prod_pass_123}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
@@ -25,7 +25,7 @@ services:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tugas-akhir-airflow:latest
     container_name: airflow-init
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:-airflow_prod_pass_123}@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
@@ -37,7 +37,7 @@ services:
     command: >
       bash -c "
         airflow db migrate &&
-        airflow users create --role Admin --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-rizkyyk715} --email admin@example.com --firstname admin --lastname admin || true
+        airflow users create --role Admin --username admin --password ${AIRFLOW_ADMIN_PASSWORD} --email admin@example.com --firstname admin --lastname admin || true
       "
     restart: "no"
     deploy:
@@ -51,7 +51,7 @@ services:
     container_name: airflow-webserver
     restart: always
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:-airflow_prod_pass_123}@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__PARALLELISM=4
@@ -89,7 +89,7 @@ services:
     container_name: airflow-scheduler
     restart: always
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:-airflow_prod_pass_123}@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:${POSTGRES_PASSWORD}@postgres/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW_FERNET_KEY}
@@ -210,7 +210,7 @@ services:
       - ../monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_SECURITY_DISABLE_INITIAL_ADMIN_PASSWORD_CHANGE=true
       - GF_SERVER_ROOT_URL=https://grafana.tugasakhir.space/
       - GF_SERVER_SERVE_FROM_SUB_PATH=false
@@ -218,6 +218,38 @@ services:
       resources:
         limits:
           memory: 256M
+
+  # --- VECTOR DATABASE (GraphRAG) ---
+  weaviate:
+    profiles: ["vectordb"]
+    image: cr.weaviate.io/semitechnologies/weaviate:1.27.9
+    container_name: unesa-weaviate
+    ports:
+      - "8081:8080"
+      - "50051:50051"
+    env_file:
+      - ../../.env
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "text2vec-huggingface"
+      ENABLE_MODULES: "text2vec-huggingface"
+      HUGGINGFACE_APIKEY: ${HF_TOKEN}
+      CLUSTER_HOSTNAME: "node1"
+      PROMETHEUS_MONITORING_ENABLED: "true"
+      PROMETHEUS_MONITORING_GROUP: "weaviate"
+      QUERY_MAXIMUM_RESULTS: 10000
+      GOMEMLIMIT: "1536MiB"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    restart: on-failure:3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   # --- REVERSE PROXY ---
   nginx:
@@ -236,5 +268,6 @@ volumes:
   postgres-db-volume:
   neo4j_data:
   neo4j_logs:
+  weaviate_data:
   prometheus_data:
   grafana_data:
