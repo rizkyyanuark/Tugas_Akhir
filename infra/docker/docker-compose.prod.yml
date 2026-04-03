@@ -222,7 +222,7 @@ services:
   # --- VECTOR DATABASE (GraphRAG) ---
   weaviate:
     profiles: ["vectordb"]
-    image: cr.weaviate.io/semitechnologies/weaviate:1.27.9
+    image: cr.weaviate.io/semitechnologies/weaviate:1.28.4
     container_name: unesa-weaviate
     ports:
       - "8081:8080"
