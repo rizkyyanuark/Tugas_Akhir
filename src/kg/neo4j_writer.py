@@ -26,7 +26,7 @@ class Neo4jKGWriter:
     """Production-grade Neo4j writer for the KG pipeline.
 
     Uses MERGE (never CREATE) for complete idempotency.
-    Connects to the 'datascience' database by default.
+    Connects to the 'Infokom_unesa' database by default.
 
     Usage:
         writer = Neo4jKGWriter()

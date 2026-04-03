@@ -1,4 +1,3 @@
-version: '3.8'
 name: tugas_akhir
 # ==========================================
 # UNIFIED DOCKER COMPOSE FILE UNESA INFOKOM
@@ -7,10 +6,16 @@ name: tugas_akhir
 # 1. Base Project (Airflow + Neo4j):
 #    make dev
 #
-# 2. With All Profiles:
+# 2. With Vector DB:
+#    docker compose -f infra/docker/docker-compose.yml --profile vectordb up -d
+#
+# 3. With LLM Monitoring:
+#    docker compose -f infra/docker/docker-compose.yml --profile llm-monitoring up -d
+#
+# 4. With All Profiles:
 #    make dev-all
 #
-# 3. Stop Everything:
+# 5. Stop Everything:
 #    make down
 # ==========================================
 
@@ -120,7 +125,7 @@ services:
       - NEO4J_server_memory_heap_initial__size=256m
       - NEO4J_server_memory_heap_max__size=1G
       - NEO4J_server_memory_pagecache_size=256m
-      - NEO4J_initial_dbms_default__database=datascience
+      - NEO4J_initial_dbms_default__database=Infokom_unesa
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
       - NEO4J_server_default__listen__address=0.0.0.0
       - NEO4J_server_http_listen__address=0.0.0.0:7474
@@ -163,20 +168,24 @@ services:
   # ==========================================
   # [OPTIONAL: VECTOR DATABASE (GraphRAG)]
   # ==========================================
+  # Uses text2vec-huggingface (remote API) — lightweight, no local ML container needed.
+  # Requires HF_TOKEN in .env for authentication.
   weaviate:
     profiles: ["vectordb"]
-    image: cr.weaviate.io/semitechnologies/weaviate:1.27.9
+    image: cr.weaviate.io/semitechnologies/weaviate:1.36.9
+    container_name: weaviate
     ports:
       - "8081:8080"
       - "50051:50051"
-      - "2112:2112"
+    env_file:
+      - ../../.env
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
       PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
-      DEFAULT_VECTORIZER_MODULE: "text2vec-transformers"
-      ENABLE_MODULES: "text2vec-transformers"
-      TRANSFORMERS_INFERENCE_API: "http://t2v-transformers:8080"
+      DEFAULT_VECTORIZER_MODULE: "text2vec-huggingface"
+      ENABLE_MODULES: "text2vec-huggingface"
+      HUGGINGFACE_APIKEY: ${HF_TOKEN}
       CLUSTER_HOSTNAME: "node1"
       PROMETHEUS_MONITORING_ENABLED: "true"
       PROMETHEUS_MONITORING_GROUP: "weaviate"
@@ -184,23 +193,141 @@ services:
       GOMEMLIMIT: "1536MiB"
     volumes:
       - weaviate_data:/var/lib/weaviate
-    restart: on-failure:0
+    restart: on-failure:3
     deploy:
       resources:
         limits:
-          cpus: "2"
-          memory: 2G
+          memory: 1G
+        reservations:
+          memory: 512M
 
-  t2v-transformers:
-    profiles: ["vectordb"]
-    image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-paraphrase-multilingual-MiniLM-L12-v2
+  # ==========================================
+  # [OPTIONAL: LLM MONITORING (Opik)]
+  # ==========================================
+  # Lightweight Opik stack for LLM observability.
+  # Requires: MySQL + ClickHouse + Redis + Opik Backend + Frontend
+  # Dashboard: http://<EC2_IP>:5173
+  # SDK config: opik.configure(use_local=True)
+  opik-mysql:
+    profiles: ["llm-monitoring"]
+    image: mysql:8.4.2
+    container_name: opik-mysql
     environment:
-      ENABLE_CUDA: "0"
+      MYSQL_ROOT_PASSWORD: opik
+      MYSQL_DATABASE: opik
+      MYSQL_USER: opik
+      MYSQL_PASSWORD: opik
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      timeout: 1s
+      interval: 5s
+      retries: 60
+    volumes:
+      - opik_mysql:/var/lib/mysql
     deploy:
       resources:
         limits:
-          cpus: "2"
-          memory: 2G
+          memory: 512M
+
+  opik-redis:
+    profiles: ["llm-monitoring"]
+    image: redis:7.2.4-alpine3.19
+    container_name: opik-redis
+    command: redis-server --requirepass opik --maxmemory 64mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "6379"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    volumes:
+      - opik_redis:/data
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  opik-clickhouse:
+    profiles: ["llm-monitoring"]
+    image: clickhouse/clickhouse-server:25.3.6.56-alpine
+    container_name: opik-clickhouse
+    environment:
+      CLICKHOUSE_DB: opik
+      CLICKHOUSE_USER: opik
+      CLICKHOUSE_PASSWORD: opik
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    volumes:
+      - opik_clickhouse:/var/lib/clickhouse
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  opik-backend:
+    profiles: ["llm-monitoring"]
+    image: ghcr.io/comet-ml/opik/opik-backend:latest
+    container_name: opik-backend
+    command: ["bash", "-c", "./run_db_migrations.sh && ./entrypoint.sh"]
+    environment:
+      STATE_DB_PROTOCOL: "jdbc:mysql://"
+      STATE_DB_URL: "opik-mysql:3306/opik?createDatabaseIfNotExist=true&rewriteBatchedStatements=true"
+      STATE_DB_DATABASE_NAME: opik
+      STATE_DB_USER: opik
+      STATE_DB_PASS: opik
+      ANALYTICS_DB_MIGRATIONS_URL: "jdbc:clickhouse://opik-clickhouse:8123"
+      ANALYTICS_DB_MIGRATIONS_USER: opik
+      ANALYTICS_DB_MIGRATIONS_PASS: opik
+      ANALYTICS_DB_PROTOCOL: "HTTP"
+      ANALYTICS_DB_HOST: "opik-clickhouse"
+      ANALYTICS_DB_PORT: 8123
+      ANALYTICS_DB_DATABASE_NAME: opik
+      ANALYTICS_DB_USERNAME: opik
+      ANALYTICS_DB_PASS: opik
+      JAVA_OPTS: "-Xmx512m -XX:+UseG1GC -XX:MaxRAMPercentage=80.0"
+      REDIS_URL: redis://:opik@opik-redis:6379/
+      OPIK_USAGE_REPORT_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health-check"]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
+    depends_on:
+      opik-mysql:
+        condition: service_healthy
+      opik-clickhouse:
+        condition: service_healthy
+      opik-redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  opik-frontend:
+    profiles: ["llm-monitoring"]
+    image: ghcr.io/comet-ml/opik/opik-frontend:latest
+    container_name: opik-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      opik-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:5173/health"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    environment:
+      NGINX_PORT: 5173
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
   # ==========================================
   # [OPTIONAL: MONITORING]
@@ -265,6 +392,10 @@ volumes:
   neo4j_import:
   # Vector DB
   weaviate_data:
-  # Monitoring
+  # LLM Monitoring (Opik)
+  opik_mysql:
+  opik_redis:
+  opik_clickhouse:
+  # Infrastructure Monitoring
   prometheus_data:
   grafana_data:

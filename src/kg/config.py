@@ -42,7 +42,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "rizkyyk123")
-NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "datascience")
+NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "Infokom_unesa")
 
 # Weaviate (Vector Database)
 WEAVIATE_HOST = os.environ.get("WEAVIATE_HOST", "localhost")

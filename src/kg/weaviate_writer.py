@@ -5,7 +5,10 @@ Handles all Weaviate write operations for the KG pipeline:
   - Collection schema creation (4 collections)
   - Batch insert with error handling
 
-Uses text2vec-transformers for automatic vectorisation.
+Uses text2vec-huggingface for automatic vectorisation via HuggingFace Inference API.
+Requires HF_TOKEN environment variable for authentication.
+
+Reference: https://weaviate.io/developers/weaviate/model-providers/huggingface/embeddings
 """
 
 import logging
@@ -19,6 +22,13 @@ from weaviate.classes.data import DataObject
 from .config import WEAVIATE_HOST, WEAVIATE_PORT
 
 logger = logging.getLogger(__name__)
+
+# ── Embedding Model ──
+# sentence-transformers/all-MiniLM-L6-v2 is fast, lightweight, well-supported on HF Inference API
+HF_EMBEDDING_MODEL = os.environ.get(
+    "HF_EMBEDDING_MODEL",
+    "sentence-transformers/all-MiniLM-L6-v2",
+)
 
 # Collection schemas: {name: [properties]}
 _COLLECTIONS_CONFIG = {
@@ -50,7 +60,7 @@ _COLLECTIONS_CONFIG = {
 class WeaviateKGWriter:
     """Production-grade Weaviate writer for the KG pipeline.
 
-    Creates 4 collections with text2vec-transformers vectoriser
+    Creates 4 collections with text2vec-huggingface vectoriser
     and performs batched inserts with error handling.
 
     Usage:
@@ -71,8 +81,12 @@ class WeaviateKGWriter:
 
         try:
             self.client = weaviate.connect_to_local(
-                host=self.host, port=self.port, skip_init_checks=True,
-                headers={"X-HuggingFace-Api-Key": os.environ.get("HF_TOKEN", "")}
+                host=self.host,
+                port=self.port,
+                skip_init_checks=True,
+                headers={
+                    "X-HuggingFace-Api-Key": os.environ.get("HF_TOKEN", ""),
+                },
             )
             logger.info(f"✅ WeaviateKGWriter connected to {self.host}:{self.port}")
         except Exception as e:
@@ -90,6 +104,9 @@ class WeaviateKGWriter:
     def ensure_collections(self, recreate: bool = True):
         """Create all 4 Weaviate collections for the KG pipeline.
 
+        Uses text2vec-huggingface vectorizer with the configured embedding model.
+        See: https://weaviate.io/developers/weaviate/model-providers/huggingface/embeddings
+
         Args:
             recreate: If True, delete existing collections first (fresh start).
                       If False, skip creation if collection already exists.
@@ -105,10 +122,16 @@ class WeaviateKGWriter:
 
             self.client.collections.create(
                 name=name,
-                vectorizer_config=Configure.Vectorizer.text2vec_huggingface(),
+                vectorizer_config=Configure.Vectorizer.text2vec_huggingface(
+                    model=HF_EMBEDDING_MODEL,
+                    wait_for_model=True,
+                ),
                 properties=props,
             )
-            logger.info(f"  Created collection: {name}")
+            logger.info(
+                f"  Created collection: {name} "
+                f"(vectorizer=text2vec-huggingface, model={HF_EMBEDDING_MODEL})"
+            )
 
     def ingest(
         self,
