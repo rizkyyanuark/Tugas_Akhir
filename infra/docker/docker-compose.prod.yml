@@ -224,6 +224,32 @@ services:
         limits:
           memory: 128M
 
+  opik-zookeeper:
+    profiles: ["llm-monitoring"]
+    image: zookeeper:3.8.0
+    container_name: opik-zookeeper
+    healthcheck:
+      test: ['CMD', 'bash', '-c', 'echo "ruok" | nc localhost 2181 | grep imok']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  opik-clickhouse-init:
+    profiles: ["llm-monitoring"]
+    image: alpine:latest
+    volumes:
+      - ./clickhouse_config:/clickhouse_config_files
+      - opik_clickhouse_config:/config
+    command: |
+      sh -c "
+        cp -r /clickhouse_config_files/* /config/ && 
+        chown -R 1000:1000 /config
+      "
+
   opik-clickhouse:
     profiles: ["llm-monitoring"]
     image: clickhouse/clickhouse-server:25.3.6.56-alpine
@@ -238,8 +264,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 60
+    depends_on:
+      opik-zookeeper:
+        condition: service_healthy
+      opik-clickhouse-init:
+        condition: service_completed_successfully
     volumes:
       - opik_clickhouse:/var/lib/clickhouse
+      - opik_clickhouse_config:/etc/clickhouse-server/config.d
     deploy:
       resources:
         limits:
@@ -408,6 +440,7 @@ volumes:
   opik_mysql:
   opik_redis:
   opik_clickhouse:
+  opik_clickhouse_config:
   # Infrastructure Monitoring
   prometheus_data:
   grafana_data:

@@ -1,0 +1,14 @@
+<clickhouse>
+    <remote_servers>
+        <opik>
+            <shard>
+                <weight>1</weight>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>opik-clickhouse</host>
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </opik>
+    </remote_servers>
+</clickhouse>
