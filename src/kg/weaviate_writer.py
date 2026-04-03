@@ -9,6 +9,7 @@ Uses text2vec-transformers for automatic vectorisation.
 """
 
 import logging
+import os
 from typing import Dict, List, Optional
 
 import weaviate
@@ -70,7 +71,8 @@ class WeaviateKGWriter:
 
         try:
             self.client = weaviate.connect_to_local(
-                host=self.host, port=self.port
+                host=self.host, port=self.port, skip_init_checks=True,
+                headers={"X-HuggingFace-Api-Key": os.environ.get("HF_TOKEN", "")}
             )
             logger.info(f"✅ WeaviateKGWriter connected to {self.host}:{self.port}")
         except Exception as e:
@@ -103,7 +105,7 @@ class WeaviateKGWriter:
 
             self.client.collections.create(
                 name=name,
-                vectorizer_config=Configure.Vectorizer.text2vec_transformers(),
+                vectorizer_config=Configure.Vectorizer.text2vec_huggingface(),
                 properties=props,
             )
             logger.info(f"  Created collection: {name}")
