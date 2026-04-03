@@ -447,7 +447,7 @@
       },
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{name=~\".+\",name!~\".*cadvisor.*|.*POD.*\"}[5m]) * 100",
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\".+\",name!~\".*cadvisor.*|.*POD.*\"}[5m])) * 100",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -497,7 +497,7 @@
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{name=~\".+\",name!~\".*cadvisor.*|.*POD.*\"}",
+          "expr": "sum by (name) (container_memory_usage_bytes{name=~\".+\",name!~\".*cadvisor.*|.*POD.*\"})",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -539,7 +539,7 @@
       },
       "targets": [
         {
-          "expr": "container_memory_usage_bytes{name=~\".+\",name!~\".*cadvisor.*|.*POD.*\"}",
+          "expr": "sum by (name) (container_memory_usage_bytes{name=~\".+\",name!~\".*cadvisor.*|.*POD.*\"})",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -597,7 +597,7 @@
       },
       "targets": [
         {
-          "expr": "rate(container_network_receive_bytes_total{name=~\".+\",name!~\".*POD.*\"}[5m])",
+          "expr": "sum by (name) (rate(container_network_receive_bytes_total{name=~\".+\",name!~\".*POD.*\"}[5m]))",
           "legendFormat": "⬇ {{name}}",
           "refId": "A"
         }
@@ -647,7 +647,7 @@
       },
       "targets": [
         {
-          "expr": "rate(container_network_transmit_bytes_total{name=~\".+\",name!~\".*POD.*\"}[5m])",
+          "expr": "sum by (name) (rate(container_network_transmit_bytes_total{name=~\".+\",name!~\".*POD.*\"}[5m]))",
           "legendFormat": "⬆ {{name}}",
           "refId": "A"
         }
