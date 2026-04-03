@@ -222,6 +222,7 @@ services:
       timeout: 1s
       interval: 5s
       retries: 60
+      start_period: 60s
     volumes:
       - opik_mysql:/var/lib/mysql
     deploy:
@@ -239,6 +240,7 @@ services:
       interval: 5s
       timeout: 4s
       retries: 20
+      start_period: 60s
     volumes:
       - opik_redis:/data
     deploy:
@@ -257,6 +259,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+      start_period: 60s
 
   opik-clickhouse-init:
     profiles: ["llm-monitoring"]
@@ -284,6 +287,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 60
+      start_period: 60s
     depends_on:
       opik-zookeeper:
         condition: service_healthy
@@ -325,7 +329,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 60
-      start_period: 30s
+      start_period: 60s
     depends_on:
       opik-mysql:
         condition: service_healthy

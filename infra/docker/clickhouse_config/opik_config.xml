@@ -1,6 +1,19 @@
 <clickhouse>
+    <macros>
+        <shard>1</shard>
+        <replica>clickhouse</replica>
+        <cluster>default</cluster>
+    </macros>
+
+    <zookeeper>
+        <node>
+            <host>opik-zookeeper</host>
+            <port>2181</port>
+        </node>
+    </zookeeper>
+
     <remote_servers>
-        <opik>
+        <default>
             <shard>
                 <weight>1</weight>
                 <internal_replication>true</internal_replication>
@@ -9,6 +22,6 @@
                     <port>9000</port>
                 </replica>
             </shard>
-        </opik>
+        </default>
     </remote_servers>
 </clickhouse>
