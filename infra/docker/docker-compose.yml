@@ -250,8 +250,10 @@ services:
     profiles: ["llm-monitoring"]
     image: zookeeper:3.8.0
     container_name: opik-zookeeper
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: "ruok"
     healthcheck:
-      test: ['CMD', 'bash', '-c', 'echo "ruok" | nc localhost 2181 | grep imok']
+      test: ['CMD-SHELL', 'echo "ruok" | nc localhost 2181 || exit 1']
       interval: 5s
       timeout: 3s
       retries: 20
