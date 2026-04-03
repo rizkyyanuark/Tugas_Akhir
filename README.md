@@ -9,7 +9,7 @@
 [![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.8.1-017CEE.svg)](https://airflow.apache.org)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.15-008CC1.svg)](https://neo4j.com)
 
-*End-to-end ETL pipeline for constructing a Knowledge Graph from academic publications of UNESA Faculty of Engineering lecturers, powered by Apache Airflow orchestration and Neo4j graph database.*
+*End-to-end ETL pipeline for constructing a Knowledge Graph from academic publications of INFOKOM UNESA, powered by Apache Airflow orchestration and Neo4j graph database.*
 
 </div>
 
