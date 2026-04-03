@@ -352,12 +352,13 @@ services:
       opik-backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:5173/health"]
+      test: ["CMD-SHELL", "curl --fail http://localhost:5173/is-alive || exit 1"]
       interval: 5s
       timeout: 10s
       retries: 10
     environment:
       NGINX_PORT: 5173
+      OPIK_BACKEND_URL: "http://opik-backend:8080"
     deploy:
       resources:
         limits:
