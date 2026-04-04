@@ -31,7 +31,7 @@ deploy_to_aws:
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     # 0. Ensure target directory exists
     - ssh ubuntu@$EC2_IP "mkdir -p ~/tugas_akhir/data/raw ~/tugas_akhir/data/processed ~/tugas_akhir/notebooks/scraping"
