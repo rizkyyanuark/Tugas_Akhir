@@ -9,6 +9,24 @@ build/
 dist/
 wheels/
 *.egg-info
+
+# === Temporary debug/output files ===
+*.txt
+!requirements*.txt
+!program_studi_config.txt
+
+# === Standalone JSON configs (already in infra/) ===
+airflow.json
+grafana.json
+opik.json
+
+# === Reference notebooks (cloned repos) ===
+notebooks/build-graph/
+
+# === Pipeline cell outputs ===
+notebooks/scraping/pipeline_cells/
+
+# === Reference PDF ===
 AcademicRAG Knowledge Graph Enhanced Retrieval Augmented Generation for Academic Resource Discovery.pdf
 # === Virtual environments ===
 .venv/
