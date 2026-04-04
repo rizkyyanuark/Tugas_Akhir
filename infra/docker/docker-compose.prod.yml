@@ -202,7 +202,7 @@ services:
       timeout: 1s
       interval: 5s
       retries: 60
-      start_period: 60s
+      start_period: 120s
     volumes:
       - opik_mysql:/var/lib/mysql
     deploy:
@@ -239,7 +239,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-      start_period: 60s
+      start_period: 120s
     deploy:
       resources:
         limits:
@@ -268,10 +268,10 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 60
-      start_period: 60s
+      interval: 10s
+      timeout: 15s
+      retries: 100
+      start_period: 180s
     depends_on:
       opik-zookeeper:
         condition: service_healthy
@@ -283,7 +283,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
 
   opik-backend:
     profiles: ["llm-monitoring"]
