@@ -29,8 +29,7 @@ deploy_to_aws:
     - apk add --no-cache openssh-client aws-cli
 
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" | awk '{sub(/\r$/,""); print}' > ~/.ssh/id_rsa
-    - echo "" >> ~/.ssh/id_rsa
+    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - eval $(ssh-agent -s)
     - ssh-add ~/.ssh/id_rsa
