@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple, Optional, Any
 
 import pandas as pd
 
-from .ontology import ONTOLOGY, PRODI_FAKULTAS, get_valid_semantic_labels, map_ner_label
+from .ontology import ONTOLOGY, get_valid_semantic_labels, map_ner_label
 from .utils import md5, normalize_text, safe_str, truncate
 from .ner_extractor import EntityStore
 from .entity_resolver import resolve
@@ -50,8 +50,8 @@ def build_backbone(
 ) -> Tuple[Dict, List, Dict[str, str], Dict[str, str]]:
     """Build the structural backbone of the knowledge graph.
 
-    Creates nodes and edges for: Dosen, ProgramStudi, Fakultas,
-    Paper, Year, Journal, ExternalAuthor, Keyword.
+    Creates nodes and edges for: Dosen, ProgramStudi,
+    Paper, Year, Journal, Keyword.
 
     Args:
         df_papers: Papers DataFrame with columns: Title, Abstract, Year,
@@ -72,14 +72,21 @@ def build_backbone(
     paper_abstracts: Dict[str, str] = {}
     paper_titles: Dict[str, str] = {}
 
-    # Build dosen lookup by scholar_id
+    # Build dosen lookup by scholar_id AND by normalised name
     dosen_lookup = {
         str(r["scholar_id"]).strip(): r.to_dict()
         for _, r in df_dosen.iterrows()
         if safe_str(r.get("scholar_id"))
     }
+    # Secondary lookup: lowercased name → scholar_id (for Smart Name Fallback)
+    dosen_name_lookup = {}
+    for _, r in df_dosen.iterrows():
+        name = safe_str(r.get("nama_norm")) or safe_str(r.get("nama_dosen"))
+        sid = safe_str(r.get("scholar_id"))
+        if name and sid:
+            dosen_name_lookup[name.lower().strip()] = sid
 
-    # ── Dosen → ProgramStudi → Fakultas ──
+    # ── Dosen → ProgramStudi ──
     dosen_count = 0
     for _, row in df_dosen.iterrows():
         name = safe_str(row.get("nama_norm")) or safe_str(row.get("nama_dosen"))
@@ -106,13 +113,6 @@ def build_backbone(
             nodes[p_id] = {"_label": "ProgramStudi", "name": prodi}
         edges.append((d_id, p_id, "MEMBER_OF", {}))
 
-        # Fakultas node
-        fak = PRODI_FAKULTAS.get(prodi, "Unknown")
-        f_id = f'fak_{normalize_text(fak).replace(" ", "_")}'
-        if f_id not in nodes:
-            nodes[f_id] = {"_label": "Fakultas", "name": fak}
-        edges.append((p_id, f_id, "PART_OF", {}))
-
     logger.info(f"Dosen backbone: {dosen_count} dosen registered")
 
     # ── Filter & Sample Papers ──
@@ -122,8 +122,9 @@ def build_backbone(
     ).copy()
     logger.info(f"Filtered: {len(df_with_abstract)} with abstracts, sampled {len(df_sample)}")
 
-    # ── Papers → Year, Journal, Authors, Keywords ──
-    paper_count, ext_author_count, keyword_count = 0, 0, 0
+    # ── Papers → Year, Journal, Authors (Dosen only), Keywords ──
+    paper_count, keyword_count = 0, 0
+    skipped_external = 0
     for _, row in df_sample.iterrows():
         t = safe_str(row.get("Title"))
         if not t:
@@ -172,27 +173,35 @@ def build_backbone(
                 nodes[jid] = {"_label": "Journal", "name": j_clean}
             edges.append((pid, jid, "PUBLISHED_IN", {}))
 
-        # Authors
+        # Authors — Smart Name Fallback: scholar_id first, then name match
         authors = [x.strip() for x in str(row.get("Authors", "")).split(",") if x.strip()]
         aids = [x.strip() for x in str(row.get("Author IDs", "")).split(";") if x.strip()]
+        paper_dosen_names = []  # track dosen names for this paper
 
         for i, aname in enumerate(authors):
             if not aname or aname.lower() == "nan":
                 continue
             asid = aids[i] if i < len(aids) else ""
             is_internal = asid and asid in dosen_lookup
-            did = f"dosen_{asid}" if is_internal else f"ext_{md5(aname)}"
 
-            if did not in nodes:
-                nodes[did] = {
-                    "_label": "Dosen" if is_internal else "ExternalAuthor",
-                    "name": aname,
-                }
-                if not is_internal:
-                    ext_author_count += 1
-            edges.append(
-                (did, pid, "WRITES", {"position": "first" if i == 0 else "co"})
-            )
+            # Smart Name Fallback: if scholar_id is missing/invalid,
+            # try matching by lowered name against dosen master data
+            if not is_internal:
+                matched_sid = dosen_name_lookup.get(aname.lower().strip())
+                if matched_sid:
+                    asid = matched_sid
+                    is_internal = True
+
+            if is_internal:
+                did = f"dosen_{asid}"
+                # Node may already exist from backbone; safe to skip duplicate
+                edges.append(
+                    (did, pid, "WRITES", {"position": "first" if i == 0 else "co"})
+                )
+                paper_dosen_names.append(aname)
+            else:
+                # Not internal dosen — skip entirely (ETL already filtered)
+                skipped_external += 1
 
         # Keywords
         kw_raw = safe_str(row.get("Keywords"))
@@ -208,7 +217,7 @@ def build_backbone(
 
     logger.info(
         f"Backbone: {paper_count} papers, {dosen_count} dosen, "
-        f"{ext_author_count} external, {keyword_count} keywords | "
+        f"{skipped_external} external skipped, {keyword_count} keywords | "
         f"Nodes: {len(nodes)}, Edges: {len(edges)}"
     )
 

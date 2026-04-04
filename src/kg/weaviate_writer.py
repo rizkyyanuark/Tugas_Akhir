@@ -53,6 +53,7 @@ _COLLECTIONS_CONFIG = {
         Property(name="content", data_type=DataType.TEXT),
         Property(name="year", data_type=DataType.TEXT),
         Property(name="paperUrl", data_type=DataType.TEXT),
+        Property(name="authors", data_type=DataType.TEXT),
     ],
 }
 
@@ -124,6 +125,7 @@ class WeaviateKGWriter:
                 name=name,
                 vectorizer_config=Configure.Vectorizer.text2vec_huggingface(
                     model=HF_EMBEDDING_MODEL,
+                    endpoint_url=f"https://router.huggingface.co/hf-inference/models/{HF_EMBEDDING_MODEL}/pipeline/feature-extraction",
                     wait_for_model=True,
                 ),
                 properties=props,
