@@ -83,27 +83,27 @@ deploy_to_aws:
     - |
       aws ecr get-login-password --region ${AWS_REGION} | \
       ssh ubuntu@${EC2_IP} "docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-    - ssh ubuntu@$EC2_IP "
+    - |
+      ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
 
-        echo '=== Phase 1: Core Databases ===' &&
+        echo '=== Phase 1 - Core Databases ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d postgres neo4j &&
         sleep 10 &&
 
-        echo '=== Phase 2: Vector DB ===' &&
+        echo '=== Phase 2 - Vector DB ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile vectordb up -d &&
         sleep 5 &&
 
-        echo '=== Phase 3: Airflow ===' &&
+        echo '=== Phase 3 - Airflow ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d airflow-init airflow-webserver airflow-scheduler &&
         sleep 15 &&
 
-
-        echo '=== Phase 5: Infra Monitoring ===' &&
+        echo '=== Phase 5 - Infra Monitoring ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d &&
         sleep 5 &&
 
-        echo '=== Phase 6: Nginx Reverse Proxy ===' &&
+        echo '=== Phase 6 - Nginx Reverse Proxy ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d nginx --remove-orphans
       "
 
