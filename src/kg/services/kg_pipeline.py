@@ -18,6 +18,7 @@ Usage from Airflow DAG:
 """
 
 import time
+import json
 import logging
 import sys
 from datetime import datetime
@@ -27,7 +28,7 @@ import pandas as pd
 
 from ..config import (
     SUPABASE_URL, SUPABASE_KEY,
-    MAX_PAPERS, LLM_BATCH_SIZE, LOG_DIR,
+    MAX_PAPERS, LLM_BATCH_SIZE, LOG_DIR, KG_ARTIFACTS_DIR,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ class KGPipeline:
         self.entity_vdb = []
         self.relationship_vdb = []
         self.keywords_vdb = []
+        self.text_chunks_db = {}
 
         # Timing
         self._timers = {}
@@ -179,13 +181,20 @@ class KGPipeline:
 
         from ..graph_builder import build_backbone
 
-        self.nodes, self.edges, self.paper_abstracts, self.paper_titles = build_backbone(
+        self.nodes, self.edges, self.paper_abstracts, self.paper_titles, self.text_chunks_db = build_backbone(
             df_papers, df_dosen, max_papers=self.max_papers
         )
+
+        # Persist text_chunks_db to disk for GraphRAG retrieval
+        chunks_path = KG_ARTIFACTS_DIR / "text_chunks.json"
+        with open(chunks_path, "w", encoding="utf-8") as f:
+            json.dump(self.text_chunks_db, f, ensure_ascii=False, indent=2)
+        logger.info(f"  Saved text_chunks_db: {len(self.text_chunks_db)} chunks → {chunks_path}")
 
         self._end_step("Step 2: Backbone Construction", {
             "Total nodes": len(self.nodes),
             "Total edges": len(self.edges),
+            "Text chunks": len(self.text_chunks_db),
         })
 
     # ══════════════════════════════════════════════════════════
@@ -299,6 +308,7 @@ class KGPipeline:
             nodes=self.nodes,
             edges=self.edges,
             llm_client=llm_client,
+            text_chunks_db=self.text_chunks_db,
         )
 
         self._end_step("Step 5: LLM Curation", {

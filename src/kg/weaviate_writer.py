@@ -37,12 +37,14 @@ _COLLECTIONS_CONFIG = {
         Property(name="entityType", data_type=DataType.TEXT),
         Property(name="description", data_type=DataType.TEXT),
         Property(name="nodeId", data_type=DataType.TEXT),
+        Property(name="sourceId", data_type=DataType.TEXT),
     ],
     "RelationshipEmbedding": [
         Property(name="srcId", data_type=DataType.TEXT),
         Property(name="tgtId", data_type=DataType.TEXT),
         Property(name="relType", data_type=DataType.TEXT),
         Property(name="description", data_type=DataType.TEXT),
+        Property(name="sourceId", data_type=DataType.TEXT),
     ],
     "ContentKeyword": [
         Property(name="keywords", data_type=DataType.TEXT),

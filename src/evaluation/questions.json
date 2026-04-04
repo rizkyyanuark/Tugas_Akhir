@@ -1,0 +1,204 @@
+{
+  "questions": [
+    {
+      "question": "Siapa dosen di Prodi Sains Data yang meneliti deep learning?",
+      "ground_truth": "Informasi tentang dosen Sains Data yang meneliti deep learning berdasarkan Knowledge Graph.",
+      "category": "factual"
+    },
+    {
+      "question": "Apa saja metode machine learning yang digunakan di paper-paper dosen Informatika?",
+      "ground_truth": "Daftar metode machine learning yang digunakan dalam riset dosen Informatika UNESA.",
+      "category": "factual"
+    },
+    {
+      "question": "Siapa yang menulis paper tentang natural language processing?",
+      "ground_truth": "Daftar dosen yang menulis paper terkait NLP berdasarkan Knowledge Graph.",
+      "category": "factual"
+    },
+    {
+      "question": "Berapa banyak paper yang diterbitkan di tahun 2023?",
+      "ground_truth": "Jumlah paper yang diterbitkan tahun 2023 berdasarkan data Knowledge Graph.",
+      "category": "factual"
+    },
+    {
+      "question": "Apa dataset yang paling sering digunakan dalam riset dosen UNESA?",
+      "ground_truth": "Dataset yang paling sering muncul dalam paper-paper dosen UNESA.",
+      "category": "factual"
+    },
+    {
+      "question": "Paper apa saja yang menggunakan metode CNN?",
+      "ground_truth": "Daftar paper yang menggunakan Convolutional Neural Network (CNN).",
+      "category": "factual"
+    },
+    {
+      "question": "Siapa dosen yang paling produktif dalam publikasi paper?",
+      "ground_truth": "Dosen dengan jumlah paper terbanyak berdasarkan Knowledge Graph.",
+      "category": "factual"
+    },
+    {
+      "question": "Apa jurnal yang paling sering digunakan untuk publikasi?",
+      "ground_truth": "Jurnal dengan jumlah paper terbanyak dari dosen UNESA.",
+      "category": "factual"
+    },
+    {
+      "question": "Jelaskan hubungan kolaborasi antara dosen di Prodi Informatika",
+      "ground_truth": "Pola kolaborasi antar dosen Informatika berdasarkan co-authorship dalam Knowledge Graph.",
+      "category": "relational"
+    },
+    {
+      "question": "Dosen mana saja yang berkolaborasi dalam bidang computer vision?",
+      "ground_truth": "Daftar dosen yang co-author dalam paper computer vision.",
+      "category": "relational"
+    },
+    {
+      "question": "Apa hubungan antara metode BERT dan paper-paper di UNESA?",
+      "ground_truth": "Paper-paper yang menggunakan BERT dan dosen penulisnya.",
+      "category": "relational"
+    },
+    {
+      "question": "Siapa dosen yang meneliti topik yang sama dengan bidang sentiment analysis?",
+      "ground_truth": "Dosen yang memiliki paper terkait sentiment analysis.",
+      "category": "relational"
+    },
+    {
+      "question": "Apa relasi antara Prodi Sains Data dan metode-metode AI?",
+      "ground_truth": "Metode AI yang digunakan oleh dosen Prodi Sains Data.",
+      "category": "relational"
+    },
+    {
+      "question": "Bagaimana jaringan kolaborasi antar program studi?",
+      "ground_truth": "Pola kolaborasi lintas prodi berdasarkan co-authorship.",
+      "category": "relational"
+    },
+    {
+      "question": "Paper apa yang menghubungkan bidang IoT dengan machine learning?",
+      "ground_truth": "Paper yang mengombinasikan IoT dan machine learning.",
+      "category": "relational"
+    },
+    {
+      "question": "Siapa dosen yang menjadi bridge connector antar kelompok riset?",
+      "ground_truth": "Dosen dengan koneksi terbanyak ke berbagai kelompok riset.",
+      "category": "relational"
+    },
+    {
+      "question": "Apa tren riset deep learning di UNESA 5 tahun terakhir?",
+      "ground_truth": "Evolusi topik deep learning dari tahun ke tahun di UNESA.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Bagaimana perkembangan riset NLP di Fakultas Teknik UNESA?",
+      "ground_truth": "Timeline dan perkembangan riset NLP di UNESA.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Apa bidang riset yang sedang naik tren di UNESA?",
+      "ground_truth": "Bidang riset dengan pertumbuhan paper terbanyak.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Bandingkan pendekatan riset antara Prodi Informatika dan Sains Data",
+      "ground_truth": "Perbandingan topik dan metode riset antar prodi.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Apa inovasi utama yang dihasilkan dari riset dosen UNESA?",
+      "ground_truth": "Inovasi-inovasi penting dari paper dosen UNESA.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Bagaimana distribusi metode riset di berbagai program studi?",
+      "ground_truth": "Distribusi penggunaan metode riset per program studi.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Apa gap riset yang masih belum tersentuh di UNESA?",
+      "ground_truth": "Area riset yang belum banyak diteliti berdasarkan Knowledge Graph.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Rekomendasi topik riset baru berdasarkan tren yang ada?",
+      "ground_truth": "Rekomendasi topik riset berdasarkan analisis Knowledge Graph.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Berikan link paper tentang machine learning dari dosen UNESA",
+      "ground_truth": "Daftar paper machine learning beserta URL-nya.",
+      "category": "factual"
+    },
+    {
+      "question": "Apa metode evaluasi yang paling sering digunakan dalam riset dosen?",
+      "ground_truth": "Metrik evaluasi yang paling sering muncul di paper dosen.",
+      "category": "factual"
+    },
+    {
+      "question": "Paper apa yang menggunakan metode transfer learning?",
+      "ground_truth": "Daftar paper yang menerapkan transfer learning.",
+      "category": "factual"
+    },
+    {
+      "question": "Siapa dosen yang meneliti bidang image processing?",
+      "ground_truth": "Dosen yang memiliki paper terkait image processing.",
+      "category": "factual"
+    },
+    {
+      "question": "Apa tool atau framework yang paling sering digunakan?",
+      "ground_truth": "Tool dan framework populer yang digunakan dosen dalam riset.",
+      "category": "factual"
+    },
+    {
+      "question": "Bagaimana pola co-authorship di Prodi Teknik Elektro?",
+      "ground_truth": "Pola kolaborasi dosen di Prodi Teknik Elektro.",
+      "category": "relational"
+    },
+    {
+      "question": "Apakah ada kolaborasi antara dosen Informatika dan Teknik Elektro?",
+      "ground_truth": "Bukti kolaborasi lintas prodi antara Informatika dan Teknik Elektro.",
+      "category": "relational"
+    },
+    {
+      "question": "Dosen mana yang menggunakan metode yang sama dalam paper berbeda?",
+      "ground_truth": "Dosen yang konsisten menggunakan metode tertentu.",
+      "category": "relational"
+    },
+    {
+      "question": "Apa masalah (problem) riset yang paling sering diangkat?",
+      "ground_truth": "Problem riset yang paling sering muncul di Knowledge Graph.",
+      "category": "factual"
+    },
+    {
+      "question": "Jelaskan ekosistem riset AI di UNESA secara keseluruhan",
+      "ground_truth": "Gambaran menyeluruh ekosistem riset AI di UNESA.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Apa kontribusi utama UNESA dalam bidang data science?",
+      "ground_truth": "Kontribusi riset data science dari UNESA.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Bagaimana peta kolaborasi internasional dosen UNESA?",
+      "ground_truth": "Pola kolaborasi dengan peneliti eksternal.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Apa saja topik riset yang unik di UNESA dibanding universitas lain?",
+      "ground_truth": "Topik riset khas UNESA yang jarang ditemui di tempat lain.",
+      "category": "synthesis"
+    },
+    {
+      "question": "Berapa jumlah dosen yang aktif meneliti per program studi?",
+      "ground_truth": "Distribusi jumlah dosen aktif meneliti per prodi.",
+      "category": "factual"
+    },
+    {
+      "question": "Apa saja keyword yang paling populer di paper dosen UNESA?",
+      "ground_truth": "Keyword yang paling sering muncul di paper-paper dosen.",
+      "category": "factual"
+    },
+    {
+      "question": "Bagaimana evolusi penggunaan metode deep learning dari tahun ke tahun?",
+      "ground_truth": "Timeline penggunaan metode deep learning di UNESA.",
+      "category": "synthesis"
+    }
+  ]
+}
