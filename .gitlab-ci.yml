@@ -110,6 +110,6 @@ deploy_to_aws:
       "
 
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "main"
   environment:
     name: production
