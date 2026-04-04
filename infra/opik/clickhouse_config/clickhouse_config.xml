@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<!--
+  ClickHouse Server Config — Ultra-Lightweight Mode
+  Target: 384MB container limit on 4GB EC2 instance
+  Strategy: Disable all caches, minimize background threads
+-->
+<clickhouse>
+    <!-- Hard memory cap: 280MB (leaving ~100MB for OS overhead in 384MB container) -->
+    <max_server_memory_usage>293601280</max_server_memory_usage>
+
+    <!-- Disable mark cache (default 5GB!) — biggest memory saver -->
+    <mark_cache_size>16777216</mark_cache_size>
+
+    <!-- Disable uncompressed cache entirely -->
+    <uncompressed_cache_size>0</uncompressed_cache_size>
+
+    <!-- Minimal compiled expression cache -->
+    <compiled_expression_cache_size>8388608</compiled_expression_cache_size>
+
+    <!-- Reduce background threads to absolute minimum -->
+    <background_pool_size>2</background_pool_size>
+    <background_schedule_pool_size>2</background_schedule_pool_size>
+    <background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>
+
+    <!-- Reduce max concurrent queries -->
+    <max_concurrent_queries>10</max_concurrent_queries>
+
+    <!-- Reduce max connections -->
+    <max_connections>64</max_connections>
+
+    <!-- Minimal logging to save disk I/O -->
+    <logger>
+        <level>warning</level>
+        <size>10M</size>
+        <count>2</count>
+    </logger>
+</clickhouse>

@@ -24,7 +24,7 @@ build_image:
 
 deploy_to_aws:
   stage: deploy
-  image: alpine:3.19
+  image: alpine:latest
   before_script:
     - apk add --no-cache openssh-client aws-cli
 
@@ -35,19 +35,25 @@ deploy_to_aws:
     - ssh-add ~/.ssh/id_rsa
     - ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
   script:
-    # 0. Ensure target directory exists
-    - ssh ubuntu@$EC2_IP "mkdir -p ~/tugas_akhir/data/raw ~/tugas_akhir/data/processed ~/tugas_akhir/notebooks/scraping"
+    # 0. Ensure target directory exists & reclaim ownership from Airflow UID 50000
+    - |
+      ssh ubuntu@$EC2_IP "
+        mkdir -p ~/tugas_akhir/data/raw ~/tugas_akhir/data/processed ~/tugas_akhir/notebooks/scraping ~/tugas_akhir/logs &&
+        sudo chown -R ubuntu:ubuntu ~/tugas_akhir/dags ~/tugas_akhir/plugins ~/tugas_akhir/src ~/tugas_akhir/infra ~/tugas_akhir/notebooks 2>/dev/null || true
+      "
 
-    # 1. Reclaim ownership (Docker sets files to UID 50000, causing Permission Denied on re-deploy)
-    - ssh ubuntu@$EC2_IP "sudo chown -R ubuntu:ubuntu ~/tugas_akhir/dags ~/tugas_akhir/plugins ~/tugas_akhir/src ~/tugas_akhir/infra ~/tugas_akhir/notebooks 2>/dev/null || true"
-    # 2. Update project files on server (mirror infra/ structure)
+    # 1. Upload project files to server
     - scp -r infra dags plugins src requirements.txt ubuntu@$EC2_IP:~/tugas_akhir/
     - scp data/raw/dosen_infokom_final.csv ubuntu@$EC2_IP:~/tugas_akhir/data/raw/ || true
     - scp -r notebooks/scraping/scraping_modules ubuntu@$EC2_IP:~/tugas_akhir/notebooks/scraping/
 
-    # 2. RUN setup scripts and fix permissions for Airflow (UID 50000)
-    - ssh ubuntu@$EC2_IP "bash ~/tugas_akhir/infra/scripts/setup_server.sh && bash ~/tugas_akhir/infra/scripts/setup_swap.sh"
-    - ssh ubuntu@$EC2_IP "sudo chown -R 50000:0 ~/tugas_akhir/data ~/tugas_akhir/logs ~/tugas_akhir/dags ~/tugas_akhir/plugins ~/tugas_akhir/src ~/tugas_akhir/notebooks || true"
+    # 2. Run setup scripts & fix permissions for Airflow (UID 50000)
+    - |
+      ssh ubuntu@$EC2_IP "
+        bash ~/tugas_akhir/infra/scripts/setup_server.sh &&
+        bash ~/tugas_akhir/infra/scripts/setup_swap.sh &&
+        sudo chown -R 50000:0 ~/tugas_akhir/data ~/tugas_akhir/logs ~/tugas_akhir/dags ~/tugas_akhir/plugins ~/tugas_akhir/src ~/tugas_akhir/notebooks || true
+      "
 
     # 3. Create .env on server from GitLab variables
     - |
@@ -74,7 +80,7 @@ deploy_to_aws:
       NEO4J_URI=bolt://${EC2_IP}:7687
       WEAVIATE_HOST=${EC2_IP}
       WEAVIATE_PORT=8081
-      OPIK_URL=http://${EC2_IP}:5173
+      OPIK_URL_OVERRIDE=http://opik-backend:8080
       OPIK_WORKSPACE=default
       AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
       AWS_REGION=${AWS_REGION}
@@ -101,11 +107,11 @@ deploy_to_aws:
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d airflow-init airflow-webserver airflow-scheduler &&
         sleep 15 &&
 
-        echo '=== Phase 5 - Infra Monitoring ===' &&
+        echo '=== Phase 4 - Infra Monitoring ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d &&
         sleep 5 &&
 
-        echo '=== Phase 6 - Nginx Reverse Proxy ===' &&
+        echo '=== Phase 5 - Nginx Reverse Proxy ===' &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d nginx --remove-orphans
       "
 

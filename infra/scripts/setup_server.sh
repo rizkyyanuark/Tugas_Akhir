@@ -7,12 +7,10 @@
 
 echo "🔍 Checking Docker and AWS CLI installation..."
 
-# 1. Update package list if needed
-sudo apt-get update -y
-
-# 2. Ensure Docker exists and is compatible with Compose V2
+# 1. Ensure Docker exists and is compatible with Compose V2
 if ! command -v docker &> /dev/null; then
     echo "📦 Installing Docker..."
+    sudo apt-get update -y
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
     sudo apt install -y docker-compose-plugin
