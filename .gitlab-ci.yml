@@ -85,8 +85,16 @@ deploy_to_aws:
       ssh ubuntu@${EC2_IP} "docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     - ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring --profile vectordb --profile llm-monitoring pull &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring --profile vectordb --profile llm-monitoring up -d --remove-orphans &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env pull neo4j weaviate postgres nginx &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d neo4j weaviate postgres nginx &&
+        sleep 20 &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile llm-monitoring pull &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile llm-monitoring up -d &&
+        sleep 20 &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring pull &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env pull &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d --remove-orphans &&
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
       "
 
