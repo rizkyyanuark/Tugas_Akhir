@@ -20,7 +20,7 @@ build_airflow_image:
     - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f infra/docker/Dockerfile.airflow .
     - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "dev"
 
 deploy_to_aws:
   stage: deploy
@@ -85,12 +85,29 @@ deploy_to_aws:
       ssh ubuntu@${EC2_IP} "docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     - ssh ubuntu@$EC2_IP "
         cd ~/tugas_akhir &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring --profile vectordb --profile llm-monitoring pull &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring --profile vectordb --profile llm-monitoring up -d --remove-orphans &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env restart nginx
+
+        echo '=== Phase 1: Core Databases ===' &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d postgres neo4j &&
+        sleep 10 &&
+
+        echo '=== Phase 2: Vector DB ===' &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile vectordb up -d &&
+        sleep 5 &&
+
+        echo '=== Phase 3: Airflow ===' &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d airflow-init airflow-webserver airflow-scheduler &&
+        sleep 15 &&
+
+
+        echo '=== Phase 5: Infra Monitoring ===' &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d &&
+        sleep 5 &&
+
+        echo '=== Phase 6: Nginx Reverse Proxy ===' &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d nginx --remove-orphans
       "
 
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "dev"
   environment:
     name: production
