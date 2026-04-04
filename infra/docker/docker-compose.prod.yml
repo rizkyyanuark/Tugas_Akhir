@@ -311,9 +311,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health-check"]
       interval: 10s
-      timeout: 10s
+      timeout: 15s
       retries: 60
-      start_period: 60s
+      start_period: 180s
     depends_on:
       opik-mysql:
         condition: service_healthy
@@ -338,8 +338,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:80/is-alive || exit 1"]
       interval: 5s
-      timeout: 10s
-      retries: 10
+      timeout: 15s
+      retries: 20
+      start_period: 60s
     environment:
       NGINX_PORT: 5173
       OPIK_BACKEND_URL: "http://opik-backend:8080"
