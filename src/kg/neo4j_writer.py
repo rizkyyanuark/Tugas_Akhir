@@ -225,14 +225,14 @@ class Neo4jKGWriter:
     def derive_collaborations(self) -> int:
         """Derive COLLABORATES_WITH edges from co-authorship patterns.
 
-        For every pair of authors (Dosen or ExternalAuthor) who co-author at least one Paper,
+        For every pair of Dosen who co-author at least one Paper,
         creates/updates a COLLABORATES_WITH edge with paper list and count.
 
         Returns:
             Number of collaboration edges created/updated.
         """
         cypher = """
-        MATCH (a)-[:WRITES]->(p:Paper)<-[:WRITES]-(b)
+        MATCH (a:Dosen)-[:WRITES]->(p:Paper)<-[:WRITES]-(b:Dosen)
         WHERE elementId(a) < elementId(b)
         WITH a, b, COLLECT(DISTINCT p.node_id) AS paper_ids
         MERGE (a)-[r:COLLABORATES_WITH]->(b)

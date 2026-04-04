@@ -208,13 +208,20 @@ class KGPipeline:
             paper_node = self.nodes.get(pid, {})
             tldr_text = abstract  # Use abstract as TLDR source
 
-            # Build chunk for Weaviate
+            # Build chunk for Weaviate (including authors for pre-filtering)
+            # Collect dosen names who WRITE this paper from edges
+            paper_authors = [
+                self.nodes[src]["name"]
+                for src, tgt, rel, _ in self.edges
+                if tgt == pid and rel == "WRITES" and src in self.nodes
+            ]
             full_text = f"{title}. {tldr_text}"
             self.chunk_vdb.append({
                 "title": title,
                 "content": full_text,
                 "year": paper_node.get("year", ""),
                 "paperUrl": paper_node.get("url", ""),
+                "authors": ", ".join(paper_authors),
             })
 
             # Get CSV keywords from paper node

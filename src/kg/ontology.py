@@ -19,10 +19,8 @@ ONTOLOGY: Dict = {
     "node_types": {
         # Structural (from metadata backbone)
         "Dosen":           {"description": "Internal UNESA faculty member"},
-        "ExternalAuthor":  {"description": "Non-faculty co-author"},
         "Paper":           {"description": "Research publication"},
         "ProgramStudi":    {"description": "Study program / department"},
-        "Fakultas":        {"description": "Faculty / college"},
         "Journal":         {"description": "Publication venue"},
         "Year":            {"description": "Publication year"},
         "Keyword":         {"description": "Author-assigned keyword"},
@@ -38,9 +36,8 @@ ONTOLOGY: Dict = {
         "Innovation":      {"description": "Novel contribution"},
     },
     "edge_types": {
-        "WRITES":          ("Dosen/ExternalAuthor", "Paper"),
+        "WRITES":          ("Dosen", "Paper"),
         "MEMBER_OF":       ("Dosen", "ProgramStudi"),
-        "PART_OF":         ("ProgramStudi", "Fakultas"),
         "PUBLISHED_YEAR":  ("Paper", "Year"),
         "PUBLISHED_IN":    ("Paper", "Journal"),
         "HAS_KEYWORD":     ("Paper", "Keyword"),
@@ -86,30 +83,13 @@ ONTOLOGY: Dict = {
 
 
 # ══════════════════════════════════════════════════════════════
-# UNESA Programme-to-Faculty Mapping
-# ══════════════════════════════════════════════════════════════
-PRODI_FAKULTAS: Dict[str, str] = {
-    "S1 Teknik Informatika":            "Fakultas Teknik",
-    "S1 Sistem Informasi":              "Fakultas Teknik",
-    "S1 Pendidikan Teknologi Informasi":"Fakultas Teknik",
-    "S1 Teknik Elektro":                "Fakultas Teknik",
-    "S2 Informatika":                   "Fakultas Teknik",
-    "S2 Pendidikan Teknologi Informasi":"Pascasarjana",
-    "S1 Kecerdasan Artifisial":         "FMIPA",
-    "S1 Sains Data":                    "FMIPA",
-    "S1 Bisnis Digital":                "FEB",
-    "D4 Manajemen Informatika":         "Vokasi",
-}
-
-
-# ══════════════════════════════════════════════════════════════
 # Helper Functions
 # ══════════════════════════════════════════════════════════════
 
 # Structural labels that come from metadata (not from NER)
 _STRUCTURAL_LABELS: Set[str] = {
-    "Dosen", "ExternalAuthor", "Paper", "ProgramStudi",
-    "Fakultas", "Journal", "Year", "Keyword",
+    "Dosen", "Paper", "ProgramStudi",
+    "Journal", "Year", "Keyword",
 }
 
 
