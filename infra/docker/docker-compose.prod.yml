@@ -23,7 +23,7 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
+      test: [ "CMD", "pg_isready", "-U", "airflow" ]
       interval: 10s
       retries: 5
     restart: always
@@ -90,7 +90,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 600M
+          memory: 800M
 
   # --- AIRFLOW SCHEDULER ---
   airflow-scheduler:
@@ -121,7 +121,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 600M
+          memory: 800M
 
   # --- NEO4J GRAPH DATABASE ---
   neo4j:
@@ -137,14 +137,12 @@ services:
       - NEO4J_server_http_listen__address=0.0.0.0:7474
       - NEO4J_server_bolt_listen__address=0.0.0.0:7687
       - NEO4J_server_bolt_tls__level=DISABLED
-      - NEO4J_PLUGINS=["apoc"]
-      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
     ports:
-       - "7474:7474"
-       - "7687:7687"
+      - "7474:7474"
+      - "7687:7687"
     restart: always
     deploy:
       resources:
@@ -155,7 +153,7 @@ services:
   # Uses text2vec-huggingface (remote API via HF_TOKEN).
   # Lightweight: no local ML container needed (~0 extra RAM).
   weaviate:
-    profiles: ["vectordb"]
+    profiles: [ "vectordb" ]
     image: cr.weaviate.io/semitechnologies/weaviate:1.36.9
     container_name: weaviate
     ports:
@@ -189,7 +187,7 @@ services:
   # Dashboard: http://<EC2_IP>:5173
   # SDK: opik.configure(use_local=True)
   opik-mysql:
-    profiles: ["llm-monitoring"]
+    profiles: [ "llm-monitoring" ]
     image: mysql:8.4.2
     container_name: opik-mysql
     environment:
@@ -198,11 +196,11 @@ services:
       MYSQL_USER: opik
       MYSQL_PASSWORD: opik
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent" ]
       timeout: 1s
       interval: 5s
       retries: 60
-      start_period: 120s
+      start_period: 60s
     volumes:
       - opik_mysql:/var/lib/mysql
     deploy:
@@ -211,12 +209,12 @@ services:
           memory: 512M
 
   opik-redis:
-    profiles: ["llm-monitoring"]
+    profiles: [ "llm-monitoring" ]
     image: redis:7.2.4-alpine3.19
     container_name: opik-redis
     command: redis-server --requirepass opik --maxmemory 64mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "6379"]
+      test: [ "CMD", "nc", "-z", "localhost", "6379" ]
       interval: 5s
       timeout: 4s
       retries: 20
@@ -229,24 +227,24 @@ services:
           memory: 128M
 
   opik-zookeeper:
-    profiles: ["llm-monitoring"]
+    profiles: [ "llm-monitoring" ]
     image: zookeeper:3.8.0
     container_name: opik-zookeeper
     environment:
       ZOO_4LW_COMMANDS_WHITELIST: "ruok"
     healthcheck:
-      test: ['CMD-SHELL', 'echo "ruok" | nc localhost 2181 || exit 1']
+      test: [ 'CMD-SHELL', 'echo "ruok" | nc localhost 2181 || exit 1' ]
       interval: 5s
       timeout: 3s
       retries: 20
-      start_period: 120s
+      start_period: 60s
     deploy:
       resources:
         limits:
           memory: 128M
 
   opik-clickhouse-init:
-    profiles: ["llm-monitoring"]
+    profiles: [ "llm-monitoring" ]
     image: alpine:latest
     volumes:
       - ./clickhouse_config:/clickhouse_config_files
@@ -258,8 +256,7 @@ services:
       "
 
   opik-clickhouse:
-    profiles: ["llm-monitoring"]
-    restart: on-failure:5
+    profiles: [ "llm-monitoring" ]
     image: clickhouse/clickhouse-server:25.3.6.56-alpine
     container_name: opik-clickhouse
     environment:
@@ -268,11 +265,11 @@ services:
       CLICKHOUSE_PASSWORD: opik
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
-      interval: 10s
-      timeout: 15s
-      retries: 100
-      start_period: 180s
+      test: [ "CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 60s
     depends_on:
       opik-zookeeper:
         condition: service_healthy
@@ -284,14 +281,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M
+          memory: 512M
 
   opik-backend:
-    profiles: ["llm-monitoring"]
-    restart: on-failure:5
+    profiles: [ "llm-monitoring" ]
     image: ghcr.io/comet-ml/opik/opik-backend:latest
     container_name: opik-backend
-    command: ["bash", "-c", "./run_db_migrations.sh && ./entrypoint.sh"]
+    command: [ "bash", "-c", "./run_db_migrations.sh && ./entrypoint.sh" ]
     environment:
       STATE_DB_PROTOCOL: "jdbc:mysql://"
       STATE_DB_URL: "opik-mysql:3306/opik?createDatabaseIfNotExist=true&rewriteBatchedStatements=true"
@@ -311,11 +307,11 @@ services:
       REDIS_URL: redis://:opik@opik-redis:6379/
       OPIK_USAGE_REPORT_ENABLED: "false"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health-check"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health-check" ]
       interval: 10s
-      timeout: 15s
+      timeout: 10s
       retries: 60
-      start_period: 180s
+      start_period: 60s
     depends_on:
       opik-mysql:
         condition: service_healthy
@@ -326,10 +322,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 768M
 
   opik-frontend:
-    profiles: ["llm-monitoring"]
+    profiles: [ "llm-monitoring" ]
     image: ghcr.io/comet-ml/opik/opik-frontend:latest
     container_name: opik-frontend
     ports:
@@ -338,11 +334,10 @@ services:
       opik-backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:80/is-alive || exit 1"]
+      test: [ "CMD-SHELL", "curl --fail http://localhost:80/is-alive || exit 1" ]
       interval: 5s
-      timeout: 15s
-      retries: 20
-      start_period: 60s
+      timeout: 10s
+      retries: 10
     environment:
       NGINX_PORT: 5173
       OPIK_BACKEND_URL: "http://opik-backend:8080"
@@ -353,7 +348,7 @@ services:
 
   # --- MONITORING ---
   node_exporter:
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     image: prom/node-exporter:latest
     container_name: node-exporter
     restart: always
@@ -372,7 +367,7 @@ services:
           memory: 128M
 
   cadvisor:
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     image: gcr.io/cadvisor/cadvisor:v0.47.0
     container_name: cadvisor
     restart: always
@@ -389,7 +384,7 @@ services:
           memory: 128M
 
   prometheus:
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
@@ -410,7 +405,7 @@ services:
           memory: 256M
 
   grafana:
-    profiles: ["monitoring"]
+    profiles: [ "monitoring" ]
     image: grafana/grafana:latest
     container_name: grafana
     restart: always
@@ -438,18 +433,21 @@ services:
       - "80:80"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - airflow-webserver
+      - neo4j
     restart: always
 
 volumes:
   postgres-db-volume:
   neo4j_data:
   neo4j_logs:
-  weaviate_data:
-  # LLM Monitoring (Opik)
+  weaviate_data: # LLM Monitoring (Opik)
+
   opik_mysql:
   opik_redis:
   opik_clickhouse:
-  opik_clickhouse_config:
-  # Infrastructure Monitoring
+  opik_clickhouse_config: # Infrastructure Monitoring
+
   prometheus_data:
   grafana_data:
