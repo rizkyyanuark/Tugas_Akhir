@@ -41,7 +41,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 # Neo4j (Graph Database)
 NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "rizkyyk123")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "")
 NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "infokom-unesa")
 
 # Weaviate (Vector Database)

@@ -81,7 +81,11 @@ deploy_to_aws:
       WEAVIATE_HOST=${EC2_IP}
       WEAVIATE_PORT=8081
       OPIK_URL_OVERRIDE=http://opik-backend:8080
+      OPIK_URL=http://opik-backend:8080
       OPIK_WORKSPACE=default
+      NEO4J_DATABASE=infokom-unesa
+      NEO4J_USER=neo4j
+      OPENROUTER_MODEL=qwen/qwen3.6-plus:free
       AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
       AWS_REGION=${AWS_REGION}
       EC2_IP=${EC2_IP}
@@ -111,8 +115,8 @@ deploy_to_aws:
         docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env --profile monitoring up -d &&
         sleep 5 &&
 
-        echo '=== Phase 5 - Nginx Reverse Proxy ===' &&
-        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d nginx --remove-orphans
+        echo '=== Phase 5 - Nginx Reverse Proxy & Frontend ===' &&
+        docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env up -d nginx frontend --remove-orphans
       "
 
   rules:
