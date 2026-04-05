@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+  ClickHouse Users Config — Memory-Constrained Profile
+  Limits per-query memory to prevent single queries from OOM-killing the container.
+-->
+<clickhouse>
+    <profiles>
+        <default>
+            <!-- Per-query memory limit: 128MB max -->
+            <max_memory_usage>134217728</max_memory_usage>
+            <!-- Limit GROUP BY memory -->
+            <max_bytes_before_external_group_by>67108864</max_bytes_before_external_group_by>
+            <!-- Limit ORDER BY / sorting memory -->
+            <max_bytes_before_external_sort>67108864</max_bytes_before_external_sort>
+            <!-- Reduce max threads per query -->
+            <max_threads>2</max_threads>
+        </default>
+    </profiles>
+
+    <users>
+        <opik>
+            <password>opik</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+        </opik>
+    </users>
+</clickhouse>

@@ -23,3 +23,11 @@ neo4j>=5.15.0
 
 # NLP (if used in enricher)
 # gliner-spacy # Optional, comment out if not needed for production base
+
+# GraphRAG & Evaluation
+streamlit>=1.30.0
+openai>=1.0.0
+opik>=0.1.0
+ragas>=0.1.0
+datasets>=2.0.0
+weaviate-client>=4.4.0
