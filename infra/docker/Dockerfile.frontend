@@ -21,12 +21,7 @@ COPY requirements-graphrag.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# 3. Warm-up: Pre-download ML models to the image layer
-# This ensures zero startup latency on the 4GB EC2 instance.
-RUN python -m spacy download en_core_web_sm && \
-    python -c "from gliner import GLiNER; GLiNER.from_pretrained('urchade/gliner_medium-v2.1')"
-
-# 4. Copy source code last (best for docker layer caching)
+# 3. Copy source code (best for docker layer caching)
 COPY src/ ./src/
 # Ensure the app can find internal modules
 ENV PYTHONPATH=/app
