@@ -26,6 +26,7 @@ services:
       test: [ "CMD", "pg_isready", "-U", "airflow" ]
       interval: 10s
       retries: 5
+      start_period: 300s
     restart: always
     deploy:
       resources:
@@ -154,7 +155,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 30s
+      start_period: 300s
     deploy:
       resources:
         limits:
@@ -308,7 +309,7 @@ services:
       - ../../.env:/app/.env
       - pip_cache:/root/.cache/pip
     command: >
-      bash -c "pip install -r requirements.txt && streamlit run src/frontend/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true"
+      bash -c "if ! command -v streamlit &> /dev/null; then pip install --no-cache-dir -r requirements.txt; fi && streamlit run src/frontend/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true"
     depends_on:
       neo4j:
         condition: service_healthy
