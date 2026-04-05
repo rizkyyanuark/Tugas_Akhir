@@ -17,8 +17,12 @@ build_image:
     - apk add --no-cache python3 py3-pip aws-cli
     - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
   script:
-    - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest -f infra/docker/Dockerfile.airflow .
-    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+    # Build & Push Airflow
+    - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tugas-akhir-airflow:latest -f infra/docker/Dockerfile.airflow .
+    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tugas-akhir-airflow:latest
+    # Build & Push Frontend (Optimized V3)
+    - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tugas-akhir-frontend:latest -f infra/docker/Dockerfile.frontend .
+    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tugas-akhir-frontend:latest
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
 
