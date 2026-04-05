@@ -1,0 +1,38 @@
+# ==========================================
+# GRAPH RAG - FRONTEND DOCKERFILE (optimized)
+# ==========================================
+FROM python:3.10-slim
+
+# Prevent python from writing pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV HF_HOME=/app/.cache/huggingface
+
+WORKDIR /app
+
+# 1. Install system dependencies (build-essential needed for some python wheels)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Install Python dependencies
+COPY requirements-graphrag.txt ./requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 3. Warm-up: Pre-download ML models to the image layer
+# This ensures zero startup latency on the 4GB EC2 instance.
+RUN python -m spacy download en_core_web_sm && \
+    python -c "from gliner import GLiNER; GLiNER.from_pretrained('urchade/gliner_medium-v2.1')"
+
+# 4. Copy source code last (best for docker layer caching)
+COPY src/ ./src/
+# Ensure the app can find internal modules
+ENV PYTHONPATH=/app
+
+EXPOSE 8501
+
+HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+
+CMD ["streamlit", "run", "src/frontend/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
