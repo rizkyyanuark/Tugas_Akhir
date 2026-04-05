@@ -26,8 +26,8 @@ sudo chmod 600 $SWAP_FILE
 sudo mkswap $SWAP_FILE
 sudo swapon $SWAP_FILE
 
-# Make it persistent after reboot
-echo "$SWAP_FILE none swap sw 0 0" | sudo tee -a /etc/fstab
+# Make it persistent after reboot (idempotent — only add if not already present)
+grep -q "$SWAP_FILE" /etc/fstab || echo "$SWAP_FILE none swap sw 0 0" | sudo tee -a /etc/fstab
 
 echo "🚀 SWAP Status:"
 free -h

@@ -1,0 +1,20 @@
+# GraphRAG Runtime Dependencies (slim)
+# Used by the Streamlit frontend container only.
+# Does NOT include ETL/Scraping deps (selenium, scrapy, etc).
+
+# Core
+python-dotenv>=1.0.0
+pandas>=2.1.0
+
+# GraphRAG Pipeline
+streamlit>=1.30.0
+openai>=1.0.0
+neo4j>=5.15.0
+weaviate-client>=4.4.0
+
+# LLM Observability
+opik>=0.1.0
+
+# Evaluation (optional — only needed for RAGAS runs)
+# ragas>=0.1.0
+# datasets>=2.0.0
