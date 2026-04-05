@@ -287,7 +287,7 @@ services:
 
   # --- STREAMLIT FRONTEND ---
   frontend:
-    image: python:3.10-slim
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tugas-akhir-frontend:latest
     container_name: streamlit-frontend
     hostname: streamlit
     working_dir: /app
@@ -308,8 +308,7 @@ services:
       - ../../data:/app/data
       - ../../.env:/app/.env
       - pip_cache:/root/.cache/pip
-    command: >
-      bash -c "if ! command -v streamlit &> /dev/null; then pip install --no-cache-dir -r requirements.txt; fi && streamlit run src/frontend/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true"
+    command: streamlit run src/frontend/app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true
     depends_on:
       neo4j:
         condition: service_healthy
