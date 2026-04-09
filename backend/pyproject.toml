@@ -1,0 +1,58 @@
+# ══════════════════════════════════════════════════════════════
+# Backend Workspace — Unified Build Root
+# ══════════════════════════════════════════════════════════════
+# Pattern: Identical to Yuxi's `backend/pyproject.toml`
+#
+# This workspace ties together:
+#   - server/   → FastAPI HTTP layer (thin controller)
+#   - package/  → strwythura core domain library (heavy logic)
+#   - tests/    → pytest suite (unit + integration + e2e)
+#
+# The `strwythura` package is installed as an EDITABLE dependency,
+# meaning `from strwythura.kg...` works everywhere without
+# PYTHONPATH hacks.
+# ══════════════════════════════════════════════════════════════
+
+[project]
+name = "strwythura-workspace"
+version = "0.1.0"
+description = "Backend workspace for UNESA Academic KG Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # --- HTTP Layer ---
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+
+    # --- Core Domain Package (editable install) ---
+    "ta-backend-core",
+]
+
+[tool.uv.workspace]
+members = ["package"]
+
+[tool.uv.sources]
+ta-backend-core = { workspace = true }
+
+# ── Pytest Configuration (Yuxi-style) ──────────────────────
+[tool.pytest.ini_options]
+addopts = "-v --tb=short"
+testpaths = ["tests/unit", "tests/integration", "tests/e2e"]
+pythonpath = [".", "package"]
+markers = [
+    "unit: marks tests that run without live services",
+    "integration: marks tests that require Neo4j/Weaviate/Supabase",
+    "e2e: marks end-to-end tests (full pipeline)",
+    "slow: marks tests as slow (>30s)",
+]
+
+# ── Dependency Groups ──────────────────────────────────────
+[dependency-groups]
+dev = [
+    "ruff>=0.12.0",
+]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.24.0",
+]

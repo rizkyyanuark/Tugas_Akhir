@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (will be installed inside container)
+**/node_modules
+**/.venv
+**/__pycache__
+
+# Build outputs
+**/dist
+**/*.egg-info
+
+# Data & logs (mounted as volumes, not baked into image)
+docker/volumes
+data
+logs
+saves
+
+# IDE & OS
+.vscode
+.idea
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# Documentation & scratch
+*.md
+!README.md
+scratch_yuxi
+notebooks
+infra/monitoring
+
+# CI/CD & cloud
+.gitlab-ci.yml
+.github
+key_base64_for_gitlab.txt
+
+# Gemini workspace
+.gemini

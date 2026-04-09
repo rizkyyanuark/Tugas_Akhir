@@ -7,7 +7,11 @@ from pathlib import Path
 # --- GLOBAL PATHS ---
 # Base dir is scraping/, calculated relative to this file
 BASE_DIR = Path(__file__).resolve().parent.parent
-SAVE_DIR = BASE_DIR / "file_tabulars"
+_docker_data = Path("/app/data")
+if _docker_data.exists():
+    SAVE_DIR = _docker_data
+else:
+    SAVE_DIR = BASE_DIR / "file_tabulars"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 CREDENTIALS_FILE = BASE_DIR / "credentials_new.json"
 

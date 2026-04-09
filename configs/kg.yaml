@@ -1,0 +1,15 @@
+# KG Pipeline Configuration
+
+llm:
+  model: "llama-3.3-70b-versatile"
+  batch_size: 80
+  concurrency_limit: 5
+
+extraction:
+  gliner_model: "urchade/gliner_small-v2.1"
+  gliner_threshold: 0.15
+  spacy_model: "en_core_web_sm"
+
+pipeline:
+  max_papers_per_run: 500
+  vector_dim: 1024
