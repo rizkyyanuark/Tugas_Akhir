@@ -36,13 +36,9 @@ from .config import SERPAPI_KEY, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SER
 import sys
 from pathlib import Path
 
-# --- INJECT DEEP CLEANING FUNCTIONS FROM ETL ---
 try:
-    src_path = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
-    if src_path not in sys.path:
-        sys.path.append(src_path)
-    from etl.transform import cleaner
-except Exception as e:
+    from ta_backend_core.knowledge.etl.transform import cleaner
+except ImportError as e:
     print(f"⚠️ Could not import ETL cleaner: {e}")
     cleaner = None
 

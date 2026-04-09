@@ -1,0 +1,54 @@
+# ══════════════════════════════════════════════════════════════
+# UNESA Informatics Knowledge Graph — Brand Configuration
+# ══════════════════════════════════════════════════════════════
+# Customizes the Yuxi platform for the UNESA thesis project.
+# Priority: info.local.yaml > info.template.yaml
+
+# Organisasi
+organization:
+  name: "Informatika UNESA"
+  logo: "/favicon.svg"
+  avatar: "/avatar.jpg"
+  login_bg: "/login-bg.jpg"
+
+# Branding Proyek
+branding:
+  name: "UNESA KG"
+  title: "Sistem Knowledge Graph Informatika UNESA"
+  subtitle: "Platform Penelitian Akademik berbasis Knowledge Graph & MCP Agent"
+  subtitles:
+    - "Platform Knowledge Graph untuk Riset Akademik Informatika UNESA"
+    - "Integrasi ETL Pipeline, Knowledge Graph, dan MCP Agent"
+    - "Analisis Hubungan Dosen, Paper, dan Topik Penelitian"
+    - "Pencarian Cerdas dengan RAG dan Knowledge Graph"
+    - "Academic Knowledge Management powered by AI"
+
+features:
+  - label: "Total Paper"
+    value: "5500+"
+    description: "Paper akademik yang terindeks dari Scopus & Google Scholar"
+    icon: "docs"
+  - label: "Total Dosen"
+    value: "170+"
+    description: "Dosen Informatika UNESA yang terdaftar"
+    icon: "stars"
+  - label: "Knowledge Graph"
+    value: "Neo4j + Milvus"
+    description: "Graph dan Vector database untuk pencarian cerdas"
+    icon: "commits"
+  - label: "ETL Pipeline"
+    value: "Airflow"
+    description: "Otomatisasi scraping dan konstruksi Knowledge Graph"
+    icon: "issues"
+
+actions:
+  - name: "Knowledge Dashboard"
+    icon: "docs"
+    url: "/dashboard"
+  - name: "Chatbot MCP"
+    icon: "video"
+    url: "/agent"
+
+# Footer
+footer:
+  copyright: "© 2026 Program Studi Informatika — Universitas Negeri Surabaya"

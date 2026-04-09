@@ -2,20 +2,15 @@ import requests
 import time
 import re
 import pandas as pd
-from tqdm import tqdm
 from difflib import SequenceMatcher
 from .config import SAVE_DIR
 
 import sys
 from pathlib import Path
 
-# --- INJECT DEEP CLEANING FUNCTIONS FROM ETL ---
 try:
-    src_path = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
-    if src_path not in sys.path:
-        sys.path.append(src_path)
-    from etl.transform import cleaner
-except Exception as e:
+    from ta_backend_core.knowledge.etl.transform import cleaner
+except ImportError as e:
     print(f"⚠️ Could not import ETL cleaner: {e}")
     cleaner = None
 

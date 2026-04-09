@@ -1,237 +1,146 @@
 <div align="center">
 
-# 🎓 UNESA Knowledge Graph
+# 🎓 UNESA Knowledge Graph (Project Suncatcher)
 
-**Academic Knowledge Graph Construction & GraphRAG Pipeline**
+**Academic Knowledge Graph Construction & Hybrid GraphRAG Pipeline**
 
-[![Pipeline](https://gitlab.com/rizkyyanuark/Tugas_Akhir/badges/main/pipeline.svg)](https://gitlab.com/rizkyyanuark/Tugas_Akhir/-/pipelines)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://python.org)
-[![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.8.1-017CEE.svg)](https://airflow.apache.org)
+[![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.8.0-017CEE.svg)](https://airflow.apache.org)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.15-008CC1.svg)](https://neo4j.com)
+[![Vue](https://img.shields.io/badge/Vue.js-3.0-4FC08D.svg)](https://vuejs.org/)
 
-*End-to-end ETL pipeline for constructing a Knowledge Graph from academic publications of INFOKOM UNESA, powered by Apache Airflow orchestration and Neo4j graph database.*
+*Arsitektur Hybrid: ETL Pipeline (Airflow + Ops) dengan Lapisan Agent & UI untuk eksplorasi Knowledge Graph akademik INFOKOM UNESA.*
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## 📋 Daftar Isi
 
-- [Overview](#overview)
-- [Architecture](#architecture)
+- [Ringkasan Proyek](#ringkasan-proyek)
+- [Prinsip Arsitektur (Hybrid Adoption)](#prinsip-arsitektur-hybrid-adoption)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Deployment](#deployment)
-- [Monitoring](#monitoring)
-- [Contributing](#contributing)
+- [Struktur Direktori](#struktur-direktori)
+- [Cara Menjalankan (Development)](#cara-menjalankan-development)
+- [Deployment (CI/CD)](#deployment-cicd)
+- [Observability](#observability)
 
-## Overview
+## Ringkasan Proyek
 
-This project builds an automated data pipeline that:
+Project **Strwythura** berfokus pada pembangunan _Knowledge Graph_ akademik UNESA dengan pendekatan GraphRAG. Alih-alih menggunakan solusi Black-Box, proyek ini mempertahankan **kedaulatan data (Data Sovereignty)** di layer *Ingestion* (Airflow & Entity Resolution kustom), namun mengintegrasikan framework UI/Agent berbasis **Yuxi** di layer presentasi.
 
-1. **Extracts** academic publication data from multiple sources (Scopus, Google Scholar, OpenAlex, Semantic Scholar)
-2. **Transforms** raw data through cleaning, deduplication, author mapping, and AI-powered TLDR summarization
-3. **Loads** structured data into Neo4j as a Knowledge Graph and Supabase as a relational data warehouse
-4. **Serves** the Knowledge Graph via a GraphRAG (Graph Retrieval-Augmented Generation) interface
+## Prinsip Arsitektur (Hybrid Adoption)
 
-## Architecture
+Berdasarkan arahan manajerial, proyek ini menerapkan pemisahan tugas (*separation of concerns*) yang sangat ketat:
 
-```mermaid
-flowchart TB
-    subgraph Extract
-        A[Scopus API] --> D[Raw Data]
-        B[Google Scholar] --> D
-        C[OpenAlex API] --> D
-    end
+1. **Layer Ingestion & ETL (Kustom / Internal)**
+   - Proses ekstraksi data akademik, *entity resolution*, dan konstruksi ke Neo4j tetap dikendalikan 100% oleh skrip internal menggunakan Apache Airflow (`/orchestration`).
+   - Tidak menggunakan parser dokumen default pihak ketiga untuk menjaga akurasi domain spesifik.
 
-    subgraph Transform
-        D --> E[Data Cleaning]
-        E --> F[Deduplication]
-        F --> G[Author Mapping]
-        G --> H[TLDR Summarization]
-    end
+2. **Layer Storage (Neo4j, Milvus, Supabase)**
+   - **Supabase (PostgreSQL):** Sebagai Data Warehouse *real-time* untuk tabel dosen & paper.
+   - **Neo4j:** Sebagai *System of Record* untuk graf relasional.
+   - **Milvus:** Sebagai Vector Database terdedikasi untuk GraphRAG.
 
-    subgraph Load
-        H --> I[(Neo4j Graph DB)]
-        H --> J[(Supabase DWH)]
-    end
-
-    subgraph Orchestration
-        K[Apache Airflow] -.->|orchestrates| Extract
-        K -.->|orchestrates| Transform
-        K -.->|orchestrates| Load
-    end
-
-    subgraph Monitoring
-        L[Prometheus] --> M[Grafana]
-        I -.->|metrics| L
-        K -.->|metrics| L
-    end
-```
+3. **Layer Agent & UI (Adopsi Partial dari Yuxi)**
+   - Menggunakan referensi *application shell* dari Yuxi untuk fitur Chat UI, Tool Orchestration, dan Agent Workflow (`/web` dan `/backend/server`).
+   - Penambahan rute `/dashboard` kustom yang terhubung langsung dengan Supabase & Neo4j untuk visualisasi statistik (Total Paper, Total Dosen) langsung pada UI.
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Orchestration** | Apache Airflow 2.8.1 | DAG scheduling & workflow management |
-| **Graph Database** | Neo4j 5.15 Enterprise | Knowledge Graph storage & querying |
-| **Data Warehouse** | Supabase (PostgreSQL) | Relational data storage |
-| **Vector Database** | Weaviate | Embedding storage for GraphRAG |
-| **Monitoring** | Prometheus + Grafana | System & application metrics |
-| **Reverse Proxy** | Nginx | Routing & load balancing |
-| **CI/CD** | GitLab CI/CD | Automated build & deployment |
-| **Cloud** | AWS EC2 + ECR | Production hosting |
-| **DNS & Security** | Cloudflare | SSL, DNS, Zero Trust Access |
+| Layer | Teknologi Utama | Peran |
+|-------|-----------------|-------|
+| **Frontend/UI** | Vue 3, Vite | Chat UI, Node Explorer, Dashboard Akademik |
+| **Backend/Agent** | FastAPI, LangGraph | *Query routing*, *Tool orchestration*, *Graph traversal* |
+| **Orchestration** | Apache Airflow 2.8.0 | *Job mapping*, *Retry orchestration*, ETL eksternal |
+| **Graph DB** | Neo4j 5.15 | *Knowledge Graph Storage* & *Cypher queries* |
+| **Vector DB** | Milvus | *Semantic similarity search*, integrasi LlamaIndex |
+| **Relational DB**| Supabase, Redis | Tabel faktual, antrean *cache* memori sementara |
 
-## Project Structure
+## Struktur Direktori
 
-```
+Arsitektur berada pada hirarki *root-level* untuk memfasilitasi _microservices_ secara mandiri.
+
+```text
 Tugas_Akhir/
+├── README.md                      # Dokumentasi ini
+├── Makefile                       # Pintasan perintah sistem (make dev-all, make clean)
+├── .env                           # Credential & Routing (Critical Mismatches terpecahkan)
+├── docker-compose.yml             # Orkestrasi container root level
+├── docker-compose.prod.yml        # Override produksi untuk deployment
 │
-├── README.md                       # You are here
-├── Makefile                        # Shortcut commands (make dev, make deploy)
-├── .env.example                    # Environment variables template
-├── .gitlab-ci.yml                  # CI/CD pipeline definition
-├── pyproject.toml                  # Python project metadata
-├── requirements.txt                # Python dependencies
+├── web/                           # 🟢 Frontend Application (Vite/Vue3)
+│   ├── src/views/DashboardView.vue# Ekstensi Kustom: Statistik Akademik
+│   └── (Yuxi Application Shell)
 │
-├── src/                            # 🟢 Production Application Code
-│   ├── etl/                        #    ETL Pipeline
-│   │   ├── extract/                #    Data extraction (Scopus, Scholar, etc.)
-│   │   ├── transform/              #    Cleaning, dedup, enrichment, TLDR
-│   │   └── load/                   #    Supabase & Neo4j loaders
-│   ├── backend/                    #    REST API (in development)
-│   ├── frontend/                   #    Web UI (in development)
-│   └── graphrag/                   #    GraphRAG retrieval (in development)
+├── backend/                       # 🟢 Agent & API Service
+│   ├── server/routers/            # API Endpoints (termasuk /stats/academic)
+│   └── package/ta_backend_core/   # LangGraph Agents, Tools & Config (info.local.yaml)
 │
-├── dags/                           # 🟢 Airflow DAG Definitions
-│   ├── unesa_papers_dag.py         #    Main papers ETL pipeline
-│   └── unesa_lecturers_dag.py      #    Lecturers data pipeline
+├── orchestration/                 # 🟢 Airflow Pipeline & Scripts
+│   ├── dags/                      # Definisi Pipeline (unesa_papers_dag.py dsb)
+│   └── (Skrip Scraper Internal)
 │
-├── plugins/                        # 🟢 Airflow Custom Plugins
+├── docker/                        # 🟢 Container Definitions
+│   ├── api.Dockerfile             # Image untuk backend FastAPI
+│   ├── web.Dockerfile             # Image untuk frontend Vue
+│   ├── airflow.Dockerfile         # Image khusus Airflow + Dependencies
+│   └── etl-worker.Dockerfile      # Image independen eksekusi Scraping
 │
-├── infra/                          # 🟢 Infrastructure & DevOps
-│   ├── docker/                     #    Docker configurations
-│   │   ├── Dockerfile.airflow      #    Custom Airflow image (with Chromium)
-│   │   ├── docker-compose.yml      #    Development environment
-│   │   └── docker-compose.prod.yml #    Production environment
-│   ├── nginx/                      #    Reverse proxy configuration
-│   │   └── nginx.conf
-│   ├── scripts/                    #    Server setup & maintenance
-│   │   ├── setup_server.sh
-│   │   └── setup_swap.sh
-│   └── monitoring/                 #    Observability stack
-│       ├── grafana/                #    Dashboards & provisioning
-│       └── prometheus/             #    Metrics collection
-│
-├── notebooks/                      # 🔬 Research & Experiments
-│   ├── scraping/                   #    Data scraping experiments
-│   ├── training/                   #    ML model training (CPT + SFT)
-│   └── build-graph/                #    KG construction prototypes
-│
-├── data/                           # 📊 Sample & Test Data
-│
-└── docs/                           # 📄 Academic Documents
-    ├── proposal tugas akhir/       #    TA proposal (LaTeX)
-    ├── supabase_new_schema.sql     #    Database schema reference
-    └── flowchart.mmd               #    System flowchart (Mermaid)
+├── configs/                       # Konfigurasi Milvus, Redis, Database
+├── monitoring/                    # Grafana & Prometheus (Akan Difokuskan di Fase 3)
+└── scripts/                       # Shell scripts (setup EC2, dsb)
 ```
 
-## Getting Started
+## Cara Menjalankan (Development)
 
-### Prerequisites
+Sistem menggunakan Docker Compose tunggal. Direkomendasikan menggunakan instance minimum **8GB RAM** untuk dapat mengangkat seluruh *stack* Graph + Vector + LLM Agent.
 
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-- [Python 3.10+](https://python.org)
-- [Make](https://www.gnu.org/software/make/) (optional, for shortcut commands)
-
-### Quick Start (Development)
+### Persiapan
 
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/rizkyyanuark/Tugas_Akhir.git
 cd Tugas_Akhir
 
-# 2. Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your API keys and credentials
-
-# 3. Start core services (Airflow + Neo4j)
-make dev
-
-# 4. Start with all profiles (includes monitoring & vector db)
-make dev-all
+# 2. Siapkan Environment (Cek .env)
+# Pastikan YUXI_BRAND_FILE_PATH, SUPABASE_URL, NEO4J_URI terisi.
 ```
 
-### Available Make Commands
-
-| Command | Description |
-|---------|-------------|
-| `make dev` | Start core services (Airflow + Neo4j) |
-| `make dev-all` | Start all services (core + monitoring + vectordb) |
-| `make down` | Stop all running services |
-| `make logs` | Follow container logs |
-| `make deploy` | Push to GitHub & GitLab (triggers CI/CD) |
-| `make status` | Check GitLab pipeline status |
-| `make help` | Show all available commands |
-
-### Accessing Services (Development)
-
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Airflow | [localhost:8080](http://localhost:8080) | `admin` / *(from .env)* |
-| Neo4j Browser | [localhost:7474](http://localhost:7474) | `neo4j` / *(from .env)* |
-| Grafana | [localhost:3000](http://localhost:3000) | `admin` / *(from .env)* |
-| Prometheus | [localhost:9090](http://localhost:9090) | No auth |
-
-## Deployment
-
-Production deployment is automated via **GitLab CI/CD**. Pushing to the `main` branch triggers:
-
-1. **Build Stage**: Docker image built and pushed to AWS ECR
-2. **Deploy Stage**: Files SCP'd to EC2, Docker Compose up with monitoring
+### Memulai Aplikasi Lengkap (API, Web, Neo4j, Milvus, Redis)
+Hanya menjalankan aplikasi inti (*End-User Layer*).
 
 ```bash
-# Deploy to production
-make deploy
+docker compose up -d postgres graph redis milvus etcd minio api web
 ```
 
-### Production URLs
+### Memulai Mode ETL & Scraping Terpisah
+Jalankan ini ketika hanya ingin memproses Airflow atau membangun Graph tanpa menyalakan UI.
 
-| Service | URL |
-|---------|-----|
-| Airflow | [airflow.tugasakhir.space](https://airflow.tugasakhir.space) |
-| Neo4j | [neo4j.tugasakhir.space](https://neo4j.tugasakhir.space) |
-| Grafana | [grafana.tugasakhir.space](https://grafana.tugasakhir.space) |
-| Prometheus | [prometheus.tugasakhir.space](https://prometheus.tugasakhir.space) |
+```bash
+docker compose --profile etl up -d
+```
 
-> **Note:** Production services are protected by Cloudflare Zero Trust Access (Email OTP).
+Atau gunakan file `Makefile` yang telah disediakan.
 
-## Monitoring
+## Deployment (CI/CD)
 
-The monitoring stack includes:
+Proyek ini telah dikonfigurasi melalui `.gitlab-ci.yml`. Setiap *push* ke `main` branch akan:
+1. Melakukan kompilasi *images* `API`, `Web`, `Airflow`, dan `Worker` ke AWS ECR.
+2. Membuka koneksi `SSH` menujuu Instans AWS EC2.
+3. Melakukan sinkronisasi direktori root melalui `scp`.
+4. Mengeksekusi ulang `docker compose` di server AWS dengan modifikasi `.prod.yml`.
 
-- **Prometheus** — Collects metrics from Neo4j, Node Exporter, and Weaviate
-- **Grafana** — Visualizes metrics with pre-configured dashboards
-- **Node Exporter** — System-level metrics (CPU, RAM, Disk)
+> **Status Saat Ini:** Deploy sukses. Pipeline terintegrasi mulus.
 
-See [`infra/monitoring/README_MONITORING.md`](infra/monitoring/README_MONITORING.md) for detailed monitoring documentation.
+## Observability
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Sistem dilengkapi dengan:
+- **Opik / Langfuse:** Untuk melacak *Agent Trace* (Input/Output LLM, *Tool Calling Time*).
+- **Langkah Kedepan (Fase 3):** Implementasi Grafana Cloud atau setup Prometheus lokal untuk memonitor beban *RAM Milvus* dan *Neo4j IOPS*.
 
 ---
-
 <div align="center">
-
-**Rizky Yanuar Kristianto** — Sains Data, Universitas Negeri Surabaya (UNESA)
-
-*Tugas Akhir 2025/2026*
-
+  <b>Rizky Yanuar Kristianto</b> — Sains Data, Universitas Negeri Surabaya (UNESA) <br>
+  <i>Knowledge Graph RAG Pipeline 2025/2026</i>
 </div>

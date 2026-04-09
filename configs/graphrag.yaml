@@ -1,0 +1,25 @@
+# GraphRAG System Configuration
+
+project:
+  name: "Academic GraphRAG UNESA"
+  version: "v3.1.0"
+
+llm:
+  openrouter:
+    base_url: "https://openrouter.ai/api/v1"
+    model: "qwen/qwen3.6-plus:free"
+    max_tokens: 4096
+    temperature: 0.7
+
+observability:
+  opik:
+    url: "http://opik-backend:8080"
+    workspace: "default"
+    project_name: "academic-graphrag"
+
+retrieval:
+  keyword_top_k: 10
+  entity_top_k: 20
+  rel_top_k: 30
+  chunk_top_k: 10
+  bfs_max_depth: 3

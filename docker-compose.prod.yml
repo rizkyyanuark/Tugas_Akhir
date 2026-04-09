@@ -1,0 +1,44 @@
+# ══════════════════════════════════════════════════════════════
+# docker-compose.prod.yml — Production Overrides
+# ══════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# ══════════════════════════════════════════════════════════════
+
+services:
+  api:
+    # No volume mounts, no --reload in production
+    volumes: []
+    command: uvicorn server.main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: always
+
+  telegram-bot:
+    volumes: []
+    restart: always
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: production
+    volumes: []
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    command: nginx -g "daemon off;"
+    restart: always
+
+  graph:
+    # No exposed ports in production (internal only)
+    ports: []
+    restart: always
+
+  postgres:
+    restart: always
+
+  redis:
+    restart: always
+
+  milvus:
+    restart: always

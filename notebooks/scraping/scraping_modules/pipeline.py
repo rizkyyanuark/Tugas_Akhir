@@ -18,7 +18,6 @@ All saves go through save_final_csv() for consistent ID enforcement + QUOTE_ALL.
 import pandas as pd
 import re
 from pathlib import Path
-from tqdm import tqdm
 from .config import (
     SAVE_DIR, PRODI_WEB_CONFIG, TARGET_PRODI_NAMES,
     SINTA_DEPTS, HEADERS, ENABLE_SCIVAL, ID_COLUMN_TYPES,
@@ -361,7 +360,7 @@ def _run_simcv(df):
     skipped = 0
     searched = 0
     
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="SimCV"):
+    for idx, row in df.iterrows():
         # Search ALL records (SimCV provides clean nama_dosen and prodi)
         
         searched += 1
@@ -430,7 +429,7 @@ def _run_sinta(df):
     print(f"      Cached {len(cache)} Sinta Profiles.")
     
     count = 0
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Sinta"):
+    for idx, row in df.iterrows():
         if pd.notna(row.get('sinta_id')):
             continue
         
@@ -487,7 +486,7 @@ def _run_scholar(df, sample_size=None):
         print(f"      📋 Sample mode: processing {sample_size} of {len(indices)} records")
         indices = indices[:sample_size]
     
-    for idx in tqdm(indices, desc="Scholar"):
+    for idx in indices:
         row = df.loc[idx]
         name = str(row['nama_norm']) if pd.notna(row['nama_norm']) and str(row['nama_norm']).strip() else str(row['nama_dosen'])
         sid = str(row['scholar_id']).strip() if pd.notna(row.get('scholar_id')) else ''

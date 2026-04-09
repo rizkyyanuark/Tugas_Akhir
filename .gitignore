@@ -9,6 +9,8 @@ build/
 dist/
 wheels/
 *.egg-info
+.github/
+data/
 
 # === Temporary debug/output files ===
 *.txt

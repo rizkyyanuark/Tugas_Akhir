@@ -5,23 +5,23 @@
 # Usage: make <command>
 # ==============================================================================
 
-COMPOSE_DEV  = docker compose -p tugas_akhir -f infra/docker/docker-compose.yml --env-file .env
-COMPOSE_PROD = docker compose -p tugas_akhir -f infra/docker/docker-compose.prod.yml --env-file .env
+COMPOSE_DEV  = docker compose -p tugas_akhir -f docker-compose.yml --env-file .env
+COMPOSE_PROD = docker compose -p tugas_akhir -f docker-compose.yml -f docker-compose.prod.yml --env-file .env
 
 # --- Development ---
 .PHONY: dev dev-all down logs ps
 
-dev: ## Start core services (Airflow + Neo4j)
-	$(COMPOSE_DEV) up -d
+dev: ## Start core services (API + Web + DBs)
+	$(COMPOSE_DEV) up -d --build
 
-dev-vectordb: ## Start with Vector DB (Weaviate)
-	$(COMPOSE_DEV) --profile vectordb up -d
+dev-etl: ## Start with ETL Profile (Airflow)
+	$(COMPOSE_DEV) --profile etl up -d --build
 
 dev-monitoring: ## Start with Monitoring (Grafana + Prometheus)
-	$(COMPOSE_DEV) --profile monitoring up -d
+	$(COMPOSE_DEV) --profile monitoring up -d --build
 
-dev-all: ## Start ALL profiles (core + vectordb + monitoring)
-	$(COMPOSE_DEV) --profile vectordb --profile monitoring up -d
+dev-all: ## Start ALL profiles
+	$(COMPOSE_DEV) --profile etl --profile monitoring up -d --build
 
 down: ## Stop all services
 	$(COMPOSE_DEV) down
