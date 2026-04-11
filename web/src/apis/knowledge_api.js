@@ -11,56 +11,56 @@ import { apiGet, apiAdminGet, apiAdminPost, apiAdminPut, apiAdminDelete, apiRequ
 
 export const databaseApi = {
   /**
-  * Get all knowledge bases
-  * @returns {Promise} - Knowledge base list
+   * Get all knowledge bases
+   * @returns {Promise} - Knowledge base list
    */
   getDatabases: async () => {
     return apiAdminGet('/api/knowledge/databases')
   },
 
   /**
-  * Create a knowledge base
-  * @param {Object} databaseData - Knowledge base data
-  * @returns {Promise} - Creation result
+   * Create a knowledge base
+   * @param {Object} databaseData - Knowledge base data
+   * @returns {Promise} - Creation result
    */
   createDatabase: async (databaseData) => {
     return apiAdminPost('/api/knowledge/databases', databaseData)
   },
 
   /**
-  * Get knowledge base details
-  * @param {string} dbId - Knowledge base ID
-  * @returns {Promise} - Knowledge base details
+   * Get knowledge base details
+   * @param {string} dbId - Knowledge base ID
+   * @returns {Promise} - Knowledge base details
    */
   getDatabaseInfo: async (dbId) => {
     return apiAdminGet(`/api/knowledge/databases/${dbId}`)
   },
 
   /**
-  * Update knowledge base information
-  * @param {string} dbId - Knowledge base ID
-  * @param {Object} updateData - Update data
-  * @returns {Promise} - Update result
+   * Update knowledge base information
+   * @param {string} dbId - Knowledge base ID
+   * @param {Object} updateData - Update data
+   * @returns {Promise} - Update result
    */
   updateDatabase: async (dbId, updateData) => {
     return apiAdminPut(`/api/knowledge/databases/${dbId}`, updateData)
   },
 
   /**
-  * Delete a knowledge base
-  * @param {string} dbId - Knowledge base ID
-  * @returns {Promise} - Deletion result
+   * Delete a knowledge base
+   * @param {string} dbId - Knowledge base ID
+   * @returns {Promise} - Deletion result
    */
   deleteDatabase: async (dbId) => {
     return apiAdminDelete(`/api/knowledge/databases/${dbId}`)
   },
 
   /**
-  * Use AI to generate or refine the knowledge base description
-  * @param {string} name - Knowledge base name
-  * @param {string} currentDescription - Current description (optional)
-  * @param {Array} fileList - File list (optional)
-  * @returns {Promise} - Generated result
+   * Use AI to generate or refine the knowledge base description
+   * @param {string} name - Knowledge base name
+   * @param {string} currentDescription - Current description (optional)
+   * @param {Array} fileList - File list (optional)
+   * @returns {Promise} - Generated result
    */
   generateDescription: async (name, currentDescription = '', fileList = []) => {
     return apiAdminPost('/api/knowledge/generate-description', {
@@ -71,8 +71,8 @@ export const databaseApi = {
   },
 
   /**
-  * Get the list of knowledge bases the current user can access (for agent configuration)
-  * @returns {Promise} - Accessible knowledge bases
+   * Get the list of knowledge bases the current user can access (for agent configuration)
+   * @returns {Promise} - Accessible knowledge bases
    */
   getAccessibleDatabases: async () => {
     return apiGet('/api/knowledge/databases/accessible')
@@ -85,11 +85,11 @@ export const databaseApi = {
 
 export const documentApi = {
   /**
-  * Create a folder
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} folderName - Folder name
-  * @param {string} parentId - Parent folder ID
-  * @returns {Promise} - Creation result
+   * Create a folder
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} folderName - Folder name
+   * @param {string} parentId - Parent folder ID
+   * @returns {Promise} - Creation result
    */
   createFolder: async (dbId, folderName, parentId = null) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/folders`, {
@@ -99,11 +99,11 @@ export const documentApi = {
   },
 
   /**
-  * Move a document or folder
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} docId - Document or folder ID
-  * @param {string} newParentId - New parent folder ID
-  * @returns {Promise} - Move result
+   * Move a document or folder
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} docId - Document or folder ID
+   * @param {string} newParentId - New parent folder ID
+   * @returns {Promise} - Move result
    */
   moveDocument: async (dbId, docId, newParentId) => {
     return apiAdminPut(`/api/knowledge/databases/${dbId}/documents/${docId}/move`, {
@@ -112,11 +112,11 @@ export const documentApi = {
   },
 
   /**
-  * Add documents to a knowledge base
-  * @param {string} dbId - Knowledge base ID
-  * @param {Array} items - Document list
-  * @param {Object} params - Processing parameters
-  * @returns {Promise} - Add result
+   * Add documents to a knowledge base
+   * @param {string} dbId - Knowledge base ID
+   * @param {Array} items - Document list
+   * @param {Object} params - Processing parameters
+   * @returns {Promise} - Add result
    */
   addDocuments: async (dbId, items, params = {}) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/documents`, {
@@ -126,30 +126,30 @@ export const documentApi = {
   },
 
   /**
-  * Get document details
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} docId - Document ID
-  * @returns {Promise} - Document details
+   * Get document details
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} docId - Document ID
+   * @returns {Promise} - Document details
    */
   getDocumentInfo: async (dbId, docId) => {
     return apiAdminGet(`/api/knowledge/databases/${dbId}/documents/${docId}`)
   },
 
   /**
-  * Delete a document
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} docId - Document ID
-  * @returns {Promise} - Deletion result
+   * Delete a document
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} docId - Document ID
+   * @returns {Promise} - Deletion result
    */
   deleteDocument: async (dbId, docId) => {
     return apiAdminDelete(`/api/knowledge/databases/${dbId}/documents/${docId}`)
   },
 
   /**
-  * Delete documents in batch
-  * @param {string} dbId - Knowledge base ID
-  * @param {Array} fileIds - File ID list
-  * @returns {Promise} - Batch deletion result
+   * Delete documents in batch
+   * @param {string} dbId - Knowledge base ID
+   * @param {Array} fileIds - File ID list
+   * @returns {Promise} - Batch deletion result
    */
   batchDeleteDocuments: async (dbId, fileIds) => {
     return apiRequest(
@@ -167,31 +167,31 @@ export const documentApi = {
   },
 
   /**
-  * Download a document
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} docId - Document ID
-  * @returns {Promise} - Response object
+   * Download a document
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} docId - Document ID
+   * @returns {Promise} - Response object
    */
   downloadDocument: async (dbId, docId) => {
     return apiAdminGet(`/api/knowledge/databases/${dbId}/documents/${docId}/download`, {}, 'blob')
   },
 
   /**
-  * Manually trigger document parsing
-  * @param {string} dbId - Knowledge base ID
-  * @param {Array} fileIds - File ID list
-  * @returns {Promise} - Parsing task result
+   * Manually trigger document parsing
+   * @param {string} dbId - Knowledge base ID
+   * @param {Array} fileIds - File ID list
+   * @returns {Promise} - Parsing task result
    */
   parseDocuments: async (dbId, fileIds) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/documents/parse`, fileIds)
   },
 
   /**
-  * Manually trigger document indexing
-  * @param {string} dbId - Knowledge base ID
-  * @param {Array} fileIds - File ID list
-  * @param {Object} params - Processing parameters
-  * @returns {Promise} - Indexing task result
+   * Manually trigger document indexing
+   * @param {string} dbId - Knowledge base ID
+   * @param {Array} fileIds - File ID list
+   * @param {Object} params - Processing parameters
+   * @returns {Promise} - Indexing task result
    */
   indexDocuments: async (dbId, fileIds, params = {}) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/documents/index`, {
@@ -207,11 +207,11 @@ export const documentApi = {
 
 export const queryApi = {
   /**
-  * Query a knowledge base
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} query - Query text
-  * @param {Object} meta - Query parameters
-  * @returns {Promise} - Query result
+   * Query a knowledge base
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} query - Query text
+   * @param {Object} meta - Query parameters
+   * @returns {Promise} - Query result
    */
   queryKnowledgeBase: async (dbId, query, meta = {}) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/query`, {
@@ -221,11 +221,11 @@ export const queryApi = {
   },
 
   /**
-  * Test a knowledge base query
-  * @param {string} dbId - Knowledge base ID
-  * @param {string} query - Query text
-  * @param {Object} meta - Query parameters
-  * @returns {Promise} - Test result
+   * Test a knowledge base query
+   * @param {string} dbId - Knowledge base ID
+   * @param {string} query - Query text
+   * @param {Object} meta - Query parameters
+   * @returns {Promise} - Test result
    */
   queryTest: async (dbId, query, meta = {}) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/query-test`, {
@@ -235,29 +235,29 @@ export const queryApi = {
   },
 
   /**
-  * Get knowledge base query parameters
-  * @param {string} dbId - Knowledge base ID
-  * @returns {Promise} - Query parameters
+   * Get knowledge base query parameters
+   * @param {string} dbId - Knowledge base ID
+   * @returns {Promise} - Query parameters
    */
   getKnowledgeBaseQueryParams: async (dbId) => {
     return apiAdminGet(`/api/knowledge/databases/${dbId}/query-params`)
   },
 
   /**
-  * Update knowledge base query parameters
-  * @param {string} dbId - Knowledge base ID
-  * @param {Object} params - Query parameters
-  * @returns {Promise} - Update result
+   * Update knowledge base query parameters
+   * @param {string} dbId - Knowledge base ID
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - Update result
    */
   updateKnowledgeBaseQueryParams: async (dbId, params) => {
     return apiAdminPut(`/api/knowledge/databases/${dbId}/query-params`, params)
   },
 
   /**
-  * Generate test questions for a knowledge base
-  * @param {string} dbId - Knowledge base ID
-  * @param {number} count - Number of questions to generate, defaults to 10
-  * @returns {Promise} - Generated question list
+   * Generate test questions for a knowledge base
+   * @param {string} dbId - Knowledge base ID
+   * @param {number} count - Number of questions to generate, defaults to 10
+   * @returns {Promise} - Generated question list
    */
   generateSampleQuestions: async (dbId, count = 10) => {
     return apiAdminPost(`/api/knowledge/databases/${dbId}/sample-questions`, {

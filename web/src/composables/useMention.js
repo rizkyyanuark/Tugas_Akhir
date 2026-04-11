@@ -57,7 +57,7 @@ export function useMention() {
   })
 
   /**
-  * Set the full mention configuration
+   * Set the full mention configuration
    * @param {MentionConfig} config
    */
   const setMention = (config) => {
@@ -69,7 +69,7 @@ export function useMention() {
   }
 
   /**
-  * Update the file list
+   * Update the file list
    * @param {MentionFile[]} files
    */
   const updateFiles = (files) => {
@@ -77,7 +77,7 @@ export function useMention() {
   }
 
   /**
-  * Update the knowledge base list
+   * Update the knowledge base list
    * @param {MentionKnowledgeBase[]} knowledgeBases
    */
   const updateKnowledgeBases = (knowledgeBases) => {
@@ -85,7 +85,7 @@ export function useMention() {
   }
 
   /**
-  * Update the MCP server list
+   * Update the MCP server list
    * @param {MentionMcp[]} mcps
    */
   const updateMcps = (mcps) => {
@@ -93,7 +93,7 @@ export function useMention() {
   }
 
   /**
-  * Get all categorized candidates
+   * Get all categorized candidates
    * @returns {{ files: MentionItem[], knowledgeBases: MentionItem[], mcps: MentionItem[] }}
    */
   const getCategorizedItems = () => {
@@ -128,8 +128,8 @@ export function useMention() {
   }
 
   /**
-  * Filter candidates by query string
-  * @param {string} query - Query string (without the @ symbol)
+   * Filter candidates by query string
+   * @param {string} query - Query string (without the @ symbol)
    * @returns {{ files: MentionItem[], knowledgeBases: MentionItem[], mcps: MentionItem[] }}
    */
   const getFilteredItems = (query = '') => {

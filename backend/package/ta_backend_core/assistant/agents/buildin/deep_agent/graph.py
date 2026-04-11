@@ -28,7 +28,8 @@ class DeepAgent(BaseAgent):
     name = "Deep Analysis"
     description = "An agent with planning, deep analysis, and subagent collaboration capabilities that can handle complex multi-step tasks."
     capabilities = ["file_upload", "files"]  # Supports file uploads
-    metadata = {"examples": ["Research papers related to multimodal GraphRAG."]}
+    metadata = {"examples": [
+        "Research papers related to multimodal GraphRAG."]}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -46,7 +47,8 @@ class DeepAgent(BaseAgent):
                 tools.append(tavily)
 
         if not tools:
-            logger.warning("No search tools configured, DeepAgent will work without web search")
+            logger.warning(
+                "No search tools configured, DeepAgent will work without web search")
         return tools
 
     async def get_graph(self, context=None, **kwargs):
@@ -77,7 +79,8 @@ class DeepAgent(BaseAgent):
             default_tools=search_tools,
             subagents=user_subagents,
             default_middleware=[
-                FilesystemMiddleware(backend=create_agent_composite_backend),  # Filesystem backend
+                # Filesystem backend
+                FilesystemMiddleware(backend=create_agent_composite_backend),
                 PatchToolCallsMiddleware(),
                 summary_middleware,
                 # Sub-agent search tool limit: tavily_search can be called at most 8 times
@@ -95,11 +98,14 @@ class DeepAgent(BaseAgent):
             model=model,
             system_prompt=system_prompt,
             middleware=[
-                FilesystemMiddleware(backend=create_agent_composite_backend),  # Filesystem backend
+                # Filesystem backend
+                FilesystemMiddleware(backend=create_agent_composite_backend),
                 RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
-                SkillsMiddleware(),  # Skills middleware (prompt injection, dependency expansion, dynamic activation)
+                # Skills middleware (prompt injection, dependency expansion, dynamic activation)
+                SkillsMiddleware(),
                 save_attachments_to_fs,  # Inject attachments into the prompt
-                TodoListMiddleware(system_prompt="Before finishing the task, check whether the maintained todo list is complete."),
+                TodoListMiddleware(
+                    system_prompt="Before finishing the task, check whether the maintained todo list is complete."),
                 PatchToolCallsMiddleware(),
                 KnowledgeBaseMiddleware(),  # Knowledge base tools
                 subagents_middleware,

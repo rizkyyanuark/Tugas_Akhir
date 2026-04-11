@@ -39,7 +39,10 @@
             v-if="!filteredEnabledServers.length && !filteredDisabledServers.length"
             class="empty-text"
           >
-            <a-empty :image="false" :description="searchQuery ? 'No matching MCPs' : 'No MCPs yet'" />
+            <a-empty
+              :image="false"
+              :description="searchQuery ? 'No matching MCPs' : 'No MCPs yet'"
+            />
           </div>
           <div v-if="filteredEnabledServers.length" class="list-section-title">Added</div>
           <template
@@ -68,7 +71,9 @@
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ server.description || 'No description available' }}</span>
+                <span class="item-desc">{{
+                  server.description || 'No description available'
+                }}</span>
                 <div class="item-tags">
                   <span v-if="server.created_by === 'system'" class="source-tag builtin">内置</span>
                 </div>
@@ -105,7 +110,9 @@
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ server.description || 'No description available' }}</span>
+                <span class="item-desc">{{
+                  server.description || 'No description available'
+                }}</span>
                 <div class="item-tags">
                   <span v-if="server.created_by === 'system'" class="source-tag builtin">内置</span>
                 </div>

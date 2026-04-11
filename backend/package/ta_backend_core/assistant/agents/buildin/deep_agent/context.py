@@ -18,7 +18,8 @@ class DeepContext(BaseContext):
     # System prompt for deep analysis tasks
     system_prompt: Annotated[str, {"__template_metadata__": {"kind": "prompt"}}] = field(
         default=DEEP_PROMPT,
-        metadata={"name": "System Prompt", "description": "Guidance for the Deep agent's role and behavior"},
+        metadata={"name": "System Prompt",
+                  "description": "Guidance for the Deep agent's role and behavior"},
     )
 
     subagents_model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(

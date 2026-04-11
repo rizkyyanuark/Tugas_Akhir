@@ -42,9 +42,9 @@ export class MessageProcessor {
   }
 
   /**
-    * Convert server history into conversation format
-    * @param {Array} serverHistory - Server history
-    * @returns {Array} Conversation array
+   * Convert server history into conversation format
+   * @param {Array} serverHistory - Server history
+   * @returns {Array} Conversation array
    */
   static convertServerHistoryToMessages(serverHistory) {
     // Filter out standalone 'tool' messages since tool results are already in AI messages' tool_calls
@@ -94,10 +94,10 @@ export class MessageProcessor {
   }
 
   /**
-    * Extract all knowledge base retrieval chunks from a conversation round
-    * @param {Object} conv - Single conversation
-    * @param {Array} databases - Knowledge base list
-    * @returns {Array} Normalized retrieval chunks
+   * Extract all knowledge base retrieval chunks from a conversation round
+   * @param {Object} conv - Single conversation
+   * @param {Array} databases - Knowledge base list
+   * @returns {Array} Normalized retrieval chunks
    */
   static extractKnowledgeChunksFromConversation(conv, databases = []) {
     if (!conv || !Array.isArray(conv.messages) || conv.messages.length === 0) return []
@@ -187,9 +187,9 @@ export class MessageProcessor {
   }
 
   /**
-    * Extract web search sources from a conversation round
-    * @param {Object} conv - Single conversation
-    * @returns {Array} Normalized web sources
+   * Extract web search sources from a conversation round
+   * @param {Object} conv - Single conversation
+   * @returns {Array} Normalized web sources
    */
   static extractWebSourcesFromConversation(conv) {
     if (!conv || !Array.isArray(conv.messages) || conv.messages.length === 0) return []

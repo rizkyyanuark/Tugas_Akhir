@@ -29,7 +29,8 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
 
     if provider in ["openai", "deepseek"]:
         model_spec = f"{provider}:{model}"
-        logger.debug(f"[offical] Loading model {model_spec} with kwargs {kwargs}")
+        logger.debug(
+            f"[offical] Loading model {model_spec} with kwargs {kwargs}")
         return init_chat_model(model_spec, **kwargs)
 
     elif provider in ["dashscope"]:
@@ -54,4 +55,5 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
                 stream_usage=True,
             )
         except Exception as e:
-            raise ValueError(f"Model provider {provider} load failed, {e} \n {traceback.format_exc()}")
+            raise ValueError(
+                f"Model provider {provider} load failed, {e} \n {traceback.format_exc()}")

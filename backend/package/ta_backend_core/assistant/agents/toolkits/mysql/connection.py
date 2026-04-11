@@ -69,7 +69,8 @@ class MySQLConnectionManager:
                     write_timeout=30,
                     autocommit=True,  # Autocommit
                 )
-                logger.info(f"MySQL connection established successfully (attempt {attempt + 1})")
+                logger.info(
+                    f"MySQL connection established successfully (attempt {attempt + 1})")
                 return connection
 
             except MySQLError as e:
@@ -77,7 +78,8 @@ class MySQLConnectionManager:
                 if attempt < max_retries - 1:
                     time.sleep(2**attempt)  # Exponential backoff
                 else:
-                    logger.error(f"Failed to connect to MySQL after {max_retries} attempts: {e}")
+                    logger.error(
+                        f"Failed to connect to MySQL after {max_retries} attempts: {e}")
                     raise ConnectionError(f"MySQL connection failed: {e}")
 
     def test_connection(self) -> bool:
@@ -119,7 +121,8 @@ class MySQLConnectionManager:
                 break
             except Exception as e:
                 last_error = e
-                logger.warning(f"Failed to acquire cursor (attempt {attempt + 1}): {e}")
+                logger.warning(
+                    f"Failed to acquire cursor (attempt {attempt + 1}): {e}")
                 self._invalidate_connection(connection)
                 cursor = None
                 connection = None
@@ -128,7 +131,8 @@ class MySQLConnectionManager:
                 time.sleep(1)
 
         if cursor is None or connection is None:
-            raise last_error or ConnectionError("Unable to acquire MySQL cursor")
+            raise last_error or ConnectionError(
+                "Unable to acquire MySQL cursor")
 
         try:
             yield cursor
@@ -141,7 +145,8 @@ class MySQLConnectionManager:
 
             # Mark the connection invalid and rebuild it on the next acquisition
             if "MySQL" in str(e) or "connection" in str(e).lower():
-                logger.warning(f"MySQL connection error encountered, invalidating connection: {e}")
+                logger.warning(
+                    f"MySQL connection error encountered, invalidating connection: {e}")
                 self._invalidate_connection(connection)
 
             raise
@@ -231,7 +236,8 @@ def limit_result_size(result: list, max_chars: int = 10000) -> list:
             current_chars += len(row_str)
 
         # Log warning
-        logger.warning(f"Query result truncated from {len(result)} to {len(limited_result)} rows due to size limit")
+        logger.warning(
+            f"Query result truncated from {len(result)} to {len(limited_result)} rows due to size limit")
         return limited_result
 
     return result

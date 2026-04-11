@@ -145,10 +145,10 @@ export const customProviderApi = {
   },
 
   /**
-  * Update a custom provider
-  * @param {string} providerId - Provider ID
-  * @param {Object} providerData - Provider configuration data
-  * @returns {Promise} - Update result
+   * Update a custom provider
+   * @param {string} providerId - Provider ID
+   * @param {Object} providerData - Provider configuration data
+   * @returns {Promise} - Update result
    */
   updateCustomProvider: async (providerId, providerData) => {
     return apiAdminPut(
@@ -158,19 +158,19 @@ export const customProviderApi = {
   },
 
   /**
-  * Delete a custom provider
-  * @param {string} providerId - Provider ID
-  * @returns {Promise} - Deletion result
+   * Delete a custom provider
+   * @param {string} providerId - Provider ID
+   * @returns {Promise} - Deletion result
    */
   deleteCustomProvider: async (providerId) => {
     return apiAdminDelete(`/api/system/custom-providers/${encodeURIComponent(providerId)}`)
   },
 
   /**
-  * Test a custom provider connection
-  * @param {string} providerId - Provider ID
-  * @param {string} modelName - Model name to test
-  * @returns {Promise} - Test result
+   * Test a custom provider connection
+   * @param {string} providerId - Provider ID
+   * @param {string} modelName - Model name to test
+   * @returns {Promise} - Test result
    */
   testCustomProvider: async (providerId, modelName) => {
     return apiAdminPost(`/api/system/custom-providers/${encodeURIComponent(providerId)}/test`, {

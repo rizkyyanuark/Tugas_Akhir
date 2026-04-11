@@ -89,7 +89,11 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
           errorData &&
           (errorData.detail?.includes('token expired') || errorMessage?.includes('token expired'))
 
-        message.error(isTokenExpired ? 'Login expired, please log in again' : 'Authentication failed, please log in again')
+        message.error(
+          isTokenExpired
+            ? 'Login expired, please log in again'
+            : 'Authentication failed, please log in again'
+        )
 
         // If the user is currently considered logged in, log them out
         if (userStore.isLoggedIn) {
@@ -106,7 +110,8 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
         error.message = 'You do not have permission to perform this action'
         throw error
       } else if (response.status === 500) {
-        error.message = 'Internal server error, use docker logs api-dev to inspect the detailed logs'
+        error.message =
+          'Internal server error, use docker logs api-dev to inspect the detailed logs'
         throw error
       }
 

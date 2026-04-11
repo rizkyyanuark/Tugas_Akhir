@@ -48,7 +48,8 @@ def get_tool_info(tools) -> list[dict[str, Any]]:
                 continue
 
     except Exception as e:
-        logger.error(f"Failed to get tools info: {e}\n{traceback.format_exc()}")
+        logger.error(
+            f"Failed to get tools info: {e}\n{traceback.format_exc()}")
         return []
 
     logger.info(f"Successfully extracted info for {len(tools_info)} tools")

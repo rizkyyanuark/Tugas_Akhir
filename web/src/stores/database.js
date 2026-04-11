@@ -217,7 +217,11 @@ export const useDatabaseStore = defineStore('database', () => {
         let processedCount = 0
         const totalCount = validFileIds.length
         const progressKey = `batch-delete-${Date.now()}`
-        message.loading({ content: `Deleting files 0/${totalCount}`, key: progressKey, duration: 0 })
+        message.loading({
+          content: `Deleting files 0/${totalCount}`,
+          key: progressKey,
+          duration: 0
+        })
 
         try {
           const CHUNK_SIZE = 50
@@ -247,7 +251,9 @@ export const useDatabaseStore = defineStore('database', () => {
           if (successCount > 0 && failureCount === 0) {
             message.success(`Successfully deleted ${successCount} files`)
           } else if (successCount > 0 && failureCount > 0) {
-            message.warning(`Successfully deleted ${successCount} files, ${failureCount} files failed to delete`)
+            message.warning(
+              `Successfully deleted ${successCount} files, ${failureCount} files failed to delete`
+            )
           } else if (failureCount > 0) {
             message.error(`${failureCount} files failed to delete`)
           }
@@ -316,7 +322,9 @@ export const useDatabaseStore = defineStore('database', () => {
 
   async function addFiles({ items, contentType, params, parentId }) {
     if (items.length === 0) {
-      message.error(contentType === 'file' ? 'Please upload a file first' : 'Please enter a valid web link')
+      message.error(
+        contentType === 'file' ? 'Please upload a file first' : 'Please enter a valid web link'
+      )
       return
     }
 
@@ -330,7 +338,10 @@ export const useDatabaseStore = defineStore('database', () => {
       if (data.status === 'success' || data.status === 'queued') {
         const itemType = contentType === 'file' ? 'File' : 'URL'
         enableAutoRefresh('auto')
-        message.success(data.message || `${itemType} has been submitted for processing, please check the progress in the Task Center`)
+        message.success(
+          data.message ||
+            `${itemType} has been submitted for processing, please check the progress in the Task Center`
+        )
         if (data.task_id) {
           taskerStore.registerQueuedTask({
             task_id: data.task_id,

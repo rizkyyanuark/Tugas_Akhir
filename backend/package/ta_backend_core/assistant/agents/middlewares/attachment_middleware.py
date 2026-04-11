@@ -40,7 +40,8 @@ def _build_attachment_prompt(uploads: Sequence[dict]) -> str | None:
     if not valid_uploads:
         return None
 
-    upload_infos = [f"- {file_name}: {path}" for file_name, path in valid_uploads]
+    upload_infos = [
+        f"- {file_name}: {path}" for file_name, path in valid_uploads]
     lines = [
         "The user uploaded the following files:",
         "",
@@ -60,13 +61,16 @@ class AttachmentMiddleware(AgentMiddleware[AttachmentState]):
         self, request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]
     ) -> ModelResponse:
         uploads = request.state.get("uploads", [])
-        logger.info(f"AttachmentMiddleware: found {len(uploads)} uploads in state")
+        logger.info(
+            f"AttachmentMiddleware: found {len(uploads)} uploads in state")
 
         if uploads:
             attachment_prompt = _build_attachment_prompt(uploads)
             if attachment_prompt:
-                logger.info("AttachmentMiddleware: injecting attachment prompt")
-                existing_blocks = list(request.system_message.content_blocks) if request.system_message else []
+                logger.info(
+                    "AttachmentMiddleware: injecting attachment prompt")
+                existing_blocks = list(
+                    request.system_message.content_blocks) if request.system_message else []
                 existing_text = "\n".join(
                     block.get("text", "")
                     for block in existing_blocks
@@ -74,13 +78,16 @@ class AttachmentMiddleware(AgentMiddleware[AttachmentState]):
                 )
 
                 if ATTACHMENT_PROMPT_MARKER in existing_text:
-                    logger.info("AttachmentMiddleware: attachment prompt already injected, skip")
+                    logger.info(
+                        "AttachmentMiddleware: attachment prompt already injected, skip")
                     return await handler(request)
 
                 merged_blocks = existing_blocks + [
-                    {"type": "text", "text": f"{ATTACHMENT_PROMPT_MARKER}\n{attachment_prompt}"}
+                    {"type": "text",
+                        "text": f"{ATTACHMENT_PROMPT_MARKER}\n{attachment_prompt}"}
                 ]
-                request = request.override(system_message=SystemMessage(content=merged_blocks))
+                request = request.override(
+                    system_message=SystemMessage(content=merged_blocks))
 
         return await handler(request)
 

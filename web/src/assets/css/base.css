@@ -154,18 +154,18 @@
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-  
+
   --grad-primary: linear-gradient(135deg, #3996ae 0%, #24839a 100%);
   --grad-success: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
   --grad-warning: linear-gradient(135deg, #faad14 0%, #d48806 100%);
   --grad-error: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
   --grad-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
-  
+
   --radius-xl: 20px;
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-huge: 32px;
-  
+
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 

@@ -21,5 +21,6 @@ async def context_based_model(request: ModelRequest, handler: Callable[[ModelReq
     model = load_chat_model(model_spec)
 
     request = request.override(model=model)
-    logger.debug(f"Using model {model_spec} for request {request.messages[-1].content[:200]}")
+    logger.debug(
+        f"Using model {model_spec} for request {request.messages[-1].content[:200]}")
     return await handler(request)

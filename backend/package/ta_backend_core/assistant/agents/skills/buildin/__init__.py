@@ -33,7 +33,8 @@ BUILTIN_SKILLS: list[BuiltinSkillSpec] = [
         source_dir=_SKILLS_ROOT / "reporter",
         description="Generate SQL query reports and create visual charts.",
         version="2026.03.28",
-        tool_dependencies=[t["name"] for t in get_tool_info(get_mysql_tools())],
+        tool_dependencies=[t["name"]
+                           for t in get_tool_info(get_mysql_tools())],
         mcp_dependencies=("mcp-server-chart",),
     ),
 ]

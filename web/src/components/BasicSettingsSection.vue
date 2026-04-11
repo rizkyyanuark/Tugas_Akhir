@@ -6,7 +6,9 @@
         <template v-if="userStore.isSuperAdmin">
           <div class="setting-row two-cols">
             <div class="col-item">
-              <div class="setting-label">{{ items?.default_model?.des || 'Default chat model' }}</div>
+              <div class="setting-label">
+                {{ items?.default_model?.des || 'Default chat model' }}
+              </div>
               <div class="setting-content">
                 <ModelSelectorComponent
                   @select-model="handleChatModelSelect"
@@ -111,7 +113,8 @@
     <div v-if="userStore.isAdmin" class="section-title">Service links</div>
     <div v-if="userStore.isAdmin">
       <p class="section-description">
-        Quick access to system-related external services. Replace localhost with the actual IP address.
+        Quick access to system-related external services. Replace localhost with the actual IP
+        address.
       </p>
       <div class="services-grid">
         <div class="service-link-card">

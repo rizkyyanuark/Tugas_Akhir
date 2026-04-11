@@ -37,9 +37,11 @@ class CustomCompositeBackend(CompositeBackend):
             results: list[FileInfo] = []
             results.extend(self.default.glob_info(pattern, path))
             for route_prefix, backend in self.routes.items():
-                route_pattern = _strip_route_from_pattern(pattern, route_prefix)
+                route_pattern = _strip_route_from_pattern(
+                    pattern, route_prefix)
                 infos = backend.glob_info(route_pattern, "/")
-                results.extend(_remap_file_info_path(fi, route_prefix) for fi in infos)
+                results.extend(_remap_file_info_path(fi, route_prefix)
+                               for fi in infos)
             results.sort(key=lambda x: x.get("path", ""))
             return results
 
@@ -59,9 +61,11 @@ class CustomCompositeBackend(CompositeBackend):
             results: list[FileInfo] = []
             results.extend(await self.default.aglob_info(pattern, path))
             for route_prefix, backend in self.routes.items():
-                route_pattern = _strip_route_from_pattern(pattern, route_prefix)
+                route_pattern = _strip_route_from_pattern(
+                    pattern, route_prefix)
                 infos = await backend.aglob_info(route_pattern, "/")
-                results.extend(_remap_file_info_path(fi, route_prefix) for fi in infos)
+                results.extend(_remap_file_info_path(fi, route_prefix)
+                               for fi in infos)
             results.sort(key=lambda x: x.get("path", ""))
             return results
 
@@ -125,7 +129,8 @@ def create_agent_composite_backend(runtime) -> CompositeBackend:
     user_id = _extract_user_id(runtime)
     visible_kbs = _get_visible_knowledge_bases_from_runtime(runtime)
     return CustomCompositeBackend(
-        default=ProvisionerSandboxBackend(thread_id=thread_id, user_id=user_id, visible_skills=visible_skills),
+        default=ProvisionerSandboxBackend(
+            thread_id=thread_id, user_id=user_id, visible_skills=visible_skills),
         routes={
             "/skills/": SelectedSkillsReadonlyBackend(selected_slugs=visible_skills),
             "/home/gem/kbs/": KnowledgeBaseReadonlyBackend(visible_kbs=visible_kbs),

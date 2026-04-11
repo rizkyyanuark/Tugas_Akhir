@@ -82,7 +82,8 @@ class AgentManager(metaclass=SingletonMeta):
                         and obj is not BaseAgent
                         and obj.__module__.startswith(module_name)
                     ):
-                        logger.info(f"Auto-discovered agent: {obj.__name__} from {item.name}")
+                        logger.info(
+                            f"Auto-discovered agent: {obj.__name__} from {item.name}")
                         self.register_agent(obj)
 
             except Exception as e:

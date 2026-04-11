@@ -144,8 +144,10 @@ def _offload_tool_result(msg: ToolMessage, threshold: int, token_counter: TokenC
 
     # Generate the file path (tool-name-xxx)
     message_id = msg.id or str(uuid.uuid4())[:8]
-    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in tool_name)
-    file_path = (Path(OUTPUTS_DIR_NAME) / f"{_OFFLOAD_DIR}/{safe_name}-{message_id}").as_posix()
+    safe_name = "".join(
+        c if c.isalnum() or c in "-_" else "_" for c in tool_name)
+    file_path = (Path(OUTPUTS_DIR_NAME) /
+                 f"{_OFFLOAD_DIR}/{safe_name}-{message_id}").as_posix()
 
     # Build header information for the file
     header_lines = [

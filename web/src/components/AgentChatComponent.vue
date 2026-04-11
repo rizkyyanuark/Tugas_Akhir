@@ -196,7 +196,8 @@
 
               <div class="bottom-actions" v-if="conversations.length > 0">
                 <p class="note">
-                  Current agent: {{ currentThreadAgentName }}; please verify the reliability of the content
+                  Current agent: {{ currentThreadAgentName }}; please verify the reliability of the
+                  content
                 </p>
               </div>
             </div>
@@ -869,7 +870,7 @@ const fetchAgentState = async (agentId, threadId) => {
   }
 }
 
-  const ensureActiveThread = async (title = 'New Conversation') => {
+const ensureActiveThread = async (title = 'New Conversation') => {
   if (currentChatId.value) return currentChatId.value
   try {
     const newThread = await createThread(currentAgentId.value, title || 'New Conversation')
@@ -915,7 +916,11 @@ const handleAttachmentUpload = async (files) => {
     for (const file of files) {
       await threadApi.uploadThreadAttachment(threadId, file)
     }
-    message.success({ content: 'Attachment uploaded successfully', key: 'upload-attachment', duration: 2 })
+    message.success({
+      content: 'Attachment uploaded successfully',
+      key: 'upload-attachment',
+      duration: 2
+    })
     await fetchAgentState(currentAgentId.value, threadId)
   } catch (error) {
     message.destroy('upload-attachment')
@@ -1020,7 +1025,13 @@ const selectChat = async (chatId) => {
     return
   }
 
-  if (!AgentValidator.validateAgentIdWithError(targetAgentId, 'Select conversation', handleValidationError))
+  if (
+    !AgentValidator.validateAgentIdWithError(
+      targetAgentId,
+      'Select conversation',
+      handleValidationError
+    )
+  )
     return
 
   // Interrupt the previous thread's streaming output if it exists

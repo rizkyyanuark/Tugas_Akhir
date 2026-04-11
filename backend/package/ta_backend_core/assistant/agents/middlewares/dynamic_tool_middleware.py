@@ -36,7 +36,8 @@ class DynamicToolMiddleware(AgentMiddleware):
                 self._all_mcp_tools[mcp_name] = mcp_tools
                 # Register MCP tools into middleware.tools
                 self.tools.extend(mcp_tools)
-                logger.info(f"Registered {len(mcp_tools)} tools from {mcp_name}")
+                logger.info(
+                    f"Registered {len(mcp_tools)} tools from {mcp_name}")
 
     async def awrap_model_call(
         self, request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]
@@ -50,7 +51,8 @@ class DynamicToolMiddleware(AgentMiddleware):
 
         # Filter base tools according to configuration
         if selected_tools and isinstance(selected_tools, list) and len(selected_tools) > 0:
-            enabled_tools = [tool for tool in self.tools if tool.name in selected_tools]
+            enabled_tools = [
+                tool for tool in self.tools if tool.name in selected_tools]
 
         # Filter MCP tools according to configuration (select from pre-registered tools)
         if selected_mcps and isinstance(selected_mcps, list) and len(selected_mcps) > 0:
@@ -58,7 +60,8 @@ class DynamicToolMiddleware(AgentMiddleware):
                 if mcp in self._all_mcp_tools:
                     enabled_tools.extend(self._all_mcp_tools[mcp])
                 else:
-                    logger.warning(f"MCP server '{mcp}' not pre-loaded. Please add it to mcp_servers list.")
+                    logger.warning(
+                        f"MCP server '{mcp}' not pre-loaded. Please add it to mcp_servers list.")
 
         logger.info(
             f"Dynamic tool selection: {len(enabled_tools)} tools enabled: {[tool.name for tool in enabled_tools]}, "
