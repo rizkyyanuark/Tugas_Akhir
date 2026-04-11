@@ -1,7 +1,7 @@
 <template>
   <div class="source-section">
-    <div class="section-title">网络搜索来源 ({{ sources.length }})</div>
-    <WebSearchResultList :results="sources" empty-text="未找到网络搜索来源" />
+    <div class="section-title">Web Search Sources ({{ sources.length }})</div>
+    <WebSearchResultList :results="sources" empty-text="No web search sources found" />
   </div>
 </template>
 

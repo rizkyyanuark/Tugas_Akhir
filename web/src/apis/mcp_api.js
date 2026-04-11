@@ -1,111 +1,111 @@
 import { apiAdminGet, apiAdminPost, apiAdminPut, apiAdminDelete } from './base'
 
 /**
- * MCP 服务器管理 API 模块
- * 包含 MCP 服务器的增删改查和工具管理功能
+ * MCP server management API module
+ * Includes CRUD operations for MCP servers and tool management features
  */
 
 const BASE_URL = '/api/system/mcp-servers'
 
 // =============================================================================
-// === MCP 服务器 CRUD ===
+// === MCP server CRUD ===
 // =============================================================================
 
 /**
- * 获取所有 MCP 服务器配置
- * @returns {Promise} - 服务器列表
+ * Get all MCP server configurations
+ * @returns {Promise} - Server list
  */
 export const getMcpServers = async () => {
   return apiAdminGet(BASE_URL)
 }
 
 /**
- * 获取单个 MCP 服务器配置
- * @param {string} name - 服务器名称
- * @returns {Promise} - 服务器配置
+ * Get a single MCP server configuration
+ * @param {string} name - Server name
+ * @returns {Promise} - Server configuration
  */
 export const getMcpServer = async (name) => {
   return apiAdminGet(`${BASE_URL}/${encodeURIComponent(name)}`)
 }
 
 /**
- * 创建新的 MCP 服务器
- * @param {Object} data - 服务器配置数据
- * @returns {Promise} - 创建结果
+ * Create a new MCP server
+ * @param {Object} data - Server configuration data
+ * @returns {Promise} - Creation result
  */
 export const createMcpServer = async (data) => {
   return apiAdminPost(BASE_URL, data)
 }
 
 /**
- * 更新 MCP 服务器配置
- * @param {string} name - 服务器名称
- * @param {Object} data - 更新数据
- * @returns {Promise} - 更新结果
+ * Update an MCP server configuration
+ * @param {string} name - Server name
+ * @param {Object} data - Updated data
+ * @returns {Promise} - Update result
  */
 export const updateMcpServer = async (name, data) => {
   return apiAdminPut(`${BASE_URL}/${encodeURIComponent(name)}`, data)
 }
 
 /**
- * 删除 MCP 服务器
- * @param {string} name - 服务器名称
- * @returns {Promise} - 删除结果
+ * Delete an MCP server
+ * @param {string} name - Server name
+ * @returns {Promise} - Deletion result
  */
 export const deleteMcpServer = async (name) => {
   return apiAdminDelete(`${BASE_URL}/${encodeURIComponent(name)}`)
 }
 
 // =============================================================================
-// === MCP 服务器操作 ===
+// === MCP server operations ===
 // =============================================================================
 
 /**
- * 测试 MCP 服务器连接
- * @param {string} name - 服务器名称
- * @returns {Promise} - 测试结果
+ * Test an MCP server connection
+ * @param {string} name - Server name
+ * @returns {Promise} - Test result
  */
 export const testMcpServer = async (name) => {
   return apiAdminPost(`${BASE_URL}/${encodeURIComponent(name)}/test`, {})
 }
 
 /**
- * 更新 MCP 服务器启用状态
- * @param {string} name - 服务器名称
- * @param {boolean} enabled - 是否启用
- * @returns {Promise} - 切换结果
+ * Update an MCP server enabled status
+ * @param {string} name - Server name
+ * @param {boolean} enabled - Whether enabled
+ * @returns {Promise} - Toggle result
  */
 export const updateMcpServerStatus = async (name, enabled) => {
   return apiAdminPut(`${BASE_URL}/${encodeURIComponent(name)}/status`, { enabled })
 }
 
 // =============================================================================
-// === MCP 工具管理 ===
+// === MCP tool management ===
 // =============================================================================
 
 /**
- * 获取 MCP 服务器的工具列表
- * @param {string} name - 服务器名称
- * @returns {Promise} - 工具列表
+ * Get the tool list for an MCP server
+ * @param {string} name - Server name
+ * @returns {Promise} - Tool list
  */
 export const getMcpServerTools = async (name) => {
   return apiAdminGet(`${BASE_URL}/${encodeURIComponent(name)}/tools`)
 }
 
 /**
- * 刷新 MCP 服务器的工具列表（清除缓存重新获取）
- * @param {string} name - 服务器名称
- * @returns {Promise} - 刷新结果
+ * Refresh the tool list for an MCP server (clear cache and fetch again)
+ * @param {string} name - Server name
+ * @returns {Promise} - Refresh result
  */
 export const refreshMcpServerTools = async (name) => {
   return apiAdminPost(`${BASE_URL}/${encodeURIComponent(name)}/tools/refresh`, {})
 }
 
 /**
- * 切换单个工具的启用状态
- * @param {string} serverName - 服务器名称
- * @param {string} toolName - 工具名称
- * @returns {Promise} - 切换结果
+ * Toggle a single tool's enabled state
+ * @param {string} serverName - Server name
+ * @param {string} toolName - Tool name
+ * @returns {Promise} - Toggle result
  */
 export const toggleMcpServerTool = async (serverName, toolName) => {
   return apiAdminPut(
@@ -115,7 +115,7 @@ export const toggleMcpServerTool = async (serverName, toolName) => {
 }
 
 // =============================================================================
-// === 导出为对象形式（兼容现有代码风格）===
+// === Export as an object (compatible with the existing code style) ===
 // =============================================================================
 
 export const mcpApi = {

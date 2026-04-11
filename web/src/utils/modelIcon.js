@@ -21,5 +21,5 @@ export const modelIcons = {
   openrouter: openrouterIcon,
   modelscope: modelscopeIcon,
   minimax: minimaxIcon,
-  default: defaultIcon // 添加默认图标
+  default: defaultIcon // Add default icon
 }

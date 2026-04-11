@@ -122,7 +122,7 @@ export function useAgentStreamHandler({
           threadId,
           currentAgentId: unref(currentAgentId)
         })
-        // 使用审批 composable 处理审批请求
+        // Use the approval composable to process the approval request
         return processApprovalInStream(chunk, threadId, unref(currentAgentId))
 
       case 'agent_state':
@@ -156,7 +156,7 @@ export function useAgentStreamHandler({
 
       case 'finished':
         streamSmoother?.flushThread(threadId)
-        // 先标记流式结束，但保持消息显示直到历史记录加载完成
+        // Mark the stream as finished first, but keep the message visible until history loading completes
         if (threadState) {
           threadState.isStreaming = false
           console.log(`${debugPrefix}[finished]`, {
@@ -180,7 +180,7 @@ export function useAgentStreamHandler({
 
       case 'interrupted':
         streamSmoother?.flushThread(threadId)
-        // 中断状态，刷新消息历史
+        // Interrupted state, refresh message history
         console.warn(`${debugPrefix}[interrupted]`, {
           threadId,
           message: chunkMessage,
@@ -189,7 +189,7 @@ export function useAgentStreamHandler({
         if (threadState) {
           threadState.isStreaming = false
         }
-        // 如果有 message 字段，显示提示（例如：敏感内容检测）
+        // If a message field exists, display it as a prompt (for example: sensitive content detection)
         if (chunkMessage) {
           message.info(chunkMessage)
         }

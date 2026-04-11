@@ -14,7 +14,7 @@
             class="preview-mode-btn"
             :class="{ active: htmlPreviewMode === 'render' }"
             @click="htmlPreviewMode = 'render'"
-            title="预览"
+            title="Preview"
           >
             <Globe :size="16" />
           </button>
@@ -22,7 +22,7 @@
             class="preview-mode-btn"
             :class="{ active: htmlPreviewMode === 'source' }"
             @click="htmlPreviewMode = 'source'"
-            title="源码"
+            title="Source code"
           >
             <Code2 :size="16" />
           </button>
@@ -31,7 +31,7 @@
           v-if="showDownload && file"
           class="modal-action-btn"
           @click="$emit('download', file)"
-          title="下载"
+          title="Download"
         >
           <Download :size="18" />
         </button>
@@ -39,11 +39,11 @@
           v-if="showFullscreen && file"
           class="modal-action-btn"
           @click="openFullscreenPreview"
-          title="全屏预览"
+          title="Fullscreen preview"
         >
           <Maximize2 :size="18" />
         </button>
-        <button v-if="showClose" class="modal-action-btn" @click="$emit('close')" title="关闭">
+        <button v-if="showClose" class="modal-action-btn" @click="$emit('close')" title="Close">
           <X :size="18" />
         </button>
       </div>
@@ -77,7 +77,7 @@
       </template>
       <template v-else-if="file?.supported === false">
         <div class="unsupported-preview">
-          {{ file?.message || '当前文件暂不支持预览，请下载后查看' }}
+          {{ file?.message || 'This file is not supported for preview. Please download it to view.' }}
         </div>
       </template>
       <template v-else>
@@ -103,7 +103,7 @@
               class="preview-mode-btn"
               :class="{ active: htmlPreviewMode === 'render' }"
               @click="htmlPreviewMode = 'render'"
-              title="预览"
+              title="Preview"
             >
               <Globe :size="16" />
             </button>
@@ -111,7 +111,7 @@
               class="preview-mode-btn"
               :class="{ active: htmlPreviewMode === 'source' }"
               @click="htmlPreviewMode = 'source'"
-              title="源码"
+              title="Source code"
             >
               <Code2 :size="16" />
             </button>
@@ -120,14 +120,14 @@
             v-if="showDownload && file"
             class="modal-action-btn fullscreen-action-btn"
             @click="$emit('download', file)"
-            title="下载"
+            title="Download"
           >
             <Download :size="18" />
           </button>
           <button
             class="modal-action-btn fullscreen-action-btn"
             @click="closeFullscreenPreview"
-            title="关闭"
+            title="Close"
           >
             <X :size="18" />
           </button>
@@ -165,7 +165,7 @@
             </template>
             <template v-else-if="file?.supported === false">
               <div class="unsupported-preview fullscreen-unsupported-preview">
-                {{ file?.message || '当前文件暂不支持预览，请下载后查看' }}
+                {{ file?.message || 'This file is not supported for preview. Please download it to view.' }}
               </div>
             </template>
             <template v-else>
@@ -282,7 +282,7 @@ const highlightedCodeContent = computed(() => {
     }
     return hljs.highlightAuto(content).value
   } catch (error) {
-    console.warn('代码高亮失败:', error)
+    console.warn('Code highlighting failed:', error)
     return escapeHtml(content)
   }
 })
@@ -491,7 +491,7 @@ onUnmounted(() => {
   min-height: calc(80vh - 40px);
   border: none;
   border-radius: 0px;
-  background: #fff; // HTML 内容通常需要白色背景以保证可读性
+  background: #fff; // HTML content usually needs a white background for readability
 }
 
 .unsupported-preview {

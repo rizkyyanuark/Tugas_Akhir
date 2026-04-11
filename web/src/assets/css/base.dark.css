@@ -1,4 +1,4 @@
-/* 深色模式 */
+/* Dark mode */
 :root.dark {
   --main-1000: #e1f6fb;
   --main-900: #c4eaf5;
@@ -19,7 +19,7 @@
   --main-1: #000102;
   --main-0: #000000;
 
-  /* 保留原有的 main 变量 */
+  /* Preserve the existing main variables */
   --main-color: #4a9fb8;
   --main-bright: #5faec2;
 
@@ -41,40 +41,40 @@
   --gray-10: #080808;
   --gray-0: #030303;
 
-  --color-success-10: #0f1810; /* 成功色-极深 */
-  --color-success-50: #162312; /* 成功色-最深 */
-  --color-success-100: #273921; /* 成功色-深 */
-  --color-success-500: #52c41a; /* 成功色-标准 */
-  --color-success-700: #73d13d; /* 成功色-浅 */
-  --color-success-900: #95de64; /* 成功色-最浅 */
+  --color-success-10: #0f1810; /* Success color - deepest */
+  --color-success-50: #162312; /* Success color - very deep */
+  --color-success-100: #273921; /* Success color - deep */
+  --color-success-500: #52c41a; /* Success color - standard */
+  --color-success-700: #73d13d; /* Success color - light */
+  --color-success-900: #95de64; /* Success color - lightest */
 
-  --color-error-10: #1a0a0b; /* 错误色-极深 */
-  --color-error-50: #2a1215; /* 错误色-最深 */
-  --color-error-100: #58181c; /* 错误色-深 */
-  --color-error-500: #ff4d4f; /* 错误色-标准 */
-  --color-error-700: #ff7875; /* 错误色-浅 */
-  --color-error-900: #ffa39e; /* 错误色-最浅 */
+  --color-error-10: #1a0a0b; /* Error color - deepest */
+  --color-error-50: #2a1215; /* Error color - very deep */
+  --color-error-100: #58181c; /* Error color - deep */
+  --color-error-500: #ff4d4f; /* Error color - standard */
+  --color-error-700: #ff7875; /* Error color - light */
+  --color-error-900: #ffa39e; /* Error color - lightest */
 
-  --color-warning-10: #1a1408; /* 警告色-极深 */
-  --color-warning-50: #2b2111; /* 警告色-最深 */
-  --color-warning-100: #614700; /* 警告色-深 */
-  --color-warning-500: #faad14; /* 警告色-标准 */
-  --color-warning-700: #ffc53d; /* 警告色-浅 */
-  --color-warning-900: #ffd666; /* 警告色-最浅 */
+  --color-warning-10: #1a1408; /* Warning color - deepest */
+  --color-warning-50: #2b2111; /* Warning color - very deep */
+  --color-warning-100: #614700; /* Warning color - deep */
+  --color-warning-500: #faad14; /* Warning color - standard */
+  --color-warning-700: #ffc53d; /* Warning color - light */
+  --color-warning-900: #ffd666; /* Warning color - lightest */
 
-  --color-info-10: #0c0d0d; /* 信息色-极深 */
-  --color-info-50: #111b26; /* 信息色-最深 */
-  --color-info-100: #111d2c; /* 信息色-深 */
-  --color-info-500: #3d8fff; /* 信息色-标准 */
-  --color-info-700: #40a9ff; /* 信息色-浅 */
-  --color-info-900: #69c0ff; /* 信息色-最浅 */
+  --color-info-10: #0c0d0d; /* Info color - deepest */
+  --color-info-50: #111b26; /* Info color - very deep */
+  --color-info-100: #111d2c; /* Info color - deep */
+  --color-info-500: #3d8fff; /* Info color - standard */
+  --color-info-700: #40a9ff; /* Info color - light */
+  --color-info-900: #69c0ff; /* Info color - lightest */
 
-  --color-accent-10: #081919; /* 强调色-极深 */
-  --color-accent-50: #0f2e2e; /* 强调色-最深 */
-  --color-accent-100: #164e63; /* 强调色-深 */
-  --color-accent-500: #13c2c2; /* 强调色-标准 */
-  --color-accent-700: #36cfc9; /* 强调色-浅 */
-  --color-accent-900: #5cdbd3; /* 强调色-最浅 */
+  --color-accent-10: #081919; /* Accent color - deepest */
+  --color-accent-50: #0f2e2e; /* Accent color - very deep */
+  --color-accent-100: #164e63; /* Accent color - deep */
+  --color-accent-500: #13c2c2; /* Accent color - standard */
+  --color-accent-700: #36cfc9; /* Accent color - light */
+  --color-accent-900: #5cdbd3; /* Accent color - lightest */
 
   --chart-palette-1: var(--main-300);
   --chart-palette-2: #3ea896;
@@ -116,13 +116,13 @@
   --light-5: rgba(0, 0, 0, 0.05);
   --light-0: rgba(0, 0, 0, 0);
 
-  /* Ant Design 兼容变量 - 深色模式 */
+  /* Ant Design compatible variables - dark mode */
   --color-bg-container: #1f1f1f;
   --color-bg-elevated: #262626;
   --color-text-secondary: rgba(255, 255, 255, 0.65);
   --color-text-tertiary: rgba(255, 255, 255, 0.45);
 
-  /* Shadow System - 深色模式阴影系统 */
+  /* Shadow System - dark mode shadow system */
   --shadow-0: rgba(255, 255, 255, 0.02);
   --shadow-1: rgba(255, 255, 255, 0.05);
   --shadow-2: rgba(255, 255, 255, 0.08);

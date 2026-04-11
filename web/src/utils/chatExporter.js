@@ -2,7 +2,7 @@ import { marked } from 'marked'
 import dayjs, { parseToShanghai } from '@/utils/time'
 import chatExportTemplate from './templates/chat-export-template.html?raw'
 
-// 统一的 Markdown 渲染配置
+// Unified Markdown rendering configuration
 marked.setOptions({
   gfm: true,
   breaks: true,
@@ -12,13 +12,13 @@ marked.setOptions({
 
 export class ChatExporter {
   /**
-   * 导出聊天对话为 HTML 文件
-   * @param {Object} options 导出选项
+   * Export a chat conversation as an HTML file
+   * @param {Object} options Export options
    */
   static async exportToHTML(options = {}) {
     const {
-      chatTitle = '新对话',
-      agentName = '智能助手',
+      chatTitle = 'New Conversation',
+      agentName = 'Smart Assistant',
       agentDescription = '',
       messages = []
     } = options || {}
@@ -49,20 +49,20 @@ export class ChatExporter {
 
       return { success: true, filename }
     } catch (error) {
-      console.error('导出对话失败:', error)
-      throw new Error(`导出失败: ${error.message}`)
+      console.error('Failed to export conversation:', error)
+      throw new Error(`Export failed: ${error.message}`)
     }
   }
 
   /**
-   * 生成完整 HTML 内容
+   * Generate the full HTML content
    */
   static generateHTML(options) {
     const { chatTitle, agentName, agentDescription, messages } = options
 
     const flattenedMessages = this.flattenMessages(messages)
     if (flattenedMessages.length === 0) {
-      throw new Error('没有可导出的对话内容')
+      throw new Error('There is no conversation content to export')
     }
 
     const messagesHTML = this.generateMessagesHTML(flattenedMessages, agentName)
@@ -71,13 +71,13 @@ export class ChatExporter {
       chatTitle,
       agentName,
       agentDescription,
-      exportTime: dayjs().tz('Asia/Shanghai').format('YYYY年MM月DD日 HH:mm:ss'),
+      exportTime: dayjs().tz('Asia/Shanghai').format('YYYY-MM-DD HH:mm:ss'),
       messagesHTML
     })
   }
 
   /**
-   * 扁平化消息列表
+  * Flatten the message list
    */
   static flattenMessages(messages = []) {
     const result = []
@@ -105,7 +105,7 @@ export class ChatExporter {
         return
       }
 
-      // 支持直接传入消息扁平数组
+      // Support passing a flat message array directly
       if (item.type || item.role || item.content) {
         result.push(item)
       }
@@ -115,14 +115,14 @@ export class ChatExporter {
   }
 
   /**
-   * 生成对话消息的 HTML 片段
+  * Generate HTML fragments for conversation messages
    */
   static generateMessagesHTML(messages, agentName) {
     return messages
       .map((msg) => {
         const isUserMessage = ['human', 'user'].includes(msg?.type) || msg?.role === 'user'
         const avatar = isUserMessage ? '👤' : '🤖'
-        const senderLabel = isUserMessage ? '用户' : agentName || '智能助手'
+        const senderLabel = isUserMessage ? 'User' : agentName || 'Smart Assistant'
         const messageClass = isUserMessage ? 'user-message' : 'ai-message'
         const timestampRaw = this.getMessageTimestamp(msg)
         const timestamp = this.escapeHtml(this.formatTimestamp(timestampRaw))
@@ -146,7 +146,7 @@ export class ChatExporter {
             <span class="time">${timestamp}</span>
           </div>
           <div class="message-content">
-            ${bodySegments.length > 0 ? bodySegments.join('') : '<div class="empty-message">（此消息暂无可展示内容）</div>'}
+            ${bodySegments.length > 0 ? bodySegments.join('') : '<div class="empty-message">(No content to display for this message yet)</div>'}
           </div>
         </div>
       `
@@ -155,7 +155,7 @@ export class ChatExporter {
   }
 
   /**
-   * 拆分消息内容与推理文本
+  * Split message content from reasoning text
    */
   static extractMessageContent(msg = {}) {
     const content = this.normalizeContent(msg?.content)
@@ -178,7 +178,7 @@ export class ChatExporter {
   }
 
   /**
-   * 标准化消息内容
+  * Normalize message content
    */
   static normalizeContent(raw) {
     if (raw == null) return ''
@@ -214,7 +214,7 @@ export class ChatExporter {
   }
 
   /**
-   * 生成推理过程 HTML
+  * Generate reasoning HTML
    */
   static generateReasoningHTML(reasoning) {
     if (!reasoning) return ''
@@ -224,7 +224,7 @@ export class ChatExporter {
 
     return `
       <details class="reasoning-section">
-        <summary class="reasoning-summary">💭 思考过程</summary>
+        <summary class="reasoning-summary">💭 Reasoning process</summary>
         <div class="reasoning-content markdown-body">
           ${reasoningHTML}
         </div>
@@ -233,7 +233,7 @@ export class ChatExporter {
   }
 
   /**
-   * 生成工具调用 HTML
+  * Generate tool call HTML
    */
   static generateToolCallsHTML(msg = {}) {
     const toolCalls = this.normalizeToolCalls(msg)
@@ -241,13 +241,13 @@ export class ChatExporter {
 
     const sections = toolCalls
       .map((toolCall) => {
-        const toolName = this.escapeHtml(toolCall?.function?.name || toolCall?.name || '工具调用')
+        const toolName = this.escapeHtml(toolCall?.function?.name || toolCall?.name || 'Tool call')
         const argsSource = toolCall?.args ?? toolCall?.function?.arguments
         const args = this.stringifyToolArgs(argsSource)
         const result = this.normalizeToolResult(toolCall?.tool_call_result?.content)
         const isFinished = toolCall?.status === 'success'
         const stateClass = isFinished ? 'done' : 'pending'
-        const stateLabel = isFinished ? '已完成' : '执行中'
+        const stateLabel = isFinished ? 'Completed' : 'Running'
 
         return `
         <details class="tool-call" ${isFinished ? '' : 'open'}>
@@ -260,7 +260,7 @@ export class ChatExporter {
               args
                 ? `
               <div class="tool-call-args">
-                <strong>参数</strong>
+                <strong>Arguments</strong>
                 <pre>${this.escapeHtml(args)}</pre>
               </div>
             `
@@ -270,7 +270,7 @@ export class ChatExporter {
               isFinished && result
                 ? `
               <div class="tool-call-result">
-                <strong>结果</strong>
+                <strong>Result</strong>
                 <pre>${this.escapeHtml(result)}</pre>
               </div>
             `
@@ -353,20 +353,20 @@ export class ChatExporter {
   }
 
   /**
-   * 统一的 Markdown 渲染，失败时回退到简单换行
+  * Unified Markdown rendering; falls back to simple line breaks on failure
    */
   static renderMarkdown(content) {
     if (!content) return ''
     try {
       return marked.parse(content).trim()
     } catch (error) {
-      console.warn('Markdown 渲染失败，回退为纯文本:', error)
+      console.warn('Markdown rendering failed, falling back to plain text:', error)
       return this.escapeHtml(content).replace(/\n/g, '<br>')
     }
   }
 
   /**
-   * HTML 转义
+  * Escape HTML
    */
   static escapeHtml(value) {
     if (value == null) return ''
@@ -379,7 +379,7 @@ export class ChatExporter {
   }
 
   /**
-   * 提取消息时间戳
+  * Extract message timestamp
    */
   static getMessageTimestamp(msg = {}) {
     const candidates = [
@@ -398,32 +398,32 @@ export class ChatExporter {
   }
 
   /**
-   * 格式化时间戳
+  * Format timestamp
    */
   static formatTimestamp(raw) {
     const fallback = dayjs().tz('Asia/Shanghai')
 
     if (raw instanceof Date) {
-      return dayjs(raw).tz('Asia/Shanghai').format('YYYY年MM月DD日 HH:mm:ss')
+      return dayjs(raw).tz('Asia/Shanghai').format('YYYY-MM-DD HH:mm:ss')
     }
 
     if (raw || raw === 0) {
       if (typeof raw === 'number') {
         const value = raw < 1e12 ? raw * 1000 : raw
-        return dayjs(value).tz('Asia/Shanghai').format('YYYY年MM月DD日 HH:mm:ss')
+        return dayjs(value).tz('Asia/Shanghai').format('YYYY-MM-DD HH:mm:ss')
       }
 
       const parsed = parseToShanghai(raw)
       if (parsed) {
-        return parsed.format('YYYY年MM月DD日 HH:mm:ss')
+        return parsed.format('YYYY-MM-DD HH:mm:ss')
       }
     }
 
-    return fallback.format('YYYY年MM月DD日 HH:mm:ss')
+    return fallback.format('YYYY-MM-DD HH:mm:ss')
   }
 
   /**
-   * 生成完整 HTML 文档骨架
+  * Generate the complete HTML document skeleton
    */
   static generateHTMLTemplate(options) {
     const { chatTitle, agentName, agentDescription, exportTime, messagesHTML } = options
@@ -433,7 +433,7 @@ export class ChatExporter {
     const safeDescription = this.escapeHtml(agentDescription).replace(/\n/g, '<br>')
     const safeExportTime = this.escapeHtml(exportTime)
 
-    const descriptionBlock = agentDescription ? `<br><strong>描述:</strong> ${safeDescription}` : ''
+    const descriptionBlock = agentDescription ? `<br><strong>Description:</strong> ${safeDescription}` : ''
 
     return chatExportTemplate
       .replace(/{{TITLE}}/g, safeTitle)

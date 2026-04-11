@@ -1,13 +1,13 @@
 <template>
   <div class="chunk-params-config">
     <div class="params-info">
-      <p>调整分块参数可以控制文本的切分方式，影响检索质量和文档加载效率。</p>
+      <p>Adjusting chunk parameters controls how text is split, affecting retrieval quality and document loading efficiency.</p>
     </div>
     <a-form :model="localParams" name="chunkConfig" autocomplete="off" layout="vertical">
       <a-form-item v-if="showPreset" name="chunk_preset_id">
         <template #label>
           <span class="chunk-preset-label">
-            分块策略
+            Chunking strategy
             <a-tooltip :title="presetDescription">
               <QuestionCircleOutlined class="chunk-preset-help-icon" />
             </a-tooltip>
@@ -18,9 +18,9 @@
           :options="presetOptions"
           style="width: 100%"
         />
-        <p class="param-description">
-          预设策略对齐 RAGFlow：General、QA、Book、Laws。
-          <span v-if="allowPresetFollowDefault">留空时沿用知识库默认策略。</span>
+          <p class="param-description">
+          Preset strategies align with RAGFlow: General, QA, Book, Laws.
+          <span v-if="allowPresetFollowDefault">Leave blank to use the knowledge base default strategy.</span>
         </p>
       </a-form-item>
 
@@ -32,7 +32,7 @@
             :max="10000"
             style="width: 100%"
           />
-          <p class="param-description">每个文本片段的最大字符数</p>
+          <p class="param-description">Maximum number of characters per text chunk</p>
         </a-form-item>
         <a-form-item label="Chunk Overlap" name="chunk_overlap">
           <a-input-number
@@ -41,21 +41,21 @@
             :max="1000"
             style="width: 100%"
           />
-          <p class="param-description">相邻文本片段间的重叠字符数</p>
+          <p class="param-description">Number of overlapping characters between adjacent text chunks</p>
         </a-form-item>
       </div>
       <a-form-item
         v-if="showQaSplit"
         class="qa-separator-item"
-        label="分隔符 (Separator)"
+        label="Separator"
         name="qa_separator"
       >
         <a-input
           v-model:value="localParams.qa_separator"
-          placeholder="输入分隔符，例如 \n\n\n 或 ---"
+          placeholder="Enter a separator, for example \n\n\n or ---"
           style="width: 100%"
         />
-        <p class="param-description">支持 \n、\t 等转义字符。留空则不启用预分割</p>
+        <p class="param-description">Supports escape characters such as \n and \t. Leave blank to disable pre-splitting.</p>
       </a-form-item>
     </a-form>
   </div>
@@ -97,8 +97,8 @@ const props = defineProps({
   }
 })
 
-// 使用 computed 包装，直接返回原始对象供表单修改
-// 表单修改会直接作用于 tempChunkParams（父组件的ref），实现双向绑定
+// Wrap with computed and return the original object directly for form edits
+// Form changes apply directly to tempChunkParams (the parent ref) for two-way binding
 const localParams = computed(() => props.tempChunkParams)
 
 const presetOptions = computed(() => {
@@ -108,7 +108,7 @@ const presetOptions = computed(() => {
   if (props.allowPresetFollowDefault) {
     options.push({
       value: '',
-      label: `沿用知识库默认（${defaultPresetLabel}）`
+      label: `Use knowledge base default (${defaultPresetLabel})`
     })
   }
 

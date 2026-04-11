@@ -1,7 +1,7 @@
 <template>
   <div class="agent-view">
     <div class="agent-view-body">
-      <!-- 中间内容区域 -->
+      <!-- Main content area -->
       <div class="content">
         <AgentChatComponent
           ref="chatComponentRef"
@@ -18,7 +18,7 @@
             >
               <Settings2 size="18" />
               <span class="hide-text">
-                {{ isLoadingConfig ? '加载中...' : selectedConfigSummary?.name || '配置' }}
+                {{ isLoadingConfig ? 'Loading...' : selectedConfigSummary?.name || 'Config' }}
               </span>
             </button>
           </template>
@@ -37,20 +37,20 @@
         </AgentChatComponent>
       </div>
 
-      <!-- 配置侧边栏 -->
+      <!-- Configuration sidebar -->
       <AgentConfigSidebar
         :isOpen="chatUIStore.isConfigSidebarOpen"
         @close="() => (chatUIStore.isConfigSidebarOpen = false)"
       />
 
-      <!-- 反馈模态框 -->
+      <!-- Feedback modal -->
       <FeedbackModalComponent
         v-if="userStore.isAdmin"
         ref="feedbackModal"
         :agent-id="selectedAgentId"
       />
 
-      <!-- 自定义更多菜单 -->
+      <!-- Custom more menu -->
       <Teleport to="body">
         <Transition name="menu-fade">
           <div
@@ -64,11 +64,11 @@
           >
             <div class="menu-item" @click="handleShareChat">
               <ShareAltOutlined class="menu-icon" />
-              <span class="menu-text">分享对话</span>
+              <span class="menu-text">Share Chat</span>
             </div>
             <div class="menu-item" @click="handleFeedback">
               <MessageOutlined class="menu-icon" />
-              <span class="menu-text">查看反馈</span>
+              <span class="menu-text">View Feedback</span>
             </div>
           </div>
         </Transition>
@@ -95,7 +95,7 @@ import { onClickOutside } from '@vueuse/core'
 
 import { storeToRefs } from 'pinia'
 
-// 组件引用
+// Component references
 const feedbackModal = ref(null)
 const chatComponentRef = ref(null)
 
@@ -106,7 +106,7 @@ const chatUIStore = useChatUIStore()
 const route = useRoute()
 const router = useRouter()
 
-// 从 agentStore 中获取响应式状态
+// Get reactive state from agentStore
 const { selectedAgentId, defaultAgentId, selectedConfigSummary, isLoadingConfig } =
   storeToRefs(agentStore)
 
@@ -175,17 +175,17 @@ const openConfigSidebar = () => {
   chatUIStore.isConfigSidebarOpen = !chatUIStore.isConfigSidebarOpen
 }
 
-// 更多菜单相关
+// More menu related
 const moreMenuRef = ref(null)
 const moreButtonRef = ref(null)
 
 const toggleMoreMenu = (event) => {
   event.stopPropagation()
-  // 切换状态，而不是只打开
+  // Toggle state instead of only opening
   chatUIStore.moreMenuOpen = !chatUIStore.moreMenuOpen
 
   if (chatUIStore.moreMenuOpen) {
-    // 只在打开时计算位置
+    // Only calculate position when opening
     const rect = event.currentTarget.getBoundingClientRect()
     chatUIStore.openMoreMenu(rect.right - 110, rect.bottom + 8)
   }
@@ -195,7 +195,7 @@ const closeMoreMenu = () => {
   chatUIStore.closeMoreMenu()
 }
 
-// 使用 VueUse 的 onClickOutside
+// Use VueUse's onClickOutside
 onClickOutside(
   moreMenuRef,
   () => {
@@ -210,17 +210,17 @@ const handleShareChat = async () => {
   closeMoreMenu()
 
   try {
-    // 从聊天组件获取导出数据
+    // Get export data from chat component
     const exportData = chatComponentRef.value?.getExportPayload?.()
 
     console.log('[AgentView] Export data:', exportData)
 
     if (!exportData) {
-      message.warning('当前没有可导出的对话内容')
+      message.warning('No chat content available for export')
       return
     }
 
-    // 检查是否有实际的消息内容
+    // Check if there are actual message contents
     const hasMessages = exportData.messages && exportData.messages.length > 0
     const hasOngoingMessages = exportData.onGoingMessages && exportData.onGoingMessages.length > 0
 
@@ -229,16 +229,16 @@ const handleShareChat = async () => {
         messages: exportData.messages,
         onGoingMessages: exportData.onGoingMessages
       })
-      message.warning('当前对话暂无内容可导出，请先进行对话')
+      message.warning('No content to export yet. Please start a conversation first.')
       return
     }
 
     const result = await ChatExporter.exportToHTML(exportData)
-    message.success(`对话已导出为HTML文件: ${result.filename}`)
+    message.success(`Chat exported to HTML file: ${result.filename}`)
   } catch (error) {
     console.error('[AgentView] Export error:', error)
-    if (error?.message?.includes('没有可导出的对话内容')) {
-      message.warning('当前对话暂无内容可导出，请先进行对话')
+    if (error?.message?.includes('No chat content available')) {
+      message.warning('No content to export yet. Please start a conversation first.')
       return
     }
     handleChatError(error, 'export')
@@ -282,7 +282,7 @@ const handleFeedback = () => {
   overflow: hidden;
 }
 
-// 自定义更多菜单样式
+// Custom more menu styles
 .more-popup-menu {
   position: fixed;
   min-width: 100px;
@@ -341,7 +341,7 @@ const handleFeedback = () => {
   }
 }
 
-// 菜单淡入淡出动画
+// Menu fade-in/fade-out animation
 .menu-fade-enter-active {
   animation: menuSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -372,7 +372,7 @@ const handleFeedback = () => {
   }
 }
 
-// 响应式优化
+// Responsive optimization
 @media (max-width: 520px) {
   .more-popup-menu {
     box-shadow:

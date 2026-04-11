@@ -1,6 +1,6 @@
 """
-用户ID生成工具
-提供用户名验证和user_id自动生成功能
+User ID generation utilities
+Provides username validation and user_id auto-generation functionality
 """
 
 import re
@@ -10,69 +10,69 @@ from pypinyin import lazy_pinyin, Style
 
 def to_pinyin(text: str) -> str:
     """
-    将中文转换为拼音
-    使用pypinyin库进行转换
+    Converts Chinese text to Pinyin
+    Uses pypinyin library for conversion
     """
-    # 使用pypinyin进行转换
+    # Use pypinyin for conversion
     pinyin_list = lazy_pinyin(text, style=Style.NORMAL)
     return "".join(pinyin_list)
 
 
 def validate_username(username: str) -> tuple[bool, str]:
     """
-    验证用户名格式
+    Validates username format
 
     Args:
-        username: 用户名
+        username: Username string
 
     Returns:
-        Tuple[bool, str]: (是否有效, 错误信息)
+        Tuple[bool, str]: (is_valid, error_message)
     """
     if not username:
-        return False, "用户名不能为空"
+        return False, "Username cannot be empty"
 
     if len(username) < 2:
-        return False, "用户名长度不能少于2个字符"
+        return False, "Username must be at least 2 characters long"
 
     if len(username) > 20:
-        return False, "用户名长度不能超过20个字符"
+        return False, "Username cannot exceed 20 characters"
 
-    # 检查是否包含不允许的字符
-    # 允许中文、英文、数字、下划线
+    # Check for disallowed characters
+    # Allows Chinese, English, numbers, and underscores
     if not re.match(r"^[\u4e00-\u9fa5a-zA-Z0-9_]+$", username):
-        return False, "用户名只能包含中文、英文、数字和下划线"
+        return False, "Username can only contain Chinese, English, numbers, and underscores"
 
     return True, ""
 
 
 def generate_user_id(username: str) -> str:
     """
-    根据用户名生成user_id
+    Generates user_id based on username
 
     Args:
-        username: 用户名
+        username: Username string
 
     Returns:
-        str: 生成的user_id
+        str: Generated user_id
     """
-    # 1. 基本清理
+    # 1. Basic cleanup
     username = username.strip()
 
-    # 2. 转换为拼音（如果包含中文）
+    # 2. Convert to pinyin (if contains Chinese)
     user_id = to_pinyin(username)
 
-    # 3. 处理特殊字符，只保留字母、数字和下划线
+    # 3. Handle special characters, keeping only alphanumeric and underscores
     user_id = re.sub(r"[^a-zA-Z0-9_]", "", user_id)
 
-    # 4. 确保不以数字开头
+    # 4. Ensure it doesn't start with a digit
     if user_id and user_id[0].isdigit():
         user_id = "u" + user_id
 
-    # 5. 如果为空或太短，使用默认前缀
+    # 5. Fallback if empty or too short
     if len(user_id) < 2:
         user_id = "user" + str(hash(username) % 10000).zfill(4)
 
-    # 6. 长度限制
+    # 6. Length limit
     if len(user_id) > 20:
         user_id = user_id[:20]
 
@@ -81,22 +81,22 @@ def generate_user_id(username: str) -> str:
 
 def generate_unique_user_id(username: str, existing_user_ids: list[str]) -> str:
     """
-    生成唯一的user_id，如果重复则添加数字后缀
+    Generates a unique user_id, adding a numeric suffix if duplicated
 
     Args:
-        username: 用户名
-        existing_user_ids: 已存在的user_id列表
+        username: Username string
+        existing_user_ids: List of existing user_ids
 
     Returns:
-        str: 唯一的user_id
+        str: Unique user_id
     """
     base_user_id = generate_user_id(username)
 
-    # 如果不重复，直接返回
+    # If no conflict, return directly
     if base_user_id not in existing_user_ids:
         return base_user_id
 
-    # 如果重复，添加数字后缀
+    # Add numeric suffix if conflict exists
     counter = 1
     while True:
         candidate = f"{base_user_id}{counter}"
@@ -104,9 +104,9 @@ def generate_unique_user_id(username: str, existing_user_ids: list[str]) -> str:
             return candidate
         counter += 1
 
-        # 防止无限循环
+        # Prevent infinite loop
         if counter > 9999:
-            # 使用时间戳作为后缀
+            # Use timestamp as fallback suffix
             import time
 
             candidate = f"{base_user_id}{int(time.time()) % 10000}"
@@ -115,21 +115,21 @@ def generate_unique_user_id(username: str, existing_user_ids: list[str]) -> str:
 
 def is_valid_phone_number(phone: str) -> bool:
     """
-    验证手机号格式（支持中国大陆手机号）
+    Validates phone number format (supports China mainland format)
 
     Args:
-        phone: 手机号字符串
+        phone: Phone number string
 
     Returns:
-        bool: 是否为有效手机号
+        bool: True if valid
     """
     if not phone:
         return False
 
-    # 移除空格和特殊字符
+    # Remove spaces and special characters
     phone = re.sub(r"[\s\-\(\)]", "", phone)
 
-    # 中国大陆手机号格式：1开头，第二位是3-9，总共11位
+    # China mainland format: starts with 1, second digit 3-9, 11 digits total
     pattern = r"^1[3-9]\d{9}$"
 
     return bool(re.match(pattern, phone))
@@ -137,21 +137,21 @@ def is_valid_phone_number(phone: str) -> bool:
 
 def normalize_phone_number(phone: str) -> str:
     """
-    标准化手机号格式
+    Normalizes phone number format
 
     Args:
-        phone: 原始手机号
+        phone: Raw phone number
 
     Returns:
-        str: 标准化后的手机号
+        str: Normalized phone number
     """
     if not phone:
         return ""
 
-    # 移除所有非数字字符
+    # Remove all non-numeric characters
     phone = re.sub(r"\D", "", phone)
 
-    # 如果是中国大陆手机号，确保格式正确
+    # Ensure correct format for China mainland numbers
     if len(phone) == 11 and phone.startswith("1"):
         return phone
 

@@ -1,22 +1,22 @@
 <template>
   <div class="home-container">
-    <!-- 加载中状态 -->
+    <!-- Loading state -->
     <div v-if="isLoading" class="loading-container">
       <a-spin size="large" />
-      <p class="loading-text">Menghubungkan ke server...</p>
+      <p class="loading-text">Connecting to server...</p>
     </div>
 
-    <!-- 错误状态 -->
+    <!-- Error state -->
     <div v-else-if="error" class="error-container">
       <a-result status="error" :title="error.title" :sub-title="error.message">
         <template #extra>
-          <a-button type="primary" @click="retryLoad">Coba Lagi</a-button>
+          <a-button type="primary" @click="retryLoad">Try Again</a-button>
           <a-button :href="faqUrl" target="_blank" rel="noopener noreferrer">FAQ</a-button>
         </template>
       </a-result>
     </div>
 
-    <!-- 正常内容 -->
+    <!-- Main content -->
     <template v-else>
       <div class="hero-section">
         <div class="glass-header">
@@ -68,9 +68,9 @@
             </Transition>
             <!-- <p class="description">{{ infoStore.branding.description }}</p> -->
             <div class="hero-actions">
-              <button class="button-base primary" @click="goToChat">Mulai Chat</button>
+              <button class="button-base primary" @click="goToChat">Start Chat</button>
               <router-link class="doc-text-link" to="/dashboard"
-                >Lihat Dashboard</router-link
+                >View Dashboard</router-link
               >
             </div>
           </div>
@@ -151,7 +151,7 @@ const agentStore = useAgentStore()
 const repoUrl = '/dashboard'
 const faqUrl = '/agent'
 
-// 加载状态
+// Loading state
 const isLoading = ref(true)
 const error = ref(null)
 const typedBadge = ref('')
@@ -174,7 +174,7 @@ const formatStars = (count) => {
  * show a project-relevant badge.
  */
 const getProjectBadge = () => {
-  return 'Academic Knowledge Graph — Informatika UNESA'
+  return 'Academic Knowledge Graph — UNESA Informatics'
 }
 
 const subtitleIndex = ref(0)
@@ -270,7 +270,7 @@ const fetchGithubStars = async () => {
 const getHeroBadgeText = (starsCount = null) => {
   const realtimeStars = formatStars(starsCount)
   if (realtimeStars) {
-    return `已获得 ${realtimeStars} GitHub Stars`
+    return `${realtimeStars} GitHub Stars`
   }
 
   const features = Array.isArray(infoStore.features) ? infoStore.features : []
@@ -324,12 +324,12 @@ const checkHealth = async () => {
   try {
     const response = await healthApi.checkHealth()
     if (response.status !== 'ok') {
-      throw new Error('服务不可用')
+      throw new Error('Service unavailable')
     }
   } catch (e) {
     error.value = {
-      title: '服务连接失败',
-      message: '后端服务无法响应，请检查服务是否正常运行'
+      title: 'Service Connection Failed',
+      message: 'Backend service is not responding. Please check if the service is running.'
     }
     throw e
   }
@@ -340,15 +340,15 @@ const loadData = async () => {
   error.value = null
 
   try {
-    // 先检查健康状态
+    // Check health status first
     await checkHealth()
-    // 健康检查通过后加载配置
+    // Load configuration after health check passes
     await infoStore.loadInfoConfig()
     startSubtitleCarousel()
     // Use project badge instead of GitHub stars
     startBadgeTyping(null)
   } catch (e) {
-    console.error('加载失败:', e)
+    console.error('Loading failed:', e)
     stopBadgeTyping()
     stopSubtitleCarousel()
     stopStarsFetch()
@@ -363,25 +363,25 @@ const retryLoad = () => {
 }
 
 const goToChat = async () => {
-  // 检查用户是否登录
+  // Check if user is logged in
   if (!userStore.isLoggedIn) {
-    // 登录后应该跳转到默认智能体而不是/agent
-    sessionStorage.setItem('redirect', '/') // 设置为首页，登录后会通过路由守卫处理重定向
+    // After login, should redirect to default agent instead of /agent
+    sessionStorage.setItem('redirect', '/') // Set to home page, redirect handled by route guard after login
     router.push('/login')
     return
   }
 
-  // 根据用户角色进行跳转
+  // Redirect based on user role
   if (userStore.isAdmin) {
-    // 管理员用户跳转到聊天页面
+    // Admin users redirect to chat page
     await agentStore.initialize()
     router.push('/agent')
     return
   }
 
-  // 普通用户跳转到默认智能体
+  // Regular users redirect to default agent
   try {
-    // 获取默认智能体
+    // Get default agent
     const defaultAgent = agentStore.defaultAgent
     if (defaultAgent?.id) {
       router.push(`/agent/${defaultAgent.id}`)
@@ -389,13 +389,13 @@ const goToChat = async () => {
       router.push('/agent')
     }
   } catch (error) {
-    console.error('跳转到智能体页面失败:', error)
+    console.error('Failed to navigate to agent page:', error)
     router.push('/')
   }
 }
 
 onMounted(() => {
-  // 加载数据
+  // Load data
   loadData()
 })
 
@@ -486,7 +486,7 @@ const actionLinks = computed(() => {
   overflow-x: hidden;
 }
 
-// 加载中状态
+// Loading state
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -501,7 +501,7 @@ const actionLinks = computed(() => {
   }
 }
 
-// 错误状态
+// Error state
 .error-container {
   display: flex;
   align-items: center;
@@ -620,7 +620,7 @@ const actionLinks = computed(() => {
     font-weight: 600;
   }
 
-  // 暗色模式样式
+  // Dark mode styles
   :global(.dark) & {
     color: var(--gray-400);
 

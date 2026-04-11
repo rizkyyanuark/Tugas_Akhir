@@ -23,9 +23,9 @@ export function useAgentMentionConfig({
       files.push(entry)
     }
 
-    // 处理 files - 兼容字典格式 {"/path/file": {content: [...]}} 和旧数组格式
+    // Handle files - support both dictionary format {"/path/file": {content: [...]}} and the legacy array format
     if (typeof rawFiles === 'object' && !Array.isArray(rawFiles) && rawFiles !== null) {
-      // 新格式：字典格式 {"/attachments/xxx/file.md": {...}}
+      // New format: dictionary format {"/attachments/xxx/file.md": {...}}
       Object.entries(rawFiles).forEach(([filePath, fileData]) => {
         pushFile({
           path: filePath,
@@ -33,7 +33,7 @@ export function useAgentMentionConfig({
         })
       })
     } else if (Array.isArray(rawFiles)) {
-      // 旧格式：数组格式
+      // Legacy format: array format
       rawFiles.forEach((item) => {
         if (typeof item === 'object' && item !== null) {
           Object.entries(item).forEach(([filePath, fileData]) => {

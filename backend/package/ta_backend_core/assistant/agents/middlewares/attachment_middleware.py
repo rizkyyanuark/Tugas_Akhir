@@ -34,7 +34,7 @@ def _build_attachment_prompt(uploads: Sequence[dict]) -> str | None:
         path = upload.get("path")
         if not isinstance(path, str) or not path.strip():
             continue
-        file_name = upload.get("file_name", "未知文件")
+            file_name = upload.get("file_name", "unknown file")
         valid_uploads.append((str(file_name), path))
 
     if not valid_uploads:
@@ -42,11 +42,11 @@ def _build_attachment_prompt(uploads: Sequence[dict]) -> str | None:
 
     upload_infos = [f"- {file_name}: {path}" for file_name, path in valid_uploads]
     lines = [
-        "用户上传了以下文件：",
+        "The user uploaded the following files:",
         "",
         *upload_infos,
         "",
-        "请优先使用 `read_file` 工具读取这些路径中的文件内容，再回答用户问题。",
+        "Please use the `read_file` tool to read files at these paths before answering the user's questions.",
     ]
     return "\n".join(lines)
 

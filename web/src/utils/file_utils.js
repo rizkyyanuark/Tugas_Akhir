@@ -1,4 +1,4 @@
-// 文件相关工具函数
+// File utility helpers
 import {
   FileTextFilled,
   FileMarkdownFilled,
@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons-vue'
 import { formatRelative, parseToShanghai } from '@/utils/time'
 
-// 根据文件扩展名获取文件图标
+// Get a file icon by extension
 export const getFileIcon = (filename) => {
   if (!filename) return FileUnknownFilled
 
@@ -24,32 +24,32 @@ export const getFileIcon = (filename) => {
   const extension = filename.toLowerCase().split('.').pop()
 
   const iconMap = {
-    // 文本文件
+    // Text files
     txt: FileTextFilled,
     text: FileTextFilled,
     log: FileTextFilled,
 
-    // Markdown文件
+    // Markdown files
     md: FileMarkdownFilled,
     markdown: FileMarkdownFilled,
 
-    // PDF文件
+    // PDF files
     pdf: FilePdfFilled,
 
-    // Word文档
+    // Word documents
     doc: FileWordFilled,
     docx: FileWordFilled,
 
-    // Excel文档
+    // Excel documents
     xls: FileExcelFilled,
     xlsx: FileExcelFilled,
     csv: FileExcelFilled,
 
-    // PPT文档
+    // PowerPoint documents
     ppt: FilePptFilled,
     pptx: FilePptFilled,
 
-    // 图片文件
+    // Image files
     jpg: FileImageFilled,
     jpeg: FileImageFilled,
     png: FileImageFilled,
@@ -58,7 +58,7 @@ export const getFileIcon = (filename) => {
     svg: FileImageFilled,
     webp: FileImageFilled,
 
-    // HTML文件
+    // HTML files
     html: FileTextFilled,
     htm: FileTextFilled
   }
@@ -66,7 +66,7 @@ export const getFileIcon = (filename) => {
   return iconMap[extension] || FileUnknownFilled
 }
 
-// 根据文件扩展名获取文件图标颜色
+// Get a file icon color by extension
 export const getFileIconColor = (filename) => {
   if (!filename) return '#8c8c8c'
 
@@ -78,32 +78,32 @@ export const getFileIconColor = (filename) => {
   const extension = filename.toLowerCase().split('.').pop()
 
   const colorMap = {
-    // 文本文件 - 蓝色
+    // Text files - blue
     txt: '#1890ff',
     text: '#1890ff',
     log: '#1890ff',
 
-    // Markdown文件 - 深灰色
+    // Markdown files - dark gray
     md: '#595959',
     markdown: '#595959',
 
-    // PDF文件 - 红色
+    // PDF files - red
     pdf: '#ff4d4f',
 
-    // Word文档 - 深蓝色
+    // Word documents - dark blue
     doc: '#2f54eb',
     docx: '#2f54eb',
 
-    // Excel文档 - 绿色
+    // Excel documents - green
     xls: '#52c41a',
     xlsx: '#52c41a',
     csv: '#52c41a',
 
-    // PPT文档 - 橙色
+    // PowerPoint documents - orange
     ppt: '#f6720d',
     pptx: '#f6720d',
 
-    // 图片文件 - 紫色
+    // Image files - purple
     jpg: '#722ed1',
     jpeg: '#722ed1',
     png: '#722ed1',
@@ -112,7 +112,7 @@ export const getFileIconColor = (filename) => {
     svg: '#722ed1',
     webp: '#722ed1',
 
-    // HTML文件 - 橙色
+    // HTML files - orange
     html: '#fa8c16',
     htm: '#fa8c16'
   }
@@ -123,25 +123,25 @@ export const getFileIconColor = (filename) => {
 // Format relative time with CST baseline
 export const formatRelativeTime = (value) => formatRelative(value)
 
-// 格式化标准时间
+// Format standard time
 export const formatStandardTime = (value) => {
   const parsed = parseToShanghai(value)
   if (!parsed) return '-'
-  return parsed.format('YYYY年MM月DD日 HH:mm:ss')
+  return parsed.format('YYYY-MM-DD HH:mm:ss')
 }
 
-// 获取状态文本
+// Get status text
 export const getStatusText = (status) => {
   const statusMap = {
-    done: '处理完成',
-    failed: '处理失败',
-    processing: '处理中',
-    waiting: '等待处理'
+    done: 'Completed',
+    failed: 'Failed',
+    processing: 'Processing',
+    waiting: 'Waiting'
   }
   return statusMap[status] || status
 }
 
-// 格式化文件大小
+// Format file size
 export const formatFileSize = (bytes) => {
   if (bytes === 0 || bytes === '0') return '0 B'
   if (!bytes) return '-'

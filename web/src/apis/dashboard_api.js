@@ -1,20 +1,20 @@
 import { apiAdminGet } from './base'
 
 /**
- * Dashboard API模块
- * 用于管理员查看所有用户的对话记录
+ * Dashboard API module
+ * Used by administrators to view conversation records for all users
  */
 
 export const dashboardApi = {
   /**
-   * 获取所有对话记录
-   * @param {Object} params - 查询参数
-   * @param {string} params.user_id - 用户ID过滤
-   * @param {string} params.agent_id - 智能体ID过滤
-   * @param {string} params.status - 状态过滤 (active/deleted/all)
-   * @param {number} params.limit - 每页数量
-   * @param {number} params.offset - 偏移量
-   * @returns {Promise<Array>} - 对话列表
+   * Get all conversation records
+   * @param {Object} params - Query parameters
+   * @param {string} params.user_id - Filter by user ID
+   * @param {string} params.agent_id - Filter by agent ID
+   * @param {string} params.status - Status filter (active/deleted/all)
+   * @param {number} params.limit - Items per page
+   * @param {number} params.offset - Offset
+   * @returns {Promise<Array>} - Conversation list
    */
   getConversations: (params = {}) => {
     const queryParams = new URLSearchParams()
@@ -28,28 +28,28 @@ export const dashboardApi = {
   },
 
   /**
-   * 获取对话详情
-   * @param {string} threadId - 对话线程ID
-   * @returns {Promise<Object>} - 对话详情
+   * Get conversation details
+   * @param {string} threadId - Conversation thread ID
+   * @returns {Promise<Object>} - Conversation details
    */
   getConversationDetail: (threadId) => {
     return apiAdminGet(`/api/dashboard/conversations/${threadId}`)
   },
 
   /**
-   * 获取Dashboard统计信息
-   * @returns {Promise<Object>} - 统计信息
+   * Get dashboard statistics
+   * @returns {Promise<Object>} - Statistics
    */
   getStats: () => {
     return apiAdminGet('/api/dashboard/stats')
   },
 
   /**
-   * 获取用户反馈列表
-   * @param {Object} params - 查询参数
-   * @param {string} params.rating - 反馈类型过滤 (like/dislike/all)
-   * @param {string} params.agent_id - 智能体ID过滤
-   * @returns {Promise<Array>} - 反馈列表
+   * Get the feedback list
+   * @param {Object} params - Query parameters
+   * @param {string} params.rating - Feedback filter (like/dislike/all)
+   * @param {string} params.agent_id - Filter by agent ID
+   * @returns {Promise<Array>} - Feedback list
    */
   getFeedbacks: (params = {}) => {
     const queryParams = new URLSearchParams()
@@ -59,43 +59,43 @@ export const dashboardApi = {
     return apiAdminGet(`/api/dashboard/feedbacks?${queryParams.toString()}`)
   },
 
-  // ========== 新增并行API接口 ==========
+  // ========== Newly added parallel API endpoints ==========
 
   /**
-   * 获取用户活跃度统计
-   * @returns {Promise<Object>} - 用户活跃度统计信息
+   * Get user activity statistics
+   * @returns {Promise<Object>} - User activity statistics
    */
   getUserStats: () => {
     return apiAdminGet('/api/dashboard/stats/users')
   },
 
   /**
-   * 获取工具调用统计
-   * @returns {Promise<Object>} - 工具调用统计信息
+   * Get tool invocation statistics
+   * @returns {Promise<Object>} - Tool invocation statistics
    */
   getToolStats: () => {
     return apiAdminGet('/api/dashboard/stats/tools')
   },
 
   /**
-   * 获取知识库统计
-   * @returns {Promise<Object>} - 知识库统计信息
+   * Get knowledge base statistics
+   * @returns {Promise<Object>} - Knowledge base statistics
    */
   getKnowledgeStats: () => {
     return apiAdminGet('/api/dashboard/stats/knowledge')
   },
 
   /**
-   * 获取AI智能体分析数据
-   * @returns {Promise<Object>} - AI智能体分析信息
+   * Get AI agent analysis data
+   * @returns {Promise<Object>} - AI agent analysis data
    */
   getAgentStats: () => {
     return apiAdminGet('/api/dashboard/stats/agents')
   },
 
   /**
-   * 批量获取所有统计数据（并行请求）
-   * @returns {Promise<Object>} - 所有统计数据
+   * Fetch all statistics in parallel
+   * @returns {Promise<Object>} - All statistics
    */
   getAllStats: async () => {
     try {
@@ -115,16 +115,16 @@ export const dashboardApi = {
         agents: agentStats
       }
     } catch (error) {
-      console.error('批量获取统计数据失败:', error)
+      console.error('Failed to fetch statistics in batch:', error)
       throw error
     }
   },
 
   /**
-   * 获取调用统计时间序列数据
-   * @param {string} type - 数据类型 (models/agents/tokens/tools)
-   * @param {string} timeRange - 时间范围 (14hours/14days/14weeks)
-   * @returns {Promise<Object>} - 时间序列统计数据
+   * Get call timeseries data
+   * @param {string} type - Data type (models/agents/tokens/tools)
+   * @param {string} timeRange - Time range (14hours/14days/14weeks)
+   * @returns {Promise<Object>} - Timeseries statistics
    */
   getCallTimeseries: (type = 'models', timeRange = '14days') => {
     return apiAdminGet(`/api/dashboard/stats/calls/timeseries?type=${type}&time_range=${timeRange}`)

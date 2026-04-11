@@ -10,7 +10,7 @@
           <div class="search-box">
             <a-input
               v-model:value="searchQuery"
-              placeholder="搜索技能..."
+              placeholder="Search skills..."
               allow-clear
               class="search-input"
             >
@@ -18,7 +18,7 @@
             </a-input>
           </div>
 
-          <a-tooltip title="刷新 Skills">
+          <a-tooltip title="Refresh Skills">
             <a-button class="sidebar-tool" :disabled="loading" @click="fetchSkills">
               <RotateCw :size="14" />
             </a-button>
@@ -32,9 +32,9 @@
             "
             class="empty-text"
           >
-            <a-empty :image="false" description="无匹配技能" />
+            <a-empty :image="false" description="No matching skills" />
           </div>
-          <div v-if="filteredInstalledSkills.length" class="list-section-title">已添加 Skills</div>
+          <div v-if="filteredInstalledSkills.length" class="list-section-title">Installed Skills</div>
           <template
             v-for="(skill, index) in filteredInstalledSkills"
             :key="`installed-${skill.slug}`"
@@ -50,18 +50,18 @@
                   <span class="item-name">{{ skill.name }}</span>
                 </div>
                 <div class="item-status">
-                  <span class="status-chip status-chip-success">已添加</span>
+                  <span class="status-chip status-chip-success">Installed</span>
                   <button
                     type="button"
                     class="inline-hover-action"
                     @click.stop="confirmDeleteSkill(skill)"
                   >
-                    移除
+                    Remove
                   </button>
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ skill.description || '暂无描述' }}</span>
+                <span class="item-desc">{{ skill.description || 'No description' }}</span>
                 <div class="item-tags">
                   <span class="source-tag" :class="{ builtin: skill.sourceType === 'builtin' }">{{
                     skill.sourceLabel
@@ -79,7 +79,7 @@
           </template>
 
           <div v-if="filteredUninstalledBuiltinSkills.length" class="list-section-title">
-            可添加 Skills
+            Available Skills
           </div>
           <template
             v-for="(skill, index) in filteredUninstalledBuiltinSkills"
@@ -101,14 +101,14 @@
                     class="skill-inline-action skill-inline-action-primary"
                     @click.stop="handleInstallBuiltin(skill)"
                   >
-                    安装
+                    Install
                   </button>
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ skill.description || '暂无描述' }}</span>
+                <span class="item-desc">{{ skill.description || 'No description' }}</span>
                 <div class="item-tags">
-                  <span class="source-tag builtin">内置</span>
+                  <span class="source-tag builtin">Built-in</span>
                 </div>
               </div>
             </div>
@@ -125,7 +125,7 @@
         <div v-if="!currentSkill" class="unselected-state">
           <div class="hint-box">
             <FileCode :size="40" class="text-muted" />
-            <p>请在左侧选择技能包进行编辑</p>
+            <p>Please select a skill package from the left to edit</p>
           </div>
         </div>
 
@@ -150,7 +150,7 @@
                   @click="handleInstallBuiltin(currentSkill)"
                   class="lucide-icon-btn extension-panel-action extension-panel-action-primary"
                 >
-                  <span>安装</span>
+                  <span>Install</span>
                 </button>
                 <button
                   v-if="currentSkill.is_builtin_spec && currentSkill.status === 'update_available'"
@@ -158,7 +158,7 @@
                   @click="handleUpdateBuiltin(currentSkill)"
                   class="lucide-icon-btn extension-panel-action extension-panel-action-secondary"
                 >
-                  <span>更新</span>
+                  <span>Update</span>
                 </button>
                 <button
                   v-if="isInstalledSkill"
@@ -167,7 +167,7 @@
                   class="lucide-icon-btn extension-panel-action extension-panel-action-secondary"
                 >
                   <Download :size="14" />
-                  <span>导出</span>
+                  <span>Export</span>
                 </button>
                 <button
                   v-if="isInstalledSkill"
@@ -176,7 +176,7 @@
                   class="lucide-icon-btn extension-panel-action extension-panel-action-danger"
                 >
                   <Trash2 :size="14" />
-                  <span>{{ isBuiltinInstalledSkill ? '卸载' : '删除' }}</span>
+                  <span>{{ isBuiltinInstalledSkill ? 'Uninstall' : 'Delete' }}</span>
                 </button>
               </a-space>
             </div>
@@ -184,29 +184,29 @@
 
           <div v-if="!isInstalledSkill" class="builtin-uninstalled-state">
             <h3>{{ currentSkill.description }}</h3>
-            <p>版本 {{ currentSkill.version }}</p>
+            <p>Version {{ currentSkill.version }}</p>
             <a-button type="primary" @click="handleInstallBuiltin(currentSkill)"
-              >安装内置 Skill</a-button
+              >Install Built-in Skill</a-button
             >
           </div>
 
           <a-tabs v-else v-model:activeKey="activeTab" class="minimal-tabs">
             <a-tab-pane key="editor">
               <template #tab>
-                <span class="tab-title"><FileText :size="14" />代码管理</span>
+                <span class="tab-title"><FileText :size="14" />Code</span>
               </template>
               <div class="workspace">
                 <div class="tree-container">
                   <div class="tree-header">
-                    <span class="label">项目结构</span>
+                    <span class="label">Project Structure</span>
                     <div class="tree-actions">
-                      <a-tooltip v-if="!isBuiltinInstalledSkill" title="新建文件"
+                      <a-tooltip v-if="!isBuiltinInstalledSkill" title="New File"
                         ><button @click="openCreateModal(false)"><FilePlus :size="14" /></button
                       ></a-tooltip>
-                      <a-tooltip v-if="!isBuiltinInstalledSkill" title="新建目录"
+                      <a-tooltip v-if="!isBuiltinInstalledSkill" title="New Directory"
                         ><button @click="openCreateModal(true)"><FolderPlus :size="14" /></button
                       ></a-tooltip>
-                      <a-tooltip title="刷新"
+                      <a-tooltip title="Refresh"
                         ><button @click="reloadTree"><RotateCw :size="14" /></button
                       ></a-tooltip>
                     </div>
@@ -225,7 +225,7 @@
                   <div class="editor-header">
                     <div class="current-path">
                       <File :size="14" />
-                      <span>{{ selectedPath || '未选择文件' }}</span>
+                      <span>{{ selectedPath || 'No file selected' }}</span>
                       <span v-if="canSave" class="save-hint">●</span>
                     </div>
                     <div class="header-actions">
@@ -234,11 +234,11 @@
                         size="small"
                         @click="viewMode = viewMode === 'edit' ? 'preview' : 'edit'"
                         class="lucide-icon-btn view-toggle-btn"
-                        :title="viewMode === 'edit' ? '预览' : '编辑'"
+                        :title="viewMode === 'edit' ? 'Preview' : 'Edit'"
                       >
                         <Eye v-if="viewMode === 'edit'" :size="14" />
                         <Edit3 v-else :size="14" />
-                        <span>{{ viewMode === 'edit' ? '预览' : '编辑' }}</span>
+                        <span>{{ viewMode === 'edit' ? 'Preview' : 'Edit' }}</span>
                       </a-button>
                       <a-button
                         v-if="!isBuiltinInstalledSkill"
@@ -250,14 +250,14 @@
                         class="lucide-icon-btn"
                       >
                         <Save :size="14" />
-                        <span>保存</span>
+                        <span>Save</span>
                       </a-button>
                     </div>
                   </div>
                   <div class="editor-main">
                     <a-empty
                       v-if="!selectedPath || selectedIsDir"
-                      description="选择文件以开始编辑"
+                      description="Select a file to start editing"
                       class="mt-40"
                     />
                     <template v-else>
@@ -283,13 +283,13 @@
 
             <a-tab-pane key="dependencies">
               <template #tab>
-                <span class="tab-title"><Layers :size="14" />依赖管理</span>
+                <span class="tab-title"><Layers :size="14" />Dependencies</span>
               </template>
               <div class="config-view">
                 <div class="config-header">
                   <div class="text">
-                    <h3>依赖声明</h3>
-                    <p>配置此 Skill 所需的工具、MCP 及其他 Skill 依赖。</p>
+                    <h3>Dependencies</h3>
+                    <p>Configure the tools, MCPs, and other skills required by this skill.</p>
                   </div>
                   <a-button
                     type="primary"
@@ -298,38 +298,38 @@
                     class="lucide-icon-btn"
                   >
                     <Save :size="14" />
-                    <span>更新依赖</span>
+                    <span>Update Dependencies</span>
                   </a-button>
                 </div>
 
                 <div class="config-form">
                   <a-form layout="vertical">
-                    <a-form-item label="工具依赖 (Tools)">
+                    <a-form-item label="Tool Dependencies (Tools)">
                       <a-select
                         v-model:value="dependencyForm.tool_dependencies"
                         mode="multiple"
                         :options="toolDependencyOptions"
-                        placeholder="选择工具..."
+                        placeholder="Select tools..."
                         allow-clear
                         show-search
                       />
                     </a-form-item>
-                    <a-form-item label="MCP 依赖 (Model Context Protocol)">
+                    <a-form-item label="MCP Dependencies">
                       <a-select
                         v-model:value="dependencyForm.mcp_dependencies"
                         mode="multiple"
                         :options="mcpDependencyOptions"
-                        placeholder="选择 MCP 服务..."
+                        placeholder="Select MCP service..."
                         allow-clear
                         show-search
                       />
                     </a-form-item>
-                    <a-form-item label="Skill 依赖">
+                    <a-form-item label="Skill Dependencies">
                       <a-select
                         v-model:value="dependencyForm.skill_dependencies"
                         mode="multiple"
                         :options="skillDependencyOptions"
-                        placeholder="选择 Skill..."
+                        placeholder="Select skills..."
                         allow-clear
                         show-search
                       />
@@ -346,16 +346,16 @@
     <!-- 弹窗 -->
     <a-modal
       v-model:open="createModalVisible"
-      :title="createForm.isDir ? '新建目录' : '新建文件'"
+      :title="createForm.isDir ? 'New Directory' : 'New File'"
       @ok="handleCreateNode"
       :confirm-loading="creatingNode"
       width="400px"
     >
       <a-form layout="vertical" class="pt-12">
-        <a-form-item label="路径 (相对于根目录)" required>
+        <a-form-item label="Path (Relative to root)" required>
           <a-input v-model:value="createForm.path" placeholder="src/main.py" />
         </a-form-item>
-        <a-form-item v-if="!createForm.isDir" label="内容">
+        <a-form-item v-if="!createForm.isDir" label="Content">
           <a-textarea v-model:value="createForm.content" :rows="5" />
         </a-form-item>
       </a-form>
@@ -363,7 +363,7 @@
 
     <a-modal
       v-model:open="remoteInstallModalVisible"
-      title="远程安装 Skill"
+      title="Install Remote Skill"
       :footer="null"
       width="560px"
       :closable="!installingRemoteSkill"
@@ -372,22 +372,22 @@
     >
       <div class="remote-install-panel modal-mode">
         <div class="panel-header-text">
-          <span class="title">基于 skills.sh 的能力拉取并导入到当前系统</span>
+          <span class="title">Pull and import to current system via skills.sh</span>
           <span class="desc">
-            支持 `owner/repo` 或完整 GitHub URL，可前往
+            Supports `owner/repo` or full GitHub URL. Visit
             <a href="https://skills.sh/" target="_blank" rel="noopener noreferrer">skills.sh</a>
-            查询可用 skills
+            to find available skills
           </span>
         </div>
         <a-form layout="vertical" class="remote-install-form">
-          <a-form-item label="来源仓库">
+          <a-form-item label="Source Repository">
             <a-input
               v-model:value="remoteInstallForm.source"
-              placeholder="anthropics/skills 或 GitHub URL"
+              placeholder="anthropics/skills or GitHub URL"
               :disabled="installingRemoteSkill"
             />
           </a-form-item>
-          <a-form-item label="Skill 名称">
+          <a-form-item label="Skill Name">
             <a-select
               v-model:value="remoteInstallForm.skills"
               mode="tags"
@@ -406,7 +406,7 @@
               :disabled="installingRemoteSkill"
               @click="handleListRemoteSkills"
             >
-              查看可安装 Skills
+              View Installable Skills
             </a-button>
             <a-button
               type="primary"
@@ -414,14 +414,14 @@
               :disabled="listingRemoteSkills"
               @click="handleInstallRemoteSkill"
             >
-              安装
+              Install
             </a-button>
             <span v-if="remoteInstallStatusText" class="remote-install-status">
               {{ remoteInstallStatusText }}
             </span>
           </div>
           <div v-if="remoteSkillOptions.length" class="remote-skill-summary">
-            共发现 {{ remoteSkillOptions.length }} 个 skills，可按输入内容筛选候选项。
+            Found {{ remoteSkillOptions.length }} skills, you can filter by typing.
           </div>
         </a-form>
       </div>
@@ -527,8 +527,8 @@ const installedSkillCards = computed(() => {
         {
           ...skill,
           sourceType: 'builtin',
-          sourceLabel: '内置',
-          statusLabel: skill.status === 'update_available' ? '更新可用' : '已安装',
+          sourceLabel: 'Built-in',
+          statusLabel: skill.status === 'update_available' ? 'Update Available' : 'Installed',
           statusTone: skill.status === 'update_available' ? 'warning' : 'default'
         }
       ])
@@ -539,8 +539,8 @@ const installedSkillCards = computed(() => {
     .map((skill) => ({
       ...skill,
       sourceType: 'imported',
-      sourceLabel: '导入',
-      statusLabel: '已上传',
+      sourceLabel: 'Imported',
+      statusLabel: 'Uploaded',
       statusTone: 'default'
     }))
 
@@ -573,12 +573,12 @@ const currentSkillStatusLabel = computed(() => {
   const skill = currentSkill.value
   if (!skill) return ''
   if (skill.is_builtin_spec) {
-    if (skill.status === 'not_installed') return '未安装'
-    if (skill.status === 'update_available') return '更新可用'
-    return '已安装'
+    if (skill.status === 'not_installed') return 'Not Installed'
+    if (skill.status === 'update_available') return 'Update Available'
+    return 'Installed'
   }
-  if (skill.is_builtin) return '已安装'
-  return '已上传'
+  if (skill.is_builtin) return 'Installed'
+  return 'Uploaded'
 })
 
 const currentSkillStatusTone = computed(() => {
@@ -696,7 +696,7 @@ const fetchSkills = async () => {
       is_builtin_spec: true
     }))
 
-    // 默认选中第一个技能并加载 SKILL.md
+    // Select first skill and load SKILL.md by default
     const preferredList = filteredInstalledSkills.value.length
       ? filteredInstalledSkills.value
       : filteredUninstalledBuiltinSkills.value
@@ -717,7 +717,7 @@ const fetchSkills = async () => {
     }
     await fetchDependencyOptions()
   } catch {
-    message.error('加载失败')
+    message.error('Failed to load')
   } finally {
     loading.value = false
   }
@@ -750,7 +750,7 @@ const reloadTree = async () => {
     treeData.value = normalized
     expandedKeys.value = expandAllKeys(normalized)
   } catch {
-    message.error('加载目录树失败')
+    message.error('Failed to load directory tree')
   } finally {
     loading.value = false
   }
@@ -766,7 +766,7 @@ const loadSkillFile = async (slug, path = 'SKILL.md') => {
     selectedIsDir.value = false
     selectedTreeKeys.value = [path]
   } catch {
-    // 文件不存在时忽略
+    // Ignore if file doesn't exist
   }
 }
 
@@ -780,7 +780,7 @@ const selectSkill = async (record) => {
     return
   }
 
-  // 并行执行：加载树结构和获取 SKILL.md
+  // Run in parallel: load tree and get SKILL.md
   await Promise.all([reloadTree(), loadSkillFile(record.slug)])
 }
 
@@ -806,7 +806,7 @@ const handleTreeSelect = async (keys, info) => {
     fileContent.value = content
     originalFileContent.value = content
   } catch {
-    message.error('文件读取失败')
+    message.error('Failed to read file')
   }
 }
 
@@ -825,10 +825,10 @@ const saveCurrentFile = async () => {
       content: fileContent.value
     })
     originalFileContent.value = fileContent.value
-    message.success('已保存')
+    message.success('Saved')
     if (selectedPath.value === 'SKILL.md') await fetchSkills()
   } catch {
-    message.error('保存失败')
+    message.error('Failed to save')
   } finally {
     savingFile.value = false
   }
@@ -842,9 +842,9 @@ const handleInstallBuiltin = async (record) => {
     await fetchSkills()
     const latest = builtinSkills.value.find((item) => item.slug === record.slug)
     if (latest) await selectSkill(latest)
-    message.success('安装成功')
+    message.success('Installed successfully')
   } catch (error) {
-    message.error(error?.response?.data?.detail || error.message || '安装失败')
+    message.error(error?.response?.data?.detail || error.message || 'Installation failed')
   } finally {
     loading.value = false
   }
@@ -858,15 +858,15 @@ const handleUpdateBuiltin = async (record) => {
     await fetchSkills()
     const latest = builtinSkills.value.find((item) => item.slug === record.slug)
     if (latest) await selectSkill(latest)
-    message.success('更新成功')
+    message.success('Updated successfully')
   } catch (error) {
     if (error.response?.data?.detail?.needs_confirm) {
       loading.value = false
       Modal.confirm({
-        title: '确认覆盖更新？',
-        content: '检测到你修改过此 skill，更新将覆盖你的修改，是否继续？',
-        okText: '继续更新',
-        cancelText: '取消',
+        title: 'Confirm Overwrite Update?',
+        content: 'Modifications detected in this skill. Updating will overwrite your changes. Continue?',
+        okText: 'Continue Update',
+        cancelText: 'Cancel',
         onOk: async () => {
           loading.value = true
           try {
@@ -874,9 +874,9 @@ const handleUpdateBuiltin = async (record) => {
             await fetchSkills()
             const latest = builtinSkills.value.find((item) => item.slug === record.slug)
             if (latest) await selectSkill(latest)
-            message.success('更新成功')
+            message.success('Updated successfully')
           } catch (forceError) {
-            message.error(forceError?.response?.data?.detail || forceError.message || '更新失败')
+            message.error(forceError?.response?.data?.detail || forceError.message || 'Update failed')
           } finally {
             loading.value = false
           }
@@ -884,7 +884,7 @@ const handleUpdateBuiltin = async (record) => {
       })
       return
     }
-    message.error(error?.response?.data?.detail || error.message || '更新失败')
+    message.error(error?.response?.data?.detail || error.message || 'Update failed')
   } finally {
     loading.value = false
   }
@@ -909,9 +909,9 @@ const handleCreateNode = async () => {
     })
     createModalVisible.value = false
     await reloadTree()
-    message.success('创建成功')
+    message.success('Created successfully')
   } catch {
-    message.error('创建失败')
+    message.error('Creation failed')
   } finally {
     creatingNode.value = false
   }
@@ -932,20 +932,21 @@ const confirmDeleteSkill = (targetSkill = null) => {
     target?.installed_record ||
     target?.sourceType === 'builtin'
   )
-  const actionText = isBuiltinTarget ? '卸载' : '删除'
+  const actionText = isBuiltinTarget ? 'uninstall' : 'delete'
+  const actionDoneText = isBuiltinTarget ? 'Uninstalled' : 'Deleted'
   const detailText = isBuiltinTarget
-    ? '卸载后会移除已安装文件和数据库记录，但仍可从“未安装 Skills”中重新安装。'
-    : '删除后无法恢复，所有文件和配置将永久消失。'
+    ? 'Uninstalling will remove installed files and database records, but you can reinstall it from "Uninstalled Skills".'
+    : 'Deletion is irreversible. All files and configurations will be permanently lost.'
   Modal.confirm({
-    title: `确认${actionText}技能「${target.slug}」？`,
+    title: `Confirm to ${actionText} skill "${target.slug}"?`,
     content: detailText,
-    okText: `确认${actionText}`,
+    okText: `Confirm`,
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     onOk: async () => {
       try {
         await skillApi.deleteSkill(target.slug)
-        message.success(`已${actionText}`)
+        message.success(`${actionDoneText} successfully`)
         if (currentSkill.value?.slug === target.slug) {
           currentSkill.value = null
           treeData.value = []
@@ -953,7 +954,7 @@ const confirmDeleteSkill = (targetSkill = null) => {
         }
         await fetchSkills()
       } catch {
-        message.error(`${actionText}失败`)
+        message.error(`Failed to ${actionText}`)
       }
     }
   })
@@ -971,7 +972,7 @@ const handleExport = async () => {
     link.click()
     URL.revokeObjectURL(url)
   } catch {
-    message.error('导出失败')
+    message.error('Export failed')
   }
 }
 
@@ -979,7 +980,7 @@ const handleImportUpload = async ({ file, onSuccess, onError }) => {
   importing.value = true
   try {
     const result = await skillApi.importSkillZip(file)
-    message.success('导入完成')
+    message.success('Import completed')
     await fetchSkills()
     const imported = result?.data
     if (imported?.slug) {
@@ -988,7 +989,7 @@ const handleImportUpload = async ({ file, onSuccess, onError }) => {
     }
     onSuccess?.(result)
   } catch (e) {
-    message.error('导入失败')
+    message.error('Import failed')
     onError?.(e)
   } finally {
     importing.value = false
@@ -998,7 +999,7 @@ const handleImportUpload = async ({ file, onSuccess, onError }) => {
 const handleListRemoteSkills = async () => {
   const source = remoteInstallForm.source.trim()
   if (!source) {
-    message.warning('请输入来源仓库')
+    message.warning('Please enter source repository')
     return
   }
   listingRemoteSkills.value = true
@@ -1007,12 +1008,12 @@ const handleListRemoteSkills = async () => {
     remoteSkillOptions.value = result?.data || []
     remoteInstallForm.skills = normalizeRemoteSkillNames(remoteInstallForm.skills)
     if (!remoteSkillOptions.value.length) {
-      message.warning('未发现可安装的 Skills')
+      message.warning('No installable Skills found')
       return
     }
-    message.success(`已发现 ${remoteSkillOptions.value.length} 个 Skills`)
+    message.success(`Found ${remoteSkillOptions.value.length} Skills`)
   } catch (error) {
-    message.error(error?.response?.data?.detail || error.message || '获取远程 Skills 失败')
+    message.error(error?.response?.data?.detail || error.message || 'Failed to get remote Skills')
   } finally {
     listingRemoteSkills.value = false
   }
@@ -1022,7 +1023,7 @@ const handleInstallRemoteSkill = async () => {
   const source = remoteInstallForm.source.trim()
   const skillsToInstall = normalizeRemoteSkillNames(remoteInstallForm.skills)
   if (!source || !skillsToInstall.length) {
-    message.warning('请填写来源仓库和 Skill 名称')
+    message.warning('Please select source repository and Skill names')
     return
   }
   remoteInstallForm.skills = skillsToInstall
@@ -1044,7 +1045,7 @@ const handleInstallRemoteSkill = async () => {
       } catch (error) {
         remoteInstallResults.failed.push({
           skill,
-          error: error?.response?.data?.detail || error.message || '远程 Skill 安装失败'
+          error: error?.response?.data?.detail || error.message || 'Remote Skill installation failed'
         })
         remoteInstallProgress.failed += 1
       } finally {
@@ -1061,16 +1062,16 @@ const handleInstallRemoteSkill = async () => {
     }
     if (remoteInstallResults.failed.length === 0) {
       remoteInstallModalVisible.value = false
-      message.success(`远程 Skills 安装成功，共 ${remoteInstallResults.success.length} 个`)
+      message.success(`Successfully installed ${remoteInstallResults.success.length} remote Skills`)
       resetRemoteInstallState()
       remoteInstallForm.skills = []
       return
     }
     message.warning(
-      `远程 Skills 安装完成，成功 ${remoteInstallResults.success.length} 个，失败 ${remoteInstallResults.failed.length} 个`
+      `Remote Skills installation complete. Success: ${remoteInstallResults.success.length}, Failed: ${remoteInstallResults.failed.length}`
     )
   } catch (error) {
-    message.error(error?.response?.data?.detail || error.message || '远程 Skill 安装失败')
+    message.error(error?.response?.data?.detail || error.message || 'Remote Skill installation failed')
   } finally {
     remoteInstallProgress.currentSkill = ''
     installingRemoteSkill.value = false
@@ -1107,9 +1108,9 @@ const saveDependencies = async () => {
       syncDependencyFormFromSkill(updated)
     }
     await fetchSkills()
-    message.success('依赖已更新')
+    message.success('Dependencies updated')
   } catch {
-    message.error('更新失败')
+    message.error('Update failed')
   } finally {
     savingDependencies.value = false
   }
@@ -1117,7 +1118,7 @@ const saveDependencies = async () => {
 
 onMounted(fetchSkills)
 
-// 暴露方法给父组件
+// Expose methods to parent components
 defineExpose({
   fetchSkills,
   handleImportUpload,

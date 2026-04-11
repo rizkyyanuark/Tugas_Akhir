@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useAgentStore } from './agent'
 
 export const useUserStore = defineStore('user', () => {
-  // 状态
+  // State
   const token = ref(localStorage.getItem('user_token') || '')
   const userId = ref(null)
   const username = ref('')
@@ -14,17 +14,17 @@ export const useUserStore = defineStore('user', () => {
   const departmentId = ref(null)
   const departmentName = ref('')
 
-  // 计算属性
+  // Computed properties
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => userRole.value === 'admin' || userRole.value === 'superadmin')
   const isSuperAdmin = computed(() => userRole.value === 'superadmin')
 
-  // 动作
+  // Actions
   async function login(credentials) {
     try {
       const formData = new FormData()
-      // 支持user_id或phone_number登录
-      formData.append('username', credentials.loginId) // 使用loginId作为通用登录标识
+      // Support user_id or phone_number login
+      formData.append('username', credentials.loginId) // Use loginId as universal login identifier
       formData.append('password', credentials.password)
 
       const response = await fetch('/api/auth/token', {
@@ -35,20 +35,20 @@ export const useUserStore = defineStore('user', () => {
       if (!response.ok) {
         const error = await response.json()
 
-        // 如果是423锁定状态码，抛出包含状态码的错误
+        // If 423 locked status code, throw error with status code
         if (response.status === 423) {
-          const lockError = new Error(error.detail || '账户被锁定')
+          const lockError = new Error(error.detail || 'Account is locked')
           lockError.status = 423
           lockError.headers = response.headers
           throw lockError
         }
 
-        throw new Error(error.detail || '登录失败')
+        throw new Error(error.detail || 'Login failed')
       }
 
       const data = await response.json()
 
-      // 更新状态
+      // Update state
       token.value = data.access_token
       userId.value = data.user_id
       username.value = data.username
@@ -59,18 +59,18 @@ export const useUserStore = defineStore('user', () => {
       departmentId.value = data.department_id || null
       departmentName.value = data.department_name || ''
 
-      // 只保存 token 到本地存储
+      // Save only token to local storage
       localStorage.setItem('user_token', data.access_token)
 
       return true
     } catch (error) {
-      console.error('登录错误:', error)
+      console.error('Login error:', error)
       throw error
     }
   }
 
   function logout() {
-    // 清除状态
+    // Clear state
     token.value = ''
     userId.value = null
     username.value = ''
@@ -81,11 +81,11 @@ export const useUserStore = defineStore('user', () => {
     departmentId.value = null
     departmentName.value = ''
 
-    // 清除 agentStore 状态，确保重新登录时能正确加载数据
+    // Clear agentStore state to ensure correct data loading on re-login
     const agentStore = useAgentStore()
     agentStore.reset()
 
-    // 只清除 token
+    // Clear only token
     localStorage.removeItem('user_token')
   }
 
@@ -101,12 +101,12 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '初始化管理员失败')
+        throw new Error(error.detail || 'Failed to initialize admin')
       }
 
       const data = await response.json()
 
-      // 更新状态
+      // Update state
       token.value = data.access_token
       userId.value = data.user_id
       username.value = data.username
@@ -117,12 +117,12 @@ export const useUserStore = defineStore('user', () => {
       departmentId.value = data.department_id || null
       departmentName.value = data.department_name || ''
 
-      // 只保存 token 到本地存储
+      // Save only token to local storage
       localStorage.setItem('user_token', data.access_token)
 
       return true
     } catch (error) {
-      console.error('初始化管理员错误:', error)
+      console.error('Initialize admin error:', error)
       throw error
     }
   }
@@ -133,19 +133,19 @@ export const useUserStore = defineStore('user', () => {
       const data = await response.json()
       return data.first_run
     } catch (error) {
-      console.error('检查首次运行状态错误:', error)
+      console.error('Check first run status error:', error)
       return false
     }
   }
 
-  // 用于API请求的授权头
+  // Authorization header for API requests
   function getAuthHeaders() {
     return {
       Authorization: `Bearer ${token.value}`
     }
   }
 
-  // 用户管理功能
+  // User management functions
   async function getUsers() {
     try {
       const response = await fetch('/api/auth/users', {
@@ -155,12 +155,12 @@ export const useUserStore = defineStore('user', () => {
       })
 
       if (!response.ok) {
-        throw new Error('获取用户列表失败')
+        throw new Error('Failed to fetch user list')
       }
 
       return await response.json()
     } catch (error) {
-      console.error('获取用户列表错误:', error)
+      console.error('Get user list error:', error)
       throw error
     }
   }
@@ -178,12 +178,12 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '创建用户失败')
+        throw new Error(error.detail || 'Failed to create user')
       }
 
       return await response.json()
     } catch (error) {
-      console.error('创建用户错误:', error)
+      console.error('Create user error:', error)
       throw error
     }
   }
@@ -201,12 +201,12 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '更新用户失败')
+        throw new Error(error.detail || 'Failed to update user')
       }
 
       return await response.json()
     } catch (error) {
-      console.error('更新用户错误:', error)
+      console.error('Update user error:', error)
       throw error
     }
   }
@@ -222,17 +222,17 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '删除用户失败')
+        throw new Error(error.detail || 'Failed to delete user')
       }
 
       return await response.json()
     } catch (error) {
-      console.error('删除用户错误:', error)
+      console.error('Delete user error:', error)
       throw error
     }
   }
 
-  // 验证用户名并生成user_id
+  // Validate username and generate user_id
   async function validateUsernameAndGenerateUserId(username) {
     try {
       const response = await fetch('/api/auth/validate-username', {
@@ -246,17 +246,17 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '用户名验证失败')
+        throw new Error(error.detail || 'Username validation failed')
       }
 
       return await response.json()
     } catch (error) {
-      console.error('用户名验证错误:', error)
+      console.error('Username validation error:', error)
       throw error
     }
   }
 
-  // 上传头像
+  // Upload avatar
   async function uploadAvatar(file) {
     try {
       const formData = new FormData()
@@ -272,22 +272,22 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '头像上传失败')
+        throw new Error(error.detail || 'Avatar upload failed')
       }
 
       const data = await response.json()
 
-      // 更新本地头像状态
+      // Update local avatar state
       avatar.value = data.avatar_url
 
       return data
     } catch (error) {
-      console.error('头像上传错误:', error)
+      console.error('Avatar upload error:', error)
       throw error
     }
   }
 
-  // 获取当前用户信息
+  // Get current user info
   async function getCurrentUser() {
     try {
       const response = await fetch('/api/auth/me', {
@@ -297,12 +297,12 @@ export const useUserStore = defineStore('user', () => {
       })
 
       if (!response.ok) {
-        throw new Error('获取用户信息失败')
+        throw new Error('Failed to get user info')
       }
 
       const userData = await response.json()
 
-      // 更新本地状态
+      // Update local state
       userId.value = userData.id
       username.value = userData.username
       userIdLogin.value = userData.user_id
@@ -314,12 +314,12 @@ export const useUserStore = defineStore('user', () => {
 
       return userData
     } catch (error) {
-      console.error('获取用户信息错误:', error)
+      console.error('Get user info error:', error)
       throw error
     }
   }
 
-  // 更新个人资料
+  // Update profile
   async function updateProfile(profileData) {
     try {
       const response = await fetch('/api/auth/profile', {
@@ -333,12 +333,12 @@ export const useUserStore = defineStore('user', () => {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.detail || '更新个人资料失败')
+        throw new Error(error.detail || 'Failed to update profile')
       }
 
       const userData = await response.json()
 
-      // 更新本地状态
+      // Update local state
       if (typeof userData.username === 'string') {
         username.value = userData.username
       }
@@ -348,13 +348,13 @@ export const useUserStore = defineStore('user', () => {
 
       return userData
     } catch (error) {
-      console.error('更新个人资料错误:', error)
+      console.error('Update profile error:', error)
       throw error
     }
   }
 
   return {
-    // 状态
+    // State
     token,
     userId,
     username,
@@ -365,12 +365,12 @@ export const useUserStore = defineStore('user', () => {
     departmentId,
     departmentName,
 
-    // 计算属性
+    // Computed properties
     isLoggedIn,
     isAdmin,
     isSuperAdmin,
 
-    // 方法
+    // Methods
     login,
     logout,
     initialize,
@@ -387,16 +387,16 @@ export const useUserStore = defineStore('user', () => {
   }
 })
 
-// 检查当前用户是否有管理员权限
+// Check if current user has admin permission
 export const checkAdminPermission = () => {
   const userStore = useUserStore()
   if (!userStore.isAdmin) {
-    throw new Error('需要管理员权限')
+    throw new Error('Admin permission required')
   }
   return true
 }
 
-// 检查当前用户是否有超级管理员权限
+// Check if current user has super admin permission
 export const checkSuperAdminPermission = () => {
   const userStore = useUserStore()
   return userStore.isSuperAdmin

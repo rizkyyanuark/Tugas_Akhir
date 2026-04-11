@@ -2,29 +2,29 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useChatUIStore = defineStore('chatUI', () => {
-  // ==================== 聊天界面 UI 状态 ====================
-  // 对话列表侧边栏状态
+  // ==================== Chat Interface UI State ====================
+  // Conversation list sidebar state
   const isSidebarOpen = ref(localStorage.getItem('chat_sidebar_open') !== 'false')
 
-  // 加载状态
+  // Loading states
   const creatingNewChat = ref(false)
   const isLoadingThreads = ref(false)
   const isLoadingMessages = ref(false)
 
-  // ==================== AgentView UI 状态 ====================
-  // 智能体选择弹窗
+  // ==================== AgentView UI State ====================
+  // Agent selection modal
   const agentModalOpen = ref(false)
 
-  // 配置侧边栏
+  // Configuration sidebar
   const isConfigSidebarOpen = ref(false)
 
-  // 更多菜单
+  // More menu
   const moreMenuOpen = ref(false)
   const moreMenuPosition = ref({ x: 0, y: 0 })
 
-  // ==================== 方法 ====================
+  // ==================== Methods ====================
   /**
-   * 切换对话列表侧边栏
+   * Toggle conversation list sidebar
    */
   function toggleSidebar() {
     isSidebarOpen.value = !isSidebarOpen.value
@@ -32,9 +32,9 @@ export const useChatUIStore = defineStore('chatUI', () => {
   }
 
   /**
-   * 打开更多菜单
-   * @param {number} x - X 坐标
-   * @param {number} y - Y 坐标
+   * Open more menu
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
    */
   function openMoreMenu(x, y) {
     moreMenuPosition.value = { x, y }
@@ -42,14 +42,14 @@ export const useChatUIStore = defineStore('chatUI', () => {
   }
 
   /**
-   * 关闭更多菜单
+   * Close more menu
    */
   function closeMoreMenu() {
     moreMenuOpen.value = false
   }
 
   /**
-   * 重置所有 UI 状态（不包括持久化状态）
+   * Reset all UI states (excluding persisted states)
    */
   function reset() {
     creatingNewChat.value = false
@@ -62,7 +62,7 @@ export const useChatUIStore = defineStore('chatUI', () => {
   }
 
   return {
-    // 状态
+    // States
     isSidebarOpen,
     creatingNewChat,
     isLoadingThreads,
@@ -72,7 +72,7 @@ export const useChatUIStore = defineStore('chatUI', () => {
     moreMenuOpen,
     moreMenuPosition,
 
-    // 方法
+    // Methods
     toggleSidebar,
     openMoreMenu,
     closeMoreMenu,

@@ -5,11 +5,11 @@ from ta_backend_core.assistant.utils import logger
 
 
 def get_tool_info(tools) -> list[dict[str, Any]]:
-    """获取所有工具的信息（用于前端展示）"""
+    """Get information for all tools (used for frontend display)"""
     tools_info = []
 
     try:
-        # 获取注册的工具信息
+        # Get registered tool information
         for tool_obj in tools:
             try:
                 metadata = getattr(tool_obj, "metadata", {}) or {}

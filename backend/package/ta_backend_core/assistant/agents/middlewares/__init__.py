@@ -11,6 +11,6 @@ __all__ = [
     "context_aware_prompt",
     "context_based_model",
     "create_summary_offload_middleware",
-    "inject_attachment_context",  # 已废弃，使用 save_attachments_to_fs
+    "inject_attachment_context",  # Deprecated: use save_attachments_to_fs
     "save_attachments_to_fs",
 ]

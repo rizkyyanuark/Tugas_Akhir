@@ -1,4 +1,4 @@
-/* Sigma.js 基础样式 */
+/* Sigma.js base styles */
 .sigma-container {
   position: relative;
   width: 100%;
@@ -9,7 +9,7 @@
   outline: none;
 }
 
-/* 节点标签样式 */
+/* Node label styles */
 .sigma-labels {
   pointer-events: none;
   position: absolute;
@@ -19,7 +19,7 @@
   height: 100%;
 }
 
-/* 高亮样式 */
+/* Highlight styles */
 .node-highlighted {
   stroke: var(--color-error-500);
   stroke-width: 3px;
@@ -30,7 +30,7 @@
   stroke-width: 3px;
 }
 
-/* 选中样式 */
+/* Selected styles */
 .node-selected {
   stroke: var(--color-info-500);
   stroke-width: 4px;
@@ -41,7 +41,7 @@
   stroke-width: 4px;
 }
 
-/* 悬停样式 */
+/* Hover styles */
 .node-focused {
   stroke: var(--color-success-500);
   stroke-width: 2px;
@@ -52,7 +52,7 @@
   stroke-width: 2px;
 }
 
-/* 加载动画 */
+/* Loading animation */
 .sigma-loading {
   position: absolute;
   top: 50%;
@@ -61,7 +61,7 @@
   z-index: 1000;
 }
 
-/* 工具提示 */
+/* Tooltip */
 .sigma-tooltip {
   position: absolute;
   background: var(--shadow-5);
@@ -74,7 +74,7 @@
   white-space: nowrap;
 }
 
-/* 响应式调整 */
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .sigma-container {
     font-size: 10px;

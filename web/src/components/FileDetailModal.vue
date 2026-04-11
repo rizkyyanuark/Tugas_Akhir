@@ -10,50 +10,50 @@
   >
     <template #title>
       <div class="modal-title-wrapper">
-        <!-- 左侧：文件名和图标 -->
+        <!-- Left: filename and icon -->
         <div class="file-title">
           <component :is="fileIcon" :style="{ color: fileIconColor, fontSize: '18px' }" />
-          <span class="file-name">{{ file?.filename || '文件详情' }}</span>
+          <span class="file-name">{{ file?.filename || 'File details' }}</span>
         </div>
 
         <div class="header-controls">
-          <!-- 字符数/片段数显示在 segment 左边 -->
+          <!-- Character / chunk count shown to the left of the segment control -->
           <span class="view-info">
             {{
-              viewMode === 'chunks' ? chunkCount + ' 个片段' : formatTextLength(charCount) + ' 字符'
+              viewMode === 'chunks' ? chunkCount + ' chunks' : formatTextLength(charCount) + ' chars'
             }}
           </span>
 
-          <!-- 视图模式切换 -->
+          <!-- View mode switch -->
           <div class="view-controls" v-if="file && hasChunks">
             <a-segmented v-model:value="viewMode" :options="viewModeOptions" />
           </div>
 
-          <!-- 下载按钮下拉菜单 -->
+          <!-- Download dropdown menu -->
           <a-dropdown trigger="click" v-if="file">
             <a-button type="default" class="download-btn">
               <template #icon><Download :size="16" /></template>
-              下载
+              Download
               <ChevronDown :size="16" style="margin-left: 4px" />
             </a-button>
             <template #overlay>
               <a-menu @click="handleDownloadMenuClick">
                 <a-menu-item key="original" :disabled="!file.file_id">
                   <template #icon><Download :size="16" /></template>
-                  下载原文
+                  Download original
                 </a-menu-item>
                 <a-menu-item
                   key="markdown"
                   :disabled="!((file.lines && file.lines.length > 0) || file.content)"
                 >
                   <template #icon><FileText :size="16" /></template>
-                  下载 Markdown
+                  Download Markdown
                 </a-menu-item>
               </a-menu>
             </template>
           </a-dropdown>
 
-          <!-- 自定义关闭按钮 -->
+          <!-- Custom close button -->
           <button class="custom-close-btn" @click="visible = false">
             <X :size="16" />
           </button>
@@ -61,31 +61,31 @@
       </div>
     </template>
     <div v-if="loading" class="loading-container">
-      <a-spin tip="正在加载文档内容..." />
+      <a-spin tip="Loading document content..." />
     </div>
     <div v-else-if="file && (hasContent || hasSourcePreview)" class="file-detail-content">
       <div v-if="viewMode === 'source'" class="content-panel source-panel">
         <div v-if="sourcePreviewLoading" class="loading-container">
-          <a-spin tip="正在加载源文件预览..." />
+          <a-spin tip="Loading source file preview..." />
         </div>
         <div
           v-else-if="sourcePreviewUrl && sourcePreviewType === 'image'"
           class="source-preview-wrapper"
         >
-          <img :src="sourcePreviewUrl" :alt="file?.filename || '源文件预览'" class="source-image" />
+          <img :src="sourcePreviewUrl" :alt="file?.filename || 'Source file preview'" class="source-image" />
         </div>
         <iframe
           v-else-if="sourcePreviewUrl && sourcePreviewType === 'pdf'"
           :src="sourcePreviewUrl"
           class="source-pdf"
-          :title="file?.filename || 'PDF 预览'"
+          :title="file?.filename || 'PDF preview'"
         />
         <div v-else class="empty-content">
-          <p>暂无源文件预览</p>
+          <p>No source file preview available</p>
         </div>
       </div>
 
-      <!-- Markdown 模式 -->
+      <!-- Markdown mode -->
       <div v-else-if="viewMode === 'markdown'" class="content-panel flat-md-preview">
         <MdPreview
           v-if="mergedContent"
@@ -95,11 +95,11 @@
           class="markdown-content"
         />
         <div v-else class="empty-content">
-          <p>暂无文件内容</p>
+          <p>No file content available</p>
         </div>
       </div>
 
-      <!-- Chunks 模式：使用 Grid 布局 -->
+      <!-- Chunks mode: use a grid layout -->
       <div v-else-if="viewMode === 'chunks'" class="chunks-panel">
         <div class="chunk-grid">
           <div v-for="chunk in mappedChunks" :key="chunk.id" class="chunk-card">
@@ -112,13 +112,13 @@
           </div>
         </div>
         <div v-if="mappedChunks.length === 0" class="empty-content">
-          <p>暂无分块信息</p>
+          <p>No chunk information available</p>
         </div>
       </div>
     </div>
 
     <div v-else-if="file" class="empty-content">
-      <p>暂无文件内容</p>
+      <p>No file content available</p>
     </div>
   </a-modal>
 </template>
@@ -147,7 +147,7 @@ const visible = computed({
 const file = computed(() => store.selectedFile)
 const loading = computed(() => store.state.fileDetailLoading)
 
-// 文件图标
+// File icon
 const fileIcon = computed(() => getFileIcon(file.value?.filename))
 const fileIconColor = computed(() => getFileIconColor(file.value?.filename))
 
@@ -156,33 +156,33 @@ const downloadingMarkdown = ref(false)
 const sourcePreviewLoading = ref(false)
 const sourcePreviewUrl = ref('')
 
-// 主题设置
+// Theme settings
 const theme = computed(() => (themeStore.isDark ? 'dark' : 'light'))
 
-// 视图模式
+// View mode
 const viewMode = ref('markdown')
 const hasContent = computed(
   () => (file.value?.lines && file.value?.lines.length > 0) || file.value?.content
 )
 const sourcePreviewType = computed(() => getPreviewTypeByPath(file.value?.filename || ''))
 const hasSourcePreview = computed(() => ['image', 'pdf'].includes(sourcePreviewType.value))
-// 是否有实际的分块数据
+// Whether actual chunk data exists
 const hasChunks = computed(() => mappedChunks.value && mappedChunks.value.length > 0)
 
 const viewModeOptions = computed(() => {
   const options = []
   if (hasSourcePreview.value) {
-    options.push({ label: '源文件', value: 'source' })
+    options.push({ label: 'Source file', value: 'source' })
   }
   options.push({ label: 'Markdown', value: 'markdown' })
-  // 只有当有实际的分块数据时才显示 Chunks 选项
+  // Show the Chunks option only when actual chunk data exists
   if (hasChunks.value) {
     options.push({ label: 'Chunks', value: 'chunks' })
   }
   return options
 })
 
-// 监听文件变化，如果没有 chunks 则重置为 markdown
+// Watch file changes; if there are no chunks, reset to markdown
 watch(file, (newFile, oldFile) => {
   if (newFile?.file_id !== oldFile?.file_id) {
     revokeSourcePreviewUrl()
@@ -213,16 +213,16 @@ watch(
   { immediate: true }
 )
 
-// 统计信息
+// Statistics
 const mergeResult = computed(() => mergeChunks(file.value?.lines || []))
 const mappedChunks = computed(() => mergeResult.value.chunks)
 const mergedContent = computed(() => file.value?.content || mergeResult.value.content || '')
 const charCount = computed(() => mergedContent.value.length)
 const chunkCount = computed(() => mappedChunks.value.length || file.value?.lines?.length || 0)
 
-// 格式化文本长度
+// Format text length
 function formatTextLength(length) {
-  if (!length && length !== 0) return '0 字符'
+  if (!length && length !== 0) return '0 chars'
 
   if (length < 1000) {
     return `${length}`
@@ -257,14 +257,14 @@ const loadSourcePreview = async () => {
     revokeSourcePreviewUrl()
     sourcePreviewUrl.value = window.URL.createObjectURL(blob)
   } catch (error) {
-    console.error('加载源文件预览失败:', error)
-    message.error(error.message || '加载源文件预览失败')
+    console.error('Failed to load source file preview:', error)
+    message.error(error.message || 'Failed to load source file preview')
   } finally {
     sourcePreviewLoading.value = false
   }
 }
 
-// 下载菜单点击处理
+// Download menu click handler
 const handleDownloadMenuClick = ({ key }) => {
   if (key === 'original') {
     handleDownloadOriginal()
@@ -273,16 +273,16 @@ const handleDownloadMenuClick = ({ key }) => {
   }
 }
 
-// 下载原文
+// Download original file
 const handleDownloadOriginal = async () => {
   if (!file.value || !file.value.file_id) {
-    message.error('文件信息不完整')
+    message.error('File information is incomplete')
     return
   }
 
   const dbId = store.databaseId
   if (!dbId) {
-    message.error('无法获取数据库ID，请刷新页面后重试')
+    message.error('Unable to get the database ID. Please refresh the page and try again.')
     return
   }
 
@@ -290,11 +290,11 @@ const handleDownloadOriginal = async () => {
   try {
     const response = await documentApi.downloadDocument(dbId, file.value.file_id)
 
-    // 获取文件名
+    // Get filename
     const contentDisposition = response.headers.get('content-disposition')
     let filename = file.value.filename
     if (contentDisposition) {
-      // 首先尝试匹配RFC 2231格式 filename*=UTF-8''...
+      // First try to match RFC 2231 format: filename*=UTF-8''...
       const rfc2231Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/)
       if (rfc2231Match) {
         try {
@@ -303,11 +303,11 @@ const handleDownloadOriginal = async () => {
           console.warn('Failed to decode RFC2231 filename:', rfc2231Match[1], error)
         }
       } else {
-        // 回退到标准格式 filename="..."
+        // Fall back to the standard format: filename="..."
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
         if (filenameMatch && filenameMatch[1]) {
           filename = filenameMatch[1].replace(/['"]/g, '')
-          // 解码URL编码的文件名
+          // Decode the URL-encoded filename
           try {
             filename = decodeURIComponent(filename)
           } catch (error) {
@@ -317,7 +317,7 @@ const handleDownloadOriginal = async () => {
       }
     }
 
-    // 创建blob并下载
+    // Create a blob and download it
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -328,30 +328,30 @@ const handleDownloadOriginal = async () => {
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-    message.success('下载成功')
+    message.success('Download successful')
   } catch (error) {
-    console.error('下载文件时出错:', error)
-    message.error(error.message || '下载文件失败')
+    console.error('Error downloading file:', error)
+    message.error(error.message || 'File download failed')
   } finally {
     downloadingOriginal.value = false
   }
 }
 
-// 下载 Markdown
+// Download Markdown
 const handleDownloadMarkdown = () => {
   const content = mergedContent.value
 
   if (!content) {
-    message.error('没有可下载的 Markdown 内容')
+    message.error('No Markdown content available for download')
     return
   }
 
   downloadingMarkdown.value = true
   try {
-    // 生成文件名（如果原文件没有 .md 扩展名，则添加）
+    // Generate filename (add .md if the original file does not have it)
     let filename = file.value.filename || 'document.md'
     if (!filename.toLowerCase().endsWith('.md')) {
-      // 移除原扩展名，添加 .md
+      // Remove the original extension and append .md
       const lastDotIndex = filename.lastIndexOf('.')
       if (lastDotIndex > 0) {
         filename = filename.substring(0, lastDotIndex) + '.md'
@@ -360,7 +360,7 @@ const handleDownloadMarkdown = () => {
       }
     }
 
-    // 创建 blob 并下载
+    // Create a blob and download it
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -371,10 +371,10 @@ const handleDownloadMarkdown = () => {
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-    message.success('下载成功')
+    message.success('Download successful')
   } catch (error) {
-    console.error('下载 Markdown 时出错:', error)
-    message.error(error.message || '下载 Markdown 失败')
+    console.error('Error downloading Markdown:', error)
+    message.error(error.message || 'Markdown download failed')
   } finally {
     downloadingMarkdown.value = false
   }

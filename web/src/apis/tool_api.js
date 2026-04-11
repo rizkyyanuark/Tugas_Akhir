@@ -1,16 +1,16 @@
 import { apiAdminGet } from './base'
 
 /**
- * 工具管理 API 模块
- * 包含系统内置工具的查询功能
+ * Tool management API module
+ * Provides query functionality for system built-in tools
  */
 
 const BASE_URL = '/api/system/tools'
 
 /**
- * 获取工具列表
- * @param {string} category - 可选，按分类筛选
- * @returns {Promise} - 工具列表
+ * Get the tool list
+ * @param {string} category - Optional category filter
+ * @returns {Promise} - Tool list
  */
 export const getTools = async (category = null) => {
   const params = category ? { category } : {}
@@ -18,15 +18,15 @@ export const getTools = async (category = null) => {
 }
 
 /**
- * 获取工具选项列表（用于下拉选择）
- * @returns {Promise} - 工具选项
+ * Get the tool options list (for dropdown selection)
+ * @returns {Promise} - Tool options
  */
 export const getToolOptions = async () => {
   return apiAdminGet(`${BASE_URL}/options`)
 }
 
 // =============================================================================
-// === 导出为对象形式（兼容现有代码风格）===
+// === Export as an object (compatible with the existing code style) ===
 // =============================================================================
 
 export const toolApi = {

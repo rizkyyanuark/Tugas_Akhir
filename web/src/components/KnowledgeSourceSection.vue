@@ -1,6 +1,6 @@
 <template>
   <div class="source-section">
-    <div class="section-title">知识库来源 ({{ chunks.length }})</div>
+    <div class="section-title">Knowledge Base Sources ({{ chunks.length }})</div>
     <KbResultGroupedList :chunks="chunks" :show-summary="false" />
   </div>
 </template>

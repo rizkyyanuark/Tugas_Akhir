@@ -61,14 +61,14 @@
               size="18"
             />
             <MessageCirclePlus v-else class="nav-btn-icon" size="16" />
-            <span class="text">新对话</span>
+            <span class="text">New Conversation</span>
           </div>
           <a-divider
-            v-if="currentThread?.title && currentThread.title !== '新的对话'"
+            v-if="currentThread?.title && currentThread.title !== 'New Conversation'"
             type="vertical"
           />
           <div
-            v-if="currentThread?.title && currentThread.title !== '新的对话'"
+            v-if="currentThread?.title && currentThread.title !== 'New Conversation'"
             class="conversation-title"
           >
             {{ currentThread.title }}
@@ -76,7 +76,7 @@
         </div>
         <div class="header__right">
           <UserInfoComponent v-if="!userStore.isAdmin" />
-          <!-- AgentState 显示按钮已移动到输入框底部 -->
+          <!-- The AgentState display button has been moved to the bottom of the input area -->
           <slot name="header-right"></slot>
         </div>
       </div>
@@ -99,7 +99,7 @@
                 @retry="retryMessage(message)"
               >
               </AgentMessageComponent>
-              <!-- 显示对话最后一个消息使用的模型 -->
+              <!-- Show the model used by the last message in the conversation -->
               <RefsComponent
                 v-if="shouldShowRefs(conv)"
                 :message="getLastMessage(conv)"
@@ -109,7 +109,7 @@
               />
             </div>
 
-            <!-- 生成中的加载状态 - 增强条件支持主聊天和resume流程 -->
+            <!-- Loading state while generating - enhanced conditions support the main chat and resume flow -->
             <div class="generating-status" v-if="isProcessing && conversations.length > 0">
               <div class="generating-indicator">
                 <div class="loading-dots">
@@ -117,12 +117,12 @@
                   <div></div>
                   <div></div>
                 </div>
-                <span class="generating-text">正在生成回复...</span>
+                <span class="generating-text">Generating reply...</span>
               </div>
             </div>
           </div>
           <div class="bottom" :class="{ 'start-screen': !conversations.length }">
-            <!-- 人工审批弹窗 - 放在输入框上方 -->
+            <!-- Manual approval modal - placed above the input area -->
             <HumanApprovalModal
               :visible="approvalState.showModal"
               :questions="approvalState.questions"
@@ -131,13 +131,13 @@
             />
 
             <div class="message-input-wrapper">
-              <!-- 加载状态：加载消息 -->
+              <!-- Loading state: fetching messages -->
               <div v-if="isLoadingMessages" class="chat-loading">
                 <div class="loading-spinner"></div>
-                <span>正在加载消息...</span>
+                <span>Loading messages...</span>
               </div>
 
-              <!-- 打招呼区域 - 在输入框上方 -->
+              <!-- Greeting area - above the input area -->
               <div v-if="!conversations.length" class="chat-examples-input">
                 <h1>{{ randomGreeting }}</h1>
               </div>
@@ -177,7 +177,7 @@
                 </template>
               </AgentInputArea>
 
-              <!-- 示例问题 -->
+              <!-- Example questions -->
               <div
                 class="example-questions"
                 v-if="!conversations.length && exampleQuestions.length > 0"
@@ -195,7 +195,9 @@
               </div>
 
               <div class="bottom-actions" v-if="conversations.length > 0">
-                <p class="note">当前智能体：{{ currentThreadAgentName }}；请注意辨别内容的可靠性</p>
+                <p class="note">
+                  Current agent: {{ currentThreadAgentName }}; please verify the reliability of the content
+                </p>
               </div>
             </div>
           </div>
@@ -302,19 +304,19 @@ const useRunsApi =
   import.meta.env.VITE_USE_RUNS_API === 'true' &&
   localStorage.getItem('force_legacy_stream') !== 'true'
 
-// 预设的打招呼文本
+// Predefined greeting text
 const greetingMessages = [
-  '👋 您好，有什么可以帮您？',
-  '👋 你好！有什么想聊的吗？',
-  '👋 嘿，有什么我可以帮助你的？',
-  '👋 欢迎！今天想讨论什么话题？',
-  '👋 你好呀，随时为你服务！'
+  '👋 Hello, how can I help you?',
+  '👋 Hi! What would you like to talk about?',
+  '👋 Hey, what can I help you with?',
+  '👋 Welcome! What would you like to discuss today?',
+  '👋 Hello there, I am here to help anytime!'
 ]
 
-// 随机选择一个打招呼文本
+// Randomly choose a greeting message
 const randomGreeting = greetingMessages[Math.floor(Math.random() * greetingMessages.length)]
 
-// 从智能体元数据获取示例问题
+// Get example questions from the agent metadata
 const exampleQuestions = computed(() => {
   const agentId = currentAgentId.value
   let examples = []
@@ -328,10 +330,10 @@ const exampleQuestions = computed(() => {
   }))
 })
 
-// 业务状态（保留在组件本地）
+// Business state (kept local to the component)
 const chatState = reactive({
   currentThreadId: null,
-  // 以threadId为键的线程状态
+  // Thread state keyed by threadId
   threadStates: {}
 })
 const streamSmoother = useStreamSmoother({
@@ -345,27 +347,27 @@ const { getThreadState, resetOnGoingConv, stopThreadStream } = useAgentThreadSta
   onBeforeCleanupThread: (threadId) => streamSmoother.resetThread(threadId)
 })
 
-// 组件级别的线程和消息状态
+// Component-level thread and message state
 const threads = ref([])
 const threadMessages = ref({})
-const hasMoreChats = ref(true) // 是否还有更多对话可加载
-const isLoadingMoreChats = ref(false) // 加载更多对话中
+const hasMoreChats = ref(true) // Whether more conversations can be loaded
+const isLoadingMoreChats = ref(false) // Loading more conversations
 const threadFilesMap = ref({})
 const threadAttachmentsMap = ref({})
 
-// 本地 UI 状态（仅在本组件使用）
+// Local UI state (used only within this component)
 const localUIState = reactive({
   isInitialRender: true
 })
 
-// Agent Panel State
+// Agent panel state
 const isAgentPanelOpen = ref(false)
 const isAgentPanelExpanded = ref(false)
 const isResizing = ref(false)
-const panelRatio = ref(0.3) // 面板宽度比例 (0-1)
-const panelWrapperRef = ref(null) // 直接操作 DOM
-const minPanelRatio = 0.2 // 最小比例 20%
-const maxPanelRatio = 0.8 // 最大比例 80%
+const panelRatio = ref(0.3) // Panel width ratio (0-1)
+const panelWrapperRef = ref(null) // Direct DOM access
+const minPanelRatio = 0.2 // Minimum ratio 20%
+const maxPanelRatio = 0.8 // Maximum ratio 80%
 let resizeStartX = 0
 let resizeStartWidth = 0
 let panelContainerWidth = 0
@@ -381,7 +383,7 @@ const currentAgentId = computed(() => {
 
 const currentAgentName = computed(() => {
   const agent = currentAgent.value
-  return agent ? agent.name : '智能体'
+  return agent ? agent.name : 'Agent'
 })
 
 const currentAgent = computed(() => {
@@ -406,7 +408,7 @@ const currentThreadAgentName = computed(() => {
   return currentAgentName.value
 })
 
-// 检查当前智能体是否支持文件上传
+// Check whether the current agent supports file upload
 const supportsFileUpload = computed(() => {
   if (!currentAgent.value) return false
   const capabilities = currentAgent.value.capabilities || []
@@ -419,7 +421,7 @@ const supportsFiles = computed(() => {
   return capabilities.includes('files')
 })
 
-// AgentState 相关计算属性
+// AgentState-related computed properties
 const currentAgentState = computed(() => {
   return currentChatId.value ? getThreadState(currentChatId.value)?.agentState || null : null
 })
@@ -444,10 +446,10 @@ const hasAgentStateContent = computed(() => {
   return shouldAutoOpenAgentPanel(currentThreadFiles.value)
 })
 
-// 监听 hasAgentStateContent 从 false → true 时，自动展开面板
+// Automatically expand the panel when hasAgentStateContent changes from false to true
 watch(hasAgentStateContent, (newVal, oldVal) => {
   if (newVal && !oldVal) {
-    // 从无状态变为有状态时，自动展开面板
+    // Expand the panel when state becomes available
     isAgentPanelOpen.value = true
   }
 })
@@ -464,7 +466,7 @@ const { mentionConfig } = useAgentMentionConfig({
 
 const currentThreadMessages = computed(() => threadMessages.value[currentChatId.value] || [])
 
-// 计算是否显示Refs组件的条件
+// Compute the conditions for showing the Refs component
 const shouldShowRefs = computed(() => {
   return (conv) => {
     return (
@@ -480,7 +482,7 @@ const shouldShowRefs = computed(() => {
   }
 })
 
-// 当前线程状态的computed属性
+// Computed property for the current thread state
 const currentThreadState = computed(() => {
   return getThreadState(currentChatId.value)
 })
@@ -504,7 +506,7 @@ const historyConversations = computed(() => {
 const conversations = computed(() => {
   const historyConvs = historyConversations.value
 
-  // 如果有进行中的消息且线程状态显示正在流式处理，添加进行中的对话
+  // If there are in-progress messages and the thread state shows streaming, append the in-progress conversation
   if (onGoingConvMessages.value.length > 0) {
     const onGoingConv = {
       messages: onGoingConvMessages.value,
@@ -515,7 +517,7 @@ const conversations = computed(() => {
   return historyConvs
 })
 
-// 智能体图标映射
+// Agent icon mapping
 const agentIconMap = {
   ChatbotAgent: Bot,
   DeepAgent: Telescope
@@ -627,11 +629,11 @@ onUnmounted(() => {
     clearTimeout(sendCooldownTimer)
     sendCooldownTimer = null
   }
-  // 清理所有线程状态
+  // Clear all thread states
   resetOnGoingConv()
 })
 
-// ==================== 线程管理方法 ====================
+// ==================== Thread management methods ====================
 const setThreadAgentConfigId = (threadId, agentConfigId) => {
   if (!threadId) return
   const thread = threads.value.find((item) => item.id === threadId)
@@ -660,7 +662,7 @@ const syncSelectedConfigForThread = async (thread) => {
   }
 }
 
-// 获取当前智能体的线程列表
+// Get the thread list for the current agent
 const fetchThreads = async (agentId = null) => {
   const targetAgentId = props.singleMode ? agentId || currentAgentId.value : agentId
   if (props.singleMode && !targetAgentId) return
@@ -669,7 +671,7 @@ const fetchThreads = async (agentId = null) => {
   try {
     const fetchedThreads = await threadApi.getThreads(targetAgentId, 100, 0)
     threads.value = fetchedThreads || []
-    // 如果返回的数量小于limit，说明没有更多了
+    // If the returned count is less than the limit, there are no more items
     hasMoreChats.value = fetchedThreads && fetchedThreads.length >= 100
   } catch (error) {
     console.error('Failed to fetch threads:', error)
@@ -680,7 +682,7 @@ const fetchThreads = async (agentId = null) => {
   }
 }
 
-// 加载更多对话
+// Load more conversations
 const loadMoreChats = async () => {
   if (isLoadingMoreChats.value || !hasMoreChats.value) return
 
@@ -692,7 +694,7 @@ const loadMoreChats = async () => {
     const offset = threads.value.length
     const fetchedThreads = await threadApi.getThreads(targetAgentId, 100, offset)
     if (fetchedThreads && fetchedThreads.length > 0) {
-      // 去除重复的置顶对话（后端每次都返回所有置顶对话）
+      // Remove duplicate pinned conversations (the backend returns all pinned conversations each time)
       const existingIds = new Set(threads.value.map((t) => t.id))
       const newThreads = fetchedThreads.filter((t) => !existingIds.has(t.id))
 
@@ -709,8 +711,8 @@ const loadMoreChats = async () => {
   }
 }
 
-// 创建新线程
-const createThread = async (agentId, title = '新的对话') => {
+// Create a new thread
+const createThread = async (agentId, title = 'New Conversation') => {
   if (!agentId) return null
 
   chatState.isCreatingThread = true
@@ -732,7 +734,7 @@ const createThread = async (agentId, title = '新的对话') => {
   }
 }
 
-// 删除线程
+// Delete a thread
 const deleteThread = async (threadId) => {
   if (!threadId) return
 
@@ -756,7 +758,7 @@ const deleteThread = async (threadId) => {
   }
 }
 
-// 更新线程标题
+// Update the thread title
 const updateThread = async (threadId, title, is_pinned) => {
   if (!threadId) return
 
@@ -782,7 +784,7 @@ const updateThread = async (threadId, title, is_pinned) => {
       chatState.isRenamingThread = false
     }
   } else if (is_pinned !== undefined) {
-    // 只更新置顶状态
+    // Only update the pinned state
     try {
       await threadApi.updateThread(threadId, null, is_pinned)
       const thread = threads.value.find((t) => t.id === threadId)
@@ -797,11 +799,11 @@ const updateThread = async (threadId, title, is_pinned) => {
   }
 }
 
-// 获取线程消息
+// Fetch thread messages
 const fetchThreadMessages = async ({ agentId, threadId, delay = 0 }) => {
   if (!threadId || !agentId) return
 
-  // 如果指定了延迟，等待指定时间（用于确保后端数据库事务提交）
+  // If a delay is specified, wait for that amount of time to ensure the backend transaction is committed
   if (delay > 0) {
     await new Promise((resolve) => setTimeout(resolve, delay))
   }
@@ -863,20 +865,20 @@ const fetchAgentState = async (agentId, threadId) => {
       if (newTs) newTs.agentState = res.agent_state || null
     }
   } catch {
-    // 忽略状态拉取失败，不阻塞主流程
+    // Ignore state fetch failures; do not block the main flow
   }
 }
 
-const ensureActiveThread = async (title = '新的对话') => {
+  const ensureActiveThread = async (title = 'New Conversation') => {
   if (currentChatId.value) return currentChatId.value
   try {
-    const newThread = await createThread(currentAgentId.value, title || '新的对话')
+    const newThread = await createThread(currentAgentId.value, title || 'New Conversation')
     if (newThread) {
       chatState.currentThreadId = newThread.id
       return newThread.id
     }
   } catch {
-    // createThread 已处理错误提示
+    // createThread already handled the error message
   }
   return null
 }
@@ -886,13 +888,13 @@ const handleAttachmentUpload = async (files) => {
   if (
     !AgentValidator.validateAgentIdWithError(
       currentAgentId.value,
-      '上传附件',
+      'Upload attachment',
       handleValidationError
     )
   )
     return
 
-  const preferredTitle = files[0]?.name || '新的对话'
+  const preferredTitle = files[0]?.name || 'New Conversation'
   let threadId = currentChatId.value
 
   if (!threadId) {
@@ -900,20 +902,20 @@ const handleAttachmentUpload = async (files) => {
   }
 
   if (!threadId) {
-    message.error('创建对话失败，无法上传附件')
+    message.error('Failed to create conversation; cannot upload attachment')
     return
   }
 
   try {
     message.loading({
-      content: '正在上传附件...',
+      content: 'Uploading attachment...',
       key: 'upload-attachment',
       duration: 0
     })
     for (const file of files) {
       await threadApi.uploadThreadAttachment(threadId, file)
     }
-    message.success({ content: '附件上传成功', key: 'upload-attachment', duration: 2 })
+    message.success({ content: 'Attachment uploaded successfully', key: 'upload-attachment', duration: 2 })
     await fetchAgentState(currentAgentId.value, threadId)
   } catch (error) {
     message.destroy('upload-attachment')
@@ -921,7 +923,7 @@ const handleAttachmentUpload = async (files) => {
   }
 }
 
-// ==================== 审批功能管理 ====================
+// ==================== Approval feature management ====================
 const { approvalState, handleApproval, processApprovalInStream } = useApproval({
   getThreadState,
   resetOnGoingConv,
@@ -948,7 +950,7 @@ const { startRunStream, resumeActiveRunForThread, stopRunStreamSubscription } = 
   streamSmoother
 })
 
-// 发送消息并处理流式响应
+// Send a message and handle the streaming response
 const sendMessage = async ({
   agentId,
   threadId,
@@ -976,7 +978,7 @@ const sendMessage = async ({
     agent_config_id: selectedAgentConfigId.value
   }
 
-  // 如果有图片，添加到请求中
+  // If there is an image, include it in the request
   if (imageData && imageData.imageContent) {
     requestData.image_content = imageData.imageContent
   }
@@ -990,7 +992,7 @@ const sendMessage = async ({
 }
 
 // ==================== CHAT ACTIONS ====================
-// 获取第一个非置顶的对话
+// Get the first non-pinned conversation
 const getFirstNonPinnedChat = (chatList) => {
   if (!chatList || chatList.length === 0) return null
   return chatList.find((chat) => !chat.is_pinned) || chatList[0]
@@ -1000,11 +1002,11 @@ const createNewChat = async () => {
   const previousThreadId = chatState.currentThreadId
   if (previousThreadId) {
     stopThreadStream(previousThreadId)
-    // run 模式下仅断开 SSE 订阅，不取消后台运行任务
+    // In run mode, only disconnect the SSE subscription and do not cancel the background run task
     stopRunStreamSubscription(previousThreadId)
   }
   isAgentPanelOpen.value = false
-  // 进入未选中对话空态，路由由 thread-change 统一同步到 /agent
+  // Enter the unselected conversation empty state; routing is synchronized to /agent via thread-change
   chatState.currentThreadId = null
 }
 
@@ -1014,17 +1016,17 @@ const selectChat = async (chatId) => {
   const previousThreadId = chatState.currentThreadId
 
   if (!targetAgentId) {
-    handleValidationError('选择对话失败：缺少智能体信息')
+    handleValidationError('Failed to select conversation: missing agent information')
     return
   }
 
-  if (!AgentValidator.validateAgentIdWithError(targetAgentId, '选择对话', handleValidationError))
+  if (!AgentValidator.validateAgentIdWithError(targetAgentId, 'Select conversation', handleValidationError))
     return
 
-  // 中断之前线程的流式输出（如果存在）
+  // Interrupt the previous thread's streaming output if it exists
   if (previousThreadId && previousThreadId !== chatId) {
     stopThreadStream(previousThreadId)
-    // run 模式下仅断开 SSE 订阅，不取消后台运行任务
+    // In run mode, only disconnect the SSE subscription and do not cancel the background run task
     stopRunStreamSubscription(previousThreadId)
   }
 
@@ -1032,7 +1034,7 @@ const selectChat = async (chatId) => {
     isAgentPanelOpen.value = false
   }
 
-  // 先更新当前线程，确保底部智能体名称与选中项即时同步
+  // Update the current thread first so the bottom agent name stays in sync immediately
   chatState.currentThreadId = chatId
 
   if (!props.singleMode && targetChat?.agent_id && targetChat.agent_id !== currentAgentId.value) {
@@ -1105,7 +1107,7 @@ const deleteChat = async (chatId) => {
   if (
     !AgentValidator.validateAgentIdWithError(
       currentAgentId.value,
-      '删除对话',
+      'Delete conversation',
       handleValidationError
     )
   )
@@ -1114,7 +1116,7 @@ const deleteChat = async (chatId) => {
     await deleteThread(chatId)
     if (chatState.currentThreadId === chatId) {
       chatState.currentThreadId = null
-      // 删除当前对话后回到空态，发送消息时再创建新线程
+      // After deleting the current conversation, return to the empty state and create a new thread when sending a message
       await createNewChat()
     }
   } catch (error) {
@@ -1145,15 +1147,15 @@ const togglePinChat = async (chatId) => {
   const chat = chatsList.value.find((c) => c.id === chatId)
   if (!chat) return
   try {
-    // 保存当前选中的对话ID
+    // Save the currently selected conversation ID
     const prevChatId = currentChatId.value
 
     await updateThread(chatId, null, !chat.is_pinned)
 
-    // 刷新对话列表
+    // Refresh the conversation list
     await loadChatsList()
 
-    // 恢复当前选中的对话
+    // Restore the currently selected conversation
     if (prevChatId) {
       chatState.currentThreadId = prevChatId
     }
@@ -1168,18 +1170,18 @@ const handleSendMessage = async ({ image } = {}) => {
     return
 
   if (!selectedAgentConfigId.value) {
-    message.error('请先选择智能体配置后再发送消息')
+    message.error('Please select an agent configuration before sending a message')
     return
   }
 
-  // 发送后进入短暂冷却，防止连续触发停止
+  // Enter a brief cooldown after sending to prevent repeated stop triggers
   startSendCooldown()
 
   let threadId = currentChatId.value
   if (!threadId) {
     threadId = await ensureActiveThread(text)
     if (!threadId) {
-      message.error('创建对话失败，请重试')
+      message.error('Failed to create conversation, please try again')
       return
     }
   }
@@ -1210,7 +1212,7 @@ const handleSendMessage = async ({ image } = {}) => {
             }
           } catch (e) {
             console.error('Title generation failed:', e)
-            // 失败时使用原始文本作为标题
+            // Use the original text as the title if generation fails
             void updateThread(threadId, autoTitle.slice(0, 30)).catch(() => {})
           }
         })()
@@ -1228,7 +1230,7 @@ const handleSendMessage = async ({ image } = {}) => {
       })
       const runId = runResp?.run_id
       if (!runId) {
-        throw new Error('创建 run 失败：缺少 run_id')
+        throw new Error('Failed to create run: missing run_id')
       }
       await startRunStream(threadId, runId, 0)
     } catch (error) {
@@ -1238,7 +1240,7 @@ const handleSendMessage = async ({ image } = {}) => {
     return
   }
 
-  // 如果是新对话，用 fast-model 异步生成标题（不阻塞消息发送）
+  // If this is a new conversation, generate a title asynchronously with the fast model (do not block message sending)
   if ((threadMessages.value[threadId] || []).length === 0) {
     const autoTitle = text.replace(/\s+/g, ' ').trim().slice(0, 2000)
     if (autoTitle) {
@@ -1256,7 +1258,7 @@ const handleSendMessage = async ({ image } = {}) => {
           }
         } catch (e) {
           console.error('Title generation failed:', e)
-          // 失败时使用原始文本作为标题
+          // Use the original text as the title if generation fails
           void updateThread(threadId, autoTitle.slice(0, 30)).catch(() => {})
         }
       })()
@@ -1287,9 +1289,9 @@ const handleSendMessage = async ({ image } = {}) => {
     threadState.isStreaming = false
   } finally {
     threadState.streamAbortController = null
-    // 异步加载历史记录，保持当前消息显示直到历史记录加载完成
+    // Load history asynchronously and keep the current message visible until history loading completes
     fetchThreadMessages({ agentId: currentAgentId.value, threadId: threadId }).finally(() => {
-      // 历史记录加载完成后，安全地清空当前进行中的对话
+      // After history loading completes, safely clear the current in-progress conversation
       resetOnGoingConv(threadId)
       handleAgentStateRefresh(threadId)
       scrollController.scrollToBottom()
@@ -1297,7 +1299,7 @@ const handleSendMessage = async ({ image } = {}) => {
   }
 }
 
-// 发送或中断
+// Send or stop
 const handleSendOrStop = async (payload) => {
   if (sendCooldownActive.value) {
     return
@@ -1309,7 +1311,7 @@ const handleSendOrStop = async (payload) => {
     if (useRunsApi && threadState.activeRunId) {
       try {
         await agentApi.cancelAgentRun(threadState.activeRunId)
-        message.info('已发送取消请求')
+        message.info('Cancellation request sent')
       } catch (error) {
         handleChatError(error, 'stop')
       }
@@ -1317,17 +1319,17 @@ const handleSendOrStop = async (payload) => {
     }
 
     if (threadState.streamAbortController) {
-      // 中断生成
+      // Interrupt generation
       threadState.streamAbortController.abort()
 
-      // 中断后刷新消息历史，确保显示最新的状态
+      // Refresh message history after interruption to ensure the latest state is shown
       try {
         await fetchThreadMessages({ agentId: currentAgentId.value, threadId: threadId, delay: 500 })
         fetchAgentState(currentAgentId.value, threadId)
-        message.info('已中断对话生成')
+        message.info('Conversation generation interrupted')
       } catch (error) {
-        console.error('刷新消息历史失败:', error)
-        message.info('已中断对话生成')
+        console.error('Failed to refresh message history:', error)
+        message.info('Conversation generation interrupted')
       }
       return
     }
@@ -1335,29 +1337,29 @@ const handleSendOrStop = async (payload) => {
   await handleSendMessage(payload)
 }
 
-// ==================== 人工审批处理 ====================
+// ==================== Manual approval handling ====================
 const handleApprovalWithStream = async (answer) => {
   const threadId = approvalState.threadId
   if (!threadId) {
-    message.error('无效的提问请求')
+    message.error('Invalid question request')
     approvalState.showModal = false
     return
   }
 
   const threadState = getThreadState(threadId)
   if (!threadState) {
-    message.error('无法找到对应的对话线程')
+    message.error('Unable to find the corresponding conversation thread')
     approvalState.showModal = false
     return
   }
 
   try {
-    // 使用审批 composable 处理审批
+    // Use the approval composable to process the approval
     const response = await handleApproval(answer, currentAgentId.value, selectedAgentConfigId.value)
 
-    if (!response) return // 如果 handleApproval 抛出错误，这里不会执行
+    if (!response) return // If handleApproval throws an error, this will not execute
 
-    // 处理流式响应
+    // Process the streaming response
     await handleAgentResponse(response, threadId)
   } catch (error) {
     if (error.name !== 'AbortError') {
@@ -1369,7 +1371,7 @@ const handleApprovalWithStream = async (answer) => {
       threadState.streamAbortController = null
     }
 
-    // 异步加载历史记录，保持当前消息显示直到历史记录加载完成
+    // Load history asynchronously and keep the current message visible until history loading completes
     fetchThreadMessages({ agentId: currentAgentId.value, threadId: threadId }).finally(() => {
       resetOnGoingConv(threadId)
       fetchAgentState(currentAgentId.value, threadId)
@@ -1386,7 +1388,7 @@ const handleQuestionCancel = () => {
   handleApprovalWithStream('reject')
 }
 
-// 处理示例问题点击
+// Handle example question clicks
 const handleExampleClick = (questionText) => {
   userInput.value = questionText
   nextTick(() => {
@@ -1403,8 +1405,8 @@ const buildExportPayload = () => {
   }
 
   const payload = {
-    chatTitle: currentThread.value?.title || '新对话',
-    agentName: currentAgentName.value || currentAgent.value?.name || '智能助手',
+    chatTitle: currentThread.value?.title || 'New Conversation',
+    agentName: currentAgentName.value || currentAgent.value?.name || 'Smart Assistant',
     agentDescription: agentDescription || currentAgent.value?.description || '',
     messages: conversations.value ? JSON.parse(JSON.stringify(conversations.value)) : [],
     onGoingMessages: onGoingConvMessages.value
@@ -1452,8 +1454,8 @@ const togglePanelExpanded = () => {
   isAgentPanelExpanded.value = !isAgentPanelExpanded.value
 }
 
-// 处理面板宽度调整（使用比例）
-// 向右拖动(deltaX > 0)让面板变窄，向左拖动(deltaX < 0)让面板变宽
+// Handle panel width resizing (using ratios)
+// Dragging right (deltaX > 0) makes the panel narrower, dragging left (deltaX < 0) makes it wider
 const handlePanelResize = (clientX) => {
   if (!panelWrapperRef.value) return
 
@@ -1471,7 +1473,7 @@ const handlePanelResize = (clientX) => {
   }
 }
 
-// 拖拽状态变化时，同步最终状态到 Vue 响应式数据
+// When the drag state changes, sync the final state back to Vue reactive data
 const handleResizingChange = (isResizingState, clientX = 0) => {
   isResizing.value = isResizingState
 
@@ -1491,7 +1493,7 @@ const handleResizingChange = (isResizingState, clientX = 0) => {
     panelWrapperRef.value.style.removeProperty('flex')
     resizeStartX = 0
     resizeStartWidth = 0
-    panelContainerWidth = 0 // 重置，供下次使用
+    panelContainerWidth = 0 // Reset for the next use
   }
 }
 
@@ -1505,13 +1507,13 @@ const getLastMessage = (conv) => {
 }
 
 const showMsgRefs = (msg) => {
-  // 如果正在审批中，不显示 refs
+  // Do not show refs while approval is in progress
   if (approvalState.showModal) {
     return false
   }
 
-  // 如果当前线程ID与审批线程ID匹配，但审批框已关闭（说明刚刚处理完审批）
-  // 且当前有新的流式处理正在进行，则不显示之前被中断的消息的 refs
+  // If the current thread ID matches the approval thread ID but the approval modal is closed, the approval was just processed
+  // And if a new streaming response is in progress, do not show refs for the previously interrupted message
   if (
     approvalState.threadId &&
     chatState.currentThreadId === approvalState.threadId &&
@@ -1521,7 +1523,7 @@ const showMsgRefs = (msg) => {
     return false
   }
 
-  // 只有真正完成的消息才显示 refs
+  // Only show refs for messages that are truly finished
   if (msg.isLast && msg.status === 'finished') {
     return ['copy', 'sources']
   }
@@ -1548,7 +1550,7 @@ const loadChatsList = async () => {
     await fetchThreads(agentId)
     if (props.singleMode && currentAgentId.value !== agentId) return
 
-    // 如果当前线程不在线程列表中，清空当前线程
+    // If the current thread is not in the thread list, clear the current thread
     if (
       chatState.currentThreadId &&
       !threads.value.find((t) => t.id === chatState.currentThreadId)
@@ -1556,7 +1558,7 @@ const loadChatsList = async () => {
       chatState.currentThreadId = null
     }
 
-    // singleMode 保持旧行为：自动选择首个可用对话
+    // singleMode preserves the old behavior: automatically select the first available conversation
     if (props.singleMode && threads.value.length > 0 && !chatState.currentThreadId) {
       await selectChat(getFirstNonPinnedChat(threads.value).id)
     }
@@ -1591,12 +1593,12 @@ watch(
     }
 
     if (newAgentId !== oldAgentId) {
-      // 清理当前线程状态
+      // Clear current thread state
       chatState.currentThreadId = null
       threadMessages.value = {}
       threadFilesMap.value = {}
       threadAttachmentsMap.value = {}
-      // 清理所有线程状态
+      // Clear all thread states
       resetOnGoingConv()
 
       if (newAgentId) {
@@ -2022,7 +2024,7 @@ watch(currentChatId, (threadId, oldThreadId) => {
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.025em;
-    /* 恢复灰色调：深灰 -> 亮灰(高光) -> 深灰 */
+    /* Restore the gray tone: dark gray -> light gray (highlight) -> dark gray */
     background: linear-gradient(
       90deg,
       var(--gray-700) 0%,
@@ -2075,7 +2077,7 @@ watch(currentChatId, (threadId, oldThreadId) => {
   }
 }
 
-// 智能体选择器的图标对齐
+// Icon alignment for the agent selector
 .agent-segment-wrapper {
   :deep(.ant-segmented-item-label) {
     display: flex;
@@ -2142,7 +2144,7 @@ watch(currentChatId, (threadId, oldThreadId) => {
   }
 }
 
-/* AgentState 按钮有内容时的样式 */
+/* Styling when the AgentState button has content */
 .agent-nav-btn.agent-state-btn.has-content:hover:not(.is-disabled) {
   color: var(--main-700);
   background-color: var(--main-20);

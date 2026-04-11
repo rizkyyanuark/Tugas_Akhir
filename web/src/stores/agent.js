@@ -7,41 +7,37 @@ import { useUserStore } from '@/stores/user'
 export const useAgentStore = defineStore(
   'agent',
   () => {
-    const userStore = useUserStore()
-    // ==================== 状态定义 ====================
-    // 智能体相关状态
+    // ==================== State Definition ====================
+    // Agent related states
     const agents = ref([])
     const selectedAgentId = ref(null)
     const defaultAgentId = ref(null)
 
-    // 资源相关状态
+    // Resource related states
     const availableKnowledgeBases = ref([])
     const availableMcps = ref([])
     const availableSkills = ref([])
 
-    // 智能体配置相关状态
+    // Agent configuration related states
     const agentConfig = ref({})
     const originalAgentConfig = ref({})
     const agentConfigs = ref({})
     const selectedAgentConfigId = ref(null)
 
-    // 智能体详情相关状态
-    const agentDetails = ref({}) // 存储每个智能体的详细信息（含 configurable_items）
+    const agentDetails = ref({}) // Store detailed information for each agent (including configurable_items)
 
-    // 加载状态
+    // Loading states
     const isLoadingAgents = ref(false)
     const isLoadingConfig = ref(false)
     const isLoadingAgentConfigs = ref(false)
     const isLoadingAgentDetail = ref(false)
 
-    // 错误状态
-    const error = ref(null)
-
-    // 初始化状态
+    // Initialization states
     const isInitialized = ref(false)
     const isInitializing = ref(false)
+    const error = ref(null)
 
-    // ==================== 计算属性 ====================
+    // ==================== Computed Properties ====================
     const selectedAgent = computed(() =>
       selectedAgentId.value ? agents.value.find((a) => a.id === selectedAgentId.value) : null
     )
@@ -78,7 +74,7 @@ export const useAgentStore = defineStore(
       return items
     })
 
-    // 工具相关状态
+    // Tool related states
     const availableTools = computed(() => {
       return configurableItems.value.tools?.options || []
     })
@@ -95,9 +91,9 @@ export const useAgentStore = defineStore(
       return list.find((c) => c.id === configId) || null
     })
 
-    // ==================== 方法 ====================
+    // ==================== Methods ====================
     /**
-     * 获取可提及的资源（知识库、MCP、Skills）
+     * Fetch mentionable resources (Knowledge Base, MCP, Skills)
      */
     async function fetchMentionResources() {
       try {
@@ -115,12 +111,12 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 初始化 store
+     * Initialize store
      */
     async function initialize() {
       if (isInitialized.value) return
 
-      // 防止并发初始化
+      // Prevent concurrent initialization
       if (isInitializing.value) return
       isInitializing.value = true
 
@@ -138,7 +134,7 @@ export const useAgentStore = defineStore(
           }
         } else {
           console.log('Condition FALSE: Persisted selected agent is valid. Keeping it.')
-          // 确保已缓存的智能体详细信息存在
+          // Ensure cached agent details exist
           if (selectedAgentId.value && !agentDetails.value[selectedAgentId.value]) {
             try {
               await fetchAgentDetail(selectedAgentId.value)
@@ -176,7 +172,7 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 获取智能体列表
+     * Fetch agent list
      */
     async function fetchAgents() {
       isLoadingAgents.value = true
@@ -196,13 +192,13 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 获取单个智能体的详细信息（包含配置选项）
-     * @param {string} agentId - 智能体ID
+     * Fetch detailed information of a single agent (including configuration options)
+     * @param {string} agentId - Agent ID
      */
     async function fetchAgentDetail(agentId, forceRefresh = false) {
       if (!agentId) return
 
-      // 如果已经缓存了详细信息且不强制刷新，直接返回
+      // If details are already cached and no forced refresh, return directly
       if (!forceRefresh && agentDetails.value[agentId]) {
         return agentDetails.value[agentId]
       }
@@ -226,7 +222,7 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 获取默认智能体
+     * Fetch default agent
      */
     async function fetchDefaultAgent() {
       try {
@@ -240,7 +236,7 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 设置默认智能体
+     * Set default agent
      */
     async function setDefaultAgent(agentId) {
       try {
@@ -255,17 +251,17 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 选择智能体
+     * Select agent
      */
     async function selectAgent(agentId) {
       if (agents.value.find((a) => a.id === agentId)) {
         selectedAgentId.value = agentId
-        // 清空之前的配置
+        // Clear previous configuration
         agentConfig.value = {}
         originalAgentConfig.value = {}
         selectedAgentConfigId.value = null
 
-        // 并行获取智能体详情和配置列表
+        // Fetch agent details and configuration list in parallel
         await Promise.all([
           (async () => {
             try {
@@ -292,7 +288,7 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 加载智能体配置
+     * Load agent configuration
      */
     async function fetchAgentConfigs(agentId = null) {
       const targetAgentId = agentId || selectedAgentId.value
@@ -328,17 +324,17 @@ export const useAgentStore = defineStore(
         const contextConfig = configJson.context || configJson
         const loadedConfig = { ...contextConfig }
 
-        // 确保 configurableItems 已加载
+        // Ensure configurableItems are loaded
         if (!agentDetails.value[targetAgentId]) {
           await fetchAgentDetail(targetAgentId)
         }
 
-        // 使用 configurableItems 中的默认值补全缺失的配置项
+        // Complete missing configuration items using default values from configurableItems
         const items = configurableItems.value
         Object.keys(items).forEach((key) => {
           const item = items[key]
           if (loadedConfig[key] === undefined || loadedConfig[key] === null) {
-            // 只有当默认值存在时才设置
+            // Only set if default value exists
             if (item.default !== undefined) {
               loadedConfig[key] = item.default
             }
@@ -377,15 +373,15 @@ export const useAgentStore = defineStore(
     }
 
     /**
-     * 保存智能体配置
-     * @param {Object} options - 额外参数 (e.g., { reload_graph: true })
+     * Save agent configuration
+     * @param {Object} options - Extra parameters (e.g., { reload_graph: true })
      */
     // eslint-disable-next-line no-unused-vars
     async function saveAgentConfig(options = {}) {
       const targetAgentId = selectedAgentId.value
       const targetConfigId = selectedAgentConfigId.value
       if (!targetAgentId || !targetConfigId) return
-      if (!userStore.isAdmin) return
+      if (!useUserStore().isAdmin) return
 
       try {
         await agentApi.updateAgentConfigProfile(targetAgentId, targetConfigId, {
@@ -403,8 +399,8 @@ export const useAgentStore = defineStore(
     async function createAgentConfigProfile({ name, setDefault = false, fromCurrent = true } = {}) {
       const targetAgentId = selectedAgentId.value
       if (!targetAgentId) return null
-      if (!userStore.isAdmin) return null
-      if (!name) throw new Error('配置名称不能为空')
+      if (!useUserStore().isAdmin) return null
+      if (!name) throw new Error('Configuration name cannot be empty')
 
       const baseContext = fromCurrent ? { ...agentConfig.value } : {}
 
@@ -426,7 +422,7 @@ export const useAgentStore = defineStore(
       const targetAgentId = selectedAgentId.value
       const targetConfigId = selectedAgentConfigId.value
       if (!targetAgentId || !targetConfigId) return
-      if (!userStore.isAdmin) return
+      if (!useUserStore().isAdmin) return
 
       await agentApi.deleteAgentConfigProfile(targetAgentId, targetConfigId)
       await fetchAgentConfigs(targetAgentId)
@@ -445,42 +441,42 @@ export const useAgentStore = defineStore(
       const targetAgentId = selectedAgentId.value
       const targetConfigId = selectedAgentConfigId.value
       if (!targetAgentId || !targetConfigId) return
-      if (!userStore.isAdmin) return
+      if (!useUserStore().isAdmin) return
 
       await agentApi.setAgentConfigDefault(targetAgentId, targetConfigId)
       await fetchAgentConfigs(targetAgentId)
     }
 
     /**
-     * 重置智能体配置
+     * Reset agent configuration
      */
     function resetAgentConfig() {
       agentConfig.value = { ...originalAgentConfig.value }
     }
 
     /**
-     * 更新配置项
+     * Update configuration item
      */
     function updateConfigItem(key, value) {
       agentConfig.value[key] = value
     }
 
     /**
-     * 更新智能体配置（支持批量更新）
+     * Update agent configuration (supports batch updates)
      */
     function updateAgentConfig(updates) {
       Object.assign(agentConfig.value, updates)
     }
 
     /**
-     * 清除错误状态
+     * Clear error status
      */
     function clearError() {
       error.value = null
     }
 
     /**
-     * 重置 store 状态
+     * Reset store state
      */
     function reset() {
       agents.value = []
@@ -504,7 +500,7 @@ export const useAgentStore = defineStore(
     }
 
     return {
-      // 状态
+      // State
       agents,
       selectedAgentId,
       defaultAgentId,
@@ -521,7 +517,7 @@ export const useAgentStore = defineStore(
       error,
       isInitialized,
 
-      // 计算属性
+      // Computed properties
       selectedAgent,
       defaultAgent,
       agentsList,
@@ -533,7 +529,7 @@ export const useAgentStore = defineStore(
       selectedAgentConfigId,
       selectedConfigSummary,
 
-      // 方法
+      // Methods
       initialize,
       fetchAgents,
       fetchAgentDetail,
@@ -556,7 +552,7 @@ export const useAgentStore = defineStore(
     }
   },
   {
-    // 持久化配置
+    // Persistence configuration
     persist: {
       key: 'agent-store',
       storage: localStorage,

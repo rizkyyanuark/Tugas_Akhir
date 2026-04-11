@@ -1,6 +1,6 @@
 <template>
   <div class="knowledge-base-card">
-    <!-- 标题栏 -->
+    <!-- Title bar -->
     <div class="card-header">
       <div class="header-left">
         <a-button
@@ -11,10 +11,10 @@
           type="text"
           size="small"
         ></a-button>
-        <h3 class="card-title">{{ database.name || '数据库信息加载中' }}</h3>
+        <h3 class="card-title">{{ database.name || 'Loading database info' }}</h3>
       </div>
       <div class="header-right">
-        <a-button type="text" size="small" @click="copyDatabaseId" title="复制知识库ID">
+        <a-button type="text" size="small" @click="copyDatabaseId" title="Copy knowledge base ID">
           <template #icon>
             <Copy :size="14" />
           </template>
@@ -27,11 +27,11 @@
       </div>
     </div>
 
-    <!-- 卡片内容 -->
+    <!-- Card content -->
     <div class="card-content">
-      <!-- 描述文本 -->
+      <!-- Description text -->
       <div class="description">
-        <p class="description-text">{{ database.description || '暂无描述' }}</p>
+        <p class="description-text">{{ database.description || 'No description available' }}</p>
       </div>
 
       <!-- Tags -->
@@ -47,51 +47,51 @@
     </div>
   </div>
 
-  <!-- 编辑对话框 -->
-  <a-modal v-model:open="editModalVisible" title="编辑知识库信息">
+  <!-- Edit dialog -->
+  <a-modal v-model:open="editModalVisible" title="Edit knowledge base information">
     <template #footer>
       <a-button danger @click="deleteDatabase" style="margin-right: auto; margin-left: 0">
         <template #icon>
           <Trash2 :size="16" style="vertical-align: -3px; margin-right: 4px" />
         </template>
-        删除数据库
+        Delete database
       </a-button>
-      <a-button key="back" @click="editModalVisible = false">取消</a-button>
-      <a-button key="submit" type="primary" @click="handleEditSubmit">确定</a-button>
+      <a-button key="back" @click="editModalVisible = false">Cancel</a-button>
+      <a-button key="submit" type="primary" @click="handleEditSubmit">Confirm</a-button>
     </template>
     <a-form :model="editForm" :rules="rules" ref="editFormRef" layout="vertical">
-      <a-form-item label="知识库名称" name="name" required>
-        <a-input v-model:value="editForm.name" placeholder="请输入知识库名称" />
+      <a-form-item label="Knowledge base name" name="name" required>
+        <a-input v-model:value="editForm.name" placeholder="Enter knowledge base name" />
       </a-form-item>
-      <a-form-item label="知识库描述" name="description">
+      <a-form-item label="Knowledge base description" name="description">
         <AiTextarea
           v-model="editForm.description"
           :name="editForm.name"
           :files="fileList"
-          placeholder="请输入知识库描述"
+          placeholder="Enter knowledge base description"
           :rows="4"
         />
       </a-form-item>
 
       <a-form-item
         v-if="database.kb_type !== 'dify'"
-        label="自动生成问题"
+        label="Auto-generate questions"
         name="auto_generate_questions"
       >
         <a-switch
           v-model:checked="editForm.auto_generate_questions"
-          checked-children="开启"
-          un-checked-children="关闭"
+          checked-children="On"
+          un-checked-children="Off"
         />
         <span style="margin-left: 8px; font-size: 12px; color: var(--gray-500)"
-          >上传文件后自动生成测试问题</span
+          >Automatically generate test questions after upload</span
         >
       </a-form-item>
 
       <a-form-item v-if="database.kb_type !== 'dify'" name="chunk_preset_id">
         <template #label>
           <span class="chunk-preset-label">
-            分块策略
+            Chunking strategy
             <a-tooltip :title="editPresetDescription">
               <QuestionCircleOutlined class="chunk-preset-help-icon" />
             </a-tooltip>
@@ -107,14 +107,14 @@
             placeholder="例如: https://api.dify.ai/v1"
           />
         </a-form-item>
-        <a-form-item label="Dify Token" name="dify_token">
+        <a-form-item label="Dify token" name="dify_token">
           <a-input-password
             v-model:value="editForm.dify_token"
-            placeholder="请输入 Dify API Token"
+            placeholder="Enter Dify API token"
           />
         </a-form-item>
         <a-form-item label="Dataset ID" name="dify_dataset_id">
-          <a-input v-model:value="editForm.dify_dataset_id" placeholder="请输入 Dify dataset_id" />
+          <a-input v-model:value="editForm.dify_dataset_id" placeholder="Enter Dify dataset ID" />
         </a-form-item>
       </template>
 

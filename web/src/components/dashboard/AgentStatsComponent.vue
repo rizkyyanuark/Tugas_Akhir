@@ -1,30 +1,30 @@
 <template>
-  <a-card title="AI智能体分析" :loading="loading" class="dashboard-card">
-    <!-- 智能体概览 -->
+  <a-card title="AI Agent Analysis" :loading="loading" class="dashboard-card">
+    <!-- Agent overview -->
     <div class="stats-overview">
       <a-row :gutter="16">
         <a-col :span="8">
           <a-statistic
-            title="智能体总数"
+            title="Total agents"
             :value="agentStats?.total_agents || 0"
             :value-style="{ color: 'var(--color-info-500)' }"
-            suffix="个"
+            suffix=""
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
-            title="总对话数"
+            title="Total conversations"
             :value="totalConversations"
             :value-style="{ color: 'var(--color-accent-500)' }"
-            suffix="次"
+            suffix=""
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
-            title="工具调用总数"
+            title="Total tool calls"
             :value="totalToolUsage"
             :value-style="{ color: 'var(--color-warning-500)' }"
-            suffix="次"
+            suffix=""
           />
         </a-col>
       </a-row>
@@ -32,21 +32,21 @@
 
     <a-divider />
 
-    <!-- 图表区域 -->
+    <!-- Chart area -->
     <a-row :gutter="24">
-      <!-- 对话数和工具调用数分布 -->
+      <!-- Conversation and tool-call distribution -->
       <a-col :span="24">
         <div class="chart-container">
-          <h4>对话/工具调用分布 (TOP 3)</h4>
+          <h4>Conversation / tool-call distribution (TOP 3)</h4>
           <div ref="conversationToolChartRef" class="chart"></div>
         </div>
       </a-col>
     </a-row>
 
-    <!-- 表现排行榜 -->
+    <!-- Performance leaderboard -->
     <a-divider />
     <div class="top-performers">
-      <h4>表现最佳智能体 TOP 5</h4>
+      <h4>Top 5 performing agents</h4>
       <a-table
         :columns="performerColumns"
         :data-source="topPerformers"

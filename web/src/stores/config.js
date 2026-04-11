@@ -27,12 +27,12 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   function setConfigValues(items) {
-    // 更新本地配置
+    // Update local configuration
     for (const key in items) {
       config.value[key] = items[key]
     }
 
-    // 发送到服务器
+    // Send to server
     configApi.updateConfigBatch(items).then((data) => {
       console.debug('Success:', data)
       setConfig(data)

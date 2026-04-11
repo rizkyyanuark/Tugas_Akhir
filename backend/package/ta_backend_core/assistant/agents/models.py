@@ -15,7 +15,7 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
     """
     provider, model = fully_specified_name.split("/", maxsplit=1)
 
-    assert provider != "custom", "[弃用] 自定义模型已移除，请在 yuxi/config/static/models.py 中配置"
+    assert provider != "custom", "[Deprecated] Custom models have been removed; configure them in ta_backend_core/assistant/config/static/models.py"
 
     model_info = config.model_names.get(provider)
     if not model_info:
@@ -44,7 +44,7 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
         )
 
     else:
-        try:  # 其他模型，默认使用OpenAIBase, like openai, zhipuai
+        try:  # Other models default to OpenAIBase, such as openai and zhipuai
             from langchain_openai import ChatOpenAI
 
             return ChatOpenAI(

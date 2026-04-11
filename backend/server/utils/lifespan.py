@@ -16,8 +16,8 @@ from ta_backend_core.assistant import get_version
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan事件管理器"""
-    # 初始化数据库连接
+    """FastAPI lifespan event manager"""
+    # Initialize database connections
     try:
         pg_manager.initialize()
         await pg_manager.create_business_tables()
@@ -26,20 +26,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize database during startup: {e}")
 
-    # 确保内置 MCP 服务器定义存在于数据库
+    # Ensure builtin MCP server definitions exist in the database
     try:
         await ensure_builtin_mcp_servers_in_db()
     except Exception as e:
         logger.error(f"Failed to ensure builtin MCP servers during startup: {e}")
 
-    # 初始化内置 SubAgent
+    # Initialize builtin SubAgents
     try:
         await init_builtin_subagents()
     except Exception as e:
         logger.error(f"Failed to initialize builtin subagents during startup: {e}")
         raise
 
-    # 初始化知识库管理器
+    # Initialize Knowledge Base manager
     import os
     if os.environ.get("LITE_MODE", "").lower() in ("true", "1"):
         logger.info("LITE_MODE enabled, skipping knowledge base initialization")
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to initialize knowledge base manager: {e}")
 
-    # 预热 Redis（run 队列）
+    # Warm up Redis (run queue)
     try:
         redis = await get_redis_client()
         await redis.ping()
@@ -62,16 +62,16 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize sandbox provider during startup: {e}")
 
     # =========================================================
-    # 2. 核心修复：在这里执行一次 setup()，建完表就拉倒
+    # LangGraph Checkpointer Setup
     # =========================================================
     checkpointer = AsyncPostgresSaver(pg_manager.langgraph_pool)
     await checkpointer.setup()
     print("LangGraph Checkpoint tables verified/created!")
 
     # =========================================================
-    # 3. Strwythura NLP Pre-loading
+    # NLP Pre-loading
     # =========================================================
-    logger.info("🔄 Pre-loading Strwythura NLP models (SpaCy & GLiNER)...")
+    logger.info("🔄 Pre-loading NLP models (SpaCy & GLiNER)...")
     try:
         import spacy
         nlp = spacy.load("en_core_web_sm")
@@ -103,7 +103,7 @@ async def lifespan(app: FastAPI):
     ░██      ░█████░██ ░██    ░██ ░██  v{get_version()}
 
     """)
-    logger.info("Yuxi backend startup complete")
+    logger.info("AgenticRAG backend startup complete")
     yield
     await tasker.shutdown()
     shutdown_sandbox_provider()

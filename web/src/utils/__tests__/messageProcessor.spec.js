@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 
 import { MessageProcessor } from '../messageProcessor.js'
 
-const databases = [{ name: '财税库' }, { name: 'DifyKB' }, { name: 'LightGraphKB' }]
+const databases = [{ name: 'Tax and Finance KB' }, { name: 'DifyKB' }, { name: 'LightGraphKB' }]
 
 const run = () => {
   const conv = {
@@ -11,7 +11,7 @@ const run = () => {
         type: 'ai',
         tool_calls: [
           {
-            name: '财税库',
+            name: 'Tax and Finance KB',
             tool_call_result: {
               content: JSON.stringify([
                 {
@@ -60,34 +60,34 @@ const run = () => {
 
   const chunks = MessageProcessor.extractKnowledgeChunksFromConversation(conv, databases)
 
-  // 1. Milvus/Dify 数组提取
+  // 1. Milvus/Dify array extraction
   assert.equal(
-    chunks.some((c) => c.content === 'A' && c.kb_name === '财税库'),
+    chunks.some((c) => c.content === 'A' && c.kb_name === 'Tax and Finance KB'),
     true
   )
 
-  // 2. LightRAG data.chunks 提取
+  // 2. LightRAG data.chunks extraction
   assert.equal(
     chunks.some((c) => c.content === 'B' && c.kb_name === 'LightGraphKB'),
     true
   )
 
-  // 3. 非知识库工具忽略
+  // 3. Non-knowledge-base tools are ignored
   assert.equal(
     chunks.some((c) => c.content === 'X'),
     false
   )
 
-  // 4. 非法 JSON 自动跳过
+  // 4. Invalid JSON is skipped automatically
   assert.equal(
     chunks.some((c) => c.kb_name === 'DifyKB'),
     false
   )
 
-  // 5. 去重生效（chunk_id=c1 仅一条）
+  // 5. Deduplication works (only one chunk with chunk_id=c1)
   assert.equal(chunks.filter((c) => c.metadata?.chunk_id === 'c1').length, 1)
 
-  // 6. 分数排序（A 0.9 在 B 0.4 前）
+  // 6. Score sorting (A 0.9 comes before B 0.4)
   const idxA = chunks.findIndex((c) => c.content === 'A')
   const idxB = chunks.findIndex((c) => c.content === 'B')
   assert.equal(idxA < idxB, true)

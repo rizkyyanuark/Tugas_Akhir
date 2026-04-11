@@ -102,13 +102,13 @@ async def load_info_config():
     """加载信息配置文件"""
     try:
         # 配置文件路径
-        brand_file_path = os.environ.get("YUXI_BRAND_FILE_PATH", "package/yuxi/config/static/info.local.yaml")
+        brand_file_path = os.environ.get("TA_BRAND_FILE_PATH", "package/ta_backend_core/assistant/config/static/info.local.yaml")
         config_path = Path(brand_file_path)
 
         # 检查文件是否存在
         if not config_path.exists():
             logger.debug(f"The config file {config_path} does not exist, using default config")
-            config_path = Path("package/yuxi/config/static/info.template.yaml")
+            config_path = Path("package/ta_backend_core/assistant/config/static/info.template.yaml")
 
         # 异步读取配置文件
         async with aiofiles.open(config_path, encoding="utf-8") as file:

@@ -1,22 +1,22 @@
 /**
- * API模块索引文件
- * 导出所有API模块，方便统一引入
+ * API module index file
+ * Exports all API modules for convenient unified imports
  */
 
-// 导出API模块
-export * from './system_api' // 系统管理API
-export * from './knowledge_api' // 知识库管理API
-export * from './graph_api' // 图谱API
-export * from './agent_api' // 智能体API
-export * from './tasker' // 任务管理API
-export * from './mindmap_api' // 思维导图API
-export * from './department_api' // 部门管理API
+// Export API modules
+export * from './system_api' // System management API
+export * from './knowledge_api' // Knowledge base management API
+export * from './graph_api' // Graph API
+export * from './agent_api' // Agent API
+export * from './tasker' // Task management API
+export * from './mindmap_api' // Mind map API
+export * from './department_api' // Department management API
 export * from './mcp_api' // MCP API
 export * from './skill_api' // Skills API
 export * from './subagent_api' // SubAgent API
-export * from './tool_api' // 工具 API
+export * from './tool_api' // Tool API
 
-// 导出基础工具函数
+// Export base utility functions
 export {
   apiGet,
   apiPost,
@@ -33,25 +33,24 @@ export {
 } from './base'
 
 /**
- * API模块说明:
+ * API module notes:
  *
- * 1. system_api.js: 系统管理API
- *    - 健康检查、配置管理、信息管理、OCR服务
- *    - 权限要求: 部分公开，部分需要管理员权限
+ * 1. system_api.js: System management API
+ *    - Health checks, configuration management, information management, OCR service
+ *    - Permissions: partly public, partly admin-only
  *
- * 2. knowledge_api.js: 知识库管理API
- *    - 数据库管理、文档管理、查询接口、文件管理
- *    - 权限要求: 管理员权限
+ * 2. knowledge_api.js: Knowledge base management API
+ *    - Database management, document management, query interface, file management
+ *    - Permissions: admin only
  *
+ * 4. graph_api.js: Graph API
+ *    - Knowledge graph related features
  *
- * 4. graph_api.js: 图谱API
- *    - 知识图谱相关功能
+ * 5. tools.js: Tool API
+ *    - Tool information retrieval
  *
- * 5. tools.js: 工具API
- *    - 工具信息获取
+ * 6. agent.js: Agent API
+ *    - Agent management, chat, configuration, and more
  *
- * 6. agent.js: 智能体API
- *    - 智能体管理、聊天、配置等功能
- *
- * 注意：API模块已处理权限验证和请求头，使用时无需再手动添加认证头
+ * Note: API modules already handle permission checks and request headers, so you do not need to add auth headers manually.
  */

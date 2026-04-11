@@ -20,11 +20,11 @@ class DocumentProcessorFactory:
 
     # 处理器类型映射: processor_type -> (module_path, class_name)
     PROCESSOR_TYPES = {
-        "rapid_ocr": ("yuxi.plugins.parser.rapid_ocr", "RapidOCRParser"),
-        "mineru_ocr": ("yuxi.plugins.parser.mineru", "MinerUParser"),
-        "mineru_official": ("yuxi.plugins.parser.mineru_official", "MinerUOfficialParser"),
-        "pp_structure_v3_ocr": ("yuxi.plugins.parser.pp_structure_v3", "PPStructureV3Parser"),
-        "deepseek_ocr": ("yuxi.plugins.parser.deepseek_ocr", "DeepSeekOCRParser"),
+        "rapid_ocr": ("ta_backend_core.assistant.plugins.parser.rapid_ocr", "RapidOCRParser"),
+        "mineru_ocr": ("ta_backend_core.assistant.plugins.parser.mineru", "MinerUParser"),
+        "mineru_official": ("ta_backend_core.assistant.plugins.parser.mineru_official", "MinerUOfficialParser"),
+        "pp_structure_v3_ocr": ("ta_backend_core.assistant.plugins.parser.pp_structure_v3", "PPStructureV3Parser"),
+        "deepseek_ocr": ("ta_backend_core.assistant.plugins.parser.deepseek_ocr", "DeepSeekOCRParser"),
     }
 
     @classmethod

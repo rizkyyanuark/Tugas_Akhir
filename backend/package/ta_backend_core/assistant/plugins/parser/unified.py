@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
-from docling.datamodel.base_models import InputFormat
-from docling.document_converter import DocumentConverter
 from langchain_community.document_loaders import PyPDFLoader
 from markdownify import markdownify as md_convert
 
@@ -58,21 +56,10 @@ class MarkdownParseResult:
     artifacts: dict[str, Any] = field(default_factory=dict)
 
 
-_docling_converter: DocumentConverter | None = None
+# Docling removed as requested by user
 
 
-def _get_docling_converter() -> DocumentConverter:
-    """获取 Docling 文档转换器单例。"""
-    global _docling_converter
-    if _docling_converter is None:
-        _docling_converter = DocumentConverter(
-            format_options={
-                InputFormat.DOCX: None,
-                InputFormat.XLSX: None,
-                InputFormat.PPTX: None,
-            }
-        )
-    return _docling_converter
+# Docling converters removed
 
 
 def _resolve_image_storage_params(params: dict | None) -> tuple[str, str]:
@@ -113,48 +100,13 @@ def _parse_data_uri(data_uri: str) -> tuple[bytes, str]:
     return image_data, mime_type
 
 
-def _convert_with_docling(file_path: Path, params: dict | None = None) -> str:
-    """使用 Docling 将 docx/xlsx/pptx 转换为 Markdown。"""
-    params = params or {}
-    image_bucket, image_prefix = _resolve_image_storage_params(params)
-
-    converter = _get_docling_converter()
-    result = converter.convert(file_path)
-
-    if result.status.name != "SUCCESS":
-        raise RuntimeError(f"Docling 转换失败: {result.status}")
-
-    doc = result.document
-
-    if hasattr(doc, "pictures") and doc.pictures:
-        image_refs: list[tuple[str, bytes]] = []
-
-        for pic in doc.pictures:
-            if hasattr(pic, "image") and hasattr(pic.image, "uri"):
-                uri = str(pic.image.uri)
-                if uri.startswith("data:"):
-                    image_data, mime_type = _parse_data_uri(uri)
-                    timestamp = int(time.time() * 1000000)
-                    filename = f"image_{timestamp}.{mime_type.split('/')[-1]}"
-                    image_refs.append((filename, image_data))
-
-        image_urls: list[str] = []
-        for filename, image_data in image_refs:
-            try:
-                url = _upload_image_to_minio(image_data, filename, image_bucket, image_prefix)
-                image_urls.append(f"![{filename}]({url})")
-            except Exception as e:  # noqa: BLE001
-                logger.error(f"上传图片失败 {filename}: {e}")
-                image_urls.append(f"[图片: {filename}]")
-
-        markdown = doc.export_to_markdown()
-
-        for url in image_urls:
-            markdown = re.sub(r"<!--\s*image\s*-->", url, markdown, count=1)
-
-        return markdown
-
-    return doc.export_to_markdown()
+def _convert_with_unstructured(file_path: Path) -> str:
+    """使用 Unstructured 将 docx/pptx/xlsx 转换为 Markdown。"""
+    from langchain_community.document_loaders import UnstructuredFileLoader
+    
+    loader = UnstructuredFileLoader(str(file_path))
+    docs = loader.load()
+    return "\n\n".join(doc.page_content for doc in docs).strip()
 
 
 def _convert_docx_with_python_docx(file_path: Path) -> str:
@@ -324,13 +276,13 @@ async def _process_file_to_markdown_core(
 
         elif file_ext == ".docx":
             try:
-                result = _convert_with_docling(file_path_obj, params=params)
+                result = _convert_with_unstructured(file_path_obj)
             except Exception as e:  # noqa: BLE001
-                logger.warning(f"Docling 解析 DOCX 失败，回退到 python-docx: {file_path_obj.name}, {e}")
+                logger.warning(f"Unstructured 解析 DOCX 失败，回退到 python-docx: {file_path_obj.name}, {e}")
                 result = _convert_docx_with_python_docx(file_path_obj)
 
         elif file_ext == ".pptx":
-            result = _convert_with_docling(file_path_obj, params=params)
+            result = _convert_with_unstructured(file_path_obj)
 
         elif file_ext == ".doc":
             from langchain_community.document_loaders import UnstructuredWordDocumentLoader
@@ -363,7 +315,9 @@ async def _process_file_to_markdown_core(
             result = markdown_content.strip()
 
         elif file_ext in [".xls", ".xlsx"]:
-            result = _convert_with_docling(file_path_obj, params=params)
+            import pandas as pd
+            df = pd.read_excel(file_path_obj)
+            result = df.to_markdown(index=False)
 
         elif file_ext == ".json":
             import json

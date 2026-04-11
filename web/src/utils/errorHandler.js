@@ -1,16 +1,16 @@
 import { message } from 'ant-design-vue'
 
 /**
- * 统一错误处理工具类
+ * Unified error handling utility class
  */
 export class ErrorHandler {
   /**
-   * 处理通用错误
-   * @param {Error} error - 错误对象
-   * @param {string} context - 错误上下文
-   * @param {Object} options - 配置选项
+   * Handles generic errors
+   * @param {Error} error - Error object
+   * @param {string} context - Error context
+   * @param {Object} options - Configuration options
    */
-  static handleError(error, context = '操作', options = {}) {
+  static handleError(error, context = 'Operation', options = {}) {
     const {
       showMessage = true,
       logToConsole = true,
@@ -18,12 +18,12 @@ export class ErrorHandler {
       severity = 'error'
     } = options
 
-    // 控制台日志
+    // Console logging
     if (logToConsole) {
-      console.error(`${context}失败:`, error)
+      console.error(`${context} failed:`, error)
     }
 
-    // 用户提示
+    // User notification
     if (showMessage) {
       const displayMessage = customMessage || this.getErrorMessage(error, context)
 
@@ -45,55 +45,55 @@ export class ErrorHandler {
   }
 
   /**
-   * 获取错误消息
-   * @param {Error} error - 错误对象
-   * @param {string} context - 错误上下文
-   * @returns {string} 错误消息
+   * Gets error message
+   * @param {Error} error - Error object
+   * @param {string} context - Error context
+   * @returns {string} Error message
    */
   static getErrorMessage(error, context) {
     if (error?.message) {
-      return `${context}失败: ${error.message}`
+      return `${context} failed: ${error.message}`
     }
-    return `${context}失败`
+    return `${context} failed`
   }
 
   /**
-   * 处理网络请求错误
-   * @param {Error} error - 错误对象
-   * @param {string} context - 错误上下文
+   * Handles network request errors
+   * @param {Error} error - Error object
+   * @param {string} context - Error context
    */
-  static handleNetworkError(error, context = '网络请求') {
+  static handleNetworkError(error, context = 'Network Request') {
     let customMessage = null
 
     if (error?.code === 'NETWORK_ERROR') {
-      customMessage = '网络连接失败，请检查网络设置'
+      customMessage = 'Network connection failed, please check your settings'
     } else if (error?.status === 401) {
-      customMessage = '认证失败，请重新登录'
+      customMessage = 'Authentication failed, please login again'
     } else if (error?.status === 403) {
-      customMessage = '权限不足，无法执行此操作'
+      customMessage = 'Insufficient permissions'
     } else if (error?.status === 404) {
-      customMessage = '请求的资源不存在'
+      customMessage = 'Requested resource not found'
     } else if (error?.status >= 500) {
-      customMessage = '服务器错误，请稍后重试'
+      customMessage = 'Server error, please try again later'
     }
 
     return this.handleError(error, context, { customMessage })
   }
 
   /**
-   * 处理聊天相关错误
-   * @param {Error} error - 错误对象
-   * @param {string} operation - 操作类型
+   * Handles chat related errors
+   * @param {Error} error - Error object
+   * @param {string} operation - Operation type
    */
   static handleChatError(error, operation) {
     const contextMap = {
-      send: '发送消息',
-      create: '创建对话',
-      delete: '删除对话',
-      rename: '重命名对话',
-      load: '加载对话',
-      export: '导出对话',
-      stream: '流式处理'
+      send: 'Sending message',
+      create: 'Creating conversation',
+      delete: 'Deleting conversation',
+      rename: 'Renaming conversation',
+      load: 'Loading conversation',
+      export: 'Exporting conversation',
+      stream: 'Streaming'
     }
 
     const context = contextMap[operation] || operation
@@ -101,21 +101,21 @@ export class ErrorHandler {
   }
 
   /**
-   * 处理验证错误
-   * @param {string} message - 验证错误消息
+   * Handles validation errors
+   * @param {string} message - Validation error message
    */
   static handleValidationError(message) {
-    return this.handleError(new Error(message), '输入验证', {
+    return this.handleError(new Error(message), 'Validation', {
       severity: 'warning',
       customMessage: message
     })
   }
 
   /**
-   * 处理异步操作错误
-   * @param {Function} asyncFn - 异步函数
-   * @param {string} context - 错误上下文
-   * @param {Object} options - 配置选项
+   * Handles asynchronous operation errors
+   * @param {Function} asyncFn - Async function
+   * @param {string} context - Error context
+   * @param {Object} options - Configuration options
    */
   static async handleAsync(asyncFn, context, options = {}) {
     try {
@@ -127,9 +127,9 @@ export class ErrorHandler {
   }
 
   /**
-   * 创建错误处理装饰器
-   * @param {string} context - 错误上下文
-   * @param {Object} options - 配置选项
+   * Creates an error handling decorator/wrapper
+   * @param {string} context - Error context
+   * @param {Object} options - Configuration options
    */
   static createHandler(context, options = {}) {
     return (error) => this.handleError(error, context, options)
@@ -137,7 +137,7 @@ export class ErrorHandler {
 }
 
 /**
- * 快捷方法
+ * Shorthand methods
  */
 export const handleChatError = ErrorHandler.handleChatError.bind(ErrorHandler)
 export const handleNetworkError = ErrorHandler.handleNetworkError.bind(ErrorHandler)

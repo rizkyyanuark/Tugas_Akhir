@@ -1,7 +1,7 @@
 /**
  * Chart Color Palette Utility
- * 统一的图表调色盘工具函数
- * 从 CSS 变量中动态获取颜色，确保与主题保持一致
+ * Unified chart color palette helper
+ * Dynamically reads colors from CSS variables to stay aligned with the theme
  */
 
 let colorPalette = []
@@ -9,7 +9,7 @@ let isInitialized = false
 
 /**
  * Build color palette from CSS variables in base.css
- * 从 base.css 中的 CSS 变量构建调色盘
+ * Construct the palette from CSS variables in base.css
  */
 const buildColorPalette = () => {
   try {
@@ -21,7 +21,7 @@ const buildColorPalette = () => {
       return v && v.trim() ? v.trim() : fallback
     }
 
-    // Base chart colors - using new color system
+    // Base chart colors - using the new color system
     const baseVars = [
       ['--main-500', '#3996ae'],
       ['--color-success-500', '#52c41a'],
@@ -75,7 +75,7 @@ const buildColorPalette = () => {
 
 /**
  * Get color by index from the palette
- * 根据索引从调色盘中获取颜色
+ * Get a color from the palette by index
  * @param {number} index - Color index
  * @returns {string} Color value
  */
@@ -88,7 +88,7 @@ export const getColorByIndex = (index) => {
 
 /**
  * Get the entire color palette
- * 获取完整的调色盘
+ * Get the full palette
  * @returns {Array<string>} Color palette array
  */
 export const getColorPalette = () => {
@@ -100,7 +100,7 @@ export const getColorPalette = () => {
 
 /**
  * Truncate legend text for better display
- * 截断图例文本以便更好地显示
+ * Truncate legend text for better display
  * @param {string} name - Legend name
  * @param {number} maxLength - Maximum length (default: 20)
  * @returns {string} Truncated name
@@ -111,8 +111,8 @@ export const truncateLegend = (name, maxLength = 20) => {
 }
 
 /**
- * Initialize the color palette (call this when DOM is ready)
- * 初始化调色盘（在 DOM 准备好时调用）
+ * Initialize the color palette (call this when the DOM is ready)
+ * Initialize the palette (call this when the DOM is ready)
  */
 export const initColorPalette = () => {
   buildColorPalette()
