@@ -1,7 +1,7 @@
 # ══════════════════════════════════════════════════════════════
 # Backend Workspace — Unified Build Root
 # ══════════════════════════════════════════════════════════════
-# Pattern: Identical to Yuxi's `backend/pyproject.toml`
+# Pattern: Identical to AgenticRAG's `backend/pyproject.toml`
 #
 # This workspace ties together:
 #   - server/   → FastAPI HTTP layer (thin controller)

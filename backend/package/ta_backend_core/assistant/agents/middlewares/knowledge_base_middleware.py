@@ -1,4 +1,4 @@
-"""知识库中间件 - 提供通用知识库工具"""
+"""Knowledge base middleware - provides common knowledge base tools"""
 
 from collections.abc import Callable
 
@@ -10,17 +10,17 @@ from ta_backend_core.assistant.utils.logging_config import logger
 
 
 class KnowledgeBaseMiddleware(AgentMiddleware):
-    """知识库中间件 - 提供通用知识库工具
+    """Knowledge base middleware - provides common knowledge base tools
 
-    提供 3 个通用工具：
-    - list_kbs: 列出用户可访问的知识库
-    - get_mindmap: 获取指定知识库的思维导图
-    - query_kb: 在指定知识库中检索
+    Provides 3 common tools:
+    - list_kbs: list knowledge bases accessible to the user
+    - get_mindmap: retrieve a mindmap for a specified knowledge base
+    - query_kb: query/retrieve information within a specified knowledge base
     """
 
     def __init__(self):
         super().__init__()
-        # 预加载通用知识库工具
+        # Preload common knowledge base tools
         self.kb_tools = get_common_kb_tools()
         self.tools = self.kb_tools
         logger.debug(f"Initialized KnowledgeBaseMiddleware with {len(self.kb_tools)} tools")

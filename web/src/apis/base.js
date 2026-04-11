@@ -2,22 +2,22 @@ import { useUserStore, checkAdminPermission, checkSuperAdminPermission } from '@
 import { message } from 'ant-design-vue'
 
 /**
- * 基础API请求封装
- * 提供统一的请求方法，自动处理认证头和错误
+ * Base API request wrapper
+ * Provides a unified request method that automatically handles auth headers and errors
  */
 
 /**
- * 发送API请求的基础函数
- * @param {string} url - API端点
- * @param {Object} options - 请求选项
- * @param {boolean} requiresAuth - 是否需要认证头
- * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
- * @returns {Promise} - 请求结果
+ * Base function for sending API requests
+ * @param {string} url - API endpoint
+ * @param {Object} options - Request options
+ * @param {boolean} requiresAuth - Whether an auth header is required
+ * @param {string} responseType - Response type: 'json' | 'text' | 'blob'
+ * @returns {Promise} - Request result
  */
 export async function apiRequest(url, options = {}, requiresAuth = true, responseType = 'json') {
   try {
     const isFormData = options?.body instanceof FormData
-    // 默认请求配置
+    // Default request options
     const requestOptions = {
       ...options,
       headers: {
@@ -26,26 +26,26 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
       }
     }
 
-    // 如果需要认证，添加认证头
+    // Add auth headers if required
     if (requiresAuth) {
       const userStore = useUserStore()
       if (!userStore.isLoggedIn) {
-        throw new Error('用户未登录')
+        throw new Error('User is not logged in')
       }
 
       Object.assign(requestOptions.headers, userStore.getAuthHeaders())
     }
 
-    // 发送请求
+    // Send the request
     const response = await fetch(url, requestOptions)
 
-    // 处理API返回的错误
+    // Handle API errors
     if (!response.ok) {
-      // 尝试解析错误信息
-      let errorMessage = `请求失败: ${response.status}, ${response.statusText}`
+      // Try to parse the error message
+      let errorMessage = `Request failed: ${response.status}, ${response.statusText}`
       let errorData = null
 
-      console.log('API请求失败:', {
+      console.log('API request failed:', {
         url,
         status: response.status,
         statusText: response.statusText,
@@ -55,11 +55,11 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
       try {
         errorData = await response.json()
         errorMessage = errorData.detail || errorData.message || errorMessage
-        console.log('API错误详情:', errorData)
+        console.log('API error details:', errorData)
 
-        // 如果是422错误，打印更详细的信息
+        // If this is a 422 error, print more detailed information
         if (response.status === 422) {
-          console.error('422验证错误详情:', {
+          console.error('422 validation error details:', {
             url,
             requestMethod: requestOptions.method,
             requestHeaders: requestOptions.headers,
@@ -68,11 +68,11 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
           })
         }
       } catch (e) {
-        // 如果无法解析JSON，使用默认错误信息
-        console.log('无法解析错误响应JSON:', e)
+        // If JSON cannot be parsed, use the default error message
+        console.log('Unable to parse error response JSON:', e)
       }
 
-      // 特殊处理401和403错误
+      // Special handling for 401 and 403 errors
       const error = new Error(errorMessage)
       error.response = {
         status: response.status,
@@ -81,46 +81,43 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
       }
 
       if (response.status === 401) {
-        // 如果是认证失败，可能需要重新登录
+        // If authentication fails, the user may need to log in again
         const userStore = useUserStore()
 
-        // 检查是否是token过期
+        // Check whether the token has expired
         const isTokenExpired =
           errorData &&
-          (errorData.detail?.includes('令牌已过期') ||
-            errorData.detail?.includes('token expired') ||
-            errorMessage?.includes('令牌已过期') ||
-            errorMessage?.includes('token expired'))
+          (errorData.detail?.includes('token expired') || errorMessage?.includes('token expired'))
 
-        message.error(isTokenExpired ? '登录已过期，请重新登录' : '认证失败，请重新登录')
+        message.error(isTokenExpired ? 'Login expired, please log in again' : 'Authentication failed, please log in again')
 
-        // 如果用户当前认为自己已登录，则登出
+        // If the user is currently considered logged in, log them out
         if (userStore.isLoggedIn) {
           userStore.logout()
         }
 
-        // 使用setTimeout确保消息显示后再跳转
+        // Use setTimeout to ensure the message is shown before redirecting
         setTimeout(() => {
           window.location.href = '/login'
         }, 1500)
 
         throw error
       } else if (response.status === 403) {
-        error.message = '没有权限执行此操作'
+        error.message = 'You do not have permission to perform this action'
         throw error
       } else if (response.status === 500) {
-        error.message = '服务器内部错误，请使用 docker logs api-dev 查看详细日志'
+        error.message = 'Internal server error, use docker logs api-dev to inspect the detailed logs'
         throw error
       }
 
       throw error
     }
 
-    // 根据responseType处理响应
+    // Process the response according to responseType
     if (responseType === 'blob') {
       return response
     } else if (responseType === 'json') {
-      // 检查Content-Type以确定如何处理响应
+      // Check Content-Type to determine how to handle the response
       const contentType = response.headers.get('Content-Type')
       if (contentType && contentType.includes('application/json')) {
         return await response.json()
@@ -132,18 +129,18 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
       return response
     }
   } catch (error) {
-    console.error('API请求错误:', error)
+    console.error('API request error:', error)
     throw error
   }
 }
 
 /**
- * 发送GET请求
- * @param {string} url - API端点
- * @param {Object} options - 请求选项
- * @param {boolean} requiresAuth - 是否需要认证
- * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
- * @returns {Promise} - 请求结果
+ * Send a GET request
+ * @param {string} url - API endpoint
+ * @param {Object} options - Request options
+ * @param {boolean} requiresAuth - Whether authentication is required
+ * @param {string} responseType - Response type: 'json' | 'text' | 'blob'
+ * @returns {Promise} - Request result
  */
 export function apiGet(url, options = {}, requiresAuth = true, responseType = 'json') {
   return apiRequest(url, { method: 'GET', ...options }, requiresAuth, responseType)
@@ -160,13 +157,13 @@ export function apiSuperAdminGet(url, options = {}, responseType = 'json') {
 }
 
 /**
- * 发送POST请求
- * @param {string} url - API端点
- * @param {Object} data - 请求体数据
- * @param {Object} options - 其他请求选项
- * @param {boolean} requiresAuth - 是否需要认证
- * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
- * @returns {Promise} - 请求结果
+ * Send a POST request
+ * @param {string} url - API endpoint
+ * @param {Object} data - Request body data
+ * @param {Object} options - Other request options
+ * @param {boolean} requiresAuth - Whether authentication is required
+ * @param {string} responseType - Response type: 'json' | 'text' | 'blob'
+ * @returns {Promise} - Request result
  */
 export function apiPost(url, data = {}, options = {}, requiresAuth = true, responseType = 'json') {
   return apiRequest(
@@ -192,13 +189,13 @@ export function apiSuperAdminPost(url, data = {}, options = {}, responseType = '
 }
 
 /**
- * 发送PUT请求
- * @param {string} url - API端点
- * @param {Object} data - 请求体数据
- * @param {Object} options - 其他请求选项
- * @param {boolean} requiresAuth - 是否需要认证
- * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
- * @returns {Promise} - 请求结果
+ * Send a PUT request
+ * @param {string} url - API endpoint
+ * @param {Object} data - Request body data
+ * @param {Object} options - Other request options
+ * @param {boolean} requiresAuth - Whether authentication is required
+ * @param {string} responseType - Response type: 'json' | 'text' | 'blob'
+ * @returns {Promise} - Request result
  */
 export function apiPut(url, data = {}, options = {}, requiresAuth = true, responseType = 'json') {
   return apiRequest(
@@ -224,12 +221,12 @@ export function apiSuperAdminPut(url, data = {}, options = {}, responseType = 'j
 }
 
 /**
- * 发送DELETE请求
- * @param {string} url - API端点
- * @param {Object} options - 请求选项
- * @param {boolean} requiresAuth - 是否需要认证
- * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
- * @returns {Promise} - 请求结果
+ * Send a DELETE request
+ * @param {string} url - API endpoint
+ * @param {Object} options - Request options
+ * @param {boolean} requiresAuth - Whether authentication is required
+ * @param {string} responseType - Response type: 'json' | 'text' | 'blob'
+ * @returns {Promise} - Request result
  */
 export function apiDelete(url, options = {}, requiresAuth = true, responseType = 'json') {
   return apiRequest(url, { method: 'DELETE', ...options }, requiresAuth, responseType)

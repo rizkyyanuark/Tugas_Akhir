@@ -16,10 +16,10 @@ from .skills_backend import SelectedSkillsReadonlyBackend
 
 
 class CustomCompositeBackend(CompositeBackend):
-    """修复 glob_info 路由逻辑的 CompositeBackend。
+    """CompositeBackend that fixes glob_info routing logic.
 
-    修复内容：当 path 不匹配任何路由时应该只搜索 default 后端，
-    而不是错误地遍历所有路由后端搜索。
+    Fixes: When path does not match any route, it should only search the default backend,
+    instead of erroneously iterating through and searching all routed backends.
     """
 
     def glob_info(self, pattern: str, path: str = "/") -> list[FileInfo]:
@@ -32,7 +32,7 @@ class CustomCompositeBackend(CompositeBackend):
             infos = backend.glob_info(pattern, backend_path)
             return [_remap_file_info_path(fi, route_prefix) for fi in infos]
 
-        # 只在 path 为 None 或 "/" 时搜索所有后端，其他只搜索 default
+        # Only search all backends when path is None or "/", otherwise only search default
         if path is None or path == "/":
             results: list[FileInfo] = []
             results.extend(self.default.glob_info(pattern, path))
@@ -69,7 +69,7 @@ class CustomCompositeBackend(CompositeBackend):
 
 
 def _get_visible_skills_from_runtime(runtime) -> list[str]:
-    """获取运行时可见的 skills 列表"""
+    """Get the list of visible skills at runtime."""
     context = getattr(runtime, "context", None)
     selected = getattr(context, "_visible_skills", None)
     if not isinstance(selected, list):

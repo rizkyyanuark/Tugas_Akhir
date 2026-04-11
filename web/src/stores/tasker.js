@@ -17,7 +17,7 @@ const createDefaultSummary = () => ({
 
 const toTask = (raw = {}) => ({
   id: raw.id,
-  name: raw.name || '后台任务',
+  name: raw.name || 'Background Task',
   type: raw.type || 'general',
   status: raw.status || 'pending',
   progress: raw.progress ?? 0,
@@ -100,7 +100,7 @@ export const useTaskerStore = defineStore('tasker', () => {
       }
       tasks.value = taskList.map(toTask)
     } catch (error) {
-      console.error('加载任务列表失败', error)
+      console.error('Failed to load task list', error)
       lastError.value = error
       summary.value = createDefaultSummary()
     } finally {
@@ -116,7 +116,7 @@ export const useTaskerStore = defineStore('tasker', () => {
         upsertTask(response.task)
       }
     } catch (error) {
-      console.error(`刷新任务 ${taskId} 详情失败`, error)
+      console.error(`Failed to refresh task ${taskId} detail`, error)
       lastError.value = error
     }
   }
@@ -125,11 +125,11 @@ export const useTaskerStore = defineStore('tasker', () => {
     if (!taskId) return
     try {
       await taskerApi.cancelTask(taskId)
-      message.success('取消任务成功')
+      message.success('Task cancelled successfully')
       await refreshTask(taskId)
     } catch (error) {
-      console.error(`取消任务 ${taskId} 失败`, error)
-      message.error(error?.message || '取消任务失败')
+      console.error(`Failed to cancel task ${taskId}`, error)
+      message.error(error?.message || 'Failed to cancel task')
     }
   }
 
@@ -137,15 +137,15 @@ export const useTaskerStore = defineStore('tasker', () => {
     if (!taskId) return
     try {
       await taskerApi.deleteTask(taskId)
-      message.success('删除任务成功')
-      // 从本地列表中移除
+      message.success('Task deleted successfully')
+      // Remove from local list
       const index = tasks.value.findIndex((item) => item.id === taskId)
       if (index >= 0) {
         tasks.value.splice(index, 1)
       }
     } catch (error) {
-      console.error(`删除任务 ${taskId} 失败`, error)
-      message.error(error?.message || '删除任务失败')
+      console.error(`Failed to delete task ${taskId}`, error)
+      message.error(error?.message || 'Failed to delete task')
     }
   }
 
@@ -154,11 +154,11 @@ export const useTaskerStore = defineStore('tasker', () => {
     const now = new Date().toISOString()
     upsertTask({
       id: task_id,
-      name: name || '后台任务',
+      name: name || 'Background Task',
       type: task_type || 'manual',
       status: 'queued',
       progress: 0,
-      message: msg || '任务已排队',
+      message: msg || 'Task queued',
       created_at: now,
       updated_at: now,
       payload: payload || {}

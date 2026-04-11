@@ -1,17 +1,17 @@
 <template>
   <div class="basic-settings-section">
     <template v-if="userStore.isAdmin">
-      <div class="section-title">默认项配置</div>
+      <div class="section-title">Default settings</div>
       <div class="settings-panel">
         <template v-if="userStore.isSuperAdmin">
           <div class="setting-row two-cols">
             <div class="col-item">
-              <div class="setting-label">{{ items?.default_model?.des || '默认对话模型' }}</div>
+              <div class="setting-label">{{ items?.default_model?.des || 'Default chat model' }}</div>
               <div class="setting-content">
                 <ModelSelectorComponent
                   @select-model="handleChatModelSelect"
                   :model_spec="configStore.config?.default_model"
-                  placeholder="请选择默认模型"
+                  placeholder="Select default model"
                 />
               </div>
             </div>
@@ -21,7 +21,7 @@
                 <ModelSelectorComponent
                   @select-model="handleFastModelSelect"
                   :model_spec="configStore.config?.fast_model"
-                  placeholder="请选择模型"
+                  placeholder="Select model"
                 />
               </div>
             </div>
@@ -44,7 +44,7 @@
                   class="full-width"
                   :value="configStore.config?.reranker"
                   @change="handleChange('reranker', $event)"
-                  placeholder="请选择重排序模型"
+                  placeholder="Select reranker model"
                 >
                   <a-select-option v-for="(name, idx) in rerankerChoices" :key="idx" :value="name"
                     >{{ name }}
@@ -56,7 +56,7 @@
         </template>
         <div class="setting-row">
           <div class="col-item">
-            <div class="setting-label">默认智能体</div>
+            <div class="setting-label">Default agent</div>
             <div class="setting-content">
               <a-select
                 class="agent-select"
@@ -64,7 +64,7 @@
                 :options="agentOptions"
                 :loading="isSettingDefaultAgent"
                 :disabled="isSettingDefaultAgent || !agentOptions.length"
-                placeholder="请选择默认智能体"
+                placeholder="Select default agent"
                 @change="handleDefaultAgentChange"
               />
             </div>
@@ -73,7 +73,7 @@
       </div>
 
       <template v-if="userStore.isSuperAdmin">
-        <div class="section-title">内容审查配置</div>
+        <div class="section-title">Content moderation settings</div>
         <div class="section">
           <div class="card">
             <span class="label">{{ items?.enable_content_guard?.des }}</span>
@@ -107,17 +107,17 @@
       </template>
     </template>
 
-    <!-- 服务链接部分 -->
-    <div v-if="userStore.isAdmin" class="section-title">服务链接</div>
+    <!-- Service links section -->
+    <div v-if="userStore.isAdmin" class="section-title">Service links</div>
     <div v-if="userStore.isAdmin">
       <p class="section-description">
-        快速访问系统相关的外部服务，需要将 localhost 替换为实际的 IP 地址。
+        Quick access to system-related external services. Replace localhost with the actual IP address.
       </p>
       <div class="services-grid">
         <div class="service-link-card">
           <div class="service-info">
-            <h4>Neo4j 浏览器</h4>
-            <p>图数据库管理界面</p>
+            <h4>Neo4j browser</h4>
+            <p>Graph database management interface</p>
           </div>
           <a-button
             type="default"

@@ -3,11 +3,11 @@
     <button type="button" class="artifacts-toggle" @click="expanded = !expanded">
       <div class="artifacts-summary">
         <FolderOutput class="artifacts-icon" :size="16" />
-        <span class="artifacts-title">交付物</span>
+        <span class="artifacts-title">Artifacts</span>
         <span class="artifacts-count">{{ artifactsCountLabel }}</span>
       </div>
       <div class="artifacts-action">
-        <span class="artifacts-action-text">{{ expanded ? '收起' : '展开' }}</span>
+        <span class="artifacts-action-text">{{ expanded ? 'Collapse' : 'Expand' }}</span>
         <ChevronDown class="artifacts-arrow" :size="16" />
       </div>
     </button>
@@ -30,17 +30,17 @@
               <button
                 v-if="file.canPreview"
                 class="item-action-btn"
-                title="预览"
+                title="Preview"
                 @click.stop="openPreview(file)"
               >
                 <Eye :size="15" />
               </button>
-              <button class="item-action-btn" title="下载" @click.stop="downloadFile(file)">
+              <button class="item-action-btn" title="Download" @click.stop="downloadFile(file)">
                 <Download :size="15" />
               </button>
               <button
                 class="item-action-btn"
-                :title="isSaving(file.path) ? '保存中' : '保存到工作区'"
+                :title="isSaving(file.path) ? 'Saving...' : 'Save to Workspace'"
                 :disabled="isSaving(file.path)"
                 @click.stop="saveToWorkspace(file)"
               >
@@ -120,7 +120,7 @@ const normalizedArtifacts = computed(() =>
       }
     })
 )
-const artifactsCountLabel = computed(() => `${normalizedArtifacts.value.length} 个文件`)
+const artifactsCountLabel = computed(() => `${normalizedArtifacts.value.length} files`)
 const expanded = ref(false)
 
 const modalVisible = ref(false)
@@ -136,7 +136,7 @@ const parseDownloadFilename = (contentDisposition) => {
     try {
       return decodeURIComponent(utf8Match[1])
     } catch (error) {
-      console.warn('解析 UTF-8 文件名失败:', error)
+      console.warn('Failed to parse UTF-8 filename:', error)
     }
   }
 
@@ -208,7 +208,7 @@ const openPreview = async (file) => {
       content: `Error loading file: ${error?.message || 'unknown error'}`,
       supported: false,
       previewType: 'unsupported',
-      message: error?.message || '文件预览失败',
+      message: error?.message || 'File preview failed',
       previewUrl: ''
     }
   }
@@ -252,10 +252,10 @@ const saveToWorkspace = async (file) => {
   setSaving(file.path, true)
   try {
     const result = await threadApi.saveThreadArtifactToWorkspace(props.threadId, file.path)
-    message.success(`已保存到工作区：${result.saved_path}`)
+    message.success(`Saved to workspace: ${result.saved_path}`)
     emit('saved', result)
   } catch (error) {
-    message.error(error?.message || '保存到工作区失败')
+    message.error(error?.message || 'Failed to save to workspace')
   } finally {
     setSaving(file.path, false)
   }

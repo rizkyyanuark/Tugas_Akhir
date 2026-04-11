@@ -2,22 +2,22 @@ export const CHUNK_PRESET_OPTIONS = [
   {
     value: 'general',
     label: 'General',
-    description: '通用分块：按分隔符和长度切分，适合大多数普通文档。'
+    description: 'General chunking: split by separators and length, suitable for most standard documents.'
   },
   {
     value: 'qa',
     label: 'QA',
-    description: '问答分块：优先抽取问题-回答结构，适合 FAQ、题库、问答手册。'
+    description: 'QA chunking: prioritize extracting question-answer structure, suitable for FAQs, question banks, and Q&A manuals.'
   },
   {
     value: 'book',
     label: 'Book',
-    description: '书籍分块：强化章节标题识别并做层级合并，适合教材、手册、长章节文档。'
+    description: 'Book chunking: strengthen chapter heading detection and hierarchical merging, suitable for textbooks, manuals, and long chaptered documents.'
   },
   {
     value: 'laws',
     label: 'Laws',
-    description: '法规分块：按法条层级组织与合并，适合法律法规、制度规范类文本。'
+    description: 'Laws chunking: organize and merge by legal article hierarchy, suitable for laws, regulations, and policy documents.'
   }
 ]
 

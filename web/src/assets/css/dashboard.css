@@ -1,10 +1,10 @@
-/* Dashboard 共享样式文件 */
+/* Shared dashboard style file */
 
-/* Chart Color System - 图表颜色系统 */
-/* 注意：CSS 变量不支持对象语法，这些渐变定义仅作为参考 */
-/* 如需在 ECharts 中使用渐变，请在 JavaScript 中配置 */
+/* Chart Color System */
+/* Note: CSS variables do not support object syntax; these gradient definitions are for reference only */
+/* If you need gradients in ECharts, configure them in JavaScript */
 
-/* Chart Color Palette - 图表调色板 */
+/* Chart Color Palette */
 .chart-color-palette {
   --palette-1: var(--chart-palette-1);
   --palette-2: var(--chart-palette-2);
@@ -18,7 +18,7 @@
   --palette-10: var(--chart-palette-10);
 }
 
-/* Chart Area Gradient - 图表区域渐变 */
+/* Chart Area Gradient */
 .chart-area-gradient-primary {
   background: linear-gradient(180deg, rgba(57, 150, 174, 0.3) 0%, rgba(57, 150, 174, 0.05) 100%);
 }
@@ -35,7 +35,7 @@
   background: linear-gradient(180deg, rgba(245, 34, 45, 0.3) 0%, rgba(245, 34, 45, 0.05) 100%);
 }
 
-/* Chart Shadow Effects - 图表阴影效果 */
+/* Chart Shadow Effects */
 .chart-shadow-primary {
   box-shadow: 0 4px 12px rgba(57, 150, 174, 0.15);
 }
@@ -52,7 +52,7 @@
   box-shadow: 0 4px 12px rgba(245, 34, 45, 0.15);
 }
 
-/* 共享的卡片样式 */
+/* Shared card styles */
 .dashboard-card {
   background-color: var(--gray-0);
   border: 1px solid var(--gray-100);
@@ -68,7 +68,7 @@
   }
 }
 
-/* 使用更具体的选择器来覆盖 Ant Design 的默认样式 */
+/* Use more specific selectors to override Ant Design's default styles */
 .dashboard-card .ant-card-head {
   /* border-bottom: 1px solid var(--gray-200) !important; */
   min-height: 56px !important;
@@ -96,7 +96,7 @@
   padding-top: 0px !important;
 }
 
-/* 统计概览样式 */
+/* Statistics overview styles */
 .stats-overview {
   margin-bottom: 16px;
 
@@ -118,7 +118,7 @@
   }
 }
 
-/* 图表容器样式 */
+/* Chart container styles */
 .chart-container {
   h4,
   h5 {
@@ -160,7 +160,7 @@
   }
 }
 
-/* Ant Design 组件样式覆盖 */
+/* Ant Design component style overrides */
 .dashboard-card .ant-statistic-title {
   color: var(--gray-600) !important;
   font-weight: 500 !important;
@@ -170,7 +170,7 @@
   color: var(--gray-1000);
 }
 
-/* 强制设置所有统计卡片数字为粗体 */
+/* Force all statistic card numbers to be bold */
 .dashboard-card .ant-statistic-content-value {
   font-weight: 700 !important;
 }

@@ -1,8 +1,8 @@
 import { apiAdminGet, apiAdminPost, apiAdminPut, apiAdminDelete } from './base'
 
 /**
- * SubAgent 管理 API 模块
- * 包含 SubAgent 的增删改查功能
+ * SubAgent management API module
+ * Includes CRUD operations for SubAgent records
  */
 
 const BASE_URL = '/api/system/subagents'
@@ -12,45 +12,45 @@ const BASE_URL = '/api/system/subagents'
 // =============================================================================
 
 /**
- * 获取所有 SubAgent 配置
- * @returns {Promise} - SubAgent 列表
+ * Get all SubAgent configurations
+ * @returns {Promise} - SubAgent list
  */
 export const getSubAgents = async () => {
   return apiAdminGet(BASE_URL)
 }
 
 /**
- * 获取单个 SubAgent 配置
- * @param {string} name - SubAgent 名称
- * @returns {Promise} - SubAgent 配置
+ * Get a single SubAgent configuration
+ * @param {string} name - SubAgent name
+ * @returns {Promise} - SubAgent configuration
  */
 export const getSubAgent = async (name) => {
   return apiAdminGet(`${BASE_URL}/${encodeURIComponent(name)}`)
 }
 
 /**
- * 创建新的 SubAgent
- * @param {Object} data - SubAgent 配置数据
- * @returns {Promise} - 创建结果
+ * Create a new SubAgent
+ * @param {Object} data - SubAgent configuration data
+ * @returns {Promise} - Creation result
  */
 export const createSubAgent = async (data) => {
   return apiAdminPost(BASE_URL, data)
 }
 
 /**
- * 更新 SubAgent 配置
- * @param {string} name - SubAgent 名称
- * @param {Object} data - 更新数据
- * @returns {Promise} - 更新结果
+ * Update a SubAgent configuration
+ * @param {string} name - SubAgent name
+ * @param {Object} data - Update data
+ * @returns {Promise} - Update result
  */
 export const updateSubAgent = async (name, data) => {
   return apiAdminPut(`${BASE_URL}/${encodeURIComponent(name)}`, data)
 }
 
 /**
- * 删除 SubAgent
- * @param {string} name - SubAgent 名称
- * @returns {Promise} - 删除结果
+ * Delete a SubAgent
+ * @param {string} name - SubAgent name
+ * @returns {Promise} - Deletion result
  */
 export const deleteSubAgent = async (name) => {
   return apiAdminDelete(`${BASE_URL}/${encodeURIComponent(name)}`)
@@ -61,7 +61,7 @@ export const updateSubAgentStatus = async (name, enabled) => {
 }
 
 // =============================================================================
-// === 导出为对象形式（兼容现有代码风格）===
+// === Export as object form (compatible with existing code style) ===
 // =============================================================================
 
 export const subagentApi = {

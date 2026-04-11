@@ -26,12 +26,12 @@ def get_kb_cache_root() -> Path:
 def normalize_knowledge_mount_name(name: str) -> str:
     normalized = _MULTISPACE.sub(" ", str(name or "").strip())
     if _INVALID_MOUNT_NAME_CHARS.search(normalized):
-        raise ValueError("知识库名称包含不能映射为目录名的非法字符")
+        raise ValueError("Knowledge base name contains invalid characters that cannot be mapped to a directory name")
     normalized = normalized.strip(" .")
     if not normalized or normalized in {".", ".."}:
-        raise ValueError("知识库名称不能映射为有效目录名")
+        raise ValueError("Knowledge base name cannot be mapped to a valid directory name")
     if "/" in normalized or "\\" in normalized:
-        raise ValueError("知识库名称不能包含路径分隔符")
+        raise ValueError("Knowledge base name cannot contain path separators")
     return normalized
 
 
@@ -113,7 +113,7 @@ async def build_visible_knowledge_mounts(
         mount_name = normalize_knowledge_mount_name(db_name)
         conflict_db_id = used_mount_names.get(mount_name.casefold())
         if conflict_db_id and conflict_db_id != db_id:
-            raise ValueError(f"知识库名称映射冲突: '{db_name}' -> '{mount_name}'")
+            raise ValueError(f"Knowledge base name mapping conflict: '{db_name}' -> '{mount_name}'")
         used_mount_names[mount_name.casefold()] = db_id
 
         records = await file_repo.list_by_db_id(db_id)

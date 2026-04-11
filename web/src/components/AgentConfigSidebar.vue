@@ -1,6 +1,6 @@
 <template>
   <div class="agent-config-sidebar" :class="{ open: isOpen }">
-    <!-- 侧边栏头部 -->
+    <!-- Sidebar header -->
     <div class="sidebar-header">
       <div class="header-top-row">
         <div v-if="selectedAgentId" class="config-manage-row">
@@ -8,14 +8,14 @@
             :value="selectedAgentConfigId"
             :options="configSwitchOptions"
             class="config-switch-select"
-            placeholder="选择配置"
+            placeholder="Select configuration"
             @update:value="handleConfigSwitch"
           />
         </div>
         <div class="header-actions">
           <a-tooltip
             v-if="!isEmptyConfig && userStore.isAdmin"
-            :title="isCurrentDefault ? '当前已是默认配置' : '设为默认配置'"
+            :title="isCurrentDefault ? 'Currently the default config' : 'Set as default config'"
           >
             <a-button
               type="text"
@@ -28,7 +28,7 @@
             </a-button>
           </a-tooltip>
 
-          <a-tooltip v-if="!isEmptyConfig && userStore.isAdmin" title="删除配置">
+          <a-tooltip v-if="!isEmptyConfig && userStore.isAdmin" title="Delete config">
             <a-button
               type="text"
               shape="circle"
@@ -48,7 +48,7 @@
       </div>
     </div>
 
-    <!-- 侧边栏内容 -->
+    <!-- Sidebar content -->
     <div class="sidebar-content">
       <div class="agent-info" v-if="selectedAgent">
         <!-- <div class="agent-basic-info">
@@ -66,16 +66,16 @@
           class="config-form-content"
           :class="{ 'is-readonly': isReadOnlyConfig }"
         >
-          <!-- 配置表单 -->
+          <!-- Config form -->
           <a-form :model="agentConfig" layout="vertical" class="config-form">
             <a-alert
               v-if="isEmptyConfig"
               type="warning"
-              message="该智能体没有配置项"
+              message="This agent has no configuration items"
               show-icon
               class="config-alert"
             />
-            <!-- 统一显示所有配置项 -->
+            <!-- Display all configuration items uniformly -->
             <template v-for="(value, key) in filteredConfigurableItems" :key="key">
               <a-form-item
                 v-if="shouldShowConfig(key, value)"
@@ -86,7 +86,7 @@
                 <p v-if="value.description" class="config-description">{{ value.description }}</p>
 
                 <!-- <div>{{ value }}</div> -->
-                <!-- 模型选择 -->
+                <!-- Model selection -->
                 <div
                   v-if="value.template_metadata.kind === 'llm'"
                   class="model-selector"
@@ -98,7 +98,7 @@
                   />
                 </div>
 
-                <!-- 系统提示词 -->
+                <!-- System prompt -->
                 <div
                   v-else-if="value.template_metadata.kind === 'prompt'"
                   class="system-prompt-container"
@@ -111,12 +111,12 @@
                       {{ agentConfig[key] || getPlaceholder(key, value) }}
                     </div>
                     <div class="edit-hint">
-                      {{ isReadOnlyConfig ? '查看' : '点击查看并编辑' }}
+                      {{ isReadOnlyConfig ? 'View' : 'Click to view and edit' }}
                     </div>
                   </div>
                 </div>
 
-                <!-- 布尔类型 -->
+                <!-- Boolean type -->
                 <a-switch
                   v-else-if="typeof agentConfig[key] === 'boolean'"
                   :checked="agentConfig[key]"
@@ -124,7 +124,7 @@
                   @update:checked="(val) => updateConfigValue(key, val)"
                 />
 
-                <!-- 单选 -->
+                <!-- Single select -->
                 <a-select
                   v-else-if="
                     value?.options.length > 0 && (value?.type === 'str' || value?.type === 'select')
@@ -139,14 +139,14 @@
                   </a-select-option>
                 </a-select>
 
-                <!-- 多选 / 工具列表 (统一处理) -->
+                <!-- Multi-select / tool list (handled uniformly) -->
                 <div v-else-if="isListConfig(key, value)" class="list-config-container">
                   <!-- Case 1: <= 5 options, inline list -->
                   <div v-if="getConfigOptions(value).length <= 5" class="multi-select-cards">
                     <div class="multi-select-label">
                       <span
-                        >已选择 {{ getSelectedCount(key) }} 项 | 共
-                        {{ getConfigOptions(value).length }} 项</span
+                        >Selected {{ getSelectedCount(key) }} items | Total
+                        {{ getConfigOptions(value).length }} items</span
                       >
                       <div v-if="!isReadOnlyConfig" class="label-actions">
                         <a-button
@@ -156,7 +156,7 @@
                           @click="clearSelection(key)"
                           v-if="getSelectedCount(key) > 0"
                         >
-                          清空
+                          Clear
                         </a-button>
                         <template v-if="isToolsKind(value.template_metadata?.kind)">
                           <a-divider type="vertical" />
@@ -167,7 +167,7 @@
                             class="inline-action-btn lucide-icon-btn"
                           >
                             <RotateCw :size="12" />
-                            刷新
+                            Refresh
                           </a-button>
                           <a-button
                             type="link"
@@ -176,7 +176,7 @@
                             class="inline-action-btn lucide-icon-btn"
                           >
                             <Settings :size="12" />
-                            配置
+                            Configure
                           </a-button>
                         </template>
                       </div>
@@ -212,14 +212,14 @@
                     </div>
                   </div>
 
-                  <!-- Case 2: > 5 options, Modal trigger -->
+                  <!-- Case 2: > 5 options, modal trigger -->
 
                   <div v-else class="selection-container">
                     <div class="selection-summary">
                       <div class="selection-summary-info">
                         <span class="selection-count"
-                          >已选择 {{ getSelectedCount(key) }} 项 | 共
-                          {{ getConfigOptions(value).length }} 项</span
+                          >Selected {{ getSelectedCount(key) }} items | Total
+                          {{ getConfigOptions(value).length }} items</span
                         >
 
                         <a-button
@@ -229,7 +229,7 @@
                           class="clear-btn"
                           @click="clearSelection(key)"
                         >
-                          清空
+                          Clear
                         </a-button>
                       </div>
 
@@ -240,11 +240,11 @@
                         class="selection-trigger-btn"
                         @click="openSelectionModal(key)"
                       >
-                        选择...
+                        Select...
                       </a-button>
                     </div>
 
-                    <!-- Selected Preview Tags -->
+                    <!-- Selected preview tags -->
 
                     <div v-if="getSelectedCount(key) > 0" class="selection-preview">
                       <a-tag
@@ -260,7 +260,7 @@
                   </div>
                 </div>
 
-                <!-- 数字 -->
+                <!-- Number -->
                 <a-input-number
                   v-else-if="
                     value?.type === 'number' || value?.type === 'int' || value?.type === 'float'
@@ -272,7 +272,7 @@
                   class="config-input-number"
                 />
 
-                <!-- 滑块 -->
+                <!-- Slider -->
                 <a-slider
                   v-else-if="value?.type === 'slider'"
                   :value="agentConfig[key]"
@@ -284,7 +284,7 @@
                   class="config-slider"
                 />
 
-                <!-- 其他类型 -->
+                <!-- Other types -->
                 <a-input
                   v-else
                   :value="agentConfig[key]"
@@ -300,7 +300,7 @@
       </div>
     </div>
 
-    <!-- 固定在底部的操作按钮 -->
+    <!-- Fixed footer actions -->
     <div class="sidebar-footer" v-if="userStore.isAdmin && selectedAgentId">
       <div class="form-actions">
         <a-button
@@ -310,27 +310,27 @@
           :class="{ changed: agentStore.hasConfigChanges }"
           :disabled="isSavingConfig || isEmptyConfig"
         >
-          保存
+          Save
         </a-button>
       </div>
     </div>
 
-    <!-- 通用选择弹窗 -->
+    <!-- Generic selection modal -->
 
     <a-modal
       v-model:open="createConfigModalOpen"
-      title="新建配置"
+      title="Create config"
       :width="360"
       :confirmLoading="createConfigLoading"
       @ok="handleCreateConfig"
       @cancel="closeCreateConfigModal"
     >
-      <a-input v-model:value="createConfigName" placeholder="请输入配置名称" allow-clear />
+      <a-input v-model:value="createConfigName" placeholder="Enter config name" allow-clear />
     </a-modal>
 
     <a-modal
       v-model:open="selectionModalOpen"
-      :title="`选择${configurableItems[currentConfigKey]?.name || '项目'}`"
+      :title="`Select ${configurableItems[currentConfigKey]?.name || 'item'}`"
       :width="800"
       :footer="null"
       :maskClosable="false"
@@ -340,7 +340,7 @@
         <div class="selection-search">
           <a-input
             v-model:value="selectionSearchText"
-            placeholder="搜索..."
+            placeholder="Search..."
             allow-clear
             class="search-input"
           >
@@ -354,20 +354,20 @@
               size="small"
               @click="refreshConfigOptions(currentConfigKey, currentConfigKind)"
               class="inline-action-btn lucide-icon-btn"
-              title="刷新列表"
+              title="Refresh list"
             >
               <RotateCw :size="14" />
-              刷新
+              Refresh
             </a-button>
             <a-button
               type="text"
               size="small"
               @click="navigateToConfigPage(currentConfigKind)"
               class="inline-action-btn lucide-icon-btn"
-              title="跳转配置"
+              title="Go to config page"
             >
               <Settings :size="14" />
-              配置
+              Configure
             </a-button>
           </template>
         </div>
@@ -399,13 +399,13 @@
         </div>
 
         <div class="selection-modal-footer">
-          <div class="selected-count">已选择 {{ tempSelectedValues.length }} 项</div>
+          <div class="selected-count">Selected {{ tempSelectedValues.length }} items</div>
 
           <div class="modal-actions">
-            <a-button @click="closeSelectionModal">取消</a-button>
+            <a-button @click="closeSelectionModal">Cancel</a-button>
 
             <a-button v-if="!isReadOnlyConfig" type="primary" @click="confirmSelection">
-              确认
+              Confirm
             </a-button>
           </div>
         </div>
@@ -432,10 +432,10 @@
 
       <template #footer>
         <a-button @click="closeSystemPromptModal">{{
-          isReadOnlyConfig ? '关闭' : '取消'
+          isReadOnlyConfig ? 'Close' : 'Cancel'
         }}</a-button>
         <a-button v-if="!isReadOnlyConfig" type="primary" @click="saveSystemPrompt">
-          保存
+          Save
         </a-button>
       </template>
     </a-modal>
@@ -472,7 +472,7 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['close'])
 
-// Store 管理
+// Store management
 const agentStore = useAgentStore()
 const userStore = useUserStore()
 const databaseStore = useDatabaseStore()
@@ -482,7 +482,7 @@ watch(
   () => props.isOpen,
   async (val) => {
     if (val) {
-      // 强制刷新以获取最新数据
+      // Force refresh to fetch the latest data
       databaseStore.loadDatabases(true).catch(() => {})
       loadLiveSkillOptions(true).catch(() => {})
       loadMcpOptions(true).catch(() => {})
@@ -490,12 +490,12 @@ watch(
       loadToolOptions(true).catch(() => {})
       if (selectedAgentId.value) {
         agentStore.fetchAgentConfigs(selectedAgentId.value).catch((error) => {
-          console.error('刷新智能体配置列表失败:', error)
+          console.error('Failed to refresh agent config list:', error)
         })
         try {
           await agentStore.fetchAgentDetail(selectedAgentId.value, true)
         } catch (error) {
-          console.error('刷新智能体配置项失败:', error)
+          console.error('Failed to refresh agent config items:', error)
         }
       }
     }
@@ -514,7 +514,7 @@ const {
 
 // console.log(availableTools.value)
 
-// 本地状态
+// Local state
 const selectionModalOpen = ref(false)
 const currentConfigKey = ref(null)
 const tempSelectedValues = ref([])
@@ -532,9 +532,9 @@ const createConfigName = ref('')
 const CREATE_CONFIG_OPTION_VALUE = '__create_config__'
 const currentSegment = ref('model')
 const segmentOptions = [
-  { label: '模型', value: 'model' },
-  { label: '工具', value: 'tools' },
-  { label: '其他', value: 'other' }
+  { label: 'Model', value: 'model' },
+  { label: 'Tools', value: 'tools' },
+  { label: 'Other', value: 'other' }
 ]
 
 const isEmptyConfig = computed(() => {
@@ -582,13 +582,13 @@ const configSwitchOptions = computed(() => {
   if (!selectedAgentId.value) return []
   const list = agentConfigs.value[selectedAgentId.value] || []
   const options = list.map((cfg) => ({
-    label: cfg.is_default ? `${cfg.name}（默认）` : cfg.name,
+    label: cfg.is_default ? `${cfg.name} (default)` : cfg.name,
     value: cfg.id
   }))
 
   if (userStore.isAdmin) {
     options.push({
-      label: '+ 新建配置',
+      label: '+ Create config',
       value: CREATE_CONFIG_OPTION_VALUE
     })
   }
@@ -601,7 +601,7 @@ const loadLiveSkillOptions = async (force = false) => {
     liveSkillOptions.value = []
     return
   }
-  // 如果不是强制刷新且已有数据，则跳过
+  // Skip if not forced and data already exists
   if (!force && liveSkillOptions.value.length > 0) {
     return
   }
@@ -614,7 +614,7 @@ const loadLiveSkillOptions = async (force = false) => {
       description: item.description || ''
     }))
   } catch (error) {
-    console.warn('加载实时 Skills 列表失败:', error)
+    console.warn('Failed to load live Skills list:', error)
   }
 }
 
@@ -637,7 +637,7 @@ const loadMcpOptions = async (force = false) => {
         description: item.description || ''
       }))
   } catch (error) {
-    console.warn('加载 MCP 列表失败:', error)
+    console.warn('Failed to load MCP list:', error)
   }
 }
 
@@ -646,7 +646,7 @@ const loadToolOptions = async (force = false) => {
     toolOptionsFromApi.value = []
     return
   }
-  // 如果不是强制刷新且已有数据，则跳过
+  // Skip if not forced and data already exists
   if (!force && toolOptionsFromApi.value.length > 0) {
     return
   }
@@ -658,7 +658,7 @@ const loadToolOptions = async (force = false) => {
       description: item.description || ''
     }))
   } catch (error) {
-    console.warn('加载工具列表失败:', error)
+    console.warn('Failed to load tool list:', error)
   }
 }
 
@@ -681,53 +681,53 @@ const loadSubagentOptions = async (force = false) => {
         description: item.description || ''
       }))
   } catch (error) {
-    console.warn('加载 Subagents 列表失败:', error)
+    console.warn('Failed to load Subagents list:', error)
   }
 }
 
-// 判断是否为需要跳转的配置类型
+// Determine whether this config type should navigate to another page
 const isToolsKind = (kind) => {
   return ['knowledges', 'tools', 'mcps', 'skills', 'subagents'].includes(kind)
 }
 
-// 强制刷新对应配置项的选项列表
+// Force refresh the option list for the corresponding config item
 const refreshConfigOptions = async (_key, kind) => {
   if (isReadOnlyConfig.value) return
   try {
     switch (kind) {
       case 'knowledges':
         await databaseStore.loadDatabases(true)
-        message.success('知识库列表已刷新')
+        message.success('Knowledge base list refreshed')
         break
       case 'tools':
         await loadToolOptions(true)
-        message.success('工具列表已刷新')
+        message.success('Tool list refreshed')
         break
       case 'skills':
         await loadLiveSkillOptions(true)
-        message.success('Skills 列表已刷新')
+        message.success('Skills list refreshed')
         break
       case 'subagents':
         await loadSubagentOptions(true)
-        message.success('Subagents 列表已刷新')
+        message.success('Subagents list refreshed')
         break
       case 'mcps':
         await loadMcpOptions(true)
-        message.success('MCP 列表已刷新')
+        message.success('MCP list refreshed')
         break
     }
   } catch (error) {
-    console.error('刷新配置选项失败:', error)
-    message.error('刷新失败')
+    console.error('Failed to refresh config options:', error)
+    message.error('Refresh failed')
   }
 }
 
-// 跳转到对应管理页面
+// Navigate to the corresponding management page
 const navigateToConfigPage = (kind) => {
   if (isReadOnlyConfig.value) return
-  // 先关闭选择弹窗
+  // Close the selection modal first
   closeSelectionModal()
-  // 延迟跳转，确保弹窗先关闭
+  // Delay navigation to ensure the modal closes first
   setTimeout(() => {
     switch (kind) {
       case 'knowledges':
@@ -749,7 +749,7 @@ const navigateToConfigPage = (kind) => {
   }, 100)
 }
 
-// 通用选项获取与处理
+// Generic option resolution and handling
 const resolveOptionValue = (option) => {
   if (typeof option === 'object' && option !== null) {
     return option.id || option.value || option.name || option.db_id || option.slug
@@ -795,7 +795,7 @@ const getOptionLabel = (option) => {
 
 const getOptionDescription = (option) => {
   if (typeof option === 'object' && option !== null) {
-    return option.description || '暂无描述'
+    return option.description || 'No description available'
   }
   return null
 }
@@ -811,9 +811,9 @@ const systemPromptModalTitle = computed(() => {
 })
 
 const systemPromptModalPlaceholder = computed(() => {
-  if (!currentSystemPromptKey.value) return '请输入系统提示词'
+  if (!currentSystemPromptKey.value) return 'Enter system prompt'
   const currentItem = configurableItems.value[currentSystemPromptKey.value]
-  if (!currentItem) return '请输入系统提示词'
+  if (!currentItem) return 'Enter system prompt'
   return getPlaceholder(currentSystemPromptKey.value, currentItem)
 })
 
@@ -833,7 +833,7 @@ const filteredOptions = computed(() => {
   })
 })
 
-// 方法
+// Methods
 const handleConfigSwitch = async (configId) => {
   if (configId === CREATE_CONFIG_OPTION_VALUE) {
     openCreateConfigModal()
@@ -844,8 +844,8 @@ const handleConfigSwitch = async (configId) => {
   try {
     await agentStore.selectAgentConfig(configId)
   } catch (error) {
-    console.error('切换配置出错:', error)
-    message.error('切换配置失败')
+    console.error('Failed to switch config:', error)
+    message.error('Switch config failed')
   }
 }
 
@@ -872,7 +872,7 @@ const handleCreateConfig = async () => {
   if (!selectedAgentId.value) return
   const name = createConfigName.value.trim()
   if (!name) {
-    message.error('请输入配置名称')
+    message.error('Enter a config name')
     return
   }
 
@@ -884,10 +884,10 @@ const handleCreateConfig = async () => {
       fromCurrent: false
     })
     closeCreateConfigModal()
-    message.success('配置已创建')
+    message.success('Config created')
   } catch (error) {
-    console.error('创建配置出错:', error)
-    message.error(error.message || '创建配置失败')
+    console.error('Failed to create config:', error)
+    message.error(error.message || 'Config creation failed')
   } finally {
     createConfigLoading.value = false
   }
@@ -911,7 +911,7 @@ const getConfigLabel = (key, value) => {
 }
 
 const getPlaceholder = (_key, value) => {
-  return `（默认: ${value.default}）`
+  return `(default: ${value.default})`
 }
 
 const handleModelChange = (key, spec) => {
@@ -922,7 +922,7 @@ const handleModelChange = (key, spec) => {
   })
 }
 
-// 多选相关方法
+  // Multi-select helpers
 const ensureArray = (key) => {
   const config = agentConfig.value || {}
   if (!config[key] || !Array.isArray(config[key])) {
@@ -964,7 +964,7 @@ const clearSelection = (key) => {
   })
 }
 
-// 统一选择弹窗相关方法
+// Unified selection modal helpers
 const getOptionLabelFromValue = (key, val) => {
   const options = getConfigOptions(configurableItems.value[key])
   const option = options.find((opt) => getOptionValue(opt) === val)
@@ -974,16 +974,16 @@ const getOptionLabelFromValue = (key, val) => {
 const openSelectionModal = async (key) => {
   if (isReadOnlyConfig.value) return
   currentConfigKey.value = key
-  // 如果是工具，从 API 刷新工具列表
+  // If this is a tool, refresh the tool list from the API
   if (configurableItems.value[key]?.template_metadata?.kind === 'tools') {
     await loadToolOptions()
   }
-  // 如果是知识库，需要获取知识库列表
+  // If this is a knowledge base, fetch the knowledge base list
   if (configurableItems.value[key]?.template_metadata?.kind === 'knowledges') {
     try {
       await databaseStore.loadDatabases()
     } catch (error) {
-      console.error('加载知识库列表失败:', error)
+      console.error('Failed to load knowledge base list:', error)
     }
   }
   if (configurableItems.value[key]?.template_metadata?.kind === 'skills') {
@@ -1027,7 +1027,7 @@ const closeSelectionModal = () => {
   selectionSearchText.value = ''
 }
 
-// 系统提示词弹窗编辑相关方法
+// System prompt modal editing helpers
 const openSystemPromptModal = (key) => {
   currentSystemPromptKey.value = key
   systemPromptDraft.value = agentConfig.value[key] || ''
@@ -1049,12 +1049,12 @@ const saveSystemPrompt = () => {
   closeSystemPromptModal()
 }
 
-// 验证和过滤配置项
+// Validate and filter configuration items
 const validateAndFilterConfig = () => {
   const validatedConfig = { ...agentConfig.value }
   const configItems = configurableItems.value
 
-  // 遍历所有配置项
+  // Iterate over all configuration items
   Object.keys(configItems).forEach((key) => {
     const configItem = configItems[key]
     const currentValue = validatedConfig[key]
@@ -1069,7 +1069,7 @@ const validateAndFilterConfig = () => {
 
       validatedConfig[key] = currentValue.filter((value) => validValues.has(String(value)))
       if (validatedConfig[key].length !== currentValue.length) {
-        console.warn(`配置项 ${key} 中包含无效选项，已自动过滤`)
+        console.warn(`Invalid options found in config item ${key}; filtered automatically`)
       }
     }
   })
@@ -1077,10 +1077,10 @@ const validateAndFilterConfig = () => {
   return validatedConfig
 }
 
-// 配置保存和重置
+// Config save and reset
 const saveConfig = async () => {
   if (!selectedAgentId.value) {
-    message.error('没有选择智能体')
+    message.error('No agent selected')
     return
   }
 
@@ -1088,20 +1088,20 @@ const saveConfig = async () => {
 
   try {
     isSavingConfig.value = true
-    // 验证和过滤配置
+    // Validate and filter configuration
     const validatedConfig = validateAndFilterConfig()
 
-    // 如果配置有变化，先更新到store
+    // If the configuration changed, update the store first
     if (JSON.stringify(validatedConfig) !== JSON.stringify(agentConfig.value)) {
       agentStore.updateAgentConfig(validatedConfig)
-      message.info('检测到无效配置项，已自动过滤')
+      message.info('Invalid configuration items detected and filtered automatically')
     }
 
     await agentStore.saveAgentConfig()
-    message.success('配置已保存到服务器')
+    message.success('Configuration saved to server')
   } catch (error) {
-    console.error('保存配置到服务器出错:', error)
-    message.error('保存配置到服务器失败')
+    console.error('Failed to save configuration to server:', error)
+    message.error('Failed to save configuration to server')
   } finally {
     isSavingConfig.value = false
   }
@@ -1111,37 +1111,37 @@ const setAsDefault = async () => {
   if (!selectedAgentId.value || !selectedAgentConfigId.value) return
   try {
     await agentStore.setSelectedAgentConfigDefault()
-    message.success('已设为默认配置')
+    message.success('Set as default configuration')
   } catch (error) {
-    console.error('设置默认配置出错:', error)
-    message.error('设置默认配置失败')
+    console.error('Failed to set default configuration:', error)
+    message.error('Failed to set default configuration')
   }
 }
 
 const confirmDeleteConfig = async () => {
   if (!selectedAgentId.value || !selectedAgentConfigId.value) return
 
-  const currentName = selectedConfigSummary.value?.name || '当前配置'
+  const currentName = selectedConfigSummary.value?.name || 'Current config'
   const list = agentConfigs.value[selectedAgentId.value] || []
   const content =
     list.length <= 1
-      ? `将删除「${currentName}」。删除后系统会自动创建一个新的默认配置。`
-      : `将删除「${currentName}」。`
+      ? `This will delete "${currentName}". After deletion, the system will automatically create a new default configuration.`
+      : `This will delete "${currentName}".`
 
   Modal.confirm({
-    title: '确认删除配置？',
+    title: 'Confirm config deletion?',
     content,
-    okText: '删除',
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     onOk: async () => {
       isDeletingConfig.value = true
       try {
         await agentStore.deleteSelectedAgentConfigProfile()
-        message.success('配置已删除')
+        message.success('Config deleted')
       } catch (error) {
-        console.error('删除配置出错:', error)
-        message.error('删除配置失败')
+        console.error('Failed to delete config:', error)
+        message.error('Failed to delete config')
       } finally {
         isDeletingConfig.value = false
       }
@@ -1488,7 +1488,7 @@ const confirmDeleteConfig = async () => {
   }
 }
 
-// 选择器样式
+// Selector styles
 .selection-container {
   .selection-summary {
     display: flex;
@@ -1547,7 +1547,7 @@ const confirmDeleteConfig = async () => {
   }
 }
 
-// 多选卡片样式
+// Multi-select card styles
 .multi-select-cards {
   .multi-select-label {
     display: flex;
@@ -1628,7 +1628,7 @@ const confirmDeleteConfig = async () => {
   }
 }
 
-// 选择弹窗样式
+// Selection modal styles
 .selection-modal {
   .selection-modal-content {
     .selection-search {
@@ -1675,7 +1675,7 @@ const confirmDeleteConfig = async () => {
       border-radius: 8px;
       margin-bottom: 16px;
 
-      // 在小屏幕下调整为单列布局
+      // Switch to a single-column layout on small screens
       @media (max-width: 480px) {
         grid-template-columns: 1fr;
       }
@@ -1845,7 +1845,7 @@ const confirmDeleteConfig = async () => {
   font-size: 13px;
 }
 
-// 响应式适配
+// Responsive adjustments
 @media (max-width: 768px) {
   .agent-config-sidebar.open {
     width: 100%;

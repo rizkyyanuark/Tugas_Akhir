@@ -1,5 +1,4 @@
 import dayjs from 'dayjs'
-import 'dayjs/locale/zh-cn'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -7,9 +6,9 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.extend(relativeTime)
-dayjs.locale('zh-cn')
+dayjs.locale('en')
 
-const DEFAULT_TZ = 'Asia/Shanghai'
+const DEFAULT_TZ = 'Asia/Jakarta'
 dayjs.tz.setDefault(DEFAULT_TZ)
 
 const NUMERIC_REGEX = /^-?\d+(?:\.\d+)?$/
@@ -34,20 +33,20 @@ const coerceDayjs = (value) => {
       return null
     }
 
-    // 值小于 10^12 时视为秒级时间戳，否则视为毫秒
+    // If the value is less than 10^12, treat it as a unix timestamp in seconds, otherwise milliseconds.
     if (Math.abs(numeric) < 1e12) {
       return dayjs.unix(numeric).tz(DEFAULT_TZ)
     }
     return dayjs(numeric).tz(DEFAULT_TZ)
   }
 
-  // 解析 ISO 字符串（dayjs 会自动识别时区信息，如 Z 后缀表示 UTC）
-  // 需要先转换为 UTC 再设置时区，否则 .tz() 只会改变显示而不会正确转换
+  // Parse ISO string (dayjs automatically recognizes timezone info, e.g., Z suffix for UTC)
+  // Need to convert to UTC first then set timezone, otherwise .tz() only changes display without correct conversion
   const parsed = dayjs(stringValue)
   if (!parsed.isValid()) {
     return null
   }
-  // 先转换为 UTC（保留原始时间值），再转换到上海时区
+  // First convert to UTC (preserving original time value), then convert to Jakarta timezone.
   return parsed.utc().tz(DEFAULT_TZ)
 }
 

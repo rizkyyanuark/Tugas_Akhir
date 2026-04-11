@@ -10,7 +10,7 @@ from ta_backend_core.assistant.services.skill_service import get_skills_root_dir
 
 
 class SelectedSkillsReadonlyBackend(FilesystemBackend):
-    """只读 skills backend，仅暴露选中的技能目录。"""
+    """Read-only skills backend, exposing only selected skill directories."""
 
     def __init__(self, *, selected_slugs: list[str] | None):
         super().__init__(root_dir=get_skills_root_dir(), virtual_mode=True)

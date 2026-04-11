@@ -1,4 +1,4 @@
-"""Skills 中间件 - 处理 skills 提示词注入、依赖展开、动态激活"""
+"""Skills middleware - handles skills prompt injection, dependency expansion, and dynamic activation"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from ta_backend_core.assistant.storage.postgres.manager import pg_manager
 from ta_backend_core.assistant.utils.logging_config import logger
 
 # =============================================================================
-# 类型定义
+# Type definitions
 # =============================================================================
 
 
@@ -38,12 +38,12 @@ class SkillDependencyNode(TypedDict):
 
 
 # =============================================================================
-# 运行时数据加载函数
+# Runtime data loading functions
 # =============================================================================
 
 
 async def _list_skills_from_db(db: AsyncSession | None = None) -> list:
-    """从数据库加载 skills 列表"""
+    """Load skills list from the database"""
     if db is not None:
         repo = SkillRepository(db)
         return await repo.list_all()
@@ -54,7 +54,7 @@ async def _list_skills_from_db(db: AsyncSession | None = None) -> list:
 
 
 async def get_prompt_metadata(db: AsyncSession | None = None) -> dict[str, SkillPromptMetadata]:
-    """获取提示词元数据（直接从数据库加载）"""
+    """Get prompt metadata (loaded directly from the database)"""
     skills = await _list_skills_from_db(db)
     return {
         item.slug: {
@@ -67,7 +67,7 @@ async def get_prompt_metadata(db: AsyncSession | None = None) -> dict[str, Skill
 
 
 async def get_dependency_map(db: AsyncSession | None = None) -> dict[str, SkillDependencyNode]:
-    """获取依赖关系映射（直接从数据库加载）"""
+    """Get dependency map (loaded directly from the database)"""
     skills = await _list_skills_from_db(db)
     result: dict[str, SkillDependencyNode] = {}
     for item in skills:
@@ -80,7 +80,7 @@ async def get_dependency_map(db: AsyncSession | None = None) -> dict[str, SkillD
 
 
 def normalize_selected_skills(selected_skills: list[str] | None) -> list[str]:
-    """规范化 skills 列表，去重并过滤无效值"""
+    """Normalize skills list: deduplicate and filter invalid values"""
     return _normalize_string_list(selected_skills)
 
 
@@ -88,7 +88,7 @@ def expand_skill_closure(
     slugs: list[str] | None,
     dependency_map: dict[str, SkillDependencyNode],
 ) -> list[str]:
-    """展开 skills 依赖闭包，返回包含所有依赖的列表"""
+    """Expand skill dependency closure and return the list including all dependencies"""
     ordered_roots = normalize_selected_skills(slugs)
     if not ordered_roots:
         return []
@@ -121,7 +121,7 @@ def expand_skill_closure(
 
 
 def _activated_skills_reducer(left: list[str] | None, right: list[str] | None) -> list[str]:
-    """合并 activated_skills 列表"""
+    """Merge activated_skills lists"""
     merged: list[str] = []
     seen: set[str] = set()
     for group in (left or [], right or []):
@@ -137,18 +137,18 @@ def _activated_skills_reducer(left: list[str] | None, right: list[str] | None) -
 
 
 class SkillsState(AgentState):
-    """Skills 状态定义"""
+    """Skills state definition"""
 
     activated_skills: NotRequired[Annotated[list[str], _activated_skills_reducer]]
 
 
 class SkillsMiddleware(AgentMiddleware):
-    """Skills 中间件 - 处理 skills 提示词注入、依赖展开、动态激活
+    """Skills middleware — handles skills prompt injection, dependency expansion, and dynamic activation
 
-    职责：
-    - Skills 提示词注入（直接从数据库加载）
-    - 依赖展开（用户配置 + 动态激活）
-    - 工具/MCP 动态加载
+    Responsibilities:
+    - Inject Skills prompts (loaded directly from the database)
+    - Expand dependencies (user-configured + dynamically activated)
+    - Dynamically load tools and MCP tools
     """
 
     state_schema = SkillsState
@@ -160,12 +160,12 @@ class SkillsMiddleware(AgentMiddleware):
         enable_skills_prompt: bool = True,
         skills_sources_for_prompt: list[str] | None = None,
     ):
-        """初始化中间件
+        """Initialize middleware.
 
         Args:
-            skills_context_name: 上下文中的 skills 列表字段名称（默认 "skills"）
-            enable_skills_prompt: 是否启用 skills 提示段注入（默认 True）
-            skills_sources_for_prompt: skills 来源路径（用于提示词展示，默认 ["/home/gem/skills/"]）
+            skills_context_name: field name for skills list in context (default "skills")
+            enable_skills_prompt: whether to enable skills prompt injection (default True)
+            skills_sources_for_prompt: skill source paths for prompt display (default ["/home/gem/skills/"])
         """
         super().__init__()
         self.skills_context_name = skills_context_name
@@ -173,42 +173,42 @@ class SkillsMiddleware(AgentMiddleware):
         self.skills_sources_for_prompt = skills_sources_for_prompt or ["/home/gem/skills/"]
 
     async def abefore_agent(self, state: SkillsState, runtime) -> dict[str, Any] | None:
-        """在 agent 执行前注入 skills 提示词"""
+        """Inject skills prompt before the agent executes"""
         runtime_context = runtime.context
 
-        # 检查是否需要注入
+        # Check whether injection is needed
         if not self.enable_skills_prompt:
             return None
         if getattr(runtime_context, "_skills_prompt_injected", False):
             return None
 
-        # 从数据库加载 skills 数据（使用缓存）
+        # Load skills data from the database (using cache)
         dependency_map = await get_dependency_map()
 
-        # 获取配置的 skills
+        # Get configured skills
         configured_skills = getattr(runtime_context, self.skills_context_name, None) or []
         selected_skills = normalize_selected_skills(configured_skills)
 
         if not selected_skills:
             return None
 
-        # 计算 visible_skills
+        # Compute visible_skills
         visible_skills = expand_skill_closure(selected_skills, dependency_map)
 
         if not visible_skills:
             return None
 
-        # 收集提示词元数据并构建提示段
+        # Collect prompt metadata and build the prompt section
         skills_meta = await self._collect_prompt_metadata(visible_skills)
         skills_section = self._build_skills_section(skills_meta)
 
-        # 注入提示词
+        # Inject the prompt
         base_prompt = getattr(runtime_context, "system_prompt", "") or ""
         merged_prompt = f"{base_prompt}\n\n{skills_section}" if base_prompt else skills_section
         setattr(runtime_context, "system_prompt", merged_prompt)
         setattr(runtime_context, "_skills_prompt_injected", True)
 
-        # 存储 visible_skills 供后续使用
+        # Store visible_skills for later use
         setattr(runtime_context, "_visible_skills", visible_skills)
 
         return None
@@ -216,42 +216,42 @@ class SkillsMiddleware(AgentMiddleware):
     async def awrap_model_call(
         self, request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]
     ) -> ModelResponse:
-        """包装模型调用，处理动态激活和依赖展开"""
+        """Wrap model call — handle dynamic activation and dependency expansion"""
         runtime_context = request.runtime.context
 
-        # 从缓存加载 skills 数据
+        # Load skills data from cache
         dependency_map = await get_dependency_map()
 
-        # 1. 获取配置的 skills
+        # 1. Get configured skills
         configured_skills = getattr(runtime_context, self.skills_context_name, None) or []
         configured = normalize_selected_skills(configured_skills)
 
-        # 2. 获取运行时动态激活的 skills
+        # 2. Get runtime dynamically activated skills
         state = request.state if isinstance(request.state, dict) else {}
         activated = state.get("activated_skills", []) or []
         if not isinstance(activated, list):
             activated = []
 
-        # 3. 合并并展开闭包
+        # 3. Merge and expand the closure
         all_skills = normalize_selected_skills(configured + activated)
         visible_skills = expand_skill_closure(all_skills, dependency_map)
 
-        # 4. 更新 runtime_context 中的 visible_skills
+        # 4. Update visible_skills in runtime_context
         setattr(runtime_context, "_visible_skills", visible_skills)
 
-        # 5. 构建依赖包（只从直接激活的 skills 获取依赖，不包含闭包展开的依赖）
+        # 5. Build the dependency bundle (only from directly activated skills, not closure-expanded dependencies)
         deps_bundle = await self._build_dependency_bundle(activated)
 
-        # 6. 加载依赖的工具（普通工具 + MCP 工具）
+        # 6. Load dependent tools (regular tools + MCP tools)
         enabled_tools = []
 
-        # 6.1 从 toolkits 获取普通工具
+        # 6.1 Load regular tools from toolkits
         if deps_bundle["tools"]:
             all_tools = get_all_tool_instances()
             required_tool_names = set(deps_bundle["tools"])
             enabled_tools = [t for t in all_tools if t.name in required_tool_names]
 
-        # 6.2 获取 MCP 工具
+        # 6.2 Load MCP tools
         if deps_bundle["mcps"]:
             mcp_tools = await self._get_mcp_tools_from_context(
                 runtime_context,
@@ -259,7 +259,7 @@ class SkillsMiddleware(AgentMiddleware):
             )
             enabled_tools.extend(mcp_tools)
 
-        # 合并工具：保留原有工具 + 追加依赖的新工具
+        # Merge tools: keep existing tools and append newly required dependency tools
         if enabled_tools:
             existing_tool_names = {t.name for t in request.tools or []}
             merged_tools = list(request.tools or [])
@@ -271,7 +271,7 @@ class SkillsMiddleware(AgentMiddleware):
         return await handler(request)
 
     async def _build_dependency_bundle(self, activated_skills: list[str]) -> dict[str, list[str]]:
-        """根据直接激活的 skills 构建依赖包（不包含闭包展开的依赖）"""
+        """Build a dependency bundle from directly activated skills (exclude closure-expanded dependencies)."""
         dependency_map = await get_dependency_map()
 
         tools: list[str] = []
@@ -295,7 +295,7 @@ class SkillsMiddleware(AgentMiddleware):
         return {"tools": tools, "mcps": mcps, "skills": activated_skills}
 
     async def _collect_prompt_metadata(self, slugs: list[str]) -> list[SkillPromptMetadata]:
-        """收集指定 slugs 的提示词元数据"""
+        """Collect prompt metadata for specified slugs"""
         prompt_metadata = await get_prompt_metadata()
 
         result: list[SkillPromptMetadata] = []
@@ -323,10 +323,10 @@ class SkillsMiddleware(AgentMiddleware):
         *,
         extra_mcps: list[str] | None = None,
     ) -> list:
-        """从上下文配置中获取 MCP 工具列表"""
+        """Get MCP tools list from context configuration"""
         import asyncio
 
-        # MCP 工具（并行加载）
+        # MCP tools (load in parallel)
         mcps = getattr(context, "mcps", None) or []
         all_mcp_names: list[str] = []
         for server_name in mcps:
@@ -336,11 +336,11 @@ class SkillsMiddleware(AgentMiddleware):
             if isinstance(server_name, str):
                 all_mcp_names.append(server_name)
 
-        # 去重
+        # Deduplicate
         unique_mcp_names = list(dict.fromkeys(all_mcp_names))
 
         async def load_mcp_tools(server_name: str) -> list:
-            """加载单个 MCP 服务器的工具"""
+            """Load tools from a single MCP server."""
             try:
                 mcp_tools = await get_enabled_mcp_tools(server_name)
                 if not mcp_tools:
@@ -350,7 +350,7 @@ class SkillsMiddleware(AgentMiddleware):
                 logger.warning(f"SkillsMiddleware: failed to load mcp dependency '{server_name}': {e}")
                 return []
 
-        # 并行加载所有 MCP 工具
+        # Load all MCP tools in parallel
         results = await asyncio.gather(*[load_mcp_tools(name) for name in unique_mcp_names])
         selected_tools = []
         for tools in results:
@@ -359,7 +359,7 @@ class SkillsMiddleware(AgentMiddleware):
         return selected_tools
 
     def _process_tool_call_result(self, result: Any, request: ToolCallRequest) -> Any:
-        """处理工具调用结果，检查并处理 skill 动态激活"""
+        """Process tool call result and handle skill dynamic activation"""
         if request.tool_call.get("name") != "read_file":
             return result
 
@@ -382,7 +382,7 @@ class SkillsMiddleware(AgentMiddleware):
         request: ToolCallRequest,
         handler: Callable[[ToolCallRequest], Any],
     ):
-        """包装工具调用，处理 skill 动态激活"""
+        """Wrap tool call — handle skill dynamic activation"""
         result = await handler(request)
         return self._process_tool_call_result(result, request)
 
@@ -391,12 +391,12 @@ class SkillsMiddleware(AgentMiddleware):
         request: ToolCallRequest,
         handler: Callable[[ToolCallRequest], Any],
     ):
-        """同步版本的工具调用包装"""
+        """Synchronous version of tool call wrapping"""
         result = handler(request)
         return self._process_tool_call_result(result, request)
 
     def _extract_skill_slug_from_skill_md_path(self, file_path: Any) -> str | None:
-        """从文件路径中提取 skill slug"""
+        """Extract skill slug from a SKILL.md file path"""
         if not isinstance(file_path, str):
             return None
         raw = file_path.strip()
@@ -419,20 +419,20 @@ class SkillsMiddleware(AgentMiddleware):
         return slug
 
     def _is_visible_skill_slug(self, request: ToolCallRequest, slug: str) -> bool:
-        """检查 slug 是否可见"""
+        """Check whether the slug is visible"""
         runtime_context = request.runtime.context
         visible_skills = getattr(runtime_context, "_visible_skills", None)
 
         if isinstance(visible_skills, list):
             return slug in visible_skills
 
-        # 后备：从配置的 skills 检查
+        # Fallback: check configured skills
         configured_skills = getattr(runtime_context, self.skills_context_name, None) or []
         normalized = normalize_selected_skills(configured_skills)
         return slug in normalized
 
     def _merge_activated_skill_update(self, result: Any, slug: str):
-        """合并动态激活的 skill 更新"""
+        """Merge updates for dynamically activated skills"""
         from langchain_core.messages import ToolMessage
 
         if isinstance(result, Command):
@@ -447,7 +447,7 @@ class SkillsMiddleware(AgentMiddleware):
         return result
 
     def _format_skills_locations(self, sources: list[str]) -> str:
-        """格式化 skills 位置信息"""
+        """Format skills location information"""
         locations = []
         for i, source_path in enumerate(sources):
             name = PurePosixPath(source_path.rstrip("/")).name.capitalize()
@@ -456,7 +456,7 @@ class SkillsMiddleware(AgentMiddleware):
         return "\n".join(locations)
 
     def _format_skills_list(self, skills_meta: list[dict[str, str]]) -> str:
-        """格式化 skills 列表"""
+        """Format skills list"""
         if not skills_meta:
             return f"(No skills available yet. You can create skills in {' or '.join(self.skills_sources_for_prompt)})"
 
@@ -467,7 +467,7 @@ class SkillsMiddleware(AgentMiddleware):
         return "\n".join(lines)
 
     def _build_skills_section(self, skills_meta: list[dict[str, str]]) -> str:
-        """构建 skills 提示段"""
+        """Build the skills prompt section"""
         skills_locations = self._format_skills_locations(self.skills_sources_for_prompt)
         skills_list = self._format_skills_list(skills_meta)
         return SKILLS_SYSTEM_PROMPT.format(

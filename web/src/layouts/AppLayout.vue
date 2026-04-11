@@ -24,7 +24,7 @@ const { activeCount: activeCountRef, isDrawerOpen } = storeToRefs(taskerStore)
 
 const layoutSettings = reactive({
   showDebug: false,
-  useTopBar: false // 是否使用顶栏
+  useTopBar: false // Whether to use top bar
 })
 
 // Add state for GitHub stars
@@ -52,7 +52,7 @@ const getRemoteConfig = async () => {
   try {
     await configStore.refreshConfig()
   } catch (error) {
-    console.warn('加载系统配置失败:', error)
+    console.warn('Failed to load system config:', error)
   }
 }
 
@@ -60,7 +60,7 @@ const getRemoteDatabase = async () => {
   try {
     await databaseStore.loadDatabases()
   } catch (error) {
-    console.warn('加载知识库列表失败:', error)
+    console.warn('Failed to load knowledge base list:', error)
   }
 }
 
@@ -68,23 +68,23 @@ const getRemoteDatabase = async () => {
 const fetchGithubStars = async () => {
   try {
     isLoadingStars.value = true
-    // 公共API，可以直接使用fetch
+    // Public API, can use fetch directly
     const response = await fetch('https://api.github.com/repos/xerrors/Yuxi')
     const data = await response.json()
     githubStars.value = data.stargazers_count
   } catch (error) {
-    console.error('获取GitHub stars失败:', error)
+    console.error('Failed to fetch GitHub stars:', error)
   } finally {
     isLoadingStars.value = false
   }
 }
 
 onMounted(async () => {
-  // 加载信息配置
+  // Load info configuration
   await infoStore.loadInfoConfig()
-  // 加载知识库数据（普通用户加载可访问知识库）
+  // Load knowledge base data (regular users load accessible KBs)
   await getRemoteDatabase()
-  // 仅管理员加载系统配置和任务中心数据
+  // Admin only: load system config and task center data
   if (userStore.isAdmin) {
     await getRemoteConfig()
     taskerStore.loadTasks()
@@ -92,13 +92,13 @@ onMounted(async () => {
   }
 })
 
-// 打印当前页面的路由信息，使用 vue3 的 setup composition API
+// Print current page route info using vue3 setup composition API
 const route = useRoute()
 console.log(route)
 
 const activeTaskCount = computed(() => activeCountRef.value || 0)
 
-// 下面是导航菜单部分，添加智能体项
+// Navigation menu section with agent items
 const isLiteMode = import.meta.env.VITE_LITE_MODE === 'true'
 
 const mainList = computed(() => {
@@ -140,7 +140,7 @@ provide('settingsModal', {
         </router-link>
       </div>
       <div class="nav">
-        <!-- 使用mainList渲染导航项 -->
+        <!-- Render navigation items from mainList -->
         <RouterLink
           v-for="(item, index) in mainList"
           :key="index"
@@ -163,7 +163,7 @@ provide('settingsModal', {
       <div class="fill"></div>
       <div class="github nav-item">
         <a-tooltip placement="right">
-          <template #title>欢迎 Star</template>
+          <template #title>Star on GitHub</template>
           <a href="https://github.com/xerrors/Yuxi" target="_blank" class="github-link">
             <GithubOutlined class="icon" />
             <span v-if="githubStars > 0" class="github-stars">
@@ -179,7 +179,7 @@ provide('settingsModal', {
         @click="taskerStore.openDrawer()"
       >
         <a-tooltip placement="right">
-          <template #title>任务中心</template>
+          <template #title>Task Center</template>
           <a-badge
             :count="activeTaskCount"
             :overflow-count="99"
@@ -190,7 +190,7 @@ provide('settingsModal', {
           </a-badge>
         </a-tooltip>
       </div>
-      <!-- 用户信息组件 -->
+      <!-- User info component -->
       <div class="nav-item user-info">
         <UserInfoComponent />
       </div>
@@ -205,7 +205,7 @@ provide('settingsModal', {
     <!-- Debug Modal -->
     <a-modal
       v-model:open="showDebugModal"
-      title="调试面板"
+      title="Debug Panel"
       width="90%"
       :footer="null"
       @cancel="handleDebugModalClose"
@@ -221,7 +221,7 @@ provide('settingsModal', {
 </template>
 
 <style lang="less" scoped>
-// Less 变量定义
+// Less variable definitions
 @header-width: 50px;
 
 .app-layout {
@@ -450,7 +450,7 @@ div.header,
 
     .icon {
       margin-right: 8px;
-      font-size: 15px; // 减小图标大小
+      font-size: 15px; // Reduce icon size
       border: none;
       outline: none;
 

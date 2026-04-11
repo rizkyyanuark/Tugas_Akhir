@@ -67,22 +67,22 @@ const router = createRouter({
   ]
 })
 
-// 全局前置守卫
+// Global navigation guard
 router.beforeEach(async (to, from, next) => {
-  // 检查路由是否需要认证
+  // Check whether the route requires authentication
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth === true)
   const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
   const requiresSuperAdmin = to.matched.some((record) => record.meta.requiresSuperAdmin)
 
   const userStore = useUserStore()
 
-  // 如果有 token 但用户信息未加载，先获取用户信息
+  // If there is a token but the user info is not loaded, fetch it first
   if (userStore.token && !userStore.userId) {
     try {
       await userStore.getCurrentUser()
     } catch (error) {
-      // 如果获取用户信息失败（如 token 过期），清除 token
-      console.error('获取用户信息失败:', error)
+      // If fetching user info fails (for example, expired token), clear the token
+      console.error('Failed to fetch user info:', error)
       userStore.logout()
     }
   }
@@ -99,31 +99,31 @@ router.beforeEach(async (to, from, next) => {
     userStore.roles = ["admin", "superadmin"];
   }
 
-  // 如果路由需要认证但用户未登录 (This won't happen now since isLoggedIn is hardcoded true)
+  // If the route requires authentication but the user is not logged in (this will not happen now since isLoggedIn is hardcoded true)
   if (requiresAuth && !isLoggedIn) {
     sessionStorage.setItem('redirect', to.fullPath)
     next('/login')
     return
   }
 
-  // 如果路由需要管理员权限但用户不是管理员
+  // If the route requires admin privileges but the user is not an admin
   if (requiresAdmin && !isAdmin) {
-    // 如果是普通用户，跳转到聊天页空态
+    // If the user is a regular user, redirect to the empty chat page
     try {
       const agentStore = useAgentStore()
-      // 等待 store 初始化完成
+      // Wait for store initialization to complete
       if (!agentStore.isInitialized) {
         await agentStore.initialize()
       }
       next('/agent')
     } catch (error) {
-      console.error('获取智能体信息失败:', error)
+      console.error('Failed to fetch agent info:', error)
       next('/agent')
     }
     return
   }
 
-  // 如果路由需要超级管理员权限但用户不是超级管理员
+  // If the route requires super-admin privileges but the user is not a super admin
   if (requiresSuperAdmin && !isSuperAdmin) {
     try {
       const agentStore = useAgentStore()
@@ -132,19 +132,19 @@ router.beforeEach(async (to, from, next) => {
       }
       next('/agent')
     } catch (error) {
-      console.error('获取智能体信息失败:', error)
+      console.error('Failed to fetch agent info:', error)
       next('/agent')
     }
     return
   }
 
-  // 如果用户已登录但访问登录页
+  // If the user is already logged in but tries to access the login page
   if (to.path === '/login' && isLoggedIn) {
     next('/')
     return
   }
 
-  // 其他情况正常导航
+  // Normal navigation in all other cases
   next()
 })
 

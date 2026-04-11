@@ -8,11 +8,11 @@ from ta_backend_core.assistant.utils.datetime_utils import shanghai_now
 
 SAVE_DIR = os.getenv("SAVE_DIR") or "saves"
 DATETIME = shanghai_now().strftime("%Y-%m-%d")
-LOG_FILE = f"{SAVE_DIR}/logs/yuxi-{DATETIME}.log"
+LOG_FILE = f"{SAVE_DIR}/logs/ta-api-{DATETIME}.log"
 
 
 class LoguruHandler(logging.Handler):
-    """将 Python logging 桥接到 loguru 的 handler"""
+    """Bridge Python logging to loguru handler"""
 
     def emit(self, record: logging.LogRecord):
         level_map = {
@@ -31,20 +31,20 @@ class LoguruHandler(logging.Handler):
 
 
 def _setup_logging_bridge():
-    """配置 logging 到 loguru 的桥接，捕获第三方库日志（如 LightRAG）"""
+    """Configure logging bridge to loguru, capturing third-party library logs (e.g. LightRAG)"""
     loguru_handler = LoguruHandler()
     loguru_handler.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     loguru_handler.setFormatter(formatter)
 
-    # 桥接 LightRAG 日志
+    # Bridge LightRAG logs
     lightrag_logger = logging.getLogger("lightrag")
     lightrag_logger.addHandler(loguru_handler)
     lightrag_logger.setLevel(logging.DEBUG)
     lightrag_logger.propagate = False  # 避免重复
 
-    # 桥接其他常见第三方库（降低级别减少噪音）
+    # Bridge other common third-party libraries (lower levels to reduce noise)
     for lib in ["httpx", "openai", "neo4j", "urllib3"]:
         lib_logger = logging.getLogger(lib)
         lib_logger.addHandler(loguru_handler)
@@ -53,13 +53,13 @@ def _setup_logging_bridge():
 
 
 def setup_logger(name, level="DEBUG", console=True):
-    """使用 loguru 设置日志记录器"""
+    """Set up logger using loguru"""
     os.makedirs(f"{SAVE_DIR}/logs", exist_ok=True)
 
-    # 移除默认的 handler
+    # Remove default handler
     loguru_logger.remove()
 
-    # 添加文件日志（无颜色）
+    # Add file log (no color)
     loguru_logger.add(
         LOG_FILE,
         level=level,
@@ -71,7 +71,7 @@ def setup_logger(name, level="DEBUG", console=True):
         enqueue=True,
     )
 
-    # 添加控制台日志（有颜色）
+    # Add console log (with color)
     if console:
         loguru_logger.add(
             sys.stderr,
@@ -89,10 +89,10 @@ def setup_logger(name, level="DEBUG", console=True):
     return loguru_logger
 
 
-# 设置根日志记录器
-logger = setup_logger("Yuxi")
+# Set root logger
+logger = setup_logger("ta_backend_core")
 
-# 初始化 logging 桥接
+# Initialize logging bridge
 _setup_logging_bridge()
 
 __all__ = ["logger"]

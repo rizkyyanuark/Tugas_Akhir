@@ -1,58 +1,58 @@
 import { apiGet, apiPost, apiAdminGet, apiAdminPost, apiAdminPut, apiAdminDelete } from './base'
 
 /**
- * 系统管理API模块
- * 包含系统配置、健康检查、信息管理等功能
+ * System management API module
+ * Includes system configuration, health checks, information management, and related features
  */
 
 // =============================================================================
-// === 健康检查分组 ===
+// === Health check group ===
 // =============================================================================
 
 export const healthApi = {
   /**
-   * 系统健康检查（公开接口）
-   * @returns {Promise} - 健康检查结果
+   * System health check (public endpoint)
+   * @returns {Promise} - Health check result
    */
   checkHealth: () => apiGet('/api/system/health', {}, false),
 
   /**
-   * OCR服务健康检查
-   * @returns {Promise} - OCR服务健康状态
+   * OCR service health check
+   * @returns {Promise} - OCR service health status
    */
   checkOcrHealth: async () => apiAdminGet('/api/system/health/ocr')
 }
 
 // =============================================================================
-// === 配置管理分组 ===
+// === Configuration management group ===
 // =============================================================================
 
 export const configApi = {
   /**
-   * 获取系统配置
-   * @returns {Promise} - 系统配置
+   * Get system configuration
+   * @returns {Promise} - System configuration
    */
   getConfig: async () => apiAdminGet('/api/system/config'),
 
   /**
-   * 更新单个配置项
-   * @param {string} key - 配置键
-   * @param {any} value - 配置值
-   * @returns {Promise} - 更新结果
+   * Update a single configuration item
+   * @param {string} key - Configuration key
+   * @param {any} value - Configuration value
+   * @returns {Promise} - Update result
    */
   updateConfig: async (key, value) => apiAdminPost('/api/system/config', { key, value }),
 
   /**
-   * 批量更新配置项
-   * @param {Object} items - 配置项对象
-   * @returns {Promise} - 更新结果
+   * Update configuration items in bulk
+   * @param {Object} items - Configuration item object
+   * @returns {Promise} - Update result
    */
   updateConfigBatch: async (items) => apiAdminPost('/api/system/config/update', items),
 
   /**
-   * 获取系统日志
-   * @param {string} levels - 可选的日志级别过滤，多个级别用逗号分隔
-   * @returns {Promise} - 系统日志
+   * Get system logs
+   * @param {string} levels - Optional log level filter, comma-separated
+   * @returns {Promise} - System logs
    */
   getLogs: async (levels) => {
     const url = levels
@@ -63,45 +63,45 @@ export const configApi = {
 }
 
 // =============================================================================
-// === 信息管理分组 ===
+// === Information management group ===
 // =============================================================================
 
 export const brandApi = {
   /**
-   * 获取系统信息配置（公开接口）
-   * @returns {Promise} - 系统信息配置
+   * Get system information configuration (public endpoint)
+   * @returns {Promise} - System information configuration
    */
   getInfoConfig: () => apiGet('/api/system/info', {}, false),
 
   /**
-   * 重新加载信息配置
-   * @returns {Promise} - 重新加载结果
+   * Reload the information configuration
+   * @returns {Promise} - Reload result
    */
   reloadInfoConfig: async () => apiPost('/api/system/info/reload', {}, {}, false)
 }
 
 // =============================================================================
-// === OCR服务分组 ===
+// === OCR service group ===
 // =============================================================================
 
 export const ocrApi = {
   /**
-   * 获取OCR服务健康状态
-   * @returns {Promise} - OCR健康状态
+   * Get OCR service health status
+   * @returns {Promise} - OCR health status
    */
   getHealth: async () => apiAdminGet('/api/system/ocr/health')
 }
 
 // =============================================================================
-// === 聊天模型状态检查分组 ===
+// === Chat model status check group ===
 // =============================================================================
 
 export const chatModelApi = {
   /**
-   * 获取指定聊天模型的状态
-   * @param {string} provider - 模型提供商
-   * @param {string} modelName - 模型名称
-   * @returns {Promise} - 模型状态
+   * Get the status of a specific chat model
+   * @param {string} provider - Model provider
+   * @param {string} modelName - Model name
+   * @returns {Promise} - Model status
    */
   getModelStatus: async (provider, modelName) => {
     return apiAdminGet(
@@ -110,8 +110,8 @@ export const chatModelApi = {
   },
 
   /**
-   * 获取所有聊天模型的状态
-   * @returns {Promise} - 所有模型状态
+   * Get the status of all chat models
+   * @returns {Promise} - All model statuses
    */
   getAllModelsStatus: async () => {
     return apiAdminGet('/api/system/chat-models/all/status')
@@ -119,23 +119,23 @@ export const chatModelApi = {
 }
 
 // =============================================================================
-// === 自定义供应商管理分组 ===
+// === Custom provider management group ===
 // =============================================================================
 
 export const customProviderApi = {
   /**
-   * 获取所有自定义供应商
-   * @returns {Promise} - 自定义供应商列表
+   * Get all custom providers
+   * @returns {Promise} - Custom provider list
    */
   getCustomProviders: async () => {
     return apiAdminGet('/api/system/custom-providers')
   },
 
   /**
-   * 添加自定义供应商
-   * @param {string} providerId - 供应商ID
-   * @param {Object} providerData - 供应商配置数据
-   * @returns {Promise} - 添加结果
+   * Add a custom provider
+   * @param {string} providerId - Provider ID
+   * @param {Object} providerData - Provider configuration data
+   * @returns {Promise} - Add result
    */
   addCustomProvider: async (providerId, providerData) => {
     return apiAdminPost('/api/system/custom-providers', {
@@ -145,10 +145,10 @@ export const customProviderApi = {
   },
 
   /**
-   * 更新自定义供应商
-   * @param {string} providerId - 供应商ID
-   * @param {Object} providerData - 供应商配置数据
-   * @returns {Promise} - 更新结果
+  * Update a custom provider
+  * @param {string} providerId - Provider ID
+  * @param {Object} providerData - Provider configuration data
+  * @returns {Promise} - Update result
    */
   updateCustomProvider: async (providerId, providerData) => {
     return apiAdminPut(
@@ -158,19 +158,19 @@ export const customProviderApi = {
   },
 
   /**
-   * 删除自定义供应商
-   * @param {string} providerId - 供应商ID
-   * @returns {Promise} - 删除结果
+  * Delete a custom provider
+  * @param {string} providerId - Provider ID
+  * @returns {Promise} - Deletion result
    */
   deleteCustomProvider: async (providerId) => {
     return apiAdminDelete(`/api/system/custom-providers/${encodeURIComponent(providerId)}`)
   },
 
   /**
-   * 测试自定义供应商连接
-   * @param {string} providerId - 供应商ID
-   * @param {string} modelName - 要测试的模型名称
-   * @returns {Promise} - 测试结果
+  * Test a custom provider connection
+  * @param {string} providerId - Provider ID
+  * @param {string} modelName - Model name to test
+  * @returns {Promise} - Test result
    */
   testCustomProvider: async (providerId, modelName) => {
     return apiAdminPost(`/api/system/custom-providers/${encodeURIComponent(providerId)}/test`, {

@@ -81,7 +81,7 @@ def build_trace_metadata(
         "thread_id": thread_id,
         "agent_id": agent_id,
         "operation": operation,
-        "source": "yuxi",
+        "source": "ta-api",
         "feature": "chat",
     }
 
@@ -100,7 +100,7 @@ def build_trace_metadata(
 
 
 def build_trace_tags(*, agent_id: str, operation: str, message_type: str | None = None) -> list[str]:
-    tags = ["yuxi", "chat", operation, f"agent:{agent_id}"]
+    tags = ["ta-api", "chat", operation, f"agent:{agent_id}"]
     if message_type:
         tags.append(f"message_type:{message_type}")
     return tags

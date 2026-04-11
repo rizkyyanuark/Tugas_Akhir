@@ -3,10 +3,10 @@ import { defineStore } from 'pinia'
 import { theme } from 'ant-design-vue'
 
 export const useThemeStore = defineStore('theme', () => {
-  // 从 localStorage 读取保存的主题，默认为浅色
+  // Read the saved theme from localStorage, defaulting to light mode
   const isDark = ref(localStorage.getItem('theme') === 'dark')
 
-  // 公共主题配置
+  // Shared theme configuration
   const commonTheme = {
     token: {
       fontFamily:
@@ -17,26 +17,26 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
-  // 浅色主题配置
+  // Light theme configuration
   const lightTheme = {
     ...commonTheme
   }
 
-  // 深色主题配置
+  // Dark theme configuration
   const darkTheme = {
     ...commonTheme,
     algorithm: theme.darkAlgorithm
   }
 
-  // 当前主题配置
+  // Current theme configuration
   const currentTheme = ref(isDark.value ? darkTheme : lightTheme)
 
-  // 切换主题
+  // Toggle theme
   function toggleTheme() {
     setTheme(!isDark.value)
   }
 
-  // 设置主题
+  // Set theme
   function setTheme(dark) {
     isDark.value = dark
     currentTheme.value = dark ? darkTheme : lightTheme
@@ -44,7 +44,7 @@ export const useThemeStore = defineStore('theme', () => {
     updateDocumentTheme()
   }
 
-  // 更新 document 的主题类
+  // Update the document theme class
   function updateDocumentTheme() {
     if (isDark.value) {
       document.documentElement.classList.add('dark')
@@ -53,7 +53,7 @@ export const useThemeStore = defineStore('theme', () => {
     }
   }
 
-  // 初始化时设置主题
+  // Apply the theme on initialization
   updateDocumentTheme()
 
   return {

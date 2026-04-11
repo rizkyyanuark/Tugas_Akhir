@@ -9,138 +9,138 @@
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.15-008CC1.svg)](https://neo4j.com)
 [![Vue](https://img.shields.io/badge/Vue.js-3.0-4FC08D.svg)](https://vuejs.org/)
 
-*Arsitektur Hybrid: ETL Pipeline (Airflow + Ops) dengan Lapisan Agent & UI untuk eksplorasi Knowledge Graph akademik INFOKOM UNESA.*
+*Hybrid Architecture: ETL Pipeline (Airflow + Ops) with Agent & UI Layer for explorer of UNESA INFOKOM academic Knowledge Graph.*
 
 </div>
 
 ---
 
-## 📋 Daftar Isi
+## 📋 Table of Contents
 
-- [Ringkasan Proyek](#ringkasan-proyek)
-- [Prinsip Arsitektur (Hybrid Adoption)](#prinsip-arsitektur-hybrid-adoption)
+- [Project Summary](#project-summary)
+- [Architectural Principles (Hybrid Adoption)](#architectural-principles-hybrid-adoption)
 - [Tech Stack](#tech-stack)
-- [Struktur Direktori](#struktur-direktori)
-- [Cara Menjalankan (Development)](#cara-menjalankan-development)
+- [Directory Structure](#directory-structure)
+- [How to Run (Development)](#how-to-run-development)
 - [Deployment (CI/CD)](#deployment-cicd)
 - [Observability](#observability)
 
-## Ringkasan Proyek
+## Project Summary
 
-Project **Strwythura** berfokus pada pembangunan _Knowledge Graph_ akademik UNESA dengan pendekatan GraphRAG. Alih-alih menggunakan solusi Black-Box, proyek ini mempertahankan **kedaulatan data (Data Sovereignty)** di layer *Ingestion* (Airflow & Entity Resolution kustom), namun mengintegrasikan framework UI/Agent berbasis **Yuxi** di layer presentasi.
+Project **Strwythura** focuses on building an academic Knowledge Graph for UNESA using the GraphRAG approach. Instead of using Black-Box solutions, this project maintains **Data Sovereignty** at the *Ingestion* layer (custom Airflow & Entity Resolution), but integrates a UI/Agent framework based on **agenticrag** at the presentation layer.
 
-## Prinsip Arsitektur (Hybrid Adoption)
+## Architectural Principles (Hybrid Adoption)
 
-Berdasarkan arahan manajerial, proyek ini menerapkan pemisahan tugas (*separation of concerns*) yang sangat ketat:
+Based on managerial guidance, this project applies a strict *separation of concerns*:
 
-1. **Layer Ingestion & ETL (Kustom / Internal)**
-   - Proses ekstraksi data akademik, *entity resolution*, dan konstruksi ke Neo4j tetap dikendalikan 100% oleh skrip internal menggunakan Apache Airflow (`/orchestration`).
-   - Tidak menggunakan parser dokumen default pihak ketiga untuk menjaga akurasi domain spesifik.
+1. **Ingestion & ETL Layer (Custom / Internal)**
+   - The process of academic data extraction, *entity resolution*, and construction into Neo4j remains 100% controlled by internal scripts using Apache Airflow (`/orchestration`).
+   - Does not use default third-party document parsers to maintain domain-specific accuracy.
 
-2. **Layer Storage (Neo4j, Milvus, Supabase)**
-   - **Supabase (PostgreSQL):** Sebagai Data Warehouse *real-time* untuk tabel dosen & paper.
-   - **Neo4j:** Sebagai *System of Record* untuk graf relasional.
-   - **Milvus:** Sebagai Vector Database terdedikasi untuk GraphRAG.
+2. **Storage Layer (Neo4j, Milvus, Supabase)**
+   - **Supabase (PostgreSQL):** As a *real-time* Data Warehouse for lecturer & paper tables.
+   - **Neo4j:** As the *System of Record* for relational graphs.
+   - **Milvus:** As a dedicated Vector Database for GraphRAG.
 
-3. **Layer Agent & UI (Adopsi Partial dari Yuxi)**
-   - Menggunakan referensi *application shell* dari Yuxi untuk fitur Chat UI, Tool Orchestration, dan Agent Workflow (`/web` dan `/backend/server`).
-   - Penambahan rute `/dashboard` kustom yang terhubung langsung dengan Supabase & Neo4j untuk visualisasi statistik (Total Paper, Total Dosen) langsung pada UI.
+3. **Agent & UI Layer (Partial Adoption from agenticrag)**
+   - Uses the *application shell* from agenticrag as reference for Chat UI, Tool Orchestration, and Agent Workflow features (`/web` and `/backend/server`).
+   - Addition of custom `/dashboard` routes directly connected to Supabase & Neo4j for statistical visualization (Total Papers, Total Lecturers) directly on the UI.
 
 ## Tech Stack
 
-| Layer | Teknologi Utama | Peran |
+| Layer | Primary Technology | Role |
 |-------|-----------------|-------|
-| **Frontend/UI** | Vue 3, Vite | Chat UI, Node Explorer, Dashboard Akademik |
+| **Frontend/UI** | Vue 3, Vite | Chat UI, Node Explorer, Academic Dashboard |
 | **Backend/Agent** | FastAPI, LangGraph | *Query routing*, *Tool orchestration*, *Graph traversal* |
-| **Orchestration** | Apache Airflow 2.8.0 | *Job mapping*, *Retry orchestration*, ETL eksternal |
+| **Orchestration** | Apache Airflow 2.8.0 | *Job mapping*, *Retry orchestration*, External ETL |
 | **Graph DB** | Neo4j 5.15 | *Knowledge Graph Storage* & *Cypher queries* |
-| **Vector DB** | Milvus | *Semantic similarity search*, integrasi LlamaIndex |
-| **Relational DB**| Supabase, Redis | Tabel faktual, antrean *cache* memori sementara |
+| **Vector DB** | Milvus | *Semantic similarity search*, LlamaIndex integration |
+| **Relational DB**| Supabase, Redis | Factual tables, temporary memory cache queue |
 
-## Struktur Direktori
+## Directory Structure
 
-Arsitektur berada pada hirarki *root-level* untuk memfasilitasi _microservices_ secara mandiri.
+The architecture is at the *root-level* hierarchy to facilitate independent *microservices*.
 
 ```text
 Tugas_Akhir/
-├── README.md                      # Dokumentasi ini
-├── Makefile                       # Pintasan perintah sistem (make dev-all, make clean)
-├── .env                           # Credential & Routing (Critical Mismatches terpecahkan)
-├── docker-compose.yml             # Orkestrasi container root level
-├── docker-compose.prod.yml        # Override produksi untuk deployment
+├── README.md                      # This documentation
+├── Makefile                       # System command shortcuts (make dev-all, make clean)
+├── .env                           # Credentials & Routing (Critical Mismatches solved)
+├── docker-compose.yml             # Root-level container orchestration
+├── docker-compose.prod.yml        # Production override for deployment
 │
 ├── web/                           # 🟢 Frontend Application (Vite/Vue3)
-│   ├── src/views/DashboardView.vue# Ekstensi Kustom: Statistik Akademik
-│   └── (Yuxi Application Shell)
+│   ├── src/views/DashboardView.vue# Custom Extension: Academic Statistics
+│   └── (agenticrag Application Shell)
 │
 ├── backend/                       # 🟢 Agent & API Service
-│   ├── server/routers/            # API Endpoints (termasuk /stats/academic)
+│   ├── server/routers/            # API Endpoints (including /stats/academic)
 │   └── package/ta_backend_core/   # LangGraph Agents, Tools & Config (info.local.yaml)
 │
 ├── orchestration/                 # 🟢 Airflow Pipeline & Scripts
-│   ├── dags/                      # Definisi Pipeline (unesa_papers_dag.py dsb)
-│   └── (Skrip Scraper Internal)
+│   ├── dags/                      # Pipeline Definitions (unesa_papers_dag.py etc.)
+│   └── (Internal Scraper Scripts)
 │
 ├── docker/                        # 🟢 Container Definitions
-│   ├── api.Dockerfile             # Image untuk backend FastAPI
-│   ├── web.Dockerfile             # Image untuk frontend Vue
-│   ├── airflow.Dockerfile         # Image khusus Airflow + Dependencies
-│   └── etl-worker.Dockerfile      # Image independen eksekusi Scraping
+│   ├── api.Dockerfile             # Image for backend FastAPI
+│   ├── web.Dockerfile             # Image for frontend Vue
+│   ├── airflow.Dockerfile         # Special Airflow Image + Dependencies
+│   └── etl-worker.Dockerfile      # Independent Scraping execution image
 │
-├── configs/                       # Konfigurasi Milvus, Redis, Database
-├── monitoring/                    # Grafana & Prometheus (Akan Difokuskan di Fase 3)
-└── scripts/                       # Shell scripts (setup EC2, dsb)
+├── configs/                       # Milvus, Redis, Database configurations
+├── monitoring/                    # Grafana & Prometheus (Focus in Phase 3)
+└── scripts/                       # Shell scripts (EC2 setup, etc.)
 ```
 
-## Cara Menjalankan (Development)
+## How to Run (Development)
 
-Sistem menggunakan Docker Compose tunggal. Direkomendasikan menggunakan instance minimum **8GB RAM** untuk dapat mengangkat seluruh *stack* Graph + Vector + LLM Agent.
+The system uses a single Docker Compose. A minimum of **8GB RAM** instance is recommended to lift the entire Graph + Vector + LLM Agent stack.
 
-### Persiapan
+### Preparation
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/rizkyyanuark/Tugas_Akhir.git
 cd Tugas_Akhir
 
-# 2. Siapkan Environment (Cek .env)
-# Pastikan YUXI_BRAND_FILE_PATH, SUPABASE_URL, NEO4J_URI terisi.
+# 2. Prepare Environment (Check .env)
+# Ensure AGENTICRAG_BRAND_FILE_PATH, SUPABASE_URL, NEO4J_URI are filled.
 ```
 
-### Memulai Aplikasi Lengkap (API, Web, Neo4j, Milvus, Redis)
-Hanya menjalankan aplikasi inti (*End-User Layer*).
+### Start Full Application (API, Web, Neo4j, Milvus, Redis)
+Only starts the core application (*End-User Layer*).
 
 ```bash
 docker compose up -d postgres graph redis milvus etcd minio api web
 ```
 
-### Memulai Mode ETL & Scraping Terpisah
-Jalankan ini ketika hanya ingin memproses Airflow atau membangun Graph tanpa menyalakan UI.
+### Start Separate ETL & Scraping Mode
+Run this when you only want to process Airflow or build the Graph without starting the UI.
 
 ```bash
 docker compose --profile etl up -d
 ```
 
-Atau gunakan file `Makefile` yang telah disediakan.
+Or use the provided `Makefile`.
 
 ## Deployment (CI/CD)
 
-Proyek ini telah dikonfigurasi melalui `.gitlab-ci.yml`. Setiap *push* ke `main` branch akan:
-1. Melakukan kompilasi *images* `API`, `Web`, `Airflow`, dan `Worker` ke AWS ECR.
-2. Membuka koneksi `SSH` menujuu Instans AWS EC2.
-3. Melakukan sinkronisasi direktori root melalui `scp`.
-4. Mengeksekusi ulang `docker compose` di server AWS dengan modifikasi `.prod.yml`.
+This project is configured via `.gitlab-ci.yml`. Each *push* to the `main` branch will:
+1. Compile `API`, `Web`, `Airflow`, and `Worker` *images* to AWS ECR.
+2. Open an `SSH` connection to the AWS EC2 Instance.
+3. Synchronize the root directory via `scp`.
+4. Re-execute `docker compose` on the AWS server with `.prod.yml` modification.
 
-> **Status Saat Ini:** Deploy sukses. Pipeline terintegrasi mulus.
+> **Current Status:** Deployment successful. Pipeline integration is seamless.
 
 ## Observability
 
-Sistem dilengkapi dengan:
-- **Opik / Langfuse:** Untuk melacak *Agent Trace* (Input/Output LLM, *Tool Calling Time*).
-- **Langkah Kedepan (Fase 3):** Implementasi Grafana Cloud atau setup Prometheus lokal untuk memonitor beban *RAM Milvus* dan *Neo4j IOPS*.
+The system is equipped with:
+- **Opik / Langfuse:** To track *Agent Trace* (LLM Input/Output, *Tool Calling Time*).
+- **Future Steps (Phase 3):** Implementation of Grafana Cloud or local Prometheus setup to monitor *Milvus RAM* load and *Neo4j IOPS*.
 
 ---
 <div align="center">
-  <b>Rizky Yanuar Kristianto</b> — Sains Data, Universitas Negeri Surabaya (UNESA) <br>
+  <b>Rizky Yanuar Kristianto</b> — Data Science, Surabaya State University (UNESA) <br>
   <i>Knowledge Graph RAG Pipeline 2025/2026</i>
 </div>

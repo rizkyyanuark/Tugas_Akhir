@@ -24,11 +24,15 @@
 /* Sidebar List */
 .sidebar-list {
   width: 280px;
-  border-right: 1px solid @border-color;
-  background-color: @bg-secondary;
+  border-right: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  transition: var(--transition-smooth);
+  z-index: 10;
 
   .sidebar-toolbar {
     padding: 8px 12px 0;
@@ -156,12 +160,14 @@
 
   &:hover {
     border-color: @border-color;
-    box-shadow: 0 1px 2px var(--shadow-1);
+    box-shadow: var(--glass-shadow);
+    transform: translateY(-2px);
   }
 
   &.active {
-    background-color: var(--gray-0);
+    background-color: var(--main-0);
     border-color: var(--main-500);
+    box-shadow: var(--shadow-glow-primary);
   }
 
   .item-header {
@@ -506,7 +512,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: @bg-secondary;
+    background: var(--mesh-grad-1), var(--mesh-grad-2), var(--mesh-grad-3), var(--mesh-grad-4);
+    background-color: var(--gray-10);
 
     .hint-box {
       text-align: center;

@@ -60,20 +60,20 @@ export function useApproval({ getThreadState, resetOnGoingConv, fetchThreadMessa
   const handleApproval = async (answer, currentAgentId, agentConfigId) => {
     const threadId = approvalState.threadId
     if (!threadId) {
-      message.error('无效的提问请求')
+      message.error('Invalid question request')
       approvalState.showModal = false
       return
     }
 
     const threadState = getThreadState(threadId)
     if (!threadState) {
-      message.error('无法找到对应的对话线程')
+      message.error('Unable to find the corresponding conversation thread')
       approvalState.showModal = false
       return
     }
 
     if (!agentConfigId) {
-      message.error('缺少智能体配置，请重新选择配置后重试')
+      message.error('Missing agent configuration, please select a configuration and try again')
       approvalState.showModal = false
       return
     }
@@ -119,7 +119,7 @@ export function useApproval({ getThreadState, resetOnGoingConv, fetchThreadMessa
     } catch (error) {
       if (error.name !== 'AbortError') {
         handleChatError(error, 'resume')
-        message.error(`恢复对话失败: ${error.message || '未知错误'}`)
+        message.error(`Failed to resume conversation: ${error.message || 'unknown error'}`)
       }
       threadState.isStreaming = false
       threadState.streamAbortController = null

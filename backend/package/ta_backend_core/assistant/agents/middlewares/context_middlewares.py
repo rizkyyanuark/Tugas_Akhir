@@ -1,4 +1,4 @@
-"""通用的 Context 相关中间件"""
+"""Common context-related middlewares"""
 
 from collections.abc import Callable
 
@@ -10,13 +10,13 @@ from ta_backend_core.assistant.utils import logger
 
 @dynamic_prompt
 def context_aware_prompt(request: ModelRequest) -> str:
-    """从 runtime context 动态生成系统提示词"""
+    """Dynamically generate the system prompt from the runtime context"""
     return request.runtime.context.system_prompt
 
 
 @wrap_model_call
 async def context_based_model(request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]) -> ModelResponse:
-    """从 runtime context 动态选择模型"""
+    """Dynamically select the model from the runtime context"""
     model_spec = request.runtime.context.model
     model = load_chat_model(model_spec)
 

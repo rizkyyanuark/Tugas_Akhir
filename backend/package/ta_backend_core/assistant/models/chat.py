@@ -181,7 +181,7 @@ async def test_all_chat_models_status() -> dict:
     Returns:
         dict: 包含所有模型状态的字典
     """
-    from yuxi import config
+    from ta_backend_core.assistant import config
 
     results = {}
 

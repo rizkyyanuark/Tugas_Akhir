@@ -1,7 +1,7 @@
 import { nextTick } from 'vue'
 
 /**
- * 滚动控制工具类
+ * Scroll Control Utility Class
  */
 export class ScrollController {
   constructor(containerSelector = '.chat', options = {}) {
@@ -23,7 +23,7 @@ export class ScrollController {
   }
 
   /**
-   * 获取滚动容器
+   * Get the scroll container
    * @returns {Element|null}
    */
   getContainer() {
@@ -31,7 +31,7 @@ export class ScrollController {
   }
 
   /**
-   * 检查是否在底部
+   * Check if at the bottom
    * @returns {boolean}
    */
   isAtBottom() {
@@ -43,61 +43,61 @@ export class ScrollController {
   }
 
   /**
-   * 处理滚动事件
+   * Handle scroll event
    */
   handleScroll() {
     if (this.scrollTimer) {
       clearTimeout(this.scrollTimer)
     }
 
-    // 如果是程序性滚动，忽略此次事件
+    // If it is a programmatic scroll, ignore this event
     if (this.isProgrammaticScroll) {
       this.isProgrammaticScroll = false
       return
     }
 
-    // 标记用户正在滚动
+    // Mark user is scrolling
     this.isUserScrolling = true
 
-    // 检查是否在底部
+    // Check if at bottom
     this.shouldAutoScroll = this.isAtBottom()
 
-    // 滚动结束后一段时间重置用户滚动状态
+    // Reset user scroll state after some time when scrolling ends
     this.scrollTimer = setTimeout(() => {
       this.isUserScrolling = false
     }, this.options.scrollDelay)
   }
 
   /**
-   * 等待 DOM 布局稳定
+   * Wait for DOM layout to stabilize
    * @returns {Promise<void>}
    */
   async waitForLayoutStable() {
-    // 使用 requestAnimationFrame 确保 DOM 渲染完成
+    // Use requestAnimationFrame to ensure DOM rendering is complete
     await new Promise((resolve) => requestAnimationFrame(resolve))
-    // 额外等待一小段时间确保 CSS 布局完成
+    // Wait an extra short time to ensure CSS layout is complete
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
 
   /**
-   * 智能滚动到底部
-   * @param {boolean} force - 是否强制滚动
+   * Smart scroll to bottom
+   * @param {boolean} force - Whether to force scroll
    */
   async scrollToBottom(force = false) {
     await nextTick()
-    // 等待 DOM 布局稳定
+    // Wait for DOM layout to stabilize
     await this.waitForLayoutStable()
 
-    // 只有在应该自动滚动时才执行（除非强制）
+    // Only execute if auto-scroll is enabled (unless forced)
     if (!force && !this.shouldAutoScroll) return
 
     const container = this.getContainer()
     if (!container) return
 
-    // 标记为程序性滚动
+    // Mark as programmatic scroll
     this.isProgrammaticScroll = true
 
-    // 记录滚动前的容器高度
+    // Record container height before scrolling
     const initialHeight = container.scrollHeight
 
     const scrollOptions = {
@@ -105,10 +105,10 @@ export class ScrollController {
       behavior: 'smooth'
     }
 
-    // 立即滚动
+    // Scroll immediately
     container.scrollTo(scrollOptions)
 
-    // 多次重试确保滚动成功，包括等待输入框等动态元素布局完成
+    // Retry multiple times to ensure scroll success, including waiting for dynamic elements to finish layout
     const retryDelays = [50, 100, 200, 400]
     retryDelays.forEach((delay, index) => {
       setTimeout(() => {
@@ -116,7 +116,7 @@ export class ScrollController {
           this.isProgrammaticScroll = true
           const behavior = index === retryDelays.length - 1 ? 'auto' : 'smooth'
 
-          // 如果高度变化了，说明可能有动态内容正在渲染，再次等待
+          // If height changed, dynamic content might be rendering, wait again
           if (container.scrollHeight !== initialHeight && index < retryDelays.length - 1) {
             this.waitForLayoutStable().then(() => {
               container.scrollTo({
@@ -139,7 +139,7 @@ export class ScrollController {
     const container = this.getContainer()
     if (!container) return
 
-    // 标记为程序性滚动
+    // Mark as programmatic scroll
     this.isProgrammaticScroll = true
 
     const scrollOptions = {
@@ -151,21 +151,21 @@ export class ScrollController {
   }
 
   /**
-   * 启用自动滚动
+   * Enable auto-scroll
    */
   enableAutoScroll() {
     this.shouldAutoScroll = true
   }
 
   /**
-   * 禁用自动滚动
+   * Disable auto-scroll
    */
   disableAutoScroll() {
     this.shouldAutoScroll = false
   }
 
   /**
-   * 获取滚动状态
+   * Get scroll status
    */
   getScrollState() {
     return {
@@ -176,7 +176,7 @@ export class ScrollController {
   }
 
   /**
-   * 清理定时器
+   * Cleanup timer
    */
   cleanup() {
     if (this.scrollTimer) {
@@ -186,7 +186,7 @@ export class ScrollController {
   }
 
   /**
-   * 重置滚动状态
+   * Reset scroll status
    */
   reset() {
     this.cleanup()
@@ -197,7 +197,7 @@ export class ScrollController {
 }
 
 /**
- * 创建默认的滚动控制器实例
+ * Create a default scroll controller instance
  */
 export const createScrollController = (containerSelector, options) => {
   return new ScrollController(containerSelector, options)

@@ -1,11 +1,11 @@
-"""Deep Agent - 深度分析智能体模块
+"""Deep Agent - deep analysis agent module
 
-基于 deepagents 库构建的深度分析智能体，具备以下特性：
-- 任务规划和分解能力
-- 深度知识搜索和分析
-- 子智能体协作
-- 文件系统和长期记忆
-- 综合分析和报告生成
+Deep analysis agent built on the deepagents library with the following capabilities:
+- Task planning and decomposition
+- Deep knowledge search and analysis
+- Subagent collaboration
+- File system access and long-term memory
+- Comprehensive analysis and report generation
 """
 
 from .context import DeepContext
@@ -16,7 +16,7 @@ __all__ = [
     "DeepContext",
 ]
 
-# 模块元数据
+# Module metadata
 __version__ = "1.0.0"
 __author__ = "Yuxi Team"
-__description__ = "基于 create_deep_agent 的深度分析智能体"
+__description__ = "Deep analysis agent based on create_deep_agent"

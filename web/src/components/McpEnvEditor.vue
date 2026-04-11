@@ -10,12 +10,12 @@
         @click="removeRow(index)"
         :disabled="rows.length === 1"
       >
-        删除
+        Delete
       </a-button>
     </div>
     <a-button size="small" @click="addRow">
       <template #icon><PlusOutlined /></template>
-      添加变量
+      Add variable
     </a-button>
   </div>
 </template>

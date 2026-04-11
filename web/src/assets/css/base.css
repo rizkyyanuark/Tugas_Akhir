@@ -20,21 +20,21 @@
   --main-1: #fefefe;
   --main-0: #ffffff;
 
-  /* 保留原有的 main 变量 */
+  /* Preserve the existing main variables */
   --main-color: var(--main-700);
   --main-bright: #0188a6;
 
-  --gray-10000: #000000; /* 保持纯黑 */
-  --gray-2000: #0c0d0d; /* 更精致的暗灰，用于极深背景 */
-  --gray-1000: #151616; /* 深灰黑，适用于主文本 */
+  --gray-10000: #000000; /* Keep pure black */
+  --gray-2000: #0c0d0d; /* More refined dark gray for very deep backgrounds */
+  --gray-1000: #151616; /* Dark gray-black, suitable for primary text */
   --gray-900: #1e1f1f;
-  --gray-800: #323333; /* 标准深灰，适合背景 */
+  --gray-800: #323333; /* Standard dark gray, suitable for backgrounds */
   --gray-700: #4c4d4d;
-  --gray-600: #697070; /* 调和中灰，适合次要文本 */
-  --gray-500: #979999; /* 更柔和的中灰色 */
+  --gray-600: #697070; /* Balanced mid-gray for secondary text */
+  --gray-500: #979999; /* Softer mid-gray */
   --gray-400: #bdbfbf;
-  --gray-300: #d7d9d9; /* 修正了原300/200重复 */
-  --gray-200: #e4e6e6; /* 稍微加深一点，便于分层 */
+  --gray-300: #d7d9d9; /* Corrected the original 300/200 duplication */
+  --gray-200: #e4e6e6; /* Slightly deeper for layering */
   --gray-150: #eef0f0;
   --gray-100: #eff2f2;
   --gray-50: #f5f7f7;
@@ -42,56 +42,56 @@
   --gray-10: #fbfcfc;
   --gray-0: #ffffff;
 
-  /* Standard Color System - 标准5档色阶系统 */
-  --color-primary-50: var(--main-50); /* 主色调-最浅 */
-  --color-primary-100: var(--main-200); /* 主色调-浅 */
-  --color-primary-500: var(--main-500); /* 主色调-标准 */
-  --color-primary-700: var(--main-700); /* 主色调-深 */
-  --color-primary-900: var(--main-900); /* 主色调-最深 */
+  /* Standard Color System - 5-level standard palette */
+  --color-primary-50: var(--main-50); /* Primary color - lightest */
+  --color-primary-100: var(--main-200); /* Primary color - light */
+  --color-primary-500: var(--main-500); /* Primary color - standard */
+  --color-primary-700: var(--main-700); /* Primary color - deep */
+  --color-primary-900: var(--main-900); /* Primary color - deepest */
 
-  --color-secondary-10: var(--gray-10); /* 次要色-最浅 */
-  --color-secondary-50: var(--gray-50); /* 次要色-最浅 */
-  --color-secondary-100: var(--gray-100); /* 次要色-浅 */
-  --color-secondary-500: var(--gray-700); /* 次要色-标准 */
-  --color-secondary-700: var(--gray-800); /* 次要色-深 */
-  --color-secondary-900: var(--gray-900); /* 次要色-最深 */
+  --color-secondary-10: var(--gray-10); /* Secondary color - lightest */
+  --color-secondary-50: var(--gray-50); /* Secondary color - lightest */
+  --color-secondary-100: var(--gray-100); /* Secondary color - light */
+  --color-secondary-500: var(--gray-700); /* Secondary color - standard */
+  --color-secondary-700: var(--gray-800); /* Secondary color - deep */
+  --color-secondary-900: var(--gray-900); /* Secondary color - deepest */
 
-  --color-success-10: #fafff2; /* 成功色-极浅 */
-  --color-success-50: #f6ffed; /* 成功色-最浅 */
-  --color-success-100: #b7eb8f; /* 成功色-浅 */
-  --color-success-500: #52c41a; /* 成功色-标准 */
-  --color-success-700: #389e0d; /* 成功色-深 */
-  --color-success-900: #135200; /* 成功色-最深 */
+  --color-success-10: #fafff2; /* Success color - very light */
+  --color-success-50: #f6ffed; /* Success color - lightest */
+  --color-success-100: #b7eb8f; /* Success color - light */
+  --color-success-500: #52c41a; /* Success color - standard */
+  --color-success-700: #389e0d; /* Success color - deep */
+  --color-success-900: #135200; /* Success color - deepest */
 
-  --color-error-10: #fffaf9; /* 错误色-极浅 */
-  --color-error-50: #fff2f0; /* 错误色-最浅 */
-  --color-error-100: #ffccc7; /* 错误色-浅 */
-  --color-error-500: #ff4d4f; /* 错误色-标准 */
-  --color-error-700: #cf1322; /* 错误色-深 */
-  --color-error-900: #820014; /* 错误色-最深 */
+  --color-error-10: #fffaf9; /* Error color - very light */
+  --color-error-50: #fff2f0; /* Error color - lightest */
+  --color-error-100: #ffccc7; /* Error color - light */
+  --color-error-500: #ff4d4f; /* Error color - standard */
+  --color-error-700: #cf1322; /* Error color - deep */
+  --color-error-900: #820014; /* Error color - deepest */
 
-  --color-warning-10: #fffef5; /* 警告色-极浅 */
-  --color-warning-50: #fffbe6; /* 警告色-最浅 */
-  --color-warning-100: #ffe58f; /* 警告色-浅 */
-  --color-warning-500: #faad14; /* 警告色-标准 */
-  --color-warning-700: #d48806; /* 警告色-深 */
-  --color-warning-900: #ad6800; /* 警告色-最深 */
+  --color-warning-10: #fffef5; /* Warning color - very light */
+  --color-warning-50: #fffbe6; /* Warning color - lightest */
+  --color-warning-100: #ffe58f; /* Warning color - light */
+  --color-warning-500: #faad14; /* Warning color - standard */
+  --color-warning-700: #d48806; /* Warning color - deep */
+  --color-warning-900: #ad6800; /* Warning color - deepest */
 
-  --color-info-10: #f5fbff; /* 信息色-极浅 */
-  --color-info-50: #e6f7ff; /* 信息色-最浅 */
-  --color-info-100: #bae7ff; /* 信息色-浅 */
-  --color-info-500: #1890ff; /* 信息色-标准 */
-  --color-info-700: #096dd9; /* 信息色-深 */
-  --color-info-900: #0050b3; /* 信息色-最深 */
+  --color-info-10: #f5fbff; /* Info color - very light */
+  --color-info-50: #e6f7ff; /* Info color - lightest */
+  --color-info-100: #bae7ff; /* Info color - light */
+  --color-info-500: #1890ff; /* Info color - standard */
+  --color-info-700: #096dd9; /* Info color - deep */
+  --color-info-900: #0050b3; /* Info color - deepest */
 
-  --color-accent-10: #f5fffe; /* 强调色-极浅 */
-  --color-accent-50: #e6fffb; /* 强调色-最浅 */
-  --color-accent-100: #87e8de; /* 强调色-浅 */
-  --color-accent-500: #13c2c2; /* 强调色-标准 */
-  --color-accent-700: #08979c; /* 强调色-深 */
-  --color-accent-900: #006d75; /* 强调色-最深 */
+  --color-accent-10: #f5fffe; /* Accent color - very light */
+  --color-accent-50: #e6fffb; /* Accent color - lightest */
+  --color-accent-100: #87e8de; /* Accent color - light */
+  --color-accent-500: #13c2c2; /* Accent color - standard */
+  --color-accent-700: #08979c; /* Accent color - deep */
+  --color-accent-900: #006d75; /* Accent color - deepest */
 
-  /* Chart Palette - 图表调色板 */
+  /* Chart Palette */
   --chart-palette-1: var(--main-500);
   --chart-palette-2: #5ad8a6;
   --chart-palette-3: #f6bd16;
@@ -131,7 +131,7 @@
   --dark-5: rgba(0, 0, 0, 0.05);
   --dark-0: rgba(0, 0, 0, 0);
 
-  /* Shadow System - 阴影系统 */
+  /* Shadow System */
   --shadow-0: rgba(0, 0, 0, 0.02);
   --shadow-1: rgba(0, 0, 0, 0.05);
   --shadow-2: rgba(0, 0, 0, 0.08);
@@ -141,7 +141,7 @@
 
   --min-width: 400px;
 
-  /* Ant Design 兼容变量 */
+  /* Ant Design compatible variables */
   --color-bg-container: var(--main-0);
   --color-bg-elevated: var(--gray-10);
   --color-text: var(--gray-1000);
@@ -149,13 +149,42 @@
   --color-text-tertiary: var(--dark-50);
   --color-trans-light: var(--light-85);
   --color-trans-dark: var(--dark-85);
+
+  /* Premium UI Tokens */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  
+  --grad-primary: linear-gradient(135deg, #3996ae 0%, #24839a 100%);
+  --grad-success: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  --grad-warning: linear-gradient(135deg, #faad14 0%, #d48806 100%);
+  --grad-error: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
+  --grad-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+  
+  --radius-xl: 20px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-huge: 32px;
+  
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Deep premium shadows */
+  --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --shadow-glow-primary: 0 0 20px rgba(57, 150, 174, 0.3);
+
+  /* Mesh gradient tokens */
+  --mesh-grad-1: radial-gradient(at 0% 0%, hsla(195, 50%, 45%, 0.15) 0px, transparent 50%);
+  --mesh-grad-2: radial-gradient(at 100% 0%, hsla(265, 50%, 45%, 0.15) 0px, transparent 50%);
+  --mesh-grad-3: radial-gradient(at 100% 100%, hsla(165, 50%, 45%, 0.1) 0px, transparent 50%);
+  --mesh-grad-4: radial-gradient(at 0% 100%, hsla(335, 50%, 45%, 0.1) 0px, transparent 50%);
 }
 
 :root {
   --scrollbar-width: 4px;
 }
 
-/* 全局滚动条样式 */
+/* Global scrollbar styles */
 ::-webkit-scrollbar {
   width: var(--scrollbar-width);
   height: var(--scrollbar-width);
@@ -177,7 +206,7 @@
   background: var(--gray-100);
 }
 
-/* Firefox 滚动条样式 */
+/* Firefox scrollbar styles */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--gray-200) transparent;

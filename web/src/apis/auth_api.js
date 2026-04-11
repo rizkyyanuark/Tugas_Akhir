@@ -1,5 +1,5 @@
 /**
- * 认证相关 API
+ * Authentication-related API
  */
 
 async function parseErrorDetail(response, fallbackMessage) {
@@ -15,35 +15,35 @@ async function parseErrorDetail(response, fallbackMessage) {
 }
 
 /**
- * 获取 OIDC 配置
+ * Get the OIDC configuration
  * @returns {Promise<{enabled: boolean, provider_name?: string}>}
  */
 async function getOIDCConfig() {
   const response = await fetch('/api/auth/oidc/config')
   if (!response.ok) {
-    throw new Error('获取 OIDC 配置失败')
+    throw new Error('Failed to get OIDC configuration')
   }
   return response.json()
 }
 
 /**
- * 获取 OIDC 登录 URL
- * @param {string} redirectPath - 登录后的重定向路径
+ * Get the OIDC login URL
+ * @param {string} redirectPath - Redirect path after login
  * @returns {Promise<{login_url: string}>}
  */
 async function getOIDCLoginUrl(redirectPath = '/') {
   const params = new URLSearchParams({ redirect_path: redirectPath })
   const response = await fetch(`/api/auth/oidc/login-url?${params}`)
   if (!response.ok) {
-    const detail = await parseErrorDetail(response, '获取 OIDC 登录地址失败')
+    const detail = await parseErrorDetail(response, 'Failed to get the OIDC login URL')
     throw new Error(detail)
   }
   return response.json()
 }
 
 /**
- * 使用一次性 code 交换 OIDC 登录结果
- * @param {string} code - 一次性登录 code
+ * Exchange the OIDC login result using a one-time code
+ * @param {string} code - One-time login code
  * @returns {Promise<{
  *   access_token: string,
  *   token_type: string,
@@ -67,7 +67,7 @@ async function exchangeOIDCCode(code) {
   })
 
   if (!response.ok) {
-    const detail = await parseErrorDetail(response, 'OIDC 登录失败')
+    const detail = await parseErrorDetail(response, 'OIDC login failed')
     throw new Error(detail)
   }
 

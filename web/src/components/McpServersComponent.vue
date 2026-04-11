@@ -4,14 +4,14 @@
       <div class="loading-bar"></div>
     </div>
     <div class="layout-wrapper" :class="{ 'content-loading': loading }">
-      <!-- 左侧：MCP 列表 -->
+      <!-- Left: MCP list -->
       <div class="sidebar-list">
-        <!-- 搜索框 -->
+        <!-- Search box -->
         <div class="sidebar-toolbar">
           <div class="search-box">
             <a-input
               v-model:value="searchQuery"
-              placeholder="搜索 MCP..."
+              placeholder="Search MCP..."
               allow-clear
               class="search-input"
             >
@@ -19,29 +19,29 @@
             </a-input>
           </div>
 
-          <a-tooltip title="刷新 MCP">
+          <a-tooltip title="Refresh MCP">
             <a-button class="sidebar-tool" :disabled="loading" @click="fetchServers">
               <RotateCw :size="14" />
             </a-button>
           </a-tooltip>
         </div>
 
-        <!-- 统计信息 -->
+        <!-- Statistics -->
         <!-- <div class="stats-section" v-if="filteredServers.length > 0">
           <span class="stats-text">
             {{ filteredServers.length }} 个 MCP： HTTP: {{ httpCount }} · SSE: {{ sseCount }} · StdIO: {{ stdioCount }}
           </span>
         </div> -->
 
-        <!-- MCP 列表 -->
+        <!-- MCP list -->
         <div class="list-container">
           <div
             v-if="!filteredEnabledServers.length && !filteredDisabledServers.length"
             class="empty-text"
           >
-            <a-empty :image="false" :description="searchQuery ? '无匹配 MCP' : '暂无 MCP'" />
+            <a-empty :image="false" :description="searchQuery ? 'No matching MCPs' : 'No MCPs yet'" />
           </div>
-          <div v-if="filteredEnabledServers.length" class="list-section-title">已添加</div>
+          <div v-if="filteredEnabledServers.length" class="list-section-title">Added</div>
           <template
             v-for="(server, index) in filteredEnabledServers"
             :key="`enabled-${server.name}`"
@@ -57,7 +57,7 @@
                   <span class="item-name">{{ server.name }}</span>
                 </div>
                 <div class="item-status">
-                  <span class="status-chip status-chip-success">已添加</span>
+                  <span class="status-chip status-chip-success">Added</span>
                   <button
                     type="button"
                     class="inline-hover-action"
@@ -68,7 +68,7 @@
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ server.description || '暂无描述' }}</span>
+                <span class="item-desc">{{ server.description || 'No description available' }}</span>
                 <div class="item-tags">
                   <span v-if="server.created_by === 'system'" class="source-tag builtin">内置</span>
                 </div>
@@ -79,7 +79,7 @@
               class="list-separator"
             ></div>
           </template>
-          <div v-if="filteredDisabledServers.length" class="list-section-title">可添加</div>
+          <div v-if="filteredDisabledServers.length" class="list-section-title">Available</div>
           <template
             v-for="(server, index) in filteredDisabledServers"
             :key="`disabled-${server.name}`"
@@ -100,12 +100,12 @@
                     class="skill-inline-action skill-inline-action-primary"
                     @click.stop="handleSetServerEnabled(server, true)"
                   >
-                    添加
+                    Add
                   </button>
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ server.description || '暂无描述' }}</span>
+                <span class="item-desc">{{ server.description || 'No description available' }}</span>
                 <div class="item-tags">
                   <span v-if="server.created_by === 'system'" class="source-tag builtin">内置</span>
                 </div>
@@ -116,7 +116,7 @@
         </div>
       </div>
 
-      <!-- 右侧：详情面板 -->
+      <!-- Right: detail panel -->
       <div class="main-panel">
         <div v-if="!currentServer" class="unselected-state">
           <div class="hint-box">

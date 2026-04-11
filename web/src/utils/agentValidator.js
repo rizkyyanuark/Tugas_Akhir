@@ -1,32 +1,32 @@
 /**
- * AgentID验证工具类
- * 统一处理AgentID相关的验证逻辑
+ * Agent ID validation utility class
+ * Centralized validation logic for Agent ID-related operations
  */
 export class AgentValidator {
   /**
-   * 验证AgentID是否存在
-   * @param {string} agentId - 要验证的AgentID
-   * @param {string} operation - 操作名称，用于错误提示
-   * @returns {boolean} 验证是否通过
+   * Validate whether an Agent ID exists
+   * @param {string} agentId - Agent ID to validate
+   * @param {string} operation - Operation name used in error messages
+   * @returns {boolean} Whether validation passed
    */
-  static validateAgentId(agentId, operation = '操作') {
+  static validateAgentId(agentId, operation = 'operation') {
     if (!agentId) {
-      console.warn(`未指定AgentID，无法${operation}`)
+      console.warn(`No Agent ID was specified, cannot ${operation}`)
       return false
     }
     return true
   }
 
   /**
-   * 验证AgentID并显示错误提示
-   * @param {string} agentId - 要验证的AgentID
-   * @param {string} operation - 操作名称
-   * @param {Function} errorHandler - 错误处理函数
-   * @returns {boolean} 验证是否通过
+   * Validate an Agent ID and display an error message
+   * @param {string} agentId - Agent ID to validate
+   * @param {string} operation - Operation name
+   * @param {Function} errorHandler - Error handler
+   * @returns {boolean} Whether validation passed
    */
   static validateAgentIdWithError(agentId, operation, errorHandler) {
     if (!agentId) {
-      const message = `未指定AgentID，无法${operation}`
+      const message = `No Agent ID was specified, cannot ${operation}`
       if (errorHandler) {
         errorHandler(message)
       }
@@ -36,22 +36,22 @@ export class AgentValidator {
   }
 
   /**
-   * 验证对话相关操作的前置条件
-   * @param {string} agentId - AgentID
-   * @param {string} chatId - 对话ID（可选）
-   * @param {string} operation - 操作名称
-   * @param {Function} errorHandler - 错误处理函数
-   * @returns {boolean} 验证是否通过
+   * Validate prerequisites for chat-related operations
+   * @param {string} agentId - Agent ID
+   * @param {string} chatId - Conversation ID (optional)
+   * @param {string} operation - Operation name
+   * @param {Function} errorHandler - Error handler
+   * @returns {boolean} Whether validation passed
    */
   static validateChatOperation(agentId, chatId, operation, errorHandler) {
-    // 验证AgentID
+    // Validate Agent ID
     if (!this.validateAgentIdWithError(agentId, operation, errorHandler)) {
       return false
     }
 
-    // 如果需要验证chatId
+    // If chatId validation is required
     if (chatId !== undefined && !chatId) {
-      const message = `请先选择对话`
+      const message = 'Please select a conversation first'
       if (errorHandler) {
         errorHandler(message)
       }
@@ -62,46 +62,46 @@ export class AgentValidator {
   }
 
   /**
-   * 验证重命名操作的参数
-   * @param {string} chatId - 对话ID
-   * @param {string} title - 新标题
-   * @param {string} agentId - AgentID
-   * @param {Function} errorHandler - 错误处理函数
-   * @returns {boolean} 验证是否通过
+   * Validate parameters for rename operations
+   * @param {string} chatId - Conversation ID
+   * @param {string} title - New title
+   * @param {string} agentId - Agent ID
+   * @param {Function} errorHandler - Error handler
+   * @returns {boolean} Whether validation passed
    */
   static validateRenameOperation(chatId, title, agentId, errorHandler) {
-    // 验证基本参数
+    // Validate basic parameters
     if (!chatId || !title) {
-      const message = '未指定对话ID或标题，无法重命名对话'
+      const message = 'No conversation ID or title was specified; cannot rename the conversation'
       if (errorHandler) {
         errorHandler(message)
       }
       return false
     }
 
-    // 验证标题不为空
+    // Ensure the title is not empty
     if (!title.trim()) {
-      const message = '标题不能为空'
+      const message = 'Title cannot be empty'
       if (errorHandler) {
         errorHandler(message)
       }
       return false
     }
 
-    // 验证AgentID
-    return this.validateAgentIdWithError(agentId, '重命名对话', errorHandler)
+    // Validate Agent ID
+    return this.validateAgentIdWithError(agentId, 'rename the conversation', errorHandler)
   }
 
   /**
-   * 验证分享操作的前置条件
-   * @param {string} chatId - 对话ID
-   * @param {Object} agent - 当前智能体对象
-   * @param {Function} errorHandler - 错误处理函数
-   * @returns {boolean} 验证是否通过
+   * Validate prerequisites for share operations
+   * @param {string} chatId - Conversation ID
+   * @param {Object} agent - Current agent object
+   * @param {Function} errorHandler - Error handler
+   * @returns {boolean} Whether validation passed
    */
   static validateShareOperation(chatId, agent, errorHandler) {
     if (!chatId || !agent) {
-      const message = '请先选择对话'
+      const message = 'Please select a conversation first'
       if (errorHandler) {
         errorHandler(message)
       }
@@ -111,14 +111,14 @@ export class AgentValidator {
   }
 
   /**
-   * 验证加载操作的前置条件
-   * @param {string} agentId - AgentID
-   * @param {string} operation - 操作名称
-   * @returns {boolean} 验证是否通过
+   * Validate prerequisites for load operations
+   * @param {string} agentId - Agent ID
+   * @param {string} operation - Operation name
+   * @returns {boolean} Whether validation passed
    */
-  static validateLoadOperation(agentId, operation = '加载状态') {
+  static validateLoadOperation(agentId, operation = 'load state') {
     if (!agentId) {
-      console.warn(`未指定AgentID，无法${operation}`)
+      console.warn(`No Agent ID was specified, cannot ${operation}`)
       return false
     }
     return true

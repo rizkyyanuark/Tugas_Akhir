@@ -19,9 +19,9 @@ def get_version():
 
 def __getattr__(name: str):
     if name in {"graph_base", "knowledge_base"}:
-        knowledge = import_module("yuxi.knowledge")
+        knowledge = import_module("ta_backend_core.assistant.knowledge")
         return getattr(knowledge, name)
-    raise AttributeError(f"module 'yuxi' has no attribute {name!r}")
+    raise AttributeError(f"module 'ta_backend_core' has no attribute {name!r}")
 
 
 def __dir__():

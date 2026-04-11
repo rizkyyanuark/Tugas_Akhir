@@ -1,11 +1,11 @@
 /**
- * 问题和选项规范化工具
+ * Question and Option Normalization Utils
  */
 
 const DEFAULT_OTHER_OPTION_VALUE = '__other__'
 
 /**
- * 判断选项是否为"其他"选项
+ * Check if the option is an "other" option
  */
 export const isOtherOption = (option) => {
   if (!option || typeof option !== 'object') return false
@@ -19,13 +19,13 @@ export const isOtherOption = (option) => {
   return (
     value === DEFAULT_OTHER_OPTION_VALUE ||
     value === 'other' ||
-    label.includes('其他') ||
+    label.includes('Other') ||
     label.includes('other')
   )
 }
 
 /**
- * 规范化选项列表
+ * Normalize the list of options
  */
 export const normalizeOptions = (rawOptions) => {
   if (!Array.isArray(rawOptions)) return []
@@ -45,7 +45,7 @@ export const normalizeOptions = (rawOptions) => {
 }
 
 /**
- * 规范化问题列表
+ * Normalize the list of questions
  */
 export const normalizeQuestions = (rawQuestions) => {
   if (!Array.isArray(rawQuestions)) return []
@@ -65,7 +65,7 @@ export const normalizeQuestions = (rawQuestions) => {
       const hasOtherOption = baseOptions.some((option) => isOtherOption(option))
       const options =
         allowOther && !hasOtherOption
-          ? [...baseOptions, { label: '其他', value: DEFAULT_OTHER_OPTION_VALUE }]
+          ? [...baseOptions, { label: 'Other', value: DEFAULT_OTHER_OPTION_VALUE }]
           : baseOptions
 
       return {
@@ -81,7 +81,7 @@ export const normalizeQuestions = (rawQuestions) => {
 }
 
 /**
- * 从旧格式构建单个问题（向后兼容）
+ * Build a single question from the legacy format (backward compatibility)
  */
 export const buildLegacyQuestion = (chunk, interruptInfo) => {
   const question = String(chunk?.question || interruptInfo?.question || '').trim()

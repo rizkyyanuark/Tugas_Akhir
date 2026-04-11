@@ -117,45 +117,72 @@
 
       <!-- 右侧：详情面板 -->
       <div class="main-panel">
-        <div v-if="!currentAgent" class="unselected-state">
-          <div class="hint-box">
-            <Bot :size="40" class="text-muted" />
-            <p>请在左侧选择 SubAgent 进行操作</p>
+        <Transition name="fade-slide" mode="out-in">
+          <div v-if="!currentAgent" :key="'empty'" class="unselected-state">
+            <div class="hint-box-premium">
+              <div class="icon-orb">
+                <Bot :size="64" />
+              </div>
+              <h3>SubAgents 实验室</h3>
+              <p>探索并配置您的专属智能助手插件</p>
+              <div class="hint-shortcuts">
+                <div class="shortcut-item">
+                  <div class="dot"></div>
+                  <span>选择左侧列表中的插件查看详情</span>
+                </div>
+                <div class="shortcut-item">
+                  <div class="dot"></div>
+                  <span>管理系统内置或自定义 SubAgents</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <template v-else>
-          <div class="panel-top-bar">
-            <h2 class="panel-title-row">
-              <Bot :size="18" class="panel-title-icon" />
-              <span
-                ><strong>{{ currentAgent.name }}</strong></span
-              >
-            </h2>
-            <div class="panel-actions">
-              <a-space :size="8">
-                <a-button
-                  size="small"
-                  @click="showEditModal(currentAgent)"
-                  class="lucide-icon-btn"
-                  v-if="!currentAgent.is_builtin"
-                >
-                  <Pencil :size="14" />
-                  <span>编辑</span>
-                </a-button>
-                <a-button
-                  size="small"
-                  danger
-                  ghost
-                  :disabled="currentAgent.is_builtin"
-                  @click="confirmDeleteAgent(currentAgent)"
-                  class="lucide-icon-btn"
-                  v-if="!currentAgent.is_builtin"
-                >
-                  <Trash2 :size="14" />
-                  <span>删除</span>
-                </a-button>
-              </a-space>
+          <div v-else :key="currentAgent.name" class="panel-content-wrapper">
+          <div class="panel-header-premium">
+            <div class="header-mesh-container">
+              <div class="mesh-layer"></div>
+            </div>
+            <div class="panel-top-bar">
+              <h2 class="panel-title-row">
+                <div class="title-icon-wrapper">
+                  <Bot :size="20" class="panel-title-icon" />
+                </div>
+                <div class="title-text-group">
+                  <span class="agent-name-main">{{ currentAgent.name }}</span>
+                  <div class="agent-metadata">
+                    <span class="meta-tag">{{ currentAgent.is_builtin ? '内置系统' : '自定义' }}</span>
+                    <span v-if="currentAgent.model" class="meta-tag">
+                      <Cpu :size="10" /> {{ typeof currentAgent.model === 'string' ? currentAgent.model : '模型规格' }}
+                    </span>
+                  </div>
+                </div>
+              </h2>
+              <div class="panel-actions">
+                <a-space :size="8">
+                  <a-button
+                    size="middle"
+                    @click="showEditModal(currentAgent)"
+                    class="premium-action-btn"
+                    v-if="!currentAgent.is_builtin"
+                  >
+                    <template #icon><Pencil :size="14" /></template>
+                    <span>编辑</span>
+                  </a-button>
+                  <a-button
+                    size="middle"
+                    danger
+                    ghost
+                    :disabled="currentAgent.is_builtin"
+                    @click="confirmDeleteAgent(currentAgent)"
+                    class="premium-action-btn danger"
+                    v-if="!currentAgent.is_builtin"
+                  >
+                    <template #icon><Trash2 :size="14" /></template>
+                    <span>删除</span>
+                  </a-button>
+                </a-space>
+              </div>
             </div>
           </div>
 
@@ -238,7 +265,8 @@
               </div>
             </div>
           </div>
-        </template>
+          </div>
+        </Transition>
       </div>
     </div>
 
@@ -579,17 +607,233 @@ defineExpose({
 <style lang="less" scoped>
 @import '@/assets/css/extensions.less';
 
-.model-override-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.panel-header-premium {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--gray-150);
+  background: var(--main-0);
+
+  .header-mesh-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    z-index: 0;
+    opacity: 0.6;
+    pointer-events: none;
+
+    .mesh-layer {
+      width: 100%;
+      height: 100%;
+      background: var(--mesh-grad-1), var(--mesh-grad-2);
+      filter: blur(40px);
+    }
+  }
+
+  .panel-top-bar {
+    position: relative;
+    z-index: 1;
+    padding: 24px 24px 20px 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 100%);
+  }
 }
 
-.model-selector-full {
-  flex: 1;
+.title-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--main-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--main-600);
+  box-shadow: var(--shadow-1);
+}
 
-  :deep(.model-select) {
-    width: 100%;
+.title-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .agent-name-main {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-1000);
+    letter-spacing: -0.5px;
   }
+
+  .agent-metadata {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .meta-tag {
+      font-size: 11px;
+      color: var(--gray-500);
+      background: var(--gray-50);
+      padding: 1px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+}
+
+.premium-action-btn {
+  border-radius: 8px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-smooth);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-2);
+  }
+
+  &.danger:hover {
+    border-color: var(--color-error-500);
+    color: var(--color-error-500);
+  }
+}
+
+.detail-section-container {
+  padding: 24px;
+}
+
+.detail-section {
+  background: var(--main-1);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 24px !important;
+  transition: var(--transition-smooth);
+
+  &:hover {
+    border-color: var(--main-200);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  }
+
+  .section-header {
+    margin-bottom: 12px !important;
+    font-size: 14px !important;
+    color: var(--gray-800) !important;
+
+    svg {
+      color: var(--main-500) !important;
+    }
+  }
+}
+
+.code-panel {
+  background: #fdfdfd;
+  border: 1px solid var(--gray-150);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.hint-box-premium {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 400px;
+  animation: float 6s ease-in-out infinite;
+
+  .icon-orb {
+    width: 120px;
+    height: 120px;
+    background: var(--main-50);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--main-500);
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(57, 150, 174, 0.15);
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border: 2px dashed var(--main-200);
+      border-radius: 50%;
+      animation: rotate-slow 20s linear infinite;
+    }
+  }
+
+  h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: var(--gray-500);
+    margin-bottom: 32px;
+  }
+
+  .hint-shortcuts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+
+    .shortcut-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: var(--main-0);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-1);
+      font-size: 13px;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-100);
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        background: var(--main-400);
+        border-radius: 50%;
+      }
+    }
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.panel-content-wrapper {
+  height: 100%;
 }
 </style>
