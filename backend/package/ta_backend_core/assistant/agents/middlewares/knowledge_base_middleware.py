@@ -23,7 +23,8 @@ class KnowledgeBaseMiddleware(AgentMiddleware):
         # Preload common knowledge base tools
         self.kb_tools = get_common_kb_tools()
         self.tools = self.kb_tools
-        logger.debug(f"Initialized KnowledgeBaseMiddleware with {len(self.kb_tools)} tools")
+        logger.debug(
+            f"Initialized KnowledgeBaseMiddleware with {len(self.kb_tools)} tools")
 
     async def awrap_model_call(
         self, request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]

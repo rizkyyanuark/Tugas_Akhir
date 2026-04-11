@@ -20,7 +20,9 @@
           <!-- Character / chunk count shown to the left of the segment control -->
           <span class="view-info">
             {{
-              viewMode === 'chunks' ? chunkCount + ' chunks' : formatTextLength(charCount) + ' chars'
+              viewMode === 'chunks'
+                ? chunkCount + ' chunks'
+                : formatTextLength(charCount) + ' chars'
             }}
           </span>
 
@@ -72,7 +74,11 @@
           v-else-if="sourcePreviewUrl && sourcePreviewType === 'image'"
           class="source-preview-wrapper"
         >
-          <img :src="sourcePreviewUrl" :alt="file?.filename || 'Source file preview'" class="source-image" />
+          <img
+            :src="sourcePreviewUrl"
+            :alt="file?.filename || 'Source file preview'"
+            class="source-image"
+          />
         </div>
         <iframe
           v-else-if="sourcePreviewUrl && sourcePreviewType === 'pdf'"

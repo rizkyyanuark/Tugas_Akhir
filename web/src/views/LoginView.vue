@@ -41,7 +41,9 @@
           <div class="form-wrapper">
             <header class="form-header">
               <!-- Show specific title during initialization -->
-              <h2 v-if="isFirstRun" class="init-title">System Initialization — Create Super Admin</h2>
+              <h2 v-if="isFirstRun" class="init-title">
+                System Initialization — Create Super Admin
+              </h2>
               <p v-else class="welcome-text">Welcome Back</p>
             </header>
 
@@ -157,9 +159,14 @@
                   <a-form-item
                     label="Login Account"
                     name="loginId"
-                    :rules="[{ required: true, message: 'Please enter your User ID or phone number' }]"
+                    :rules="[
+                      { required: true, message: 'Please enter your User ID or phone number' }
+                    ]"
                   >
-                    <a-input v-model:value="loginForm.loginId" placeholder="User ID or phone number">
+                    <a-input
+                      v-model:value="loginForm.loginId"
+                      placeholder="User ID or phone number"
+                    >
                       <template #prefix>
                         <user-icon size="18" />
                       </template>
@@ -212,7 +219,9 @@
                       block
                       size="large"
                     >
-                      <span v-if="isLocked">Account Locked {{ formatTime(lockRemainingTime) }}</span>
+                      <span v-if="isLocked"
+                        >Account Locked {{ formatTime(lockRemainingTime) }}</span
+                      >
                       <span v-else>Sign In</span>
                     </a-button>
                   </a-form-item>

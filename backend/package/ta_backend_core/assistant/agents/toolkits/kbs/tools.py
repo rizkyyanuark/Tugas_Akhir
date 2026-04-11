@@ -17,7 +17,8 @@ class ListKBsInput(BaseModel):
     """Input model for listing knowledge bases accessible to the user"""
 
     # LangChain runtime injection requires at least one parameter
-    dummy: str = Field(default="", description="Dummy parameter - ignore")  # Add this
+    dummy: str = Field(
+        default="", description="Dummy parameter - ignore")  # Add this
 
 
 @tool(args_schema=ListKBsInput)
@@ -53,8 +54,10 @@ async def list_kbs(dummy: str, runtime: ToolRuntime) -> str:  # Now has 2 params
 
     all_kb_names = [kb["name"] for kb in all_kbs]
 
-    logger.debug(f"Knowledge bases accessible to user {user_id}: {all_kb_names}")
-    logger.debug(f"Knowledge bases enabled in current conversation for user {user_id}: {enabled_kb_names}")
+    logger.debug(
+        f"Knowledge bases accessible to user {user_id}: {all_kb_names}")
+    logger.debug(
+        f"Knowledge bases enabled in current conversation for user {user_id}: {enabled_kb_names}")
 
     # Intersect with enabled knowledge bases
     available_kbs = [kb for kb in all_kbs if kb["name"] in enabled_kb_names]
@@ -75,7 +78,8 @@ async def list_kbs(dummy: str, runtime: ToolRuntime) -> str:  # Now has 2 params
 class GetMindmapInput(BaseModel):
     """Input model for retrieving a mindmap"""
 
-    kb_name: str = Field(description="Knowledge base name to identify the target knowledge base")
+    kb_name: str = Field(
+        description="Knowledge base name to identify the target knowledge base")
 
 
 @tool(args_schema=GetMindmapInput)
@@ -146,7 +150,8 @@ async def get_mindmap(kb_name: str, runtime: ToolRuntime) -> str:
 class QueryKBInput(BaseModel):
     """Input model for knowledge base retrieval"""
 
-    kb_name: str = Field(description="Knowledge base name for the target knowledge base")
+    kb_name: str = Field(
+        description="Knowledge base name for the target knowledge base")
     query_text: str = Field(
         description=(
             "Keywords for the query. When querying, use keywords that are likely to help answer the question, "
@@ -179,7 +184,8 @@ async def _resolve_visible_knowledge_bases_for_query(runtime: ToolRuntime | None
 
         return await resolve_visible_knowledge_bases_for_context(context)
     except Exception as exc:  # noqa: BLE001
-        logger.warning(f"Failed to resolve visible knowledge bases for the session; skipping filepath injection: {exc}")
+        logger.warning(
+            f"Failed to resolve visible knowledge bases for the session; skipping filepath injection: {exc}")
         return []
 
 
@@ -190,7 +196,8 @@ def _find_query_target(
     visible_kbs: list[dict[str, Any]],
 ) -> tuple[str | None, dict[str, Any] | None, str | None]:
     if visible_kbs:
-        matched_kbs = [db for db in visible_kbs if str(db.get("name") or "").strip() == kb_name]
+        matched_kbs = [db for db in visible_kbs if str(
+            db.get("name") or "").strip() == kb_name]
         if not matched_kbs:
             return None, None, f"Knowledge base '{kb_name}' does not exist or is not enabled in the current session"
         if len(matched_kbs) > 1:
@@ -242,7 +249,8 @@ async def query_kb(kb_name: str, query_text: str, file_name: str | None = None, 
     if target_error:
         return target_error
 
-    metadata = target_info.get("metadata") if isinstance(target_info, dict) else None
+    metadata = target_info.get("metadata") if isinstance(
+        target_info, dict) else None
     kb_type = str((metadata or {}).get("kb_type") or "").strip().lower()
     if kb_type != "milvus":
         return f"Knowledge base '{kb_name}' is not a Milvus type; the current query_kb only supports Milvus"

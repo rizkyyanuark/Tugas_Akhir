@@ -67,7 +67,8 @@ if config.enable_web_search:
 class PresentArtifactsInput(BaseModel):
     """Expose artifact files to the frontend after the agent finishes."""
 
-    filepaths: list[str] = Field(description=f"List of absolute file paths to show to the user; only files under {VIRTUAL_PATH_OUTPUTS} are allowed")
+    filepaths: list[str] = Field(
+        description=f"List of absolute file paths to show to the user; only files under {VIRTUAL_PATH_OUTPUTS} are allowed")
 
 
 def _normalize_presented_artifact_path(filepath: str, runtime: ToolRuntime) -> str:
@@ -96,17 +97,20 @@ def _normalize_presented_artifact_path(filepath: str, runtime: ToolRuntime) -> s
     stripped = normalized_input.lstrip("/")
     virtual_prefix = VIRTUAL_PATH_PREFIX.lstrip("/")
     if stripped == virtual_prefix or stripped.startswith(f"{virtual_prefix}/"):
-        actual_path = resolve_virtual_path(thread_id, normalized_input, user_id=str(user_id))
+        actual_path = resolve_virtual_path(
+            thread_id, normalized_input, user_id=str(user_id))
     else:
         actual_path = Path(normalized_input).expanduser().resolve()
 
     if not actual_path.exists() or not actual_path.is_file():
-        raise ValueError(f"File does not exist or is not a regular file: {normalized_input}")
+        raise ValueError(
+            f"File does not exist or is not a regular file: {normalized_input}")
 
     try:
         relative_path = actual_path.relative_to(outputs_dir)
     except ValueError as exc:
-        raise ValueError(f"Only files under {outputs_virtual_prefix}/ are allowed: {normalized_input}") from exc
+        raise ValueError(
+            f"Only files under {outputs_virtual_prefix}/ are allowed: {normalized_input}") from exc
 
     return f"{outputs_virtual_prefix}/{relative_path.as_posix()}"
 
@@ -126,7 +130,8 @@ def calculator(a: float, b: float, operation: str) -> float:
                 raise ZeroDivisionError("The divisor cannot be zero")
             return a / b
         else:
-            raise ValueError(f"Unsupported operation type: {operation}. Only add, subtract, multiply, and divide are supported")
+            raise ValueError(
+                f"Unsupported operation type: {operation}. Only add, subtract, multiply, and divide are supported")
     except Exception as e:
         logger.error(f"Calculator error: {e}")
         raise
@@ -161,7 +166,8 @@ def present_artifacts(
 ) -> Command:
     """Register artifact files under the current thread's outputs directory so the frontend can show them after the conversation ends."""
     try:
-        normalized_paths = [_normalize_presented_artifact_path(filepath, runtime) for filepath in filepaths]
+        normalized_paths = [_normalize_presented_artifact_path(
+            filepath, runtime) for filepath in filepaths]
     except ValueError as exc:
         return Command(update={"messages": [ToolMessage(content=f"Error: {exc}", tool_call_id=tool_call_id)]})
 
@@ -211,10 +217,14 @@ def ask_user_question(
         list[dict] | str | None,
         "Question list; each item follows the format {question, options, multi_select, allow_other, question_id(optional)}",
     ] = None,
-    question: Annotated[str, "Compatibility field: single question text (prefer using questions)"] = "",
-    options: Annotated[list[dict] | str | None, "Compatibility field: single question options (prefer using questions)"] = None,
-    multi_select: Annotated[bool, "Compatibility field: whether the single question allows multiple selections"] = False,
-    allow_other: Annotated[bool, "Compatibility field: whether the single question allows a custom Other answer"] = True,
+    question: Annotated[str,
+        "Compatibility field: single question text (prefer using questions)"] = "",
+    options: Annotated[list[dict] | str | None,
+        "Compatibility field: single question options (prefer using questions)"] = None,
+    multi_select: Annotated[bool,
+        "Compatibility field: whether the single question allows multiple selections"] = False,
+    allow_other: Annotated[bool,
+        "Compatibility field: whether the single question allows a custom Other answer"] = True,
 ) -> dict:
     """Ask the user a question and wait for a response."""
     # Parse the options parameter: if it's a string, try to parse it as JSON
@@ -225,7 +235,8 @@ def ask_user_question(
             options = json.loads(options)
                 logger.debug(f"Parsed string options to list: {options}")
         except Exception as e:
-                logger.error(f"Failed to parse options string: {e}, using empty list")
+                logger.error(
+                    f"Failed to parse options string: {e}, using empty list")
             options = []
 
             # Parse the questions parameter: if it's a string, try to parse it as JSON

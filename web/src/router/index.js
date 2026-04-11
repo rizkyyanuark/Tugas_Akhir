@@ -88,15 +88,15 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Force bypass authentication for Tugas Akhir
-  const isLoggedIn = true;
-  const isAdmin = true;
-  const isSuperAdmin = true;
+  const isLoggedIn = true
+  const isAdmin = true
+  const isSuperAdmin = true
 
   // Since we force auth to true, userStore should act accordingly
   if (!userStore.isLoggedIn) {
-    userStore.userId = "local_admin";
-    userStore.token = "fake_bypassed_token";
-    userStore.roles = ["admin", "superadmin"];
+    userStore.userId = 'local_admin'
+    userStore.token = 'fake_bypassed_token'
+    userStore.roles = ['admin', 'superadmin']
   }
 
   // If the route requires authentication but the user is not logged in (this will not happen now since isLoggedIn is hardcoded true)

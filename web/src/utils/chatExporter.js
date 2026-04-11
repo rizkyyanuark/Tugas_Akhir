@@ -77,7 +77,7 @@ export class ChatExporter {
   }
 
   /**
-  * Flatten the message list
+   * Flatten the message list
    */
   static flattenMessages(messages = []) {
     const result = []
@@ -115,7 +115,7 @@ export class ChatExporter {
   }
 
   /**
-  * Generate HTML fragments for conversation messages
+   * Generate HTML fragments for conversation messages
    */
   static generateMessagesHTML(messages, agentName) {
     return messages
@@ -155,7 +155,7 @@ export class ChatExporter {
   }
 
   /**
-  * Split message content from reasoning text
+   * Split message content from reasoning text
    */
   static extractMessageContent(msg = {}) {
     const content = this.normalizeContent(msg?.content)
@@ -178,7 +178,7 @@ export class ChatExporter {
   }
 
   /**
-  * Normalize message content
+   * Normalize message content
    */
   static normalizeContent(raw) {
     if (raw == null) return ''
@@ -214,7 +214,7 @@ export class ChatExporter {
   }
 
   /**
-  * Generate reasoning HTML
+   * Generate reasoning HTML
    */
   static generateReasoningHTML(reasoning) {
     if (!reasoning) return ''
@@ -233,7 +233,7 @@ export class ChatExporter {
   }
 
   /**
-  * Generate tool call HTML
+   * Generate tool call HTML
    */
   static generateToolCallsHTML(msg = {}) {
     const toolCalls = this.normalizeToolCalls(msg)
@@ -353,7 +353,7 @@ export class ChatExporter {
   }
 
   /**
-  * Unified Markdown rendering; falls back to simple line breaks on failure
+   * Unified Markdown rendering; falls back to simple line breaks on failure
    */
   static renderMarkdown(content) {
     if (!content) return ''
@@ -366,7 +366,7 @@ export class ChatExporter {
   }
 
   /**
-  * Escape HTML
+   * Escape HTML
    */
   static escapeHtml(value) {
     if (value == null) return ''
@@ -379,7 +379,7 @@ export class ChatExporter {
   }
 
   /**
-  * Extract message timestamp
+   * Extract message timestamp
    */
   static getMessageTimestamp(msg = {}) {
     const candidates = [
@@ -398,7 +398,7 @@ export class ChatExporter {
   }
 
   /**
-  * Format timestamp
+   * Format timestamp
    */
   static formatTimestamp(raw) {
     const fallback = dayjs().tz('Asia/Shanghai')
@@ -423,7 +423,7 @@ export class ChatExporter {
   }
 
   /**
-  * Generate the complete HTML document skeleton
+   * Generate the complete HTML document skeleton
    */
   static generateHTMLTemplate(options) {
     const { chatTitle, agentName, agentDescription, exportTime, messagesHTML } = options
@@ -433,7 +433,9 @@ export class ChatExporter {
     const safeDescription = this.escapeHtml(agentDescription).replace(/\n/g, '<br>')
     const safeExportTime = this.escapeHtml(exportTime)
 
-    const descriptionBlock = agentDescription ? `<br><strong>Description:</strong> ${safeDescription}` : ''
+    const descriptionBlock = agentDescription
+      ? `<br><strong>Description:</strong> ${safeDescription}`
+      : ''
 
     return chatExportTemplate
       .replace(/{{TITLE}}/g, safeTitle)

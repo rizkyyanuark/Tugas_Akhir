@@ -167,9 +167,11 @@ def mysql_describe_table(table_name: Annotated[str, "Table name to query"]) -> s
                 for row in comment_rows:
                     column_name = row.get("COLUMN_NAME")
                     if column_name:
-                        column_comments[column_name] = row.get("COLUMN_COMMENT") or ""
+                        column_comments[column_name] = row.get(
+                            "COLUMN_COMMENT") or ""
             except Exception as e:
-                logger.warning(f"Failed to fetch column comments for table {table_name}: {e}")
+                logger.warning(
+                    f"Failed to fetch column comments for table {table_name}: {e}")
 
             # Format output
             result = f"Structure of table `{table_name}`:\n\n"
@@ -208,7 +210,8 @@ def mysql_describe_table(table_name: Annotated[str, "Table name to query"]) -> s
                     for key_name, columns in index_dict.items():
                         result += f"- {key_name}: {', '.join(columns)}\n"
             except Exception as e:
-                logger.warning(f"Failed to get index info for table {table_name}: {e}")
+                logger.warning(
+                    f"Failed to get index info for table {table_name}: {e}")
 
             logger.info(f"Retrieved structure for table {table_name}")
             return result
@@ -222,8 +225,10 @@ def mysql_describe_table(table_name: Annotated[str, "Table name to query"]) -> s
 class QueryModel(BaseModel):
     """Input model for executing SQL queries"""
 
-    sql: str = Field(description="SQL query to execute (SELECT statements only)", example="SELECT * FROM users WHERE id = 1")
-    timeout: int | None = Field(default=60, description="Query timeout in seconds, default 60 seconds, maximum 600 seconds", ge=1, le=600)
+    sql: str = Field(description="SQL query to execute (SELECT statements only)",
+                     example="SELECT * FROM users WHERE id = 1")
+    timeout: int | None = Field(
+        default=60, description="Query timeout in seconds, default 60 seconds, maximum 600 seconds", ge=1, le=600)
 
 
 @tool(
@@ -236,7 +241,8 @@ class QueryModel(BaseModel):
 )
 def mysql_query(
     sql: Annotated[str, "SQL query to execute (SELECT statements only)"],
-    timeout: Annotated[int | None, "Query timeout in seconds, default 60 seconds, maximum 600 seconds"] = 60,
+    timeout: Annotated[int | None,
+                       "Query timeout in seconds, default 60 seconds, maximum 600 seconds"] = 60,
 ) -> str:
     """[Execute SQL query] Execute a read-only SQL query
 
@@ -260,9 +266,11 @@ def mysql_query(
 
         effective_timeout = timeout or 60
         try:
-            result = execute_query_with_timeout(connection, sql, timeout=effective_timeout)
+            result = execute_query_with_timeout(
+                connection, sql, timeout=effective_timeout)
         except QueryTimeoutError as timeout_error:
-            logger.error(f"MySQL query timed out after {effective_timeout} seconds: {timeout_error}")
+            logger.error(
+                f"MySQL query timed out after {effective_timeout} seconds: {timeout_error}")
             raise
         except Exception:
             conn_manager.invalidate_connection()
@@ -289,17 +297,24 @@ def mysql_query(
             # Calculate the maximum width of each column
             col_widths = {}
             for col in columns:
-                col_widths[col] = max(len(str(col)), max(len(str(row.get(col, ""))) for row in limited_result))
-                col_widths[col] = min(col_widths[col], 50)  # Limit maximum width
+                col_widths[col] = max(len(str(col)), max(
+                    len(str(row.get(col, ""))) for row in limited_result))
+                # Limit maximum width
+                col_widths[col] = min(col_widths[col], 50)
 
             # Build header
-            header = "| " + " | ".join(f"{col:<{col_widths[col]}}" for col in columns) + " |"
-            separator = "|" + "|".join("-" * (col_widths[col] + 2) for col in columns) + "|"
+            header = "| " + \
+                " | ".join(
+                    f"{col:<{col_widths[col]}}" for col in columns) + " |"
+            separator = "|" + \
+                "|".join("-" * (col_widths[col] + 2) for col in columns) + "|"
 
             # Build data rows
             rows = []
             for row in limited_result:
-                row_str = "| " + " | ".join(f"{str(row.get(col, '')):<{col_widths[col]}}" for col in columns) + " |"
+                row_str = "| " + \
+                    " | ".join(
+                        f"{str(row.get(col, '')):<{col_widths[col]}}" for col in columns) + " |"
                 rows.append(row_str)
 
             result_str = f"Query results ({len(limited_result)} rows total):\n\n"
@@ -311,7 +326,8 @@ def mysql_query(
 
             result_str += warning
 
-            logger.info(f"Query executed successfully, returned {len(limited_result)} rows")
+            logger.info(
+                f"Query executed successfully, returned {len(limited_result)} rows")
             return result_str
 
         return "Query executed successfully, but no data was returned"

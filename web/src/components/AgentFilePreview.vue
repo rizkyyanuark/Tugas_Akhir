@@ -77,7 +77,9 @@
       </template>
       <template v-else-if="file?.supported === false">
         <div class="unsupported-preview">
-          {{ file?.message || 'This file is not supported for preview. Please download it to view.' }}
+          {{
+            file?.message || 'This file is not supported for preview. Please download it to view.'
+          }}
         </div>
       </template>
       <template v-else>
@@ -165,7 +167,10 @@
             </template>
             <template v-else-if="file?.supported === false">
               <div class="unsupported-preview fullscreen-unsupported-preview">
-                {{ file?.message || 'This file is not supported for preview. Please download it to view.' }}
+                {{
+                  file?.message ||
+                  'This file is not supported for preview. Please download it to view.'
+                }}
               </div>
             </template>
             <template v-else>

@@ -1,7 +1,10 @@
 <template>
   <div class="chunk-params-config">
     <div class="params-info">
-      <p>Adjusting chunk parameters controls how text is split, affecting retrieval quality and document loading efficiency.</p>
+      <p>
+        Adjusting chunk parameters controls how text is split, affecting retrieval quality and
+        document loading efficiency.
+      </p>
     </div>
     <a-form :model="localParams" name="chunkConfig" autocomplete="off" layout="vertical">
       <a-form-item v-if="showPreset" name="chunk_preset_id">
@@ -18,9 +21,11 @@
           :options="presetOptions"
           style="width: 100%"
         />
-          <p class="param-description">
+        <p class="param-description">
           Preset strategies align with RAGFlow: General, QA, Book, Laws.
-          <span v-if="allowPresetFollowDefault">Leave blank to use the knowledge base default strategy.</span>
+          <span v-if="allowPresetFollowDefault"
+            >Leave blank to use the knowledge base default strategy.</span
+          >
         </p>
       </a-form-item>
 
@@ -41,7 +46,9 @@
             :max="1000"
             style="width: 100%"
           />
-          <p class="param-description">Number of overlapping characters between adjacent text chunks</p>
+          <p class="param-description">
+            Number of overlapping characters between adjacent text chunks
+          </p>
         </a-form-item>
       </div>
       <a-form-item
@@ -55,7 +62,9 @@
           placeholder="Enter a separator, for example \n\n\n or ---"
           style="width: 100%"
         />
-        <p class="param-description">Supports escape characters such as \n and \t. Leave blank to disable pre-splitting.</p>
+        <p class="param-description">
+          Supports escape characters such as \n and \t. Leave blank to disable pre-splitting.
+        </p>
       </a-form-item>
     </a-form>
   </div>

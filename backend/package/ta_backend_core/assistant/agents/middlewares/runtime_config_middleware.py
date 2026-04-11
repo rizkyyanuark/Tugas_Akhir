@@ -81,7 +81,8 @@ class RuntimeConfigMiddleware(AgentMiddleware):
 
         # 1. Model override (optional)
         if self.enable_model_override:
-            model = load_chat_model(getattr(runtime_context, self.model_context_name, None))
+            model = load_chat_model(
+                getattr(runtime_context, self.model_context_name, None))
             overrides["model"] = model
 
         # 2. Tools override (optional)
@@ -99,16 +100,20 @@ class RuntimeConfigMiddleware(AgentMiddleware):
                 if t_bind.name in enabled_tool_names or t_bind.name not in managed_tool_names:
                     merged_tools.append(t_bind)
             overrides["tools"] = merged_tools
-            logger.debug(f"RuntimeConfigMiddleware selected tools: {[t.name for t in merged_tools]}")
+            logger.debug(
+                f"RuntimeConfigMiddleware selected tools: {[t.name for t in merged_tools]}")
 
         # 3. System prompt override (optional)
         if self.enable_system_prompt_override:
             cur_datetime = f"Current time: {shanghai_now().strftime('%Y-%m-%d %H:%M:%S')} UTC"
-            system_prompt = getattr(runtime_context, self.system_prompt_context_name, "") or ""
+            system_prompt = getattr(
+                runtime_context, self.system_prompt_context_name, "") or ""
             merged_system_prompt = f"{cur_datetime}\n\n{system_prompt}"
 
-            content_blocks = list(request.system_message.content_blocks) if request.system_message else []
-            new_content = content_blocks + [{"type": "text", "text": merged_system_prompt}]
+            content_blocks = list(
+                request.system_message.content_blocks) if request.system_message else []
+            new_content = content_blocks + \
+                [{"type": "text", "text": merged_system_prompt}]
             new_system_message = SystemMessage(content=new_content)
             overrides["system_message"] = new_system_message
 
@@ -137,7 +142,8 @@ class RuntimeConfigMiddleware(AgentMiddleware):
                 selected_tools.append(tools_map[tool_name])
                 selected_tool_names.add(tool_name)
                 continue
-            logger.warning(f"RuntimeConfigMiddleware: tool dependency not found, skip: {tool_name}")
+            logger.warning(
+                f"RuntimeConfigMiddleware: tool dependency not found, skip: {tool_name}")
 
         # 2. MCP tools (use unified entry, automatically filter disabled_tools)
         mcps = getattr(context, self.mcps_context_name, None) or []
@@ -154,9 +160,11 @@ class RuntimeConfigMiddleware(AgentMiddleware):
             try:
                 mcp_tools = await get_enabled_mcp_tools(server_name)
                 if not mcp_tools:
-                    logger.warning(f"RuntimeConfigMiddleware: mcp dependency unavailable, skip: {server_name}")
+                    logger.warning(
+                        f"RuntimeConfigMiddleware: mcp dependency unavailable, skip: {server_name}")
                 selected_tools.extend(mcp_tools)
             except Exception as e:
-                logger.warning(f"RuntimeConfigMiddleware: failed to load mcp dependency '{server_name}': {e}")
+                logger.warning(
+                    f"RuntimeConfigMiddleware: failed to load mcp dependency '{server_name}': {e}")
 
         return selected_tools

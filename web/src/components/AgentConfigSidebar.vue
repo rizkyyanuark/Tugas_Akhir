@@ -922,7 +922,7 @@ const handleModelChange = (key, spec) => {
   })
 }
 
-  // Multi-select helpers
+// Multi-select helpers
 const ensureArray = (key) => {
   const config = agentConfig.value || {}
   if (!config[key] || !Array.isArray(config[key])) {

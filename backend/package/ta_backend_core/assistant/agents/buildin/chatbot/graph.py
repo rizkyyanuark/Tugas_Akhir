@@ -36,25 +36,31 @@ async def _build_middlewares(context):
     # subagents
     subagents = await get_subagents_from_names(context.subagents)
     subagents_middleware = SubAgentMiddleware(
-        default_model=load_chat_model(fully_specified_name=context.subagents_model),
+        default_model=load_chat_model(
+            fully_specified_name=context.subagents_model),
         subagents=subagents,
         general_purpose_agent=True,
         default_middleware=[
-            FilesystemMiddleware(backend=create_agent_composite_backend),  # Filesystem backend
+            # Filesystem backend
+            FilesystemMiddleware(backend=create_agent_composite_backend),
             PatchToolCallsMiddleware(),
             summary_middleware,
         ],
     )
     # all middlewares
     middlewares = [
-        FilesystemMiddleware(backend=create_agent_composite_backend),  # Filesystem backend
+        # Filesystem backend
+        FilesystemMiddleware(backend=create_agent_composite_backend),
         save_attachments_to_fs,  # Inject attachments into prompt
         KnowledgeBaseMiddleware(),  # Knowledge base tool
-        RuntimeConfigMiddleware(extra_tools=all_mcp_tools),  # Apply runtime config (models/tools/MCP/prompts)
-        SkillsMiddleware(),  # Skills middleware (prompt injection, dependency resolution, dynamic activation)
+        # Apply runtime config (models/tools/MCP/prompts)
+        RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
+        # Skills middleware (prompt injection, dependency resolution, dynamic activation)
+        SkillsMiddleware(),
         subagents_middleware,
         summary_middleware,
-        TodoListMiddleware(system_prompt=TODO_MID_PROMPT),  # Todo list middleware
+        # Todo list middleware
+        TodoListMiddleware(system_prompt=TODO_MID_PROMPT),
         PatchToolCallsMiddleware(),
         ModelRetryMiddleware(),  # Model retry middleware
     ]

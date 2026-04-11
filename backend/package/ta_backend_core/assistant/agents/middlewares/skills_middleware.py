@@ -98,14 +98,16 @@ def expand_skill_closure(
 
     def dfs(slug: str, stack: set[str]) -> None:
         if slug in stack:
-            logger.warning(f"Cycle detected in skill dependencies, skip: {' -> '.join([*stack, slug])}")
+            logger.warning(
+                f"Cycle detected in skill dependencies, skip: {' -> '.join([*stack, slug])}")
             return
         if slug in seen:
             return
 
         node = dependency_map.get(slug)
         if not node:
-            logger.warning(f"Skill dependency target not found in DB, skip: {slug}")
+            logger.warning(
+                f"Skill dependency target not found in DB, skip: {slug}")
             return
 
         seen.add(slug)
@@ -139,7 +141,8 @@ def _activated_skills_reducer(left: list[str] | None, right: list[str] | None) -
 class SkillsState(AgentState):
     """Skills state definition"""
 
-    activated_skills: NotRequired[Annotated[list[str], _activated_skills_reducer]]
+    activated_skills: NotRequired[Annotated[list[str],
+                                            _activated_skills_reducer]]
 
 
 class SkillsMiddleware(AgentMiddleware):
@@ -170,7 +173,8 @@ class SkillsMiddleware(AgentMiddleware):
         super().__init__()
         self.skills_context_name = skills_context_name
         self.enable_skills_prompt = enable_skills_prompt
-        self.skills_sources_for_prompt = skills_sources_for_prompt or ["/home/gem/skills/"]
+        self.skills_sources_for_prompt = skills_sources_for_prompt or [
+            "/home/gem/skills/"]
 
     async def abefore_agent(self, state: SkillsState, runtime) -> dict[str, Any] | None:
         """Inject skills prompt before the agent executes"""
@@ -186,7 +190,8 @@ class SkillsMiddleware(AgentMiddleware):
         dependency_map = await get_dependency_map()
 
         # Get configured skills
-        configured_skills = getattr(runtime_context, self.skills_context_name, None) or []
+        configured_skills = getattr(
+            runtime_context, self.skills_context_name, None) or []
         selected_skills = normalize_selected_skills(configured_skills)
 
         if not selected_skills:
@@ -223,7 +228,8 @@ class SkillsMiddleware(AgentMiddleware):
         dependency_map = await get_dependency_map()
 
         # 1. Get configured skills
-        configured_skills = getattr(runtime_context, self.skills_context_name, None) or []
+        configured_skills = getattr(
+            runtime_context, self.skills_context_name, None) or []
         configured = normalize_selected_skills(configured_skills)
 
         # 2. Get runtime dynamically activated skills
@@ -249,7 +255,8 @@ class SkillsMiddleware(AgentMiddleware):
         if deps_bundle["tools"]:
             all_tools = get_all_tool_instances()
             required_tool_names = set(deps_bundle["tools"])
-            enabled_tools = [t for t in all_tools if t.name in required_tool_names]
+            enabled_tools = [
+                t for t in all_tools if t.name in required_tool_names]
 
         # 6.2 Load MCP tools
         if deps_bundle["mcps"]:
@@ -311,7 +318,8 @@ class SkillsMiddleware(AgentMiddleware):
 
             item = prompt_metadata.get(normalized)
             if not item:
-                logger.debug(f"Skill slug not found in prompt metadata, skip: {normalized}")
+                logger.debug(
+                    f"Skill slug not found in prompt metadata, skip: {normalized}")
                 continue
             result.append(dict(item))
 
@@ -344,10 +352,12 @@ class SkillsMiddleware(AgentMiddleware):
             try:
                 mcp_tools = await get_enabled_mcp_tools(server_name)
                 if not mcp_tools:
-                    logger.warning(f"SkillsMiddleware: mcp dependency unavailable, skip: {server_name}")
+                    logger.warning(
+                        f"SkillsMiddleware: mcp dependency unavailable, skip: {server_name}")
                 return mcp_tools
             except Exception as e:
-                logger.warning(f"SkillsMiddleware: failed to load mcp dependency '{server_name}': {e}")
+                logger.warning(
+                    f"SkillsMiddleware: failed to load mcp dependency '{server_name}': {e}")
                 return []
 
         # Load all MCP tools in parallel
@@ -371,7 +381,8 @@ class SkillsMiddleware(AgentMiddleware):
             return result
 
         if not self._is_visible_skill_slug(request, slug):
-            logger.warning(f"SkillsMiddleware: deny skill activation for invisible slug: {slug}")
+            logger.warning(
+                f"SkillsMiddleware: deny skill activation for invisible slug: {slug}")
             return result
 
         logger.debug(f"SkillsMiddleware: activated skill by read_file: {slug}")
@@ -427,7 +438,8 @@ class SkillsMiddleware(AgentMiddleware):
             return slug in visible_skills
 
         # Fallback: check configured skills
-        configured_skills = getattr(runtime_context, self.skills_context_name, None) or []
+        configured_skills = getattr(
+            runtime_context, self.skills_context_name, None) or []
         normalized = normalize_selected_skills(configured_skills)
         return slug in normalized
 
@@ -438,7 +450,8 @@ class SkillsMiddleware(AgentMiddleware):
         if isinstance(result, Command):
             update = dict(result.update or {})
             current = update.get("activated_skills") or []
-            update["activated_skills"] = _activated_skills_reducer(current, [slug])
+            update["activated_skills"] = _activated_skills_reducer(current, [
+                                                                   slug])
             return Command(graph=result.graph, update=update, resume=result.resume, goto=result.goto)
 
         if isinstance(result, ToolMessage):
@@ -468,7 +481,8 @@ class SkillsMiddleware(AgentMiddleware):
 
     def _build_skills_section(self, skills_meta: list[dict[str, str]]) -> str:
         """Build the skills prompt section"""
-        skills_locations = self._format_skills_locations(self.skills_sources_for_prompt)
+        skills_locations = self._format_skills_locations(
+            self.skills_sources_for_prompt)
         skills_list = self._format_skills_list(skills_meta)
         return SKILLS_SYSTEM_PROMPT.format(
             skills_locations=skills_locations,

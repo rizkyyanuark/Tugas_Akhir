@@ -25,17 +25,20 @@ class BaseContext:
 
     thread_id: str = field(
         default_factory=lambda: str(uuid.uuid4()),
-        metadata={"name": "Thread ID", "configurable": False, "description": "Used to uniquely identify a conversation thread"},
+        metadata={"name": "Thread ID", "configurable": False,
+                  "description": "Used to uniquely identify a conversation thread"},
     )
 
     user_id: str = field(
         default_factory=lambda: str(uuid.uuid4()),
-        metadata={"name": "User ID", "configurable": False, "description": "Used to uniquely identify a user"},
+        metadata={"name": "User ID", "configurable": False,
+                  "description": "Used to uniquely identify a user"},
     )
 
     system_prompt: Annotated[str, {"__template_metadata__": {"kind": "prompt"}}] = field(
         default="You are a helpful assistant.",
-        metadata={"name": "System Prompt", "description": "Used to describe the agent's role and behavior"},
+        metadata={"name": "System Prompt",
+                  "description": "Used to describe the agent's role and behavior"},
     )
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
@@ -125,7 +128,8 @@ class BaseContext:
                     type_name = cls._get_type_name(field_type)
 
                     # Extract Annotated metadata
-                    template_metadata = cls._extract_template_metadata(field_type)
+                    template_metadata = cls._extract_template_metadata(
+                        field_type)
 
                     options = f.metadata.get("options", [])
                     if callable(options):
@@ -158,7 +162,8 @@ class BaseContext:
                     # For Annotated types, get the underlying type
                     args = get_args(field_type)
                     if args:
-                        return cls._get_type_name(args[0])  # Recursively handle the underlying type
+                        # Recursively handle the underlying type
+                        return cls._get_type_name(args[0])
                 return origin.__name__
             else:
                 return str(origin)
