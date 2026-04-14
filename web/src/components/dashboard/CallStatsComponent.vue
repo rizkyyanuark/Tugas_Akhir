@@ -1,10 +1,10 @@
 <template>
   <div class="grid-item call-stats">
-    <a-card class="dashboard-card call-stats-section" title="调用统计" :loading="loading">
+    <a-card class="dashboard-card call-stats-section" title="Call Statistics" :loading="loading">
       <template #extra>
         <div class="simple-controls">
           <div class="simple-toggle-group">
-            <!-- <span class="simple-toggle-label">时间</span> -->
+            <!-- <span class="simple-toggle-label">Time</span> -->
             <span
               v-for="opt in timeRangeOptions"
               :key="opt.value"
@@ -16,7 +16,7 @@
           </div>
           <div class="divider"></div>
           <div class="simple-toggle-group">
-            <!-- <span class="simple-toggle-label">类型</span> -->
+            <!-- <span class="simple-toggle-label">Type</span> -->
             <span
               v-for="opt in dataTypeOptions"
               :key="opt.value"
@@ -26,7 +26,7 @@
               >{{ opt.label }}
             </span>
           </div>
-          <!-- <div class="subtitle">总计：{{ callStatsData?.total_count || 0 }}</div> -->
+          <!-- <div class="subtitle">Total: {{ callStatsData?.total_count || 0 }}</div> -->
         </div>
       </template>
 
@@ -46,7 +46,7 @@ import { dashboardApi } from '@/apis/dashboard_api'
 import { getColorByIndex, truncateLegend } from '@/utils/chartColors'
 import { useThemeStore } from '@/stores/theme'
 
-// CSS 变量解析工具函数
+// CSS variable parsing helper
 function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
@@ -64,15 +64,15 @@ const callStatsLoading = ref(false)
 const callTimeRange = ref('14days')
 const callDataType = ref('agents')
 const timeRangeOptions = [
-  { value: '14hours', label: '近14小时' },
-  { value: '14days', label: '近14天' },
-  { value: '14weeks', label: '近14周' }
+  { value: '14hours', label: 'Last 14 hours' },
+  { value: '14days', label: 'Last 14 days' },
+  { value: '14weeks', label: 'Last 14 weeks' }
 ]
 const dataTypeOptions = [
-  { value: 'models', label: '模型调用' },
-  { value: 'agents', label: '智能体调用' },
-  { value: 'tokens', label: 'Token消耗' },
-  { value: 'tools', label: '工具调用' }
+  { value: 'models', label: 'Model Calls' },
+  { value: 'agents', label: 'Agent Calls' },
+  { value: 'tokens', label: 'Token Usage' },
+  { value: 'tools', label: 'Tool Calls' }
 ]
 const isTokenView = computed(() => callDataType.value === 'tokens')
 
@@ -121,7 +121,7 @@ const loadCallStats = async () => {
     await nextTick()
     renderCallStatsChart()
   } catch (error) {
-    console.error('加载调用统计数据失败:', error)
+    console.error('Failed to load call statistics:', error)
   } finally {
     callStatsLoading.value = false
   }
@@ -131,7 +131,7 @@ const renderCallStatsChart = () => {
   const container = callStatsChartRef.value
   if (!container || !callStatsData.value) return
 
-  // 若父卡片仍在 loading，等待 loading 结束
+  // If parent card is still loading, wait until loading finishes.
   if (props.loading) {
     scheduleRetry()
     return
@@ -163,14 +163,14 @@ const renderCallStatsChart = () => {
     if (callTimeRange.value === '14hours') {
       return date.split(' ')[1]
     } else if (callTimeRange.value === '14weeks') {
-      return `第${date.split('-')[1]}周`
+      return `Week ${date.split('-')[1]}`
     } else {
       return date.split('-').slice(1).join('-')
     }
   })
 
   const series = categories.map((category, index) => ({
-    name: category === 'None' ? '未知模型' : category,
+    name: category === 'None' ? 'Unknown Model' : category,
     type: 'bar',
     stack: 'total',
     emphasis: { focus: 'series' },
@@ -185,8 +185,8 @@ const renderCallStatsChart = () => {
     grid: {
       left: '3%',
       right: '4%',
-      top: '5%' /* 减少顶部留白 */,
-      bottom: 50 /* 减少底部留白，从60减少到50 */,
+      top: '5%' /* Reduce top whitespace */,
+      bottom: 50 /* Reduce bottom whitespace (from 60 to 50) */,
       containLabel: true
     },
     xAxis: {
@@ -224,18 +224,18 @@ const renderCallStatsChart = () => {
           result += `${truncatedName}: ${formatValueForDisplay(param.value)}<br/>`
         })
         const labelMap = {
-          models: '模型调用',
-          agents: '智能体调用',
-          tokens: 'Token消耗',
-          tools: '工具调用'
+          models: 'Model Calls',
+          agents: 'Agent Calls',
+          tokens: 'Token Usage',
+          tools: 'Tool Calls'
         }
         const formattedTotal = formatValueForDisplay(total)
-        return `<div style="font-weight:bold;margin-bottom:5px">${labelMap[callDataType.value]}</div>${result}<strong>总计: ${formattedTotal}</strong>`
+        return `<div style="font-weight:bold;margin-bottom:5px">${labelMap[callDataType.value]}</div>${result}<strong>Total: ${formattedTotal}</strong>`
       }
     },
     legend: {
-      data: categories.map((cat) => (cat === 'None' ? '未知模型' : cat)),
-      bottom: 5 /* 调整图例位置，从0改为5 */,
+      data: categories.map((cat) => (cat === 'None' ? 'Unknown Model' : cat)),
+      bottom: 5 /* Adjust legend position (from 0 to 5) */,
       textStyle: { color: getCSSVariable('--gray-500'), fontSize: 12 },
       itemWidth: 14,
       itemHeight: 14,
@@ -294,7 +294,7 @@ watch(
   }
 )
 
-// 监听主题变化，重新渲染图表
+// Watch theme changes and re-render chart
 watch(
   () => themeStore.isDark,
   () => {
@@ -312,7 +312,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="less">
-/* 复用 dashboard.css 样式：此处仅做最小覆盖以避免重复 */
+/* Reuse dashboard.css styles; only minimal overrides here to avoid duplication. */
 .call-stats-section {
   background-color: var(--gray-0);
   height: 100%;
@@ -323,8 +323,8 @@ onUnmounted(() => {
 :deep(.ant-card-body) {
   flex: 1;
   display: flex;
-  padding: 16px; /* 减少padding从20px到16px */
-  overflow-x: hidden; /* 防止横向滚动条 */
+  padding: 16px; /* Reduce padding from 20px to 16px */
+  overflow-x: hidden; /* Prevent horizontal scrollbar */
 }
 
 .call-stats-container {
@@ -336,15 +336,15 @@ onUnmounted(() => {
 .call-stats .chart-container {
   height: 100%;
   flex: 1;
-  padding: 0; /* 移除默认padding */
+  padding: 0; /* Remove default padding */
 }
 
 .call-stats .chart {
   height: 100% !important;
   width: 100%;
-  padding: 0; /* 移除chart的padding */
-  border: none; /* 移除chart的border */
-  background-color: transparent; /* 移除背景色 */
+  padding: 0; /* Remove chart padding */
+  border: none; /* Remove chart border */
+  background-color: transparent; /* Remove background color */
 }
 
 .simple-controls {

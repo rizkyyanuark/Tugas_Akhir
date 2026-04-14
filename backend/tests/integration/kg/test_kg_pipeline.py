@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from ta_backend_core.knowledge.kg.services.kg_pipeline import KGPipeline
+from knowledge.kg.services.kg_pipeline import KGPipeline
 import pandas as pd
 
 

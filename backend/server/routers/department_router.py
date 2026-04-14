@@ -10,9 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy import delete as sqlalchemy_delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ta_backend_core.assistant.storage.postgres.models_business import APIKey, AgentConfig, Department, User
-from ta_backend_core.assistant.repositories.department_repository import DepartmentRepository
-from ta_backend_core.assistant.repositories.user_repository import UserRepository
+from yunesa.storage.postgres.models_business import APIKey, AgentConfig, Department, User
+from yunesa.repositories.department_repository import DepartmentRepository
+from yunesa.repositories.user_repository import UserRepository
 from server.utils.auth_middleware import get_superadmin_user, get_admin_user, get_db
 from server.utils.auth_utils import AuthUtils
 from server.utils.common_utils import log_operation

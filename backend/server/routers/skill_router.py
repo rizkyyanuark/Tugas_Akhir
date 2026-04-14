@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.auth_middleware import get_admin_user, get_db, get_superadmin_user
-from ta_backend_core.assistant.services.remote_skill_install_service import install_remote_skill, list_remote_skills
-from ta_backend_core.assistant.services.skill_service import (
+from yunesa.services.remote_skill_install_service import install_remote_skill, list_remote_skills
+from yunesa.services.skill_service import (
     BuiltinSkillUpdateConflictError,
     create_skill_node,
     delete_skill,
@@ -28,8 +28,8 @@ from ta_backend_core.assistant.services.skill_service import (
     update_skill_dependencies,
     update_skill_file,
 )
-from ta_backend_core.assistant.storage.postgres.models_business import User
-from ta_backend_core.assistant.utils.logging_config import logger
+from yunesa.storage.postgres.models_business import User
+from yunesa.utils.logging_config import logger
 
 skills = APIRouter(prefix="/system/skills", tags=["skills"])
 

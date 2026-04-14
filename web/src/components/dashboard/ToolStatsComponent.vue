@@ -1,26 +1,26 @@
 <template>
-  <a-card title="工具调用监控" :loading="loading" class="dashboard-card">
-    <!-- 工具调用概览 -->
+  <a-card title="Tool Call Monitoring" :loading="loading" class="dashboard-card">
+    <!-- Tool call overview -->
     <div class="stats-overview">
       <a-row :gutter="16">
         <a-col :span="8">
           <a-statistic
-            title="总调用次数"
+            title="Total Calls"
             :value="toolStats?.total_calls || 0"
             :value-style="{ color: 'var(--color-info-500)' }"
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
-            title="失败调用"
+            title="Failed Calls"
             :value="toolStats?.failed_calls || 0"
             :value-style="{ color: 'var(--color-error-500)' }"
-            suffix="次"
+            suffix="times"
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
-            title="成功率"
+            title="Success Rate"
             :value="toolStats?.success_rate || 0"
             suffix="%"
             :value-style="{
@@ -36,17 +36,17 @@
       </a-row>
     </div>
 
-    <!-- 最常用工具 -->
+    <!-- Most used tools -->
     <a-divider />
     <div class="chart-container">
-      <h4>最常用工具 TOP 10</h4>
+      <h4>Top 10 Most Used Tools</h4>
       <div ref="toolsChartRef" class="chart"></div>
     </div>
 
-    <!-- 错误分析 -->
+    <!-- Error analysis -->
     <a-divider />
     <div class="error-analysis" v-if="hasErrorData">
-      <h4>工具错误分析</h4>
+      <h4>Tool Error Analysis</h4>
       <a-row :gutter="16">
         <a-col :span="12">
           <a-table
@@ -70,7 +70,7 @@
         </a-col>
         <a-col :span="12">
           <div class="chart-container">
-            <h4>错误分布图</h4>
+            <h4>Error Distribution</h4>
             <div ref="errorChartRef" class="chart-small"></div>
           </div>
         </a-col>
@@ -85,7 +85,7 @@ import * as echarts from 'echarts'
 import { getColorByIndex, getColorPalette } from '@/utils/chartColors'
 import { useThemeStore } from '@/stores/theme'
 
-// CSS 变量解析工具函数
+// CSS variable parsing helper
 function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
@@ -111,16 +111,16 @@ const errorChartRef = ref(null)
 let toolsChart = null
 let errorChart = null
 
-// 错误分析相关
+// Error analysis table
 const errorColumns = [
   {
-    title: '工具名称',
+    title: 'Tool Name',
     dataIndex: 'tool_name',
     key: 'tool_name',
     width: '50%'
   },
   {
-    title: '错误次数',
+    title: 'Error Count',
     dataIndex: 'error_count',
     key: 'error_count',
     width: '50%',
@@ -143,11 +143,11 @@ const errorData = computed(() => {
     .sort((a, b) => b.error_count - a.error_count)
 })
 
-// 初始化最常用工具图表
+// Initialize most-used tools chart
 const initToolsChart = () => {
   if (!toolsChartRef.value || !props.toolStats?.most_used_tools?.length) return
 
-  // 如果已存在图表实例，先销毁
+  // Destroy existing chart instance first if it exists.
   if (toolsChart) {
     toolsChart.dispose()
     toolsChart = null
@@ -155,7 +155,7 @@ const initToolsChart = () => {
 
   toolsChart = echarts.init(toolsChartRef.value)
 
-  const data = [...props.toolStats.most_used_tools].sort((a, b) => a.count - b.count).slice(0, 10) // 只显示前10个，升序排列让最高的在最上面
+  const data = [...props.toolStats.most_used_tools].sort((a, b) => a.count - b.count).slice(0, 10) // Show only top 10; ascending order puts the largest at the top.
 
   const option = {
     tooltip: {
@@ -208,7 +208,7 @@ const initToolsChart = () => {
     },
     series: [
       {
-        name: '调用次数',
+        name: 'Call Count',
         type: 'bar',
         data: data.map((item) => item.count),
         itemStyle: {
@@ -229,11 +229,11 @@ const initToolsChart = () => {
   toolsChart.setOption(option)
 }
 
-// 初始化错误分布图
+// Initialize error distribution chart
 const initErrorChart = () => {
   if (!errorChartRef.value || !hasErrorData.value) return
 
-  // 如果已存在图表实例，先销毁
+  // Destroy existing chart instance first if it exists.
   if (errorChart) {
     errorChart.dispose()
     errorChart = null
@@ -241,7 +241,7 @@ const initErrorChart = () => {
 
   errorChart = echarts.init(errorChartRef.value)
 
-  const data = errorData.value.slice(0, 5) // 只显示前5个
+  const data = errorData.value.slice(0, 5) // Show only top 5.
 
   const option = {
     tooltip: {
@@ -256,7 +256,7 @@ const initErrorChart = () => {
     },
     series: [
       {
-        name: '错误分布',
+        name: 'Error Distribution',
         type: 'pie',
         radius: ['30%', '70%'],
         center: ['50%', '60%'],
@@ -288,7 +288,7 @@ const initErrorChart = () => {
   errorChart.setOption(option)
 }
 
-// 更新图表
+// Update charts
 const updateCharts = () => {
   nextTick(() => {
     initToolsChart()
@@ -298,7 +298,7 @@ const updateCharts = () => {
   })
 }
 
-// 监听数据变化
+// Watch data changes
 watch(
   () => props.toolStats,
   () => {
@@ -307,7 +307,7 @@ watch(
   { deep: true }
 )
 
-// 窗口大小变化时重新调整图表
+// Resize charts when window size changes
 const handleResize = () => {
   if (toolsChart) toolsChart.resize()
   if (errorChart) errorChart.resize()
@@ -318,7 +318,7 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
 })
 
-// 监听主题变化，重新渲染图表
+// Watch theme changes and re-render charts
 watch(
   () => themeStore.isDark,
   () => {
@@ -330,7 +330,7 @@ watch(
   }
 )
 
-// 组件卸载时清理
+// Cleanup on component unmount
 const cleanup = () => {
   window.removeEventListener('resize', handleResize)
   if (toolsChart) {
@@ -343,7 +343,7 @@ const cleanup = () => {
   }
 }
 
-// 导出清理函数供父组件调用
+// Expose cleanup function for parent component
 defineExpose({
   cleanup
 })

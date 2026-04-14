@@ -29,7 +29,7 @@
         <!-- Statistics -->
         <!-- <div class="stats-section" v-if="filteredServers.length > 0">
           <span class="stats-text">
-            {{ filteredServers.length }} 个 MCP： HTTP: {{ httpCount }} · SSE: {{ sseCount }} · StdIO: {{ stdioCount }}
+            {{ filteredServers.length }} MCPs: HTTP: {{ httpCount }} · SSE: {{ sseCount }} · StdIO: {{ stdioCount }}
           </span>
         </div> -->
 
@@ -75,7 +75,9 @@
                   server.description || 'No description available'
                 }}</span>
                 <div class="item-tags">
-                  <span v-if="server.created_by === 'system'" class="source-tag builtin">内置</span>
+                  <span v-if="server.created_by === 'system'" class="source-tag builtin"
+                    >Built-in</span
+                  >
                 </div>
               </div>
             </div>
@@ -114,7 +116,9 @@
                   server.description || 'No description available'
                 }}</span>
                 <div class="item-tags">
-                  <span v-if="server.created_by === 'system'" class="source-tag builtin">内置</span>
+                  <span v-if="server.created_by === 'system'" class="source-tag builtin"
+                    >Built-in</span
+                  >
                 </div>
               </div>
             </div>
@@ -128,7 +132,7 @@
         <div v-if="!currentServer" class="unselected-state">
           <div class="hint-box">
             <Plug :size="40" class="text-muted" />
-            <p>请在左侧选择 MCP 进行操作</p>
+            <p>Select an MCP from the left panel to manage</p>
           </div>
         </div>
 
@@ -149,7 +153,7 @@
                   class="lucide-icon-btn extension-panel-action extension-panel-action-secondary"
                 >
                   <Zap :size="14" v-if="testLoading !== currentServer.name" />
-                  <span>测试</span>
+                  <span>Test</span>
                 </button>
                 <button
                   type="button"
@@ -157,7 +161,7 @@
                   class="lucide-icon-btn extension-panel-action extension-panel-action-secondary"
                 >
                   <Pencil :size="14" />
-                  <span>编辑</span>
+                  <span>Edit</span>
                 </button>
                 <button
                   type="button"
@@ -176,20 +180,20 @@
             </div>
           </div>
 
-          <!-- Tab 导航 -->
+          <!-- Tab navigation -->
           <a-tabs v-model:activeKey="detailTab" class="detail-tabs">
             <a-tab-pane key="general">
               <template #tab>
-                <span class="tab-title"><Settings2 :size="14" />信息</span>
+                <span class="tab-title"><Settings2 :size="14" />Information</span>
               </template>
               <div class="tab-content">
                 <div class="info-grid">
                   <div class="info-item" v-if="currentServer.description">
-                    <label>描述</label>
+                    <label>Description</label>
                     <span>{{ currentServer.description }}</span>
                   </div>
                   <div class="info-item">
-                    <label>传输类型</label>
+                    <label>Transport Type</label>
                     <span>
                       <a-tag :color="getTransportColor(currentServer.transport)">
                         {{ currentServer.transport }}
@@ -200,13 +204,13 @@
                     class="info-item"
                     v-if="Array.isArray(currentServer.tags) && currentServer.tags.length > 0"
                   >
-                    <label>标签</label>
+                    <label>Tags</label>
                     <span>
                       <a-tag v-for="tag in currentServer.tags" :key="tag">{{ tag }}</a-tag>
                     </span>
                   </div>
 
-                  <!-- HTTP 类型显示 URL -->
+                  <!-- Show URL for HTTP/SSE transport -->
                   <template
                     v-if="
                       currentServer.transport === 'streamable_http' ||
@@ -221,32 +225,32 @@
                       class="info-item"
                       v-if="currentServer.headers && Object.keys(currentServer.headers).length > 0"
                     >
-                      <label>请求头</label>
+                      <label>Request Headers</label>
                       <pre class="code-pre">{{
                         JSON.stringify(currentServer.headers, null, 2)
                       }}</pre>
                     </div>
                     <div class="info-item" v-if="currentServer.timeout">
-                      <label>HTTP 超时</label>
-                      <span>{{ currentServer.timeout }} 秒</span>
+                      <label>HTTP Timeout</label>
+                      <span>{{ currentServer.timeout }} s</span>
                     </div>
                     <div class="info-item" v-if="currentServer.sse_read_timeout">
-                      <label>SSE 读取超时</label>
-                      <span>{{ currentServer.sse_read_timeout }} 秒</span>
+                      <label>SSE Read Timeout</label>
+                      <span>{{ currentServer.sse_read_timeout }} s</span>
                     </div>
                   </template>
 
-                  <!-- StdIO 类型显示 command/args -->
+                  <!-- Show command/args for StdIO transport -->
                   <template v-if="currentServer.transport === 'stdio'">
                     <div class="info-item" v-if="currentServer.command">
-                      <label>命令</label>
+                      <label>Command</label>
                       <span class="code-inline">{{ currentServer.command }}</span>
                     </div>
                     <div
                       class="info-item"
                       v-if="currentServer.args && currentServer.args.length > 0"
                     >
-                      <label>参数</label>
+                      <label>Arguments</label>
                       <span>
                         <a-tag v-for="(arg, index) in currentServer.args" :key="index" size="small">
                           {{ arg }}
@@ -257,21 +261,21 @@
                       class="info-item"
                       v-if="currentServer.env && Object.keys(currentServer.env).length > 0"
                     >
-                      <label>环境变量</label>
+                      <label>Environment Variables</label>
                       <pre class="code-pre">{{ JSON.stringify(currentServer.env, null, 2) }}</pre>
                     </div>
                   </template>
 
                   <div class="info-item">
-                    <label>创建时间</label>
+                    <label>Created At</label>
                     <span>{{ formatTime(currentServer.created_at) }}</span>
                   </div>
                   <div class="info-item">
-                    <label>更新时间</label>
+                    <label>Updated At</label>
                     <span>{{ formatTime(currentServer.updated_at) }}</span>
                   </div>
                   <div class="info-item">
-                    <label>创建人</label>
+                    <label>Created By</label>
                     <span>{{ currentServer.created_by }}</span>
                   </div>
                 </div>
@@ -280,24 +284,24 @@
 
             <a-tab-pane key="tools">
               <template #tab>
-                <span class="tab-title"><Wrench :size="14" />工具 ({{ tools.length }})</span>
+                <span class="tab-title"><Wrench :size="14" />Tools ({{ tools.length }})</span>
               </template>
               <div class="tab-content tools-tab">
                 <div class="tools-toolbar">
                   <a-input-search
                     v-model:value="toolSearchText"
-                    placeholder="搜索工具..."
+                    placeholder="Search tools..."
                     style="width: 200px"
                     allowClear
                   />
                   <a-button @click="fetchTools" :loading="toolsLoading" class="lucide-icon-btn">
                     <RotateCw :size="14" />
-                    <span>刷新</span>
+                    <span>Refresh</span>
                   </a-button>
                 </div>
                 <a-spin :spinning="toolsLoading">
                   <div v-if="filteredTools.length === 0" class="empty-tools">
-                    <a-empty :description="toolsError || '暂无工具'" />
+                    <a-empty :description="toolsError || 'No tools available'" />
                   </div>
                   <div v-else class="tools-list">
                     <div
@@ -320,7 +324,7 @@
                             :loading="toggleToolLoading === tool.name"
                             size="small"
                           />
-                          <a-tooltip title="复制工具名称">
+                          <a-tooltip title="Copy tool name">
                             <a-button
                               type="text"
                               size="small"
@@ -339,7 +343,7 @@
                         v-if="tool.parameters && Object.keys(tool.parameters).length > 0"
                         ghost
                       >
-                        <a-collapse-panel key="params" header="参数">
+                        <a-collapse-panel key="params" header="Arguments">
                           <div class="params-list">
                             <div
                               v-for="(param, paramName) in tool.parameters"
@@ -351,7 +355,7 @@
                                 <span
                                   class="param-required"
                                   v-if="tool.required?.includes(paramName)"
-                                  >必填</span
+                                  >Required</span
                                 >
                                 <span class="param-type">{{ param.type || 'any' }}</span>
                               </div>
@@ -372,10 +376,10 @@
       </div>
     </div>
 
-    <!-- 添加/编辑 MCP 模态框 -->
+    <!-- Add/Edit MCP modal -->
     <a-modal
       v-model:open="formModalVisible"
-      :title="editMode ? '编辑 MCP' : '添加 MCP'"
+      :title="editMode ? 'Edit MCP' : 'Add MCP'"
       @ok="handleFormSubmit"
       :confirmLoading="formLoading"
       @cancel="formModalVisible = false"
@@ -383,31 +387,31 @@
       width="560px"
       class="server-modal"
     >
-      <!-- 模式切换 -->
+      <!-- Mode switch -->
       <div class="mode-switch">
         <a-radio-group v-model:value="formMode" button-style="solid" size="small">
-          <a-radio-button value="form">表单模式</a-radio-button>
-          <a-radio-button value="json">JSON 模式</a-radio-button>
+          <a-radio-button value="form">Form Mode</a-radio-button>
+          <a-radio-button value="json">JSON Mode</a-radio-button>
         </a-radio-group>
       </div>
 
-      <!-- 表单模式 -->
+      <!-- Form Mode -->
       <a-form v-if="formMode === 'form'" layout="vertical" class="extension-form">
-        <a-form-item label="MCP 名称" required class="form-item">
+        <a-form-item label="MCP Name" required class="form-item">
           <a-input
             v-model:value="form.name"
-            placeholder="请输入 MCP 名称（唯一标识）"
+            placeholder="Enter MCP name (unique identifier)"
             :disabled="editMode"
           />
         </a-form-item>
 
-        <a-form-item label="描述" class="form-item">
-          <a-input v-model:value="form.description" placeholder="请输入 MCP 描述" />
+        <a-form-item label="Description" class="form-item">
+          <a-input v-model:value="form.description" placeholder="Enter MCP description" />
         </a-form-item>
 
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="传输类型" required class="form-item">
+            <a-form-item label="Transport Type" required class="form-item">
               <a-select v-model:value="form.transport">
                 <a-select-option value="streamable_http">streamable_http</a-select-option>
                 <a-select-option value="sse">sse</a-select-option>
@@ -416,29 +420,33 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="图标" class="form-item">
-              <a-input v-model:value="form.icon" placeholder="输入 emoji，如 🧠" :maxlength="2" />
+            <a-form-item label="Icon" class="form-item">
+              <a-input
+                v-model:value="form.icon"
+                placeholder="Enter emoji, e.g. 🧠"
+                :maxlength="2"
+              />
             </a-form-item>
           </a-col>
         </a-row>
 
-        <!-- HTTP 类型 -->
+        <!-- HTTP/SSE transport fields -->
         <template v-if="form.transport === 'streamable_http' || form.transport === 'sse'">
           <a-form-item label="MCP URL" required class="form-item">
             <a-input v-model:value="form.url" placeholder="https://example.com/mcp" />
           </a-form-item>
 
-          <a-form-item label="HTTP 请求头" class="form-item">
+          <a-form-item label="HTTP Request Headers" class="form-item">
             <a-textarea
               v-model:value="form.headersText"
-              placeholder='JSON 格式，如：{"Authorization": "Bearer xxx"}'
+              placeholder='JSON format, e.g.:{"Authorization": "Bearer xxx"}'
               :rows="3"
             />
           </a-form-item>
 
           <a-row :gutter="16">
             <a-col :span="12">
-              <a-form-item label="HTTP 超时（秒）" class="form-item">
+              <a-form-item label="HTTP Timeout (s)" class="form-item">
                 <a-input-number
                   v-model:value="form.timeout"
                   :min="1"
@@ -448,7 +456,7 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="SSE 读取超时（秒）" class="form-item">
+              <a-form-item label="SSE Read Timeout (s)" class="form-item">
                 <a-input-number
                   v-model:value="form.sse_read_timeout"
                   :min="1"
@@ -460,55 +468,58 @@
           </a-row>
         </template>
 
-        <!-- StdIO 类型 -->
+        <!-- StdIO transport fields -->
         <template v-if="isStdioTransport">
-          <a-form-item label="命令" required class="form-item">
-            <a-input v-model:value="form.command" placeholder="例如：npx 或 /path/to/server" />
+          <a-form-item label="Command" required class="form-item">
+            <a-input
+              v-model:value="form.command"
+              placeholder="For example: npx or /path/to/server"
+            />
           </a-form-item>
 
-          <a-form-item label="参数" class="form-item">
+          <a-form-item label="Arguments" class="form-item">
             <a-select
               v-model:value="form.args"
               mode="tags"
-              placeholder="输入参数后回车添加，如：-m"
+              placeholder="Enter args and press Enter, e.g. -m"
               style="width: 100%"
             />
           </a-form-item>
 
-          <a-form-item label="环境变量" class="form-item">
+          <a-form-item label="Environment Variables" class="form-item">
             <McpEnvEditor v-model="form.env" />
           </a-form-item>
         </template>
 
-        <a-form-item label="标签" class="form-item">
+        <a-form-item label="Tags" class="form-item">
           <a-select
             v-model:value="form.tags"
             mode="tags"
-            placeholder="输入标签后回车添加"
+            placeholder="Enter tags and press Enter"
             style="width: 100%"
           />
         </a-form-item>
       </a-form>
 
-      <!-- JSON 模式 -->
+      <!-- JSON Mode -->
       <div v-else class="json-mode">
         <a-textarea
           v-model:value="jsonContent"
           :rows="15"
-          placeholder='请输入 JSON 配置，格式如：
+          placeholder='Enter JSON config, e.g.:
 {
   "name": "my-server",
   "transport": "streamable_http",
   "url": "https://example.com/mcp",
-  "description": "MCP 描述",
+  "description": "MCP description",
   "headers": {"Authorization": "Bearer xxx"},
-  "tags": ["工具", "AI"]
+  "tags": ["Tools", "AI"]
 }'
           class="json-textarea"
         />
         <div class="json-actions">
-          <a-button size="small" @click="formatJson">格式化</a-button>
-          <a-button size="small" @click="parseJsonToForm">解析到表单</a-button>
+          <a-button size="small" @click="formatJson">Format</a-button>
+          <a-button size="small" @click="parseJsonToForm">Parse to form</a-button>
         </div>
       </div>
     </a-modal>
@@ -535,7 +546,7 @@ import { mcpApi } from '@/apis/mcp_api'
 import { formatFullDateTime } from '@/utils/time'
 import McpEnvEditor from './McpEnvEditor.vue'
 
-// 状态
+// State
 const loading = ref(false)
 const error = ref(null)
 const servers = ref([])
@@ -545,14 +556,14 @@ const searchQuery = ref('')
 const currentServer = ref(null)
 const detailTab = ref('general')
 
-// 工具相关状态
+// Tools state
 const tools = ref([])
 const toolsLoading = ref(false)
 const toolsError = ref(null)
 const toolSearchText = ref('')
 const toggleToolLoading = ref(null)
 
-// 表单相关
+// Form state
 const formModalVisible = ref(false)
 const formLoading = ref(false)
 const formMode = ref('form')
@@ -573,7 +584,7 @@ const form = reactive({
   icon: ''
 })
 
-// 计算属性
+// Computed properties
 const filteredServers = computed(() => {
   const sorted = [...servers.value].sort((a, b) => {
     return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN', {
@@ -602,7 +613,7 @@ const isStdioTransport = computed(
       .toLowerCase() === 'stdio'
 )
 
-// 工具相关计算属性
+// Tools computed properties
 const filteredTools = computed(() => {
   if (!toolSearchText.value) return tools.value
   const search = toolSearchText.value.toLowerCase()
@@ -613,7 +624,7 @@ const filteredTools = computed(() => {
   )
 })
 
-// 获取 MCP 列表
+// Fetch MCP list
 const fetchServers = async () => {
   try {
     loading.value = true
@@ -633,17 +644,17 @@ const fetchServers = async () => {
         }
       }
     } else {
-      error.value = result.message || '获取 MCP 列表失败'
+      error.value = result.message || 'Failed to fetch MCP list'
     }
   } catch (err) {
-    console.error('获取 MCP 列表失败:', err)
-    error.value = err.message || '获取 MCP 列表失败'
+    console.error('Failed to fetch MCP list:', err)
+    error.value = err.message || 'Failed to fetch MCP list'
   } finally {
     loading.value = false
   }
 }
 
-// 获取工具列表
+// Fetch tools list
 const fetchTools = async () => {
   if (!currentServer.value) return
 
@@ -654,19 +665,19 @@ const fetchTools = async () => {
     if (result.success) {
       tools.value = result.data || []
     } else {
-      toolsError.value = result.message || '获取工具列表失败'
+      toolsError.value = result.message || 'Failed to fetch tools list'
       tools.value = []
     }
   } catch (err) {
-    console.error('获取工具列表失败:', err)
-    toolsError.value = err.message || '获取工具列表失败'
+    console.error('Failed to fetch tools list:', err)
+    toolsError.value = err.message || 'Failed to fetch tools list'
     tools.value = []
   } finally {
     toolsLoading.value = false
   }
 }
 
-// 切换工具启用状态
+// Toggle tool status
 const handleToggleTool = async (tool) => {
   if (!currentServer.value) return
 
@@ -680,30 +691,30 @@ const handleToggleTool = async (tool) => {
         targetTool.enabled = result.enabled
       }
     } else {
-      message.error(result.message || '操作失败')
+      message.error(result.message || 'Operation failed')
     }
   } catch (err) {
-    console.error('切换工具状态失败:', err)
-    message.error(err.message || '操作失败')
+    console.error('Failed to toggle tool status:', err)
+    message.error(err.message || 'Operation failed')
   } finally {
     toggleToolLoading.value = null
   }
 }
 
-// 复制工具名称
+// Copy tool name
 const copyToolName = async (name) => {
   try {
     await navigator.clipboard.writeText(name)
-    message.success('已复制到剪贴板')
+    message.success('Copied to clipboard')
   } catch {
-    message.error('复制失败')
+    message.error('Copy failed')
   }
 }
 
-// 格式化时间
+// Format timestamp
 const formatTime = (timeStr) => formatFullDateTime(timeStr)
 
-// 获取传输类型颜色
+// Get transport color
 const getTransportColor = (transport) => {
   const colors = {
     sse: 'orange',
@@ -713,14 +724,14 @@ const getTransportColor = (transport) => {
   return colors[transport] || 'blue'
 }
 
-// 选择 MCP
+// Select MCP
 const selectServer = (server) => {
   currentServer.value = server
   detailTab.value = 'general'
   fetchTools()
 }
 
-// 显示添加模态框
+// Show Add modal
 const showAddModal = () => {
   editMode.value = false
   formMode.value = 'form'
@@ -762,7 +773,7 @@ const applyServerToForm = (server) => {
   formModalVisible.value = true
 }
 
-// 显示编辑模态框
+// Show Edit modal
 const showEditModal = async (server) => {
   try {
     const result = await mcpApi.getMcpServer(server.name)
@@ -771,12 +782,12 @@ const showEditModal = async (server) => {
       return
     }
   } catch (err) {
-    console.error('获取 MCP 详情失败，回退使用列表数据:', err)
+    console.error('Failed to fetch MCP details, falling back to list data:', err)
   }
   applyServerToForm(server)
 }
 
-// 处理表单提交
+// Handle form submit
 const handleFormSubmit = async () => {
   try {
     formLoading.value = true
@@ -786,17 +797,17 @@ const handleFormSubmit = async () => {
       try {
         data = JSON.parse(jsonContent.value)
       } catch {
-        message.error('JSON 格式错误')
+        message.error('Invalid JSON format')
         return
       }
     } else {
-      // 解析 headers
+      // Parse headers
       let headers = null
       if (form.headersText.trim()) {
         try {
           headers = JSON.parse(form.headersText)
         } catch {
-          message.error('请求头 JSON 格式错误')
+          message.error('Request headers JSON format is invalid')
           return
         }
       }
@@ -817,26 +828,26 @@ const handleFormSubmit = async () => {
       }
     }
 
-    // 校验必填字段
+    // Validate required fields
     if (!data.name?.trim()) {
-      message.error('MCP 名称不能为空')
+      message.error('MCP name cannot be empty')
       return
     }
     if (!data.transport) {
-      message.error('请选择传输类型')
+      message.error('Please select a transport type')
       return
     }
-    // HTTP 类型校验 URL
+    // Validate URL for HTTP/SSE transport
     if (['sse', 'streamable_http'].includes(data.transport)) {
       if (!data.url?.trim()) {
-        message.error('HTTP 类型必须填写 MCP URL')
+        message.error('MCP URL is required for HTTP/SSE transport')
         return
       }
     }
-    // StdIO 类型校验 command
+    // Validate command for StdIO transport
     if (data.transport === 'stdio') {
       if (!data.command?.trim()) {
-        message.error('StdIO 类型必须填写命令')
+        message.error('Command is required for StdIO transport')
         return
       }
     }
@@ -844,17 +855,17 @@ const handleFormSubmit = async () => {
     if (editMode.value) {
       const result = await mcpApi.updateMcpServer(data.name, data)
       if (result.success) {
-        message.success('MCP 更新成功')
+        message.success('MCP updated successfully')
       } else {
-        message.error(result.message || '更新失败')
+        message.error(result.message || 'Update failed')
         return
       }
     } else {
       const result = await mcpApi.createMcpServer(data)
       if (result.success) {
-        message.success('MCP 创建成功')
+        message.success('MCP created successfully')
       } else {
-        message.error(result.message || '创建失败')
+        message.error(result.message || 'Creation failed')
         return
       }
     }
@@ -862,36 +873,36 @@ const handleFormSubmit = async () => {
     formModalVisible.value = false
     await fetchServers()
   } catch (err) {
-    console.error('操作失败:', err)
-    message.error(err.message || '操作失败')
+    console.error('Operation failed:', err)
+    message.error(err.message || 'Operation failed')
   } finally {
     formLoading.value = false
   }
 }
 
-// 更新 MCP 启用状态
+// Update MCP enabled status
 const handleSetServerEnabled = async (server, enabled) => {
   try {
     toggleLoading.value = server.name
     const result = await mcpApi.updateMcpServerStatus(server.name, enabled)
     if (result.success) {
-      message.success(result.message || `MCP 已${enabled ? '添加' : '移除'}`)
+      message.success(result.message || `MCP ${enabled ? 'added' : 'removed'}`)
       await fetchServers()
       if (!enabled && currentServer.value?.name === server.name) {
         tools.value = []
       }
     } else {
-      message.error(result.message || '操作失败')
+      message.error(result.message || 'Operation failed')
     }
   } catch (err) {
-    console.error('更新状态失败:', err)
-    message.error(err.message || '操作失败')
+    console.error('Failed to update status:', err)
+    message.error(err.message || 'Operation failed')
   } finally {
     toggleLoading.value = null
   }
 }
 
-// 测试 MCP 连接
+// Test MCP connection
 const handleTestServer = async (server) => {
   try {
     testLoading.value = server.name
@@ -899,11 +910,11 @@ const handleTestServer = async (server) => {
     if (result.success) {
       message.success(result.message)
     } else {
-      message.warning(result.message || '连接失败')
+      message.warning(result.message || 'Connection failed')
     }
   } catch (err) {
-    console.error('测试连接失败:', err)
-    message.error(err.message || '测试失败')
+    console.error('MCP test failed:', err)
+    message.error(err.message || 'Test failed')
   } finally {
     testLoading.value = null
   }
@@ -931,9 +942,9 @@ const handleInlineRemoveServer = async (server) => {
 
 const getServerActionLabel = (server) => {
   if (server?.enabled === false) {
-    return '添加'
+    return 'Add'
   }
-  return server?.created_by === 'system' ? '移除' : '删除'
+  return server?.created_by === 'system' ? 'Remove' : 'Delete'
 }
 
 const getServerActionTone = (server) => {
@@ -942,42 +953,42 @@ const getServerActionTone = (server) => {
     : 'extension-panel-action-danger'
 }
 
-// 确认删除 MCP
+// Confirm deleting MCP
 const confirmDeleteServer = (server) => {
   Modal.confirm({
-    title: '确认删除 MCP',
-    content: `确定要删除 MCP "${server.name}" 吗？此操作不可撤销。`,
-    okText: '删除',
+    title: 'Confirm Delete MCP',
+    content: `Are you sure you want to delete MCP "${server.name}"? This action cannot be undone.`,
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     async onOk() {
       try {
         const result = await mcpApi.deleteMcpServer(server.name)
         if (result.success) {
-          message.success('MCP 删除成功')
+          message.success('MCP deleted successfully')
           await fetchServers()
         } else {
-          message.error(result.message || '删除失败')
+          message.error(result.message || 'Delete failed')
         }
       } catch (err) {
-        console.error('删除失败:', err)
-        message.error(err.message || '删除失败')
+        console.error('Delete failed:', err)
+        message.error(err.message || 'Delete failed')
       }
     }
   })
 }
 
-// 格式化 JSON
+// Format JSON
 const formatJson = () => {
   try {
     const obj = JSON.parse(jsonContent.value)
     jsonContent.value = JSON.stringify(obj, null, 2)
   } catch {
-    message.error('JSON 格式错误，无法格式化')
+    message.error('Invalid JSON format; unable to format')
   }
 }
 
-// 解析 JSON 到表单
+// Parse JSON into form
 const parseJsonToForm = () => {
   try {
     const obj = JSON.parse(jsonContent.value)
@@ -996,18 +1007,18 @@ const parseJsonToForm = () => {
       icon: obj.icon || ''
     })
     formMode.value = 'form'
-    message.success('已解析到表单')
+    message.success('Parsed into form')
   } catch {
-    message.error('JSON 格式错误')
+    message.error('Invalid JSON format')
   }
 }
 
-// 初始化
+// Initialize
 onMounted(() => {
   fetchServers()
 })
 
-// 暴露方法给父组件
+// Expose methods to the parent component
 defineExpose({
   fetchServers,
   showAddModal
@@ -1031,7 +1042,7 @@ defineExpose({
   }
 }
 
-/* 工具列表样式 */
+/* Tools list styles */
 .tools-tab {
   .tools-toolbar {
     display: flex;
@@ -1168,7 +1179,7 @@ defineExpose({
   }
 }
 
-/* 模态框样式 */
+/* Modal styles */
 .server-modal {
   .mode-switch {
     margin-bottom: 16px;

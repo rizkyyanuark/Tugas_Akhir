@@ -1,6 +1,6 @@
 import re
 import uuid
-from ta_backend_core.assistant.utils import logger
+from yunesa.utils import logger
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
@@ -9,10 +9,10 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ta_backend_core.assistant.storage.postgres.manager import pg_manager
-from ta_backend_core.assistant.storage.postgres.models_business import User, Department
-from ta_backend_core.assistant.repositories.user_repository import UserRepository
-from ta_backend_core.assistant.repositories.department_repository import DepartmentRepository
+from yunesa.storage.postgres.manager import pg_manager
+from yunesa.storage.postgres.models_business import User, Department
+from yunesa.repositories.user_repository import UserRepository
+from yunesa.repositories.department_repository import DepartmentRepository
 from server.utils.auth_middleware import (
     get_admin_user,
     get_superadmin_user,
@@ -23,11 +23,11 @@ from server.utils.auth_middleware import (
 from server.utils.auth_utils import AuthUtils
 from server.utils.user_utils import generate_unique_user_id, validate_username, is_valid_phone_number
 from server.utils.common_utils import log_operation
-from ta_backend_core.assistant.storage.minio import aupload_file_to_minio
-from ta_backend_core.assistant.utils.datetime_utils import utc_now_naive
+from yunesa.storage.minio import aupload_file_to_minio
+from yunesa.utils.datetime_utils import utc_now_naive
 
 # OIDC 认证相关导入
-from ta_backend_core.assistant.services.oidc_service import (
+from yunesa.services.oidc_service import (
     get_oidc_config_handler,
     oidc_callback_handler,
     oidc_exchange_code_handler,

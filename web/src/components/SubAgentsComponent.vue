@@ -4,14 +4,14 @@
       <div class="loading-bar"></div>
     </div>
     <div class="layout-wrapper" :class="{ 'content-loading': loading }">
-      <!-- 左侧：SubAgent 列表 -->
+      <!-- Left: subagent list -->
       <div class="sidebar-list">
-        <!-- 搜索框 -->
+        <!-- Search box -->
         <div class="sidebar-toolbar">
           <div class="search-box">
             <a-input
               v-model:value="searchQuery"
-              placeholder="搜索 SubAgent..."
+              placeholder="Search Subagents..."
               allow-clear
               class="search-input"
             >
@@ -19,14 +19,14 @@
             </a-input>
           </div>
 
-          <a-tooltip title="刷新 Subagents">
+          <a-tooltip title="Refresh Subagents">
             <a-button class="sidebar-tool" :disabled="loading" @click="fetchSubAgents">
               <RotateCw :size="14" />
             </a-button>
           </a-tooltip>
         </div>
 
-        <!-- SubAgent 列表 -->
+        <!-- Subagent list -->
         <div class="list-container">
           <div
             v-if="!filteredEnabledSubAgents.length && !filteredDisabledSubAgents.length"
@@ -34,10 +34,10 @@
           >
             <a-empty
               :image="false"
-              :description="searchQuery ? '无匹配 SubAgent' : '暂无 SubAgent'"
+              :description="searchQuery ? 'No matching subagents' : 'No subagents yet'"
             />
           </div>
-          <div v-if="filteredEnabledSubAgents.length" class="list-section-title">已添加</div>
+          <div v-if="filteredEnabledSubAgents.length" class="list-section-title">Added</div>
           <template
             v-for="(agent, index) in filteredEnabledSubAgents"
             :key="`enabled-${agent.name}`"
@@ -53,20 +53,20 @@
                   <span class="item-name">{{ agent.name }}</span>
                 </div>
                 <div class="item-status">
-                  <span class="status-chip status-chip-success">已添加</span>
+                  <span class="status-chip status-chip-success">Added</span>
                   <button
                     type="button"
                     class="inline-hover-action danger"
                     @click.stop="handleSetAgentEnabled(agent, false)"
                   >
-                    移除
+                    Remove
                   </button>
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ agent.description || '暂无描述' }}</span>
+                <span class="item-desc">{{ agent.description || 'No description available' }}</span>
                 <div class="item-tags">
-                  <span v-if="agent.is_builtin" class="source-tag builtin">内置</span>
+                  <span v-if="agent.is_builtin" class="source-tag builtin">Built-in</span>
                 </div>
               </div>
             </div>
@@ -78,7 +78,7 @@
             ></div>
           </template>
 
-          <div v-if="filteredDisabledSubAgents.length" class="list-section-title">可添加</div>
+          <div v-if="filteredDisabledSubAgents.length" class="list-section-title">Available</div>
           <template
             v-for="(agent, index) in filteredDisabledSubAgents"
             :key="`disabled-${agent.name}`"
@@ -99,14 +99,14 @@
                     class="skill-inline-action skill-inline-action-primary"
                     @click.stop="handleSetAgentEnabled(agent, true)"
                   >
-                    添加
+                    Add
                   </button>
                 </div>
               </div>
               <div class="item-details">
-                <span class="item-desc">{{ agent.description || '暂无描述' }}</span>
+                <span class="item-desc">{{ agent.description || 'No description available' }}</span>
                 <div class="item-tags">
-                  <span v-if="agent.is_builtin" class="source-tag builtin">内置</span>
+                  <span v-if="agent.is_builtin" class="source-tag builtin">Built-in</span>
                 </div>
               </div>
             </div>
@@ -115,7 +115,7 @@
         </div>
       </div>
 
-      <!-- 右侧：详情面板 -->
+      <!-- Right: detail panel -->
       <div class="main-panel">
         <Transition name="fade-slide" mode="out-in">
           <div v-if="!currentAgent" :key="'empty'" class="unselected-state">
@@ -123,157 +123,165 @@
               <div class="icon-orb">
                 <Bot :size="64" />
               </div>
-              <h3>SubAgents 实验室</h3>
-              <p>探索并配置您的专属智能助手插件</p>
+              <h3>Subagents Lab</h3>
+              <p>Explore and configure your specialized assistant plugins</p>
               <div class="hint-shortcuts">
                 <div class="shortcut-item">
                   <div class="dot"></div>
-                  <span>选择左侧列表中的插件查看详情</span>
+                  <span>Select a plugin from the left panel to view details</span>
                 </div>
                 <div class="shortcut-item">
                   <div class="dot"></div>
-                  <span>管理系统内置或自定义 SubAgents</span>
+                  <span>Manage built-in or custom subagents</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div v-else :key="currentAgent.name" class="panel-content-wrapper">
-          <div class="panel-header-premium">
-            <div class="header-mesh-container">
-              <div class="mesh-layer"></div>
-            </div>
-            <div class="panel-top-bar">
-              <h2 class="panel-title-row">
-                <div class="title-icon-wrapper">
-                  <Bot :size="20" class="panel-title-icon" />
+            <div class="panel-header-premium">
+              <div class="header-mesh-container">
+                <div class="mesh-layer"></div>
+              </div>
+              <div class="panel-top-bar">
+                <h2 class="panel-title-row">
+                  <div class="title-icon-wrapper">
+                    <Bot :size="20" class="panel-title-icon" />
+                  </div>
+                  <div class="title-text-group">
+                    <span class="agent-name-main">{{ currentAgent.name }}</span>
+                    <div class="agent-metadata">
+                      <span class="meta-tag">{{
+                        currentAgent.is_builtin ? 'Built-in system' : 'Custom'
+                      }}</span>
+                      <span v-if="currentAgent.model" class="meta-tag">
+                        <Cpu :size="10" />
+                        {{
+                          typeof currentAgent.model === 'string' ? currentAgent.model : 'Model spec'
+                        }}
+                      </span>
+                    </div>
+                  </div>
+                </h2>
+                <div class="panel-actions">
+                  <a-space :size="8">
+                    <a-button
+                      size="middle"
+                      @click="showEditModal(currentAgent)"
+                      class="premium-action-btn"
+                      v-if="!currentAgent.is_builtin"
+                    >
+                      <template #icon><Pencil :size="14" /></template>
+                      <span>Edit</span>
+                    </a-button>
+                    <a-button
+                      size="middle"
+                      danger
+                      ghost
+                      :disabled="currentAgent.is_builtin"
+                      @click="confirmDeleteAgent(currentAgent)"
+                      class="premium-action-btn danger"
+                      v-if="!currentAgent.is_builtin"
+                    >
+                      <template #icon><Trash2 :size="14" /></template>
+                      <span>Delete</span>
+                    </a-button>
+                  </a-space>
                 </div>
-                <div class="title-text-group">
-                  <span class="agent-name-main">{{ currentAgent.name }}</span>
-                  <div class="agent-metadata">
-                    <span class="meta-tag">{{ currentAgent.is_builtin ? '内置系统' : '自定义' }}</span>
-                    <span v-if="currentAgent.model" class="meta-tag">
-                      <Cpu :size="10" /> {{ typeof currentAgent.model === 'string' ? currentAgent.model : '模型规格' }}
-                    </span>
+              </div>
+            </div>
+
+            <div class="detail-section-container">
+              <div class="detail-section">
+                <div class="section-header">
+                  <MessageSquare :size="14" />
+                  <span>System Prompt</span>
+                </div>
+                <div class="section-content">
+                  <div class="code-panel">
+                    <pre class="code-panel-pre">{{ currentAgent.system_prompt }}</pre>
                   </div>
                 </div>
-              </h2>
-              <div class="panel-actions">
-                <a-space :size="8">
-                  <a-button
-                    size="middle"
-                    @click="showEditModal(currentAgent)"
-                    class="premium-action-btn"
-                    v-if="!currentAgent.is_builtin"
-                  >
-                    <template #icon><Pencil :size="14" /></template>
-                    <span>编辑</span>
-                  </a-button>
-                  <a-button
-                    size="middle"
-                    danger
-                    ghost
-                    :disabled="currentAgent.is_builtin"
-                    @click="confirmDeleteAgent(currentAgent)"
-                    class="premium-action-btn danger"
-                    v-if="!currentAgent.is_builtin"
-                  >
-                    <template #icon><Trash2 :size="14" /></template>
-                    <span>删除</span>
-                  </a-button>
-                </a-space>
               </div>
-            </div>
-          </div>
 
-          <div class="detail-section-container">
-            <div class="detail-section">
-              <div class="section-header">
-                <MessageSquare :size="14" />
-                <span>系统提示词</span>
+              <div class="detail-section" v-if="currentAgent.description">
+                <div class="section-header">
+                  <FileText :size="14" />
+                  <span>Description</span>
+                </div>
+                <div class="section-content description">
+                  {{ currentAgent.description }}
+                </div>
               </div>
-              <div class="section-content">
-                <div class="code-panel">
-                  <pre class="code-panel-pre">{{ currentAgent.system_prompt }}</pre>
+
+              <div class="detail-section" v-if="currentAgent.model">
+                <div class="section-header">
+                  <Cpu :size="14" />
+                  <span>Model Override</span>
+                </div>
+                <div class="section-content">
+                  {{ currentAgent.model }}
+                </div>
+              </div>
+
+              <div
+                class="detail-section"
+                v-if="currentAgent.tools && currentAgent.tools.length > 0"
+              >
+                <div class="section-header">
+                  <Wrench :size="14" />
+                  <span>Tools</span>
+                </div>
+                <div class="section-content">
+                  <a-tag v-for="tool in currentAgent.tools" :key="tool">{{ tool }}</a-tag>
+                </div>
+              </div>
+
+              <div
+                class="detail-section"
+                v-if="currentAgent.is_builtin || currentAgent.enabled === false"
+              >
+                <div class="section-header">
+                  <Info :size="14" />
+                  <span>Type</span>
+                </div>
+                <div class="section-content">
+                  <a-tag v-if="currentAgent.is_builtin" color="blue">Built-in</a-tag>
+                  <a-tag v-else color="default">Custom</a-tag>
+                  <a-tag v-if="currentAgent.enabled === false" color="default">Not added</a-tag>
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <div class="section-header">
+                  <Clock :size="14" />
+                  <span>Metadata</span>
+                </div>
+                <div class="section-content meta-info">
+                  <div class="meta-item">
+                    <span class="meta-label">Created At</span>
+                    <span class="meta-value">{{ formatTime(currentAgent.created_at) }}</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-label">Updated At</span>
+                    <span class="meta-value">{{ formatTime(currentAgent.updated_at) }}</span>
+                  </div>
+                  <div class="meta-item" v-if="currentAgent.created_by">
+                    <span class="meta-label">Created By</span>
+                    <span class="meta-value">{{ currentAgent.created_by }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div class="detail-section" v-if="currentAgent.description">
-              <div class="section-header">
-                <FileText :size="14" />
-                <span>描述</span>
-              </div>
-              <div class="section-content description">
-                {{ currentAgent.description }}
-              </div>
-            </div>
-
-            <div class="detail-section" v-if="currentAgent.model">
-              <div class="section-header">
-                <Cpu :size="14" />
-                <span>模型覆盖</span>
-              </div>
-              <div class="section-content">
-                {{ currentAgent.model }}
-              </div>
-            </div>
-
-            <div class="detail-section" v-if="currentAgent.tools && currentAgent.tools.length > 0">
-              <div class="section-header">
-                <Wrench :size="14" />
-                <span>工具</span>
-              </div>
-              <div class="section-content">
-                <a-tag v-for="tool in currentAgent.tools" :key="tool">{{ tool }}</a-tag>
-              </div>
-            </div>
-
-            <div
-              class="detail-section"
-              v-if="currentAgent.is_builtin || currentAgent.enabled === false"
-            >
-              <div class="section-header">
-                <Info :size="14" />
-                <span>类型</span>
-              </div>
-              <div class="section-content">
-                <a-tag v-if="currentAgent.is_builtin" color="blue">内置</a-tag>
-                <a-tag v-else color="default">自定义</a-tag>
-                <a-tag v-if="currentAgent.enabled === false" color="default">未添加</a-tag>
-              </div>
-            </div>
-
-            <div class="detail-section">
-              <div class="section-header">
-                <Clock :size="14" />
-                <span>元信息</span>
-              </div>
-              <div class="section-content meta-info">
-                <div class="meta-item">
-                  <span class="meta-label">创建时间</span>
-                  <span class="meta-value">{{ formatTime(currentAgent.created_at) }}</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-label">更新时间</span>
-                  <span class="meta-value">{{ formatTime(currentAgent.updated_at) }}</span>
-                </div>
-                <div class="meta-item" v-if="currentAgent.created_by">
-                  <span class="meta-label">创建人</span>
-                  <span class="meta-value">{{ currentAgent.created_by }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
           </div>
         </Transition>
       </div>
     </div>
 
-    <!-- 添加/编辑 SubAgent 模态框 -->
+    <!-- Add/Edit Subagent modal -->
     <a-modal
       v-model:open="formModalVisible"
-      :title="editMode ? '编辑 SubAgent' : '添加 SubAgent'"
+      :title="editMode ? 'Edit Subagent' : 'Add Subagent'"
       @ok="handleFormSubmit"
       :confirmLoading="formLoading"
       @cancel="formModalVisible = false"
@@ -281,43 +289,47 @@
       width="600px"
     >
       <a-form layout="vertical" class="extension-form">
-        <a-form-item label="名称" required class="form-item">
+        <a-form-item label="Name" required class="form-item">
           <a-input
             v-model:value="form.name"
-            placeholder="请输入 SubAgent 名称（唯一标识）"
+            placeholder="Enter Subagent name (unique identifier)"
             :disabled="editMode"
           />
         </a-form-item>
 
-        <a-form-item label="描述" class="form-item">
-          <a-input v-model:value="form.description" placeholder="请输入 SubAgent 描述" />
+        <a-form-item label="Description" class="form-item">
+          <a-input v-model:value="form.description" placeholder="Enter subagent description" />
         </a-form-item>
 
-        <a-form-item label="系统提示词" required class="form-item">
-          <a-textarea v-model:value="form.system_prompt" placeholder="请输入系统提示词" :rows="6" />
+        <a-form-item label="System Prompt" required class="form-item">
+          <a-textarea
+            v-model:value="form.system_prompt"
+            placeholder="Enter system prompt"
+            :rows="6"
+          />
         </a-form-item>
 
-        <a-form-item label="工具" class="form-item">
+        <a-form-item label="Tools" class="form-item">
           <a-select
             v-model:value="form.tools"
             mode="tags"
-            placeholder="选择或输入工具名称"
+            placeholder="Select or enter tool names"
             style="width: 100%"
             :options="availableTools"
             @focus="fetchAvailableTools"
           />
         </a-form-item>
 
-        <a-form-item label="模型覆盖（可选）" class="form-item">
+        <a-form-item label="Model Override (optional)" class="form-item">
           <div class="model-override-row">
             <ModelSelectorComponent
               :model_spec="form.model"
-              placeholder="请选择模型"
+              placeholder="Select a model"
               class="model-selector-full"
               @select-model="handleModelSelect"
             />
             <a-button v-if="form.model" type="link" size="small" @click="form.model = ''">
-              清空
+              Clear
             </a-button>
           </div>
         </a-form-item>
@@ -347,7 +359,7 @@ import { toolApi } from '@/apis/tool_api'
 import { formatFullDateTime } from '@/utils/time'
 import ModelSelectorComponent from '@/components/ModelSelectorComponent.vue'
 
-// 状态
+// State
 const loading = ref(false)
 const error = ref(null)
 const subagents = ref([])
@@ -355,7 +367,7 @@ const searchQuery = ref('')
 const currentAgent = ref(null)
 const availableTools = ref([])
 
-// 表单相关
+// Form state
 const formModalVisible = ref(false)
 const formLoading = ref(false)
 const editMode = ref(false)
@@ -369,7 +381,7 @@ const form = reactive({
 
 const getSortedSubAgents = (items) => {
   return [...items].sort((a, b) => {
-    // 内置的排前面
+    // Sort built-in agents first
     if (a.is_builtin !== b.is_builtin) {
       return a.is_builtin ? -1 : 1
     }
@@ -377,7 +389,7 @@ const getSortedSubAgents = (items) => {
   })
 }
 
-// 计算属性
+// Computed properties
 const filteredSubAgents = computed(() => {
   const sorted = getSortedSubAgents(subagents.value)
   if (!searchQuery.value) return sorted
@@ -394,7 +406,7 @@ const filteredDisabledSubAgents = computed(() =>
   filteredSubAgents.value.filter((item) => item.enabled === false)
 )
 
-// 获取 SubAgent 列表
+// Fetch subagent list
 const fetchSubAgents = async () => {
   try {
     loading.value = true
@@ -402,7 +414,7 @@ const fetchSubAgents = async () => {
     const result = await subagentApi.getSubAgents()
     if (result.success) {
       subagents.value = result.data || []
-      // 保持选中状态
+      // Preserve selection
       if (currentAgent.value) {
         const latest = subagents.value.find((a) => a.name === currentAgent.value.name)
         if (latest) {
@@ -411,7 +423,7 @@ const fetchSubAgents = async () => {
           currentAgent.value = null
         }
       }
-      // 默认选中第一个已添加项
+      // Select the first added item by default
       const defaultList = filteredEnabledSubAgents.value.length
         ? filteredEnabledSubAgents.value
         : filteredDisabledSubAgents.value
@@ -419,17 +431,17 @@ const fetchSubAgents = async () => {
         currentAgent.value = defaultList[0]
       }
     } else {
-      error.value = result.message || '获取列表失败'
+      error.value = result.message || 'Failed to fetch list'
     }
   } catch (err) {
-    console.error('获取 SubAgent 列表失败:', err)
-    error.value = err.message || '获取列表失败'
+    console.error('Failed to fetch subagent list:', err)
+    error.value = err.message || 'Failed to fetch list'
   } finally {
     loading.value = false
   }
 }
 
-// 获取可选工具列表
+// Fetch available tool list
 const fetchAvailableTools = async () => {
   if (availableTools.value.length > 0) return
   try {
@@ -438,11 +450,11 @@ const fetchAvailableTools = async () => {
       availableTools.value = result.data
     }
   } catch (err) {
-    console.error('获取工具选项失败:', err)
+    console.error('Failed to fetch tool options:', err)
   }
 }
 
-// 格式化时间
+// Format timestamp
 const formatTime = (timeStr) => formatFullDateTime(timeStr)
 
 const handleModelSelect = (spec) => {
@@ -453,23 +465,23 @@ const handleSetAgentEnabled = async (agent, enabled) => {
   try {
     const result = await subagentApi.updateSubAgentStatus(agent.name, enabled)
     if (result.success) {
-      message.success(result.message || `SubAgent 已${enabled ? '添加' : '移除'}`)
+      message.success(result.message || `Subagent has been ${enabled ? 'added' : 'removed'}`)
       await fetchSubAgents()
     } else {
-      message.error(result.message || '操作失败')
+      message.error(result.message || 'Operation failed')
     }
   } catch (err) {
-    console.error('更新状态失败:', err)
-    message.error(err.message || '操作失败')
+    console.error('Failed to update status:', err)
+    message.error(err.message || 'Operation failed')
   }
 }
 
-// 选择 SubAgent
+// Select subagent
 const selectAgent = (agent) => {
   currentAgent.value = agent
 }
 
-// 显示添加模态框
+// Show Add modal
 const showAddModal = () => {
   editMode.value = false
   Object.assign(form, {
@@ -482,7 +494,7 @@ const showAddModal = () => {
   formModalVisible.value = true
 }
 
-// 显示编辑模态框
+// Show Edit modal
 const showEditModal = async (agent) => {
   try {
     const result = await subagentApi.getSubAgent(agent.name)
@@ -499,9 +511,9 @@ const showEditModal = async (agent) => {
       return
     }
   } catch (err) {
-    console.error('获取 SubAgent 详情失败，回退使用列表数据:', err)
+    console.error('Failed to fetch subagent detail, fallback to list data:', err)
   }
-  // 回退：使用列表数据
+  // Fallback: use list data
   editMode.value = true
   Object.assign(form, {
     name: agent.name,
@@ -513,16 +525,16 @@ const showEditModal = async (agent) => {
   formModalVisible.value = true
 }
 
-// 处理表单提交
+// Handle form submit
 const handleFormSubmit = async () => {
   try {
-    // 校验
+    // Validation
     if (!form.name?.trim()) {
-      message.error('名称不能为空')
+      message.error('Name cannot be empty')
       return
     }
     if (!form.system_prompt?.trim()) {
-      message.error('系统提示词不能为空')
+      message.error('System prompt cannot be empty')
       return
     }
 
@@ -539,17 +551,17 @@ const handleFormSubmit = async () => {
     if (editMode.value) {
       const result = await subagentApi.updateSubAgent(form.name, data)
       if (result.success) {
-        message.success('SubAgent 更新成功')
+        message.success('Subagent updated successfully')
       } else {
-        message.error(result.message || '更新失败')
+        message.error(result.message || 'Update failed')
         return
       }
     } else {
       const result = await subagentApi.createSubAgent(data)
       if (result.success) {
-        message.success('SubAgent 创建成功')
+        message.success('Subagent created successfully')
       } else {
-        message.error(result.message || '创建失败')
+        message.error(result.message || 'Creation failed')
         return
       }
     }
@@ -557,47 +569,47 @@ const handleFormSubmit = async () => {
     formModalVisible.value = false
     await fetchSubAgents()
   } catch (err) {
-    console.error('操作失败:', err)
-    message.error(err.message || '操作失败')
+    console.error('Operation failed:', err)
+    message.error(err.message || 'Operation failed')
   } finally {
     formLoading.value = false
   }
 }
 
-// 确认删除 SubAgent
+// Confirm deleting subagent
 const confirmDeleteAgent = (agent) => {
   Modal.confirm({
-    title: '确认删除 SubAgent',
-    content: `确定要删除 SubAgent "${agent.name}" 吗？此操作不可撤销。`,
-    okText: '删除',
+    title: 'Confirm Delete Subagent',
+    content: `Are you sure you want to delete subagent "${agent.name}"? This action cannot be undone.`,
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     async onOk() {
       try {
         const result = await subagentApi.deleteSubAgent(agent.name)
         if (result.success) {
-          message.success('SubAgent 删除成功')
+          message.success('Subagent deleted successfully')
           if (currentAgent.value?.name === agent.name) {
             currentAgent.value = null
           }
           await fetchSubAgents()
         } else {
-          message.error(result.message || '删除失败')
+          message.error(result.message || 'Delete failed')
         }
       } catch (err) {
-        console.error('删除失败:', err)
-        message.error(err.message || '删除失败')
+        console.error('Delete failed:', err)
+        message.error(err.message || 'Delete failed')
       }
     }
   })
 }
 
-// 初始化
+// Initialize
 onMounted(() => {
   fetchSubAgents()
 })
 
-// 暴露方法给父组件
+// Expose methods to the parent component
 defineExpose({
   fetchSubAgents,
   showAddModal
@@ -808,14 +820,24 @@ defineExpose({
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 @keyframes rotate-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .fade-slide-enter-active,

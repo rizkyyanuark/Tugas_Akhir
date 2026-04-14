@@ -3,12 +3,12 @@ import traceback
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from server.utils.auth_middleware import get_admin_user
-from ta_backend_core.assistant import graph_base, knowledge_base
-from ta_backend_core.assistant.knowledge.graphs.adapters.base import GraphAdapter
-from ta_backend_core.assistant.knowledge.graphs.adapters.factory import GraphAdapterFactory
-from ta_backend_core.assistant.storage.postgres.models_business import User
-from ta_backend_core.assistant.storage.minio.client import StorageError
-from ta_backend_core.assistant.utils.logging_config import logger
+from yunesa import graph_base, knowledge_base
+from yunesa.knowledge.graphs.adapters.base import GraphAdapter
+from yunesa.knowledge.graphs.adapters.factory import GraphAdapterFactory
+from yunesa.storage.postgres.models_business import User
+from yunesa.storage.minio.client import StorageError
+from yunesa.utils.logging_config import logger
 
 graph = APIRouter(prefix="/graph", tags=["graph"])
 
@@ -64,7 +64,7 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
         neo4j_info = graph_base.get_graph_info()
         if neo4j_info:
             # 直接使用 Upload 适配器的默认 metadata
-            from ta_backend_core.assistant.knowledge.graphs.adapters.upload import UploadGraphAdapter
+            from yunesa.knowledge.graphs.adapters.upload import UploadGraphAdapter
 
             capabilities = _get_capabilities_from_metadata(UploadGraphAdapter._get_metadata(None))
 
@@ -85,7 +85,7 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
         # 2. 获取 LightRAG 数据库信息
         lightrag_dbs = await knowledge_base.get_lightrag_databases()
         # 直接使用 LightRAG 适配器的默认 metadata
-        from ta_backend_core.assistant.knowledge.graphs.adapters.lightrag import LightRAGGraphAdapter
+        from yunesa.knowledge.graphs.adapters.lightrag import LightRAGGraphAdapter
 
         capabilities = _get_capabilities_from_metadata(LightRAGGraphAdapter._get_metadata(None))
 

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import pytest
-from ta_backend_core.knowledge.utils.config_manager import ConfigDict, ConfigManager, load_config
+from knowledge.utils.config_manager import ConfigDict, ConfigManager, load_config
 
 
 def test_config_dict_access():

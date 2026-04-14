@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from ta_backend_core.knowledge.etl.transform.deduplicator import deduplicate_papers, _normalize_text, _trigrams
+from knowledge.etl.transform.deduplicator import deduplicate_papers, _normalize_text, _trigrams
 
 
 def test_normalize_text():

@@ -1,5 +1,5 @@
 import pytest
-from ta_backend_core.knowledge.etl.utils.hasher import generate_paper_id
+from knowledge.etl.utils.hasher import generate_paper_id
 
 
 def test_generate_paper_id_with_doi():

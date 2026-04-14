@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.auth_middleware import get_db, get_required_user
-from ta_backend_core.assistant.services.viewer_filesystem_service import (
+from yunesa.services.viewer_filesystem_service import (
     create_viewer_directory,
     delete_viewer_file,
     download_viewer_file,
@@ -19,7 +19,7 @@ from ta_backend_core.assistant.services.viewer_filesystem_service import (
     read_viewer_file_content,
     upload_viewer_file,
 )
-from ta_backend_core.assistant.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 
 filesystem_router = APIRouter(prefix="/viewer/filesystem", tags=["viewer-filesystem"])
 

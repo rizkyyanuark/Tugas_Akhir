@@ -54,9 +54,45 @@ const router = createRouter({
           path: '',
           name: 'DashboardComp',
           component: () => import('../views/DashboardView.vue'),
-          meta: { keepAlive: true, requiresAuth: true }
+          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
         }
       ]
+    },
+    {
+      path: '/graph',
+      name: 'GraphMain',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'GraphComp',
+          component: () => import('../views/GraphView.vue'),
+          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
+        }
+      ]
+    },
+    {
+      path: '/extensions',
+      name: 'extensions',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'ExtensionsComp',
+          component: () => import('../views/ExtensionsView.vue'),
+          meta: {
+            keepAlive: false,
+            requiresAuth: true,
+            requiresAdmin: true,
+            requiresSuperAdmin: true
+          }
+        }
+      ]
+    },
+    {
+      path: '/skills',
+      name: 'skills',
+      redirect: '/extensions'
     },
     {
       path: '/:pathMatch(.*)*',
@@ -87,19 +123,11 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Force bypass authentication for Tugas Akhir
-  const isLoggedIn = true
-  const isAdmin = true
-  const isSuperAdmin = true
+  const isLoggedIn = userStore.isLoggedIn
+  const isAdmin = userStore.isAdmin
+  const isSuperAdmin = userStore.isSuperAdmin
 
-  // Since we force auth to true, userStore should act accordingly
-  if (!userStore.isLoggedIn) {
-    userStore.userId = 'local_admin'
-    userStore.token = 'fake_bypassed_token'
-    userStore.roles = ['admin', 'superadmin']
-  }
-
-  // If the route requires authentication but the user is not logged in (this will not happen now since isLoggedIn is hardcoded true)
+  // If the route requires authentication but the user is not logged in
   if (requiresAuth && !isLoggedIn) {
     sessionStorage.setItem('redirect', to.fullPath)
     next('/login')

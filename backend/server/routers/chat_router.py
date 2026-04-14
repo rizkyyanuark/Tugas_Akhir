@@ -8,22 +8,22 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ta_backend_core.assistant.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 from server.routers.auth_router import get_admin_user
 from server.utils.auth_middleware import get_db, get_required_user
-from ta_backend_core.assistant import config as conf
-from ta_backend_core.assistant.agents.buildin import agent_manager
-from ta_backend_core.assistant.models import select_model
-from ta_backend_core.assistant.services.chat_service import agent_chat, get_agent_state_view, stream_agent_chat, stream_agent_resume
-from ta_backend_core.assistant.services.agent_run_service import (
+from yunesa import config as conf
+from yunesa.agents.buildin import agent_manager
+from yunesa.models import select_model
+from yunesa.services.chat_service import agent_chat, get_agent_state_view, stream_agent_chat, stream_agent_resume
+from yunesa.services.agent_run_service import (
     cancel_agent_run_view,
     create_agent_run_view,
     get_active_run_by_thread,
     get_agent_run_view,
     stream_agent_run_events,
 )
-from ta_backend_core.assistant.repositories.conversation_repository import ConversationRepository
-from ta_backend_core.assistant.services.conversation_service import (
+from yunesa.repositories.conversation_repository import ConversationRepository
+from yunesa.services.conversation_service import (
     create_thread_view,
     delete_thread_attachment_view,
     delete_thread_view,
@@ -33,17 +33,17 @@ from ta_backend_core.assistant.services.conversation_service import (
     update_thread_view,
     upload_thread_attachment_view,
 )
-from ta_backend_core.assistant.services.thread_files_service import (
+from yunesa.services.thread_files_service import (
     list_thread_files_view,
     read_thread_file_content_view,
     resolve_thread_artifact_view,
     save_thread_artifact_to_workspace_view,
 )
-from ta_backend_core.assistant.services.feedback_service import get_message_feedback_view, submit_message_feedback_view
-from ta_backend_core.assistant.repositories.agent_config_repository import AgentConfigRepository
-from ta_backend_core.assistant.utils.logging_config import logger
-from ta_backend_core.assistant.utils.image_processor import process_uploaded_image
-from ta_backend_core.assistant.utils.paths import VIRTUAL_PATH_PREFIX
+from yunesa.services.feedback_service import get_message_feedback_view, submit_message_feedback_view
+from yunesa.repositories.agent_config_repository import AgentConfigRepository
+from yunesa.utils.logging_config import logger
+from yunesa.utils.image_processor import process_uploaded_image
+from yunesa.utils.paths import VIRTUAL_PATH_PREFIX
 
 
 # TODO：当前文件的功能过于庞杂，路由标签混乱

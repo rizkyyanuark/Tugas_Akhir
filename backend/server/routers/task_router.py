@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ta_backend_core.assistant.storage.postgres.models_business import User
-from ta_backend_core.assistant.services.task_service import tasker
+from yunesa.storage.postgres.models_business import User
+from yunesa.services.task_service import tasker
 from server.utils.auth_middleware import get_admin_user
 
 tasks = APIRouter(prefix="/tasks", tags=["tasks"])

@@ -30,7 +30,7 @@
           </div>
           <div class="header-actions">
             <div class="github-link">
-              <a href="https://github.com/xerrors/Yuxi" target="_blank">
+              <a :href="repoUrl" target="_blank" rel="noopener noreferrer">
                 <svg height="20" width="20" viewBox="0 0 16 16" version="1.1">
                   <path
                     fill-rule="evenodd"
@@ -69,9 +69,8 @@
             <!-- <p class="description">{{ infoStore.branding.description }}</p> -->
             <div class="hero-actions">
               <button class="button-base primary" @click="goToChat">Start Chat</button>
-              <router-link class="doc-text-link" to="/dashboard"
-                >View Dashboard</router-link
-              >
+              <router-link class="doc-text-link" to="/dashboard">View Dashboard</router-link>
+              <router-link class="doc-text-link" to="/graph">Explore Graph</router-link>
             </div>
           </div>
           <div class="insight-panel" v-if="featureCards.length">
@@ -148,8 +147,8 @@ const router = useRouter()
 const userStore = useUserStore()
 const infoStore = useInfoStore()
 const agentStore = useAgentStore()
-const repoUrl = '/dashboard'
-const faqUrl = '/agent'
+const repoUrl = 'https://github.com/rizkyyanuark/Tugas_Akhir'
+const faqUrl = `${repoUrl}#readme`
 
 // Loading state
 const isLoading = ref(true)
@@ -160,6 +159,7 @@ let badgeTimer = null
 let subtitleTimer = null
 let starsFetchController = null
 
+const GITHUB_REPO_API = 'https://api.github.com/repos/rizkyyanuark/Tugas_Akhir'
 const GITHUB_STARS_TIMEOUT = 3000
 
 const formatStars = (count) => {
@@ -167,14 +167,6 @@ const formatStars = (count) => {
     return ''
   }
   return `${count}`
-}
-
-/**
- * Override badge text: instead of fetching GitHub stars,
- * show a project-relevant badge.
- */
-const getProjectBadge = () => {
-  return 'Academic Knowledge Graph — UNESA Informatics'
 }
 
 const subtitleIndex = ref(0)
@@ -289,7 +281,11 @@ const getHeroBadgeText = (starsCount = null) => {
   const starValue =
     typeof starFeature === 'string' ? '' : (starFeature?.value || '').toString().trim()
 
-  return starValue ? `${starValue}` : ''
+  if (starValue) {
+    return `${starValue} GitHub Stars`
+  }
+
+  return 'UNESA Academic Knowledge Graph'
 }
 
 const stopBadgeTyping = () => {
@@ -345,8 +341,8 @@ const loadData = async () => {
     // Load configuration after health check passes
     await infoStore.loadInfoConfig()
     startSubtitleCarousel()
-    // Use project badge instead of GitHub stars
-    startBadgeTyping(null)
+    const starsCount = await fetchGithubStars()
+    startBadgeTyping(starsCount)
   } catch (e) {
     console.error('Loading failed:', e)
     stopBadgeTyping()

@@ -7,13 +7,14 @@ from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ta_backend_core.assistant.storage.postgres.manager import pg_manager
-from ta_backend_core.assistant.storage.postgres.models_business import User, APIKey
+from yunesa.storage.postgres.manager import pg_manager
+from yunesa.storage.postgres.models_business import User, APIKey
 from server.utils.auth_utils import AuthUtils
-from ta_backend_core.assistant.utils.datetime_utils import utc_now_naive
+from yunesa.utils.datetime_utils import utc_now_naive
 
 # 定义OAuth2密码承载器，指定token URL
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/auth/token", auto_error=False)
 
 # 公开路径列表，无需登录即可访问
 PUBLIC_PATHS = [
@@ -56,7 +57,8 @@ async def _verify_api_key(key: str, db: AsyncSession) -> tuple[User | None, APIK
 
     if api_key.department_id:
         result = await db.execute(
-            select(User).filter(User.department_id == api_key.department_id, User.role.in_(["admin", "superadmin"]))
+            select(User).filter(User.department_id == api_key.department_id,
+                                User.role.in_(["admin", "superadmin"]))
         )
         user = result.scalar_one_or_none()
         if user and not user.is_deleted:
@@ -90,20 +92,6 @@ async def get_current_user(
     token = authorization.split("Bearer ")[1]
     if not token:
         return None
-
-    # BYPASS FOR FRONTEND
-    if token == "fake_bypassed_token":
-        result = await db.execute(select(User).filter(User.role == "superadmin", User.is_deleted == 0).limit(1))
-        user = result.scalar_one_or_none()
-        if user:
-            return user
-        return User(
-            id=1,
-            username="local_admin",
-            role="superadmin",
-            department_id=1,
-            is_deleted=0,
-        )
 
     # 根据 token 前缀判断认证方式
     if token.startswith("yxkey_"):

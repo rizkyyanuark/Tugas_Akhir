@@ -126,6 +126,16 @@ export const documentApi = {
   },
 
   /**
+   * Ingest structured academic dataset (JSON/CSV) directly to graph storage.
+   * @param {string} dbId - Knowledge base ID
+   * @param {Object} payload - Structured payload (triples, records/data, csv_text)
+   * @returns {Promise} - Queued task result
+   */
+  ingestScivalDataset: async (dbId, payload) => {
+    return apiAdminPost(`/api/knowledge/databases/${dbId}/scival-ingest`, payload)
+  },
+
+  /**
    * Get document details
    * @param {string} dbId - Knowledge base ID
    * @param {string} docId - Document ID

@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException
 
 from server.utils.auth_middleware import get_admin_user, get_db
-from ta_backend_core.assistant.services import subagent_service as service
-from ta_backend_core.assistant.storage.postgres.models_business import User
-from ta_backend_core.assistant.utils import logger
+from yunesa.services import subagent_service as service
+from yunesa.storage.postgres.models_business import User
+from yunesa.utils import logger
 
 subagents_router = APIRouter(prefix="/system/subagents", tags=["subagents"])
 

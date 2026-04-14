@@ -1,8 +1,11 @@
 import asyncio
+import csv
+import io
 import json
 import os
 import textwrap
 import traceback
+from typing import Any
 from urllib.parse import quote, unquote
 
 import aiofiles
@@ -10,17 +13,17 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Reques
 from fastapi.responses import FileResponse
 from starlette.responses import StreamingResponse
 
-from ta_backend_core.assistant.services.task_service import TaskContext, tasker
+from yunesa.services.task_service import TaskContext, tasker
 from server.utils.auth_middleware import get_admin_user, get_required_user
-from ta_backend_core.assistant import config, knowledge_base
-from ta_backend_core.assistant.knowledge.chunking.ragflow_like.presets import ensure_chunk_defaults_in_additional_params
-from ta_backend_core.assistant.plugins.parser import Parser, SUPPORTED_FILE_EXTENSIONS, is_supported_file_extension
-from ta_backend_core.assistant.knowledge.utils import calculate_content_hash
-from ta_backend_core.assistant.knowledge.utils.kb_utils import parse_minio_url
-from ta_backend_core.assistant.models.embed import test_all_embedding_models_status, test_embedding_model_status
-from ta_backend_core.assistant.storage.postgres.models_business import User
-from ta_backend_core.assistant.storage.minio.client import MinIOClient, StorageError, aupload_file_to_minio, get_minio_client
-from ta_backend_core.assistant.utils import logger
+from yunesa import config, graph_base, knowledge_base
+from yunesa.knowledge.chunking.ragflow_like.presets import ensure_chunk_defaults_in_additional_params
+from yunesa.plugins.parser import Parser, SUPPORTED_FILE_EXTENSIONS, is_supported_file_extension
+from yunesa.knowledge.utils import calculate_content_hash
+from yunesa.knowledge.utils.kb_utils import parse_minio_url
+from yunesa.models.embed import test_all_embedding_models_status, test_embedding_model_status
+from yunesa.storage.postgres.models_business import User
+from yunesa.storage.minio.client import MinIOClient, StorageError, aupload_file_to_minio, get_minio_client
+from yunesa.utils import logger
 
 knowledge = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
@@ -60,6 +63,179 @@ media_types = {
     ".h": "text/x-chdr",
     ".hpp": "text/x-c++hdr",
 }
+
+
+def _coerce_mapping_keys(mapping: dict, key: str, defaults: list[str]) -> list[str]:
+    value = mapping.get(key)
+    if value is None:
+        return defaults
+    if isinstance(value, str):
+        values = [value]
+    elif isinstance(value, (list, tuple, set)):
+        values = [str(v).strip() for v in value if str(v).strip()]
+    else:
+        return defaults
+    return values or defaults
+
+
+def _pick_first_value(record: dict, keys: list[str]) -> str:
+    for key in keys:
+        if key not in record:
+            continue
+        value = record.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text and text.lower() not in {"none", "nan"}:
+            return text
+    return ""
+
+
+def _to_string_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+
+    values: list[str] = []
+    if isinstance(value, dict):
+        for key in ("name", "full_name", "label", "value"):
+            nested = value.get(key)
+            if nested:
+                values.extend(_to_string_list(nested))
+                break
+    elif isinstance(value, (list, tuple, set)):
+        for item in value:
+            values.extend(_to_string_list(item))
+    elif isinstance(value, str):
+        normalized = value.replace("\n", ",").replace(";", ",").replace("|", ",")
+        values.extend(part.strip() for part in normalized.split(",") if part.strip())
+    else:
+        text = str(value).strip()
+        if text:
+            values.append(text)
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for item in values:
+        if item not in seen:
+            deduped.append(item)
+            seen.add(item)
+    return deduped
+
+
+def _records_from_payload(payload: dict) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+
+    raw_records = payload.get("records")
+    if isinstance(raw_records, list):
+        records.extend(item for item in raw_records if isinstance(item, dict))
+    elif isinstance(raw_records, dict):
+        nested = raw_records.get("items") or raw_records.get("records") or raw_records.get("data")
+        if isinstance(nested, list):
+            records.extend(item for item in nested if isinstance(item, dict))
+
+    raw_data = payload.get("data")
+    if isinstance(raw_data, list):
+        records.extend(item for item in raw_data if isinstance(item, dict))
+
+    csv_text = payload.get("csv_text")
+    if isinstance(csv_text, str) and csv_text.strip():
+        reader = csv.DictReader(io.StringIO(csv_text))
+        records.extend(dict(row) for row in reader)
+
+    return records
+
+
+def _build_scival_triples(records: list[dict[str, Any]], db_id: str, mapping: dict | None = None) -> list[dict[str, Any]]:
+    mapping = mapping or {}
+    id_fields = _coerce_mapping_keys(mapping, "id_fields", ["paper_id", "id", "eid", "doi", "scopus_id"])
+    title_fields = _coerce_mapping_keys(
+        mapping,
+        "title_fields",
+        ["title", "paper_title", "judul", "judul_kegiatan", "document_title"],
+    )
+    author_fields = _coerce_mapping_keys(mapping, "author_fields", ["authors", "author_names", "penulis", "nama_dosen"])
+    keyword_fields = _coerce_mapping_keys(
+        mapping,
+        "keyword_fields",
+        ["keywords", "author_keywords", "indexed_keywords", "kata_kunci"],
+    )
+    institution_fields = _coerce_mapping_keys(
+        mapping,
+        "institution_fields",
+        ["institution", "institusi", "affiliation", "affiliations"],
+    )
+    year_fields = _coerce_mapping_keys(mapping, "year_fields", ["year", "publication_year", "tahun"])
+
+    triples: list[dict[str, Any]] = []
+
+    for record in records:
+        title = _pick_first_value(record, title_fields)
+        paper_id = _pick_first_value(record, id_fields) or title
+        if not paper_id:
+            continue
+
+        year = _pick_first_value(record, year_fields)
+        paper_node: dict[str, Any] = {
+            "name": title or paper_id,
+            "db_id": db_id,
+            "entity_type": "Paper",
+            "paper_id": paper_id,
+        }
+        if title:
+            paper_node["title"] = title
+        if year:
+            paper_node["year"] = year
+
+        kb_node = {
+            "name": f"KB::{db_id}",
+            "db_id": db_id,
+            "entity_type": "KnowledgeBase",
+        }
+        triples.append(
+            {
+                "h": paper_node,
+                "r": {"type": "BELONGS_TO", "db_id": db_id},
+                "t": kb_node,
+            }
+        )
+
+        author_values: list[str] = []
+        for field in author_fields:
+            author_values.extend(_to_string_list(record.get(field)))
+        for author in author_values:
+            triples.append(
+                {
+                    "h": paper_node,
+                    "r": {"type": "AUTHORED_BY", "db_id": db_id},
+                    "t": {"name": author, "db_id": db_id, "entity_type": "Author"},
+                }
+            )
+
+        keyword_values: list[str] = []
+        for field in keyword_fields:
+            keyword_values.extend(_to_string_list(record.get(field)))
+        for keyword in keyword_values:
+            triples.append(
+                {
+                    "h": paper_node,
+                    "r": {"type": "HAS_KEYWORD", "db_id": db_id},
+                    "t": {"name": keyword, "db_id": db_id, "entity_type": "Keyword"},
+                }
+            )
+
+        institution_values: list[str] = []
+        for field in institution_fields:
+            institution_values.extend(_to_string_list(record.get(field)))
+        for institution in institution_values:
+            triples.append(
+                {
+                    "h": paper_node,
+                    "r": {"type": "AFFILIATED_WITH", "db_id": db_id},
+                    "t": {"name": institution, "db_id": db_id, "entity_type": "Institution"},
+                }
+            )
+
+    return triples
 
 
 def _validate_dify_additional_params(additional_params: dict | None) -> dict:
@@ -165,7 +341,7 @@ async def create_database(
         )
 
         # 需要重新加载所有智能体，因为工具刷新了
-        from ta_backend_core.assistant.agents.buildin import agent_manager
+        from yunesa.agents.buildin import agent_manager
 
         await agent_manager.reload_all()
 
@@ -258,7 +434,7 @@ async def delete_database(db_id: str, current_user: User = Depends(get_admin_use
         await knowledge_base.delete_database(db_id)
 
         # 需要重新加载所有智能体，因为工具刷新了
-        from ta_backend_core.assistant.agents.buildin import agent_manager
+        from yunesa.agents.buildin import agent_manager
 
         await agent_manager.reload_all()
 
@@ -328,7 +504,7 @@ async def add_documents(
 
     # 安全检查：验证文件路径
     if content_type == "file":
-        from ta_backend_core.assistant.knowledge.utils.kb_utils import validate_file_path
+        from yunesa.knowledge.utils.kb_utils import validate_file_path
 
         for item in items:
             try:
@@ -618,6 +794,89 @@ async def index_documents(
         return {"message": f"提交失败: {e}", "status": "failed"}
 
 
+@knowledge.post("/databases/{db_id}/scival-ingest")
+async def scival_ingest(
+    db_id: str,
+    payload: dict = Body(...),
+    current_user: User = Depends(get_admin_user),
+):
+    """Ingest structured JSON/CSV academic data directly into graph storage."""
+    await _ensure_database_not_dify(db_id, "结构化数据入库")
+
+    if not hasattr(graph_base, "txt_add_vector_entity"):
+        raise HTTPException(status_code=503, detail="Graph ingestion is unavailable while LITE_MODE is enabled")
+
+    mapping = payload.get("mapping") if isinstance(payload.get("mapping"), dict) else {}
+    embed_model_name = payload.get("embed_model_name")
+    batch_size = payload.get("batch_size")
+
+    if batch_size is not None:
+        try:
+            batch_size = int(batch_size)
+        except (TypeError, ValueError) as e:
+            raise HTTPException(status_code=400, detail=f"batch_size must be an integer: {e}")
+
+    triples = payload.get("triples")
+    if triples is not None and not isinstance(triples, list):
+        raise HTTPException(status_code=400, detail="triples must be a list")
+
+    if not triples:
+        records = _records_from_payload(payload)
+        if not records:
+            raise HTTPException(
+                status_code=400,
+                detail="No input data found. Provide one of: triples, records/data, or csv_text.",
+            )
+        triples = _build_scival_triples(records, db_id=db_id, mapping=mapping)
+
+    if not triples:
+        raise HTTPException(status_code=400, detail="No graph triples could be generated from the provided payload")
+
+    async def run_structured_ingest(context: TaskContext):
+        await context.set_message("Structured dataset ingestion started")
+        await context.set_progress(10.0, "Preparing graph ingestion")
+
+        if hasattr(graph_base, "start") and not graph_base.is_running():
+            graph_base.start()
+
+        await context.set_progress(40.0, f"Writing {len(triples)} triples to Neo4j")
+        await graph_base.txt_add_vector_entity(
+            triples,
+            kgdb_name="neo4j",
+            embed_model_name=embed_model_name,
+            batch_size=batch_size,
+        )
+
+        summary = {
+            "db_id": db_id,
+            "triples": len(triples),
+            "status": "success",
+        }
+        await context.set_result(summary)
+        await context.set_progress(100.0, "Structured dataset ingestion completed")
+        return summary
+
+    database = await knowledge_base.get_database_info(db_id)
+    task = await tasker.enqueue(
+        name=f"Structured ingest ({database['name']})",
+        task_type="knowledge_scival_ingest",
+        payload={
+            "db_id": db_id,
+            "triples": len(triples),
+            "embed_model_name": embed_model_name,
+            "operator": current_user.user_id,
+        },
+        coroutine=run_structured_ingest,
+    )
+
+    return {
+        "message": "Structured ingest task has been queued",
+        "status": "queued",
+        "task_id": task.id,
+        "triples": len(triples),
+    }
+
+
 @knowledge.get("/databases/{db_id}/documents/{doc_id}")
 async def get_document_info(db_id: str, doc_id: str, current_user: User = Depends(get_admin_user)):
     """获取文档详细信息（包含基本信息和内容信息）"""
@@ -781,7 +1040,7 @@ async def download_document(db_id: str, doc_id: str, request: Request, current_u
         media_type = media_types.get(ext.lower(), "application/octet-stream")
 
         # 根据path类型选择下载方式
-        from ta_backend_core.assistant.knowledge.utils.kb_utils import is_minio_url
+        from yunesa.knowledge.utils.kb_utils import is_minio_url
 
         if is_minio_url(file_path):
             # MinIO下载
@@ -789,7 +1048,7 @@ async def download_document(db_id: str, doc_id: str, request: Request, current_u
 
             try:
                 # 使用通用函数解析MinIO URL
-                from ta_backend_core.assistant.knowledge.utils.kb_utils import parse_minio_url
+                from yunesa.knowledge.utils.kb_utils import parse_minio_url
 
                 bucket_name, object_name = parse_minio_url(file_path)
 
@@ -1038,7 +1297,7 @@ async def generate_sample_questions(
         if (db_info.get("kb_type") or "").lower() == "dify":
             raise HTTPException(status_code=400, detail="Dify 知识库不支持基于文件生成测试问题")
 
-        from ta_backend_core.assistant.models import select_model
+        from yunesa.models import select_model
 
         # 从请求体中提取参数
         count = request_body.get("count", 10)
@@ -1112,7 +1371,7 @@ async def generate_sample_questions(
 
             # 保存问题到知识库元数据
             try:
-                from ta_backend_core.assistant.repositories.knowledge_base_repository import KnowledgeBaseRepository
+                from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
                 await KnowledgeBaseRepository().update(db_id, {"sample_questions": questions})
                 logger.info(f"成功保存 {len(questions)} 个问题到知识库 {db_id}")
@@ -1150,7 +1409,7 @@ async def get_sample_questions(db_id: str, current_user: User = Depends(get_admi
         问题列表
     """
     try:
-        from ta_backend_core.assistant.repositories.knowledge_base_repository import KnowledgeBaseRepository
+        from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         kb_repo = KnowledgeBaseRepository()
         kb = await kb_repo.get_by_id(db_id)
@@ -1225,9 +1484,9 @@ async def fetch_url(
     """
     logger.debug(f"Fetching URL: {url} for db_id: {db_id}")
     try:
-        from ta_backend_core.assistant.knowledge.utils.url_fetcher import fetch_url_content
-        from ta_backend_core.assistant.storage.minio import get_minio_client
-        from ta_backend_core.assistant.knowledge.utils import calculate_content_hash
+        from yunesa.knowledge.utils.url_fetcher import fetch_url_content
+        from yunesa.storage.minio import get_minio_client
+        from yunesa.knowledge.utils import calculate_content_hash
 
         # 1. 下载内容 (包含白名单校验、大小限制、类型检查)
         content_bytes, final_url = await fetch_url_content(url)
@@ -1471,7 +1730,7 @@ async def generate_description(
 
     根据知识库名称和现有描述，使用 LLM 生成适合作为智能体工具描述的内容。
     """
-    from ta_backend_core.assistant.models import select_model
+    from yunesa.models import select_model
 
     logger.debug(f"Generating description for knowledge base: {name}, files: {len(file_list)}")
 

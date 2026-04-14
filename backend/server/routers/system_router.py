@@ -5,11 +5,11 @@ from pathlib import Path
 import yaml
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from ta_backend_core.assistant.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 from server.utils.auth_middleware import get_admin_user
-from ta_backend_core.assistant import config, get_version
-from ta_backend_core.assistant.models.chat import test_chat_model_status, test_all_chat_models_status
-from ta_backend_core.assistant.utils.logging_config import logger
+from yunesa import config, get_version
+from yunesa.models.chat import test_chat_model_status, test_all_chat_models_status
+from yunesa.utils.logging_config import logger
 
 system = APIRouter(prefix="/system", tags=["system"])
 
@@ -59,7 +59,7 @@ async def get_system_logs(levels: str | None = None, current_user: User = Depend
         levels: 可选的日志级别过滤，多个级别用逗号分隔，如 "INFO,ERROR,DEBUG,WARNING"
     """
     try:
-        from ta_backend_core.assistant.utils.logging_config import LOG_FILE
+        from yunesa.utils.logging_config import LOG_FILE
 
         # 解析日志级别过滤条件
         level_filter = None
@@ -102,13 +102,13 @@ async def load_info_config():
     """加载信息配置文件"""
     try:
         # 配置文件路径
-        brand_file_path = os.environ.get("TA_BRAND_FILE_PATH", "package/ta_backend_core/assistant/config/static/info.local.yaml")
+        brand_file_path = os.environ.get("TA_BRAND_FILE_PATH", "package/yunesa/config/static/info.local.yaml")
         config_path = Path(brand_file_path)
 
         # 检查文件是否存在
         if not config_path.exists():
             logger.debug(f"The config file {config_path} does not exist, using default config")
-            config_path = Path("package/ta_backend_core/assistant/config/static/info.template.yaml")
+            config_path = Path("package/yunesa/config/static/info.template.yaml")
 
         # 异步读取配置文件
         async with aiofiles.open(config_path, encoding="utf-8") as file:
@@ -155,7 +155,7 @@ async def check_ocr_services_health(current_user: User = Depends(get_admin_user)
     检查所有OCR服务的健康状态
     返回各个OCR服务的可用性信息
     """
-    from ta_backend_core.assistant.plugins.parser.factory import DocumentProcessorFactory
+    from yunesa.plugins.parser.factory import DocumentProcessorFactory
 
     try:
         # 使用统一的健康检查接口

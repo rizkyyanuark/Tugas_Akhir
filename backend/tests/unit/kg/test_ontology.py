@@ -1,5 +1,5 @@
 import pytest
-from ta_backend_core.knowledge.kg.ontology import validate_ontology, map_ner_label, get_valid_semantic_labels
+from knowledge.kg.ontology import validate_ontology, map_ner_label, get_valid_semantic_labels
 
 
 def test_ontology_validation():

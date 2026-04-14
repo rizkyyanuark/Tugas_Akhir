@@ -1,41 +1,40 @@
-# ==============================================================================
-# 🚀 TUGAS AKHIR - GITIGNORE
-# ==============================================================================
+# ------------------------------------------------------------------------------
+# TUGAS AKHIR - .gitignore
+# ------------------------------------------------------------------------------
 
-# === Python ===
+# Python
 __pycache__/
 *.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-.github/
-data/
+*.egg-info/
+.venv/
+.ruff_cache
+.pytest_cache/
 
-# === Temporary debug/output files ===
+# Node / Vue
+node_modules/
+dist/
+*/package-lock.json
+
+# Build artifacts
+build/
+wheels/
+
+# Temporary debug/output text files
 *.txt
 !requirements*.txt
 !program_studi_config.txt
 
-# === Standalone JSON configs (already in infra/) ===
+# Standalone generated configs
 airflow.json
 grafana.json
 opik.json
 
-# === Reference notebooks (cloned repos) ===
-notebooks/build-graph/
-
-# === Pipeline cell outputs ===
-notebooks/scraping/pipeline_cells/
-
-# === Reference PDF ===
-AcademicRAG Knowledge Graph Enhanced Retrieval Augmented Generation for Academic Resource Discovery.pdf
-# === Virtual environments ===
-.venv/
-.ipynb_checkpoints/
-
-# === Environment & Secrets ===
+# Environment and secrets
 *.env
+.env.prod
+.env.test
+.env.local
+.env.*.local
 !*.env.template
 !*.env.sample
 !*.env.example
@@ -43,9 +42,46 @@ credentials_new.json
 credentials.json
 AWS/
 key_base64_for_gitlab.txt
+*.secret*
+*.nogit*
+*_private
+*.private
+# Keep *.local* reserved for local config files.
+*.local.py
+*.local.js
+*.local.yaml
+*.local/*
 
-# === ML Models & Large Binary Files ===
-data/models/
+# Caches, temporary files, and logs
+.cache
+cache
+tmp
+*.tmp
+*.temp
+.backup
+*.bak
+*.log
+*.log.*
+log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases and lock files
+*.db
+*.lock
+!uv.lock
+
+# Data and pipeline-generated artifacts
+data/
+src/data/
+saves/
+saves_dev/
+graphrag/
+/models/
+
+# ML model and large binary artifacts
 *.gguf
 *.bin
 *.safetensors
@@ -53,46 +89,49 @@ data/models/
 *.pt
 *.pth
 
-# === Data Files (reproducible via pipeline) ===
-data/raw/
-data/processed/
-data/scopus_temp/
-data/golden_dataset/
-notebooks/scraping/file_tabulars/
+# Notebook outputs and generated scraping artifacts
+.ipynb_checkpoints/
+notebooks/scraping/pipeline_cells/
 notebooks/scraping/rps_pdfs/
 notebooks/scraping/tldr_results.json
-notebooks/scraping/dosen_data.csv
-data/*.py
-data/*.txt
-data/*.md
 
-# === Submodule / Cloned Repos ===
+# External/cloned repositories
 academicRAG/
 strwythura/
 temp_yuxi_clone/
 
-# === Personal Files ===
+# Documents and personal files
 cv*.pdf
-
-# === PDF Documents (large) ===
+AcademicRAG Knowledge Graph Enhanced Retrieval Augmented Generation for Academic Resource Discovery.pdf
 Knowledge_Graph_Generation_and_Application_for_Unstructured_Data_Using_Data_Processing_Pipeline.pdf
+jurnal tugas akhir
 
-# === Docker volumes data ===
-logs/
+# Docker volumes and runtime data
+docker/volumes/
 neo4j_data/
 neo4j_logs/
 neo4j_plugins/
 neo4j_import/
 
-# === IDE & Editor ===
+# IDE and editor settings
 .vscode/
 .idea/
 .claude/
+.vibe/
+.qoder/
+.cursor/
+.trae/
+.codex/
+.cursorrules
 *.swp
 *.swo
 *~
 
-# === OS generated files ===
+# Test and browser automation artifacts
+.playwright/
+.playwright-cli/
+
+# OS-generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -102,15 +141,7 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# === Jupyter notebook outputs ===
-*.ipynb_checkpoints
-
-# === Temporary files ===
-*.tmp
-*.temp
-*.log
-
-# === LaTeX compilation artifacts ===
+# LaTeX compilation artifacts
 *.aux
 *.out
 *.toc
@@ -166,84 +197,10 @@ desktop.ini
 *.pyg
 _minted*/
 
-# === LaTeX package test files ===
+# LaTeX package test files
 __package_test__.*
 .latex_deps_cache/
 
-# === Jurnal ===
-jurnal tugas akhir
-
-*.egg-info
-
-### python gitignore
-__pycache__/
-*.pyc
-.venv
-.ruff_cache
-
-### Vue gitignore
-dist
-node_modules
-
-### common gitignore
-.DS_Store
-.env
-.env.prod
-.env.test
-.env.local
-.env.*.local
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-*.log
-log
-logs
-*.log.*
-*.db
-*.lock
-!uv.lock
-tmp
-cache
-.cache
-.backup
-*.bak
-*._*
-
-# test
-.pytest_cache
-.playwright
-.playwright-cli
-
-
-### IDE
-.vscode
-.idea
-.vibe
-.qoder
-.claude
-.cursor
-.trae
-.codex
-.pytest_cache
-
-*.secret*
-*.nogit*
-*_private
-*.private
-# *.local* 保留用于本地配置文件
-*.local.py
-*.local.js
-*.local.yaml
-*.local/*
-
-src/data
-*/package-lock.json
-web/package-lock.json
-saves
-saves_dev
-graphrag
-docker/volumes
-docs/vibe
-.cursorrules
-
-/models
+# Misc project paths
+docs/vibe/
+.github/

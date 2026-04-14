@@ -1,5 +1,5 @@
 import pytest
-from ta_backend_core.knowledge.kg.utils import md5, normalize_text, safe_str, truncate
+from knowledge.kg.utils import md5, normalize_text, safe_str, truncate
 
 
 def test_md5():

@@ -1,27 +1,27 @@
 <template>
-  <a-card title="知识库使用情况" :loading="loading" class="dashboard-card">
-    <!-- 知识库概览 -->
+  <a-card title="Knowledge Base Usage" :loading="loading" class="dashboard-card">
+    <!-- Knowledge base overview -->
     <div class="stats-overview">
       <a-row :gutter="16">
         <a-col :span="8">
           <a-statistic
-            title="知识库总数"
+            title="Total Knowledge Bases"
             :value="knowledgeStats?.total_databases || 0"
             :value-style="{ color: 'var(--color-info-500)' }"
-            suffix="个"
+            suffix="items"
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
-            title="文件总数"
+            title="Total Files"
             :value="knowledgeStats?.total_files || 0"
             :value-style="{ color: 'var(--color-success-500)' }"
-            suffix="个"
+            suffix="items"
           />
         </a-col>
         <a-col :span="8">
           <a-statistic
-            title="存储容量"
+            title="Storage Size"
             :value="formattedStorageSize"
             :value-style="{ color: 'var(--color-warning-500)' }"
           />
@@ -31,13 +31,13 @@
 
     <a-divider />
 
-    <!-- 图表区域：拆分为两行 -->
+    <!-- Chart area: split into two rows -->
     <a-row :gutter="24" style="margin-bottom: 16px">
-      <!-- 数据库类型分布 -->
+      <!-- Database type distribution -->
       <a-col :span="24">
         <div class="chart-container">
           <div class="chart-header">
-            <h4>类型分布</h4>
+            <h4>Type Distribution</h4>
             <div class="legend" v-if="dbTypeLegend.length">
               <div class="legend-item" v-for="(item, idx) in dbTypeLegend" :key="item.name">
                 <span
@@ -54,10 +54,10 @@
     </a-row>
 
     <a-row :gutter="24">
-      <!-- 文件类型分布 -->
+      <!-- File type distribution -->
       <a-col :span="24">
         <div class="chart-container">
-          <h4>文件类型分布</h4>
+          <h4>File Type Distribution</h4>
           <div ref="fileTypeChartRef" class="chart donut-chart-container">
             <div class="carousel-info" v-if="fileTypeData.length > 0">
               <div
@@ -78,28 +78,28 @@
       </a-col>
     </a-row>
 
-    <!-- 详细统计信息 -->
+    <!-- Detailed statistics -->
     <!-- <a-divider />
     <a-row :gutter="16">
       <a-col :span="8">
         <a-statistic
-          title="平均每库文件数"
+          title="Average files per database"
           :value="averageFilesPerDatabase"
-          suffix="个"
+          suffix="items"
           :precision="1"
         />
       </a-col>
       <a-col :span="8">
         <a-statistic
-          title="平均每文件节点数"
+          title="Average nodes per file"
           :value="averageNodesPerFile"
-          suffix="个"
+          suffix="items"
           :precision="1"
         />
       </a-col>
       <a-col :span="8">
         <a-statistic
-          title="平均节点大小"
+          title="Average node size"
           :value="averageNodeSize"
           suffix="KB"
           :precision="2"
@@ -115,7 +115,7 @@ import * as echarts from 'echarts'
 import { getColorByIndex, getColorPalette } from '@/utils/chartColors'
 import { useThemeStore } from '@/stores/theme'
 
-// CSS 变量解析工具函数
+// CSS variable parsing helper
 function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
@@ -147,7 +147,7 @@ const totalFiles = ref(0)
 const currentCarouselIndex = ref(0)
 let carouselTimer = null
 
-// 计算属性
+// Computed properties
 const formattedStorageSize = computed(() => {
   const size = props.knowledgeStats?.total_storage_size || 0
   if (size < 1024) return `${size} B`
@@ -165,19 +165,19 @@ const formattedStorageSize = computed(() => {
 // const averageNodeSize = computed(() => {
 //   const nodes = props.knowledgeStats?.total_nodes || 0
 //   const size = props.knowledgeStats?.total_storage_size || 0
-//   return nodes > 0 ? size / (nodes * 1024) : 0 // 转换为KB
+//   return nodes > 0 ? size / (nodes * 1024) : 0 // Convert to KB
 // })
 
-// 使用统一的调色盘
+// Use unified color palette
 const getLegendColorByIndex = (index) => getColorByIndex(index)
 
-// 初始化数据库类型分布图 - 横向分段条
+// Initialize database type distribution chart - horizontal segmented bar
 const dbTypeLegend = ref([])
 const initDbTypeChart = () => {
   if (!dbTypeChartRef.value || !props.knowledgeStats?.databases_by_type) return
 
   const entries = Object.entries(props.knowledgeStats.databases_by_type)
-    .map(([type, count]) => ({ name: type || '未知', value: count }))
+    .map(([type, count]) => ({ name: type || 'Unknown', value: count }))
     .filter((item) => item.value > 0)
 
   // update legend data
@@ -239,11 +239,11 @@ const initDbTypeChart = () => {
   dbTypeChart.setOption(option, true)
 }
 
-// 初始化文件类型分布图
+// Initialize file type distribution chart
 const initFileTypeChart = () => {
   if (!fileTypeChartRef.value) return
 
-  // 如果已存在图表实例，先销毁
+  // Destroy existing chart instance first if it exists.
   if (fileTypeChart) {
     fileTypeChart.dispose()
     fileTypeChart = null
@@ -251,22 +251,22 @@ const initFileTypeChart = () => {
 
   fileTypeChart = echarts.init(fileTypeChartRef.value)
 
-  // 检查是否有文件类型数据 - 兼容旧字段名和新字段名
+  // Check whether file-type data exists - compatible with old and new field names.
   const fileTypesData =
     props.knowledgeStats?.files_by_type || props.knowledgeStats?.file_type_distribution || {}
   if (Object.keys(fileTypesData).length > 0) {
     const data = Object.entries(fileTypesData)
       .map(([type, count]) => ({
-        name: type || '未知',
+        name: type || 'Unknown',
         value: count
       }))
-      .sort((a, b) => b.value - a.value) // 按数量排序
+      .sort((a, b) => b.value - a.value) // Sort by count
 
-    // 设置轮播数据
+    // Set carousel data
     fileTypeData.value = data
     totalFiles.value = data.reduce((sum, item) => sum + item.value, 0)
 
-    // 启动轮播
+    // Start carousel
     startCarousel()
 
     const option = {
@@ -294,18 +294,18 @@ const initFileTypeChart = () => {
       },
       series: [
         {
-          name: '文件类型',
+          name: 'File Types',
           type: 'pie',
-          radius: ['45%', '75%'], // 调整为更大的环，为中心信息留出更多空间
-          center: ['50%', '45%'], // 向上移动，为中心和底部图例留出空间
-          avoidLabelOverlap: true, // 避免标签重叠
+          radius: ['45%', '75%'], // Use a larger ring to leave more center space
+          center: ['50%', '45%'], // Move upward to make room for center + bottom legend
+          avoidLabelOverlap: true, // Avoid label overlap
           itemStyle: {
             borderRadius: 8,
             borderColor: getCSSVariable('--gray-0'),
             borderWidth: 2
           },
           label: {
-            show: false // 隐藏饼图上的标签，使用图例代替
+            show: false // Hide labels on pie chart, use legend instead
           },
           emphasis: {
             itemStyle: {
@@ -315,7 +315,7 @@ const initFileTypeChart = () => {
             }
           },
           labelLine: {
-            show: false // 隐藏标签线
+            show: false // Hide label lines
           },
           data: data,
           color: getColorPalette()
@@ -325,12 +325,12 @@ const initFileTypeChart = () => {
 
     fileTypeChart.setOption(option)
   } else {
-    // 清空轮播数据
+    // Clear carousel data
     fileTypeData.value = []
     totalFiles.value = 0
     stopCarousel()
 
-    // 如果没有文件类型数据，显示一个占位图表
+    // If no file-type data exists, show a placeholder chart.
     const option = {
       tooltip: {
         trigger: 'item',
@@ -344,7 +344,7 @@ const initFileTypeChart = () => {
       },
       series: [
         {
-          name: '文件类型',
+          name: 'File Types',
           type: 'pie',
           radius: ['45%', '75%'],
           center: ['50%', '45%'],
@@ -367,7 +367,7 @@ const initFileTypeChart = () => {
           labelLine: {
             show: false
           },
-          data: [{ name: '暂无数据', value: 1 }],
+          data: [{ name: 'No Data', value: 1 }],
           color: [getCSSVariable('--color-info-500')]
         }
       ]
@@ -377,15 +377,15 @@ const initFileTypeChart = () => {
   }
 }
 
-// 轮播功能
+// Carousel behavior
 const startCarousel = () => {
-  stopCarousel() // 先停止之前的轮播
+  stopCarousel() // Stop previous carousel first.
   if (fileTypeData.value.length <= 1) return
 
-  // 重置索引
+  // Reset index
   currentCarouselIndex.value = 0
 
-  // 启动新的轮播，每3秒切换一次
+  // Start new carousel and switch every 3 seconds.
   carouselTimer = setInterval(() => {
     currentCarouselIndex.value = (currentCarouselIndex.value + 1) % fileTypeData.value.length
   }, 3000)
@@ -398,7 +398,7 @@ const stopCarousel = () => {
   }
 }
 
-// 更新图表
+// Update charts
 const updateCharts = () => {
   nextTick(() => {
     initDbTypeChart()
@@ -406,7 +406,7 @@ const updateCharts = () => {
   })
 }
 
-// 监听数据变化
+// Watch data changes
 watch(
   () => props.knowledgeStats,
   () => {
@@ -415,7 +415,7 @@ watch(
   { deep: true }
 )
 
-// 窗口大小变化时重新调整图表
+// Resize charts on window size changes
 const handleResize = () => {
   if (dbTypeChart) dbTypeChart.resize()
   if (fileTypeChart) fileTypeChart.resize()
@@ -426,7 +426,7 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
 })
 
-// 监听主题变化，重新渲染图表
+// Watch theme changes and re-render charts
 watch(
   () => themeStore.isDark,
   () => {
@@ -438,10 +438,10 @@ watch(
   }
 )
 
-// 组件卸载时清理
+// Cleanup on component unmount
 const cleanup = () => {
   window.removeEventListener('resize', handleResize)
-  stopCarousel() // 停止轮播
+  stopCarousel() // Stop carousel
   if (dbTypeChart) {
     dbTypeChart.dispose()
     dbTypeChart = null
@@ -452,14 +452,14 @@ const cleanup = () => {
   }
 }
 
-// 导出清理函数供父组件调用
+// Expose cleanup function for parent component
 defineExpose({
   cleanup
 })
 </script>
 
 <style scoped lang="less">
-// KnowledgeStatsComponent 特有的样式
+// KnowledgeStatsComponent specific styles
 .chart-container {
   .chart-header {
     display: flex;
@@ -501,7 +501,7 @@ defineExpose({
     height: 80px;
   }
 
-  // 环形图容器样式
+  // Donut chart container styles
   .donut-chart-container {
     position: relative;
 

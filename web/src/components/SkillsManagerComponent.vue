@@ -4,7 +4,7 @@
       <div class="loading-bar"></div>
     </div>
     <div class="layout-wrapper" :class="{ 'content-loading': loading }">
-      <!-- 左侧：技能列表 -->
+      <!-- Left: skill list -->
       <div class="sidebar-list">
         <div class="sidebar-toolbar">
           <div class="search-box">
@@ -34,7 +34,9 @@
           >
             <a-empty :image="false" description="No matching skills" />
           </div>
-          <div v-if="filteredInstalledSkills.length" class="list-section-title">Installed Skills</div>
+          <div v-if="filteredInstalledSkills.length" class="list-section-title">
+            Installed Skills
+          </div>
           <template
             v-for="(skill, index) in filteredInstalledSkills"
             :key="`installed-${skill.slug}`"
@@ -120,7 +122,7 @@
         </div>
       </div>
 
-      <!-- 右侧：详情面板 -->
+      <!-- Right: detail panel -->
       <div class="main-panel">
         <div v-if="!currentSkill" class="unselected-state">
           <div class="hint-box">
@@ -343,7 +345,7 @@
       </div>
     </div>
 
-    <!-- 弹窗 -->
+    <!-- Modal -->
     <a-modal
       v-model:open="createModalVisible"
       :title="createForm.isDir ? 'New Directory' : 'New File'"
@@ -595,7 +597,7 @@ const isMarkdownFile = computed(() => {
   return selectedPath.value.toLowerCase().endsWith('.md')
 })
 
-// 切换到非markdown文件时重置为编辑模式
+// Reset to edit mode when switching to a non-markdown file
 watch(selectedPath, (newPath) => {
   if (newPath && !newPath.toLowerCase().endsWith('.md')) {
     viewMode.value = 'edit'
@@ -864,7 +866,8 @@ const handleUpdateBuiltin = async (record) => {
       loading.value = false
       Modal.confirm({
         title: 'Confirm Overwrite Update?',
-        content: 'Modifications detected in this skill. Updating will overwrite your changes. Continue?',
+        content:
+          'Modifications detected in this skill. Updating will overwrite your changes. Continue?',
         okText: 'Continue Update',
         cancelText: 'Cancel',
         onOk: async () => {
@@ -876,7 +879,9 @@ const handleUpdateBuiltin = async (record) => {
             if (latest) await selectSkill(latest)
             message.success('Updated successfully')
           } catch (forceError) {
-            message.error(forceError?.response?.data?.detail || forceError.message || 'Update failed')
+            message.error(
+              forceError?.response?.data?.detail || forceError.message || 'Update failed'
+            )
           } finally {
             loading.value = false
           }
@@ -1045,7 +1050,8 @@ const handleInstallRemoteSkill = async () => {
       } catch (error) {
         remoteInstallResults.failed.push({
           skill,
-          error: error?.response?.data?.detail || error.message || 'Remote Skill installation failed'
+          error:
+            error?.response?.data?.detail || error.message || 'Remote Skill installation failed'
         })
         remoteInstallProgress.failed += 1
       } finally {
@@ -1071,7 +1077,9 @@ const handleInstallRemoteSkill = async () => {
       `Remote Skills installation complete. Success: ${remoteInstallResults.success.length}, Failed: ${remoteInstallResults.failed.length}`
     )
   } catch (error) {
-    message.error(error?.response?.data?.detail || error.message || 'Remote Skill installation failed')
+    message.error(
+      error?.response?.data?.detail || error.message || 'Remote Skill installation failed'
+    )
   } finally {
     remoteInstallProgress.currentSkill = ''
     installingRemoteSkill.value = false
@@ -1216,7 +1224,7 @@ defineExpose({
   }
 }
 
-/* 文件 tree */
+/* File tree */
 .tree-container {
   width: 240px;
   border-right: 1px solid @border-color;
@@ -1262,7 +1270,7 @@ defineExpose({
   }
 }
 
-/* 编辑器 */
+/* Editor */
 .editor-container {
   flex: 1;
   display: flex;
@@ -1356,7 +1364,7 @@ defineExpose({
   }
 }
 
-/* 依赖配置 */
+/* Dependency settings */
 .config-view {
   padding: 16px;
   flex: 1;

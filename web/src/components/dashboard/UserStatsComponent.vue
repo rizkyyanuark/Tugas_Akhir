@@ -1,26 +1,26 @@
 <template>
-  <a-card title="用户活跃度分析" :loading="loading" class="dashboard-card">
-    <!-- 紧凑型用户统计概览 -->
+  <a-card title="User Activity Analysis" :loading="loading" class="dashboard-card">
+    <!-- Compact user statistics overview -->
     <div class="compact-stats-grid">
       <div class="mini-stat-card">
         <div class="mini-stat-value">{{ userStats?.total_users || 0 }}</div>
-        <div class="mini-stat-label">总用户</div>
+        <div class="mini-stat-label">Total Users</div>
       </div>
       <div class="mini-stat-card">
         <div class="mini-stat-value">{{ userStats?.active_users_24h || 0 }}</div>
-        <div class="mini-stat-label">24h活跃</div>
+        <div class="mini-stat-label">24h Active</div>
       </div>
       <div class="mini-stat-card">
         <div class="mini-stat-value">{{ userStats?.active_users_30d || 0 }}</div>
-        <div class="mini-stat-label">30天活跃</div>
+        <div class="mini-stat-label">30d Active</div>
       </div>
     </div>
 
-    <!-- 图表区域 - 更紧凑 -->
+    <!-- Chart area - more compact -->
     <div class="compact-chart-container">
       <div class="chart-header">
-        <span class="chart-title">活跃度趋势</span>
-        <span class="chart-subtitle">最近7天</span>
+        <span class="chart-title">Activity Trend</span>
+        <span class="chart-subtitle">Last 7 Days</span>
       </div>
       <div ref="activityChartRef" class="compact-chart"></div>
     </div>
@@ -32,7 +32,7 @@ import { ref, onMounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { useThemeStore } from '@/stores/theme'
 
-// CSS 变量解析工具函数
+// CSS variable parsing helper
 function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
@@ -56,11 +56,11 @@ const props = defineProps({
 const activityChartRef = ref(null)
 let activityChart = null
 
-// 初始化活跃度趋势图
+// Initialize activity trend chart
 const initActivityChart = () => {
   if (!activityChartRef.value || !props.userStats?.daily_active_users) return
 
-  // 如果已存在图表实例，先销毁
+  // Destroy existing chart instance first if it exists.
   if (activityChart) {
     activityChart.dispose()
     activityChart = null
@@ -115,7 +115,7 @@ const initActivityChart = () => {
     },
     series: [
       {
-        name: '活跃用户数',
+        name: 'Active Users',
         type: 'line',
         data: props.userStats.daily_active_users.map((item) => item.active_users),
         smooth: true,
@@ -163,14 +163,14 @@ const initActivityChart = () => {
   activityChart.setOption(option)
 }
 
-// 更新图表
+// Update chart
 const updateCharts = () => {
   nextTick(() => {
     initActivityChart()
   })
 }
 
-// 监听数据变化
+// Watch data changes
 watch(
   () => props.userStats,
   () => {
@@ -179,7 +179,7 @@ watch(
   { deep: true }
 )
 
-// 窗口大小变化时重新调整图表
+// Resize chart when window size changes
 const handleResize = () => {
   if (activityChart) activityChart.resize()
 }
@@ -189,7 +189,7 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
 })
 
-// 监听主题变化，重新渲染图表
+// Watch theme changes and re-render chart
 watch(
   () => themeStore.isDark,
   () => {
@@ -201,7 +201,7 @@ watch(
   }
 )
 
-// 组件卸载时清理
+// Cleanup on component unmount
 const cleanup = () => {
   window.removeEventListener('resize', handleResize)
   if (activityChart) {
@@ -210,14 +210,14 @@ const cleanup = () => {
   }
 }
 
-// 导出清理函数供父组件调用
+// Expose cleanup function for parent component
 defineExpose({
   cleanup
 })
 </script>
 
 <style scoped lang="less">
-/* 紧凑型统计网格 */
+/* Compact stats grid */
 .compact-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -254,7 +254,7 @@ defineExpose({
   }
 }
 
-/* 紧凑型图表容器 */
+/* Compact chart container */
 .compact-chart-container {
   background-color: var(--gray-0);
   border: 1px solid var(--gray-100);
@@ -297,7 +297,7 @@ defineExpose({
   }
 }
 
-/* 响应式设计 */
+/* Responsive design */
 @media (max-width: 1200px) {
   .compact-stats-grid {
     grid-template-columns: repeat(2, 1fr);

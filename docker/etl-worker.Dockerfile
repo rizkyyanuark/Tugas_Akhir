@@ -46,4 +46,4 @@ COPY configs /app/configs
 
 RUN mkdir -p /app/data/raw /app/data/processed
 
-ENTRYPOINT ["python", "-m", "ta_backend_core.knowledge.etl.run_worker"]
+ENTRYPOINT ["python", "-m", "knowledge.etl.run_worker"]

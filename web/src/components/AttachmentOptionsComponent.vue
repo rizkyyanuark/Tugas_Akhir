@@ -10,20 +10,20 @@
           @change="handleFileChange"
           style="display: none"
         />
-        <a-tooltip title="支持任意文件格式 ≤ 5 MB" placement="right">
+        <a-tooltip title="Supports any file format <= 5 MB" placement="right">
           <div class="option-content">
             <FileText :size="14" class="option-icon" />
-            <span class="option-text">添加附件</span>
+            <span class="option-text">Add Attachment</span>
           </div>
         </a-tooltip>
       </label>
     </div>
 
     <div class="option-item" @click="handleImageUpload">
-      <a-tooltip title="支持 jpg/jpeg/png/gif， ≤ 5 MB" placement="right">
+      <a-tooltip title="Supports jpg/jpeg/png/gif <= 5 MB" placement="right">
         <div class="option-content">
           <Image :size="14" class="option-icon" />
-          <span class="option-text">上传图片</span>
+          <span class="option-text">Upload Image</span>
         </div>
       </a-tooltip>
     </div>
@@ -47,21 +47,21 @@ const props = defineProps({
 
 const emit = defineEmits(['upload', 'upload-image', 'upload-image-success'])
 
-// 处理文件选择变化
+// Handle file input change.
 const handleFileChange = (event) => {
   const files = event.target.files
   if (files && files.length > 0) {
     emit('upload', Array.from(files))
   }
-  // 清空文件输入，允许重复选择同一文件
+  // Reset input so the same file can be selected again.
   event.target.value = ''
 }
 
-// 处理图片上传
+// Handle image upload.
 const handleImageUpload = () => {
   if (props.disabled) return
 
-  // 创建隐藏的文件输入
+  // Create a hidden file input.
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
@@ -82,33 +82,33 @@ const handleImageUpload = () => {
   emit('upload-image')
 }
 
-// 处理图片上传逻辑
+// Process image upload.
 const processImageUpload = async (file) => {
   try {
-    // 验证文件大小（10MB）
+    // Validate file size (10MB).
     if (file.size > 10 * 1024 * 1024) {
-      message.error('图片文件过大，请选择小于10MB的图片')
+      message.error('Image file is too large. Please choose an image smaller than 10MB.')
       return
     }
 
-    // 验证文件类型
+    // Validate file type.
     if (!file.type.startsWith('image/')) {
-      message.error('请选择有效的图片文件')
+      message.error('Please select a valid image file.')
       return
     }
 
-    message.loading({ content: '正在处理图片...', key: 'image-upload' })
+    message.loading({ content: 'Processing image...', key: 'image-upload' })
 
     const result = await multimodalApi.uploadImage(file)
 
     if (result.success) {
       message.success({
-        content: '图片处理成功',
+        content: 'Image processed successfully.',
         key: 'image-upload',
         duration: 2
       })
 
-      // 发出上传成功事件，包含处理后的图片数据
+      // Emit success event with processed image payload.
       emit('upload-image', {
         success: true,
         imageContent: result.image_content,
@@ -121,18 +121,18 @@ const processImageUpload = async (file) => {
         originalName: file.name
       })
 
-      // 发出上传成功通知事件，用于关闭选项面板
+      // Notify parent to close attachment options.
       emit('upload-image-success')
     } else {
       message.error({
-        content: `图片处理失败: ${result.error}`,
+        content: `Image processing failed: ${result.error}`,
         key: 'image-upload'
       })
     }
   } catch (error) {
-    console.error('图片上传失败:', error)
+    console.error('Image upload failed:', error)
     message.error({
-      content: `图片上传失败: ${error.message || '未知错误'}`,
+      content: `Image upload failed: ${error.message || 'Unknown error'}`,
       key: 'image-upload'
     })
   }

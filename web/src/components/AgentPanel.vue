@@ -1,16 +1,16 @@
 <template>
   <div ref="panelRef" class="agent-panel" :class="{ resizing: isResizing }">
-    <!-- 拖拽手柄 -->
+    <!-- Resize handle -->
     <div class="resize-handle" @pointerdown="startResize"></div>
     <div class="panel-header" :class="{ 'is-compact': isCompactHeader }">
       <div class="panel-header-main">
         <div class="panel-title">
-          <span><strong>文件系统</strong></span>
+          <span><strong>File System</strong></span>
         </div>
         <div class="window-actions">
           <button
             class="header-action-btn"
-            :title="isExpanded ? '恢复高度' : '向上展开'"
+            :title="isExpanded ? 'Restore Height' : 'Expand Upward'"
             @click="emit('toggle-expand')"
           >
             <component :is="isExpanded ? ChevronsDownUp : ChevronsUpDown" :size="15" />
@@ -23,7 +23,7 @@
       <div class="file-toolbar">
         <button
           class="header-action-btn"
-          title="新建文件夹"
+          title="Create Folder"
           :disabled="!threadId"
           @click="openCreateDirectoryModal"
         >
@@ -31,13 +31,13 @@
         </button>
         <button
           class="header-action-btn"
-          title="上传文件"
+          title="Upload File"
           :disabled="!threadId"
           @click="openUploadFilePicker"
         >
           <Upload :size="15" />
         </button>
-        <button class="header-action-btn" title="刷新" @click="emitRefresh">
+        <button class="header-action-btn" title="Refresh" @click="emitRefresh">
           <RefreshCw :size="15" />
         </button>
       </div>
@@ -50,13 +50,13 @@
     />
     <div class="tab-content">
       <div class="files-display">
-        <div v-if="!threadId" class="empty">创建对话后可查看工作区</div>
-        <div v-else-if="loadingFiles" class="empty">正在加载文件系统...</div>
+        <div v-if="!threadId" class="empty">Create a chat to view the workspace</div>
+        <div v-else-if="loadingFiles" class="empty">Loading file system...</div>
         <div v-else-if="filesystemError" class="empty error-state">
           <div>{{ filesystemError }}</div>
-          <a-button type="link" size="small" @click="refreshFileSystem">重试</a-button>
+          <a-button type="link" size="small" @click="refreshFileSystem">Retry</a-button>
         </div>
-        <div v-else-if="!fileTreeData.length" class="empty">当前工作区为空</div>
+        <div v-else-if="!fileTreeData.length" class="empty">The current workspace is empty</div>
         <div v-else class="files-workspace" :class="{ 'is-inline-preview': useInlinePreview }">
           <div class="file-tree-pane">
             <div class="file-tree-container">
@@ -79,7 +79,7 @@
                       v-if="node.isLeaf"
                       class="tree-action-btn tree-download-btn"
                       @click.stop="downloadFile(node.fileData)"
-                      title="下载文件"
+                      title="Download File"
                     >
                       <Download :size="14" />
                     </button>
@@ -87,7 +87,7 @@
                       class="tree-action-btn tree-delete-btn"
                       :disabled="deletingPaths.has(node.key)"
                       @click.stop="confirmDeleteNode(node)"
-                      :title="node.isLeaf ? '删除文件' : '删除文件夹'"
+                      :title="node.isLeaf ? 'Delete File' : 'Delete Folder'"
                     >
                       <Trash2 :size="14" />
                     </button>
@@ -112,9 +112,9 @@
               @close="closePreview"
             />
             <div v-else class="inline-preview-empty">
-              <div class="inline-preview-empty-title">选择文件后可在此预览</div>
+              <div class="inline-preview-empty-title">Select a file to preview it here</div>
               <div class="inline-preview-empty-desc">
-                当前宽度足够，预览会直接显示在工作台右侧。
+                The current width is sufficient, so preview is shown on the right side.
               </div>
             </div>
           </div>
@@ -145,17 +145,17 @@
 
     <a-modal
       v-model:open="createDirectoryModalVisible"
-      title="新建文件夹"
-      okText="创建"
-      cancelText="取消"
+      title="Create Folder"
+      okText="Create"
+      cancelText="Cancel"
       :confirmLoading="creatingDirectory"
       @ok="createDirectory"
       @cancel="closeCreateDirectoryModal"
     >
-      <p>文件夹将创建在{{ resolveWorkspaceTargetDirectory() }}下</p>
+      <p>The folder will be created under {{ resolveWorkspaceTargetDirectory() }}</p>
       <a-input
         v-model:value="newDirectoryName"
-        placeholder="输入文件夹名"
+        placeholder="Enter folder name"
         :maxlength="120"
         @pressEnter="createDirectory"
       />
@@ -358,7 +358,7 @@ const resolveWorkspaceTargetDirectory = () => {
   const selectedKey = selectedKeys.value[0]
   if (!selectedKey) return WORKSPACE_PATH
 
-  // 根据当前选中节点推断写入目录，避免把文件上传到只读命名空间。
+  // Infer writable directory from the selected node to avoid read-only paths.
   const selectedNode = findTreeNode(dynamicTreeData.value, selectedKey)
   const targetPath = selectedNode?.isLeaf
     ? parentPathOf(selectedKey)
@@ -383,7 +383,7 @@ const parseDownloadFilename = (contentDisposition) => {
     try {
       return decodeURIComponent(utf8Match[1])
     } catch (error) {
-      console.warn('解析 UTF-8 文件名失败:', error)
+      console.warn('Failed to parse UTF-8 filename:', error)
     }
   }
 
@@ -399,7 +399,7 @@ const getFileName = (fileItem) => {
   if (fileItem?.path) {
     return String(fileItem.path).split('/').pop() || String(fileItem.path)
   }
-  return '未知文件'
+  return 'Unknown file'
 }
 
 const refreshFileSystem = async () => {
@@ -428,7 +428,7 @@ const refreshFileSystem = async () => {
     }
   } catch (error) {
     dynamicTreeData.value = []
-    filesystemError.value = error?.message || '加载文件系统失败'
+    filesystemError.value = error?.message || 'Failed to load file system'
     console.error('Failed to load root files', error)
   } finally {
     loadingFiles.value = false
@@ -541,7 +541,7 @@ const onFileSelect = async (nextSelectedKeys, { node }) => {
       content: `Error loading file: ${error?.message || 'unknown error'}`,
       supported: false,
       previewType: 'unsupported',
-      message: error?.message || '文件预览失败',
+      message: error?.message || 'File preview failed',
       previewUrl: ''
     }
   }
@@ -568,11 +568,13 @@ const confirmDeleteNode = (node) => {
   const fileName = node?.title || getFileName(node?.fileData)
   const isDirectory = !node?.isLeaf
   Modal.confirm({
-    title: isDirectory ? `确认删除文件夹「${fileName}」？` : `确认删除文件「${fileName}」？`,
-    content: isDirectory ? '将删除该文件夹及其所有内容，删除后不可恢复。' : '删除后不可恢复。',
-    okText: '删除',
+    title: isDirectory ? `Delete folder "${fileName}"?` : `Delete file "${fileName}"?`,
+    content: isDirectory
+      ? 'This will delete the folder and all its contents. This action cannot be undone.'
+      : 'This action cannot be undone.',
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     onOk: async () => {
       const nextDeletingPaths = new Set(deletingPaths.value)
       nextDeletingPaths.add(node.key)
@@ -582,10 +584,12 @@ const confirmDeleteNode = (node) => {
         await deleteViewerFile(props.threadId, node.key, props.agentId, props.agentConfigId)
         dynamicTreeData.value = removeTreeNode(dynamicTreeData.value, node.key)
         pruneTreeStateAfterDelete(node.key)
-        message.success(isDirectory ? '文件夹删除成功' : '文件删除成功')
+        message.success(isDirectory ? 'Folder deleted successfully' : 'File deleted successfully')
       } catch (error) {
-        console.error(isDirectory ? '删除文件夹失败:' : '删除文件失败:', error)
-        message.error(error?.message || (isDirectory ? '删除文件夹失败' : '删除文件失败'))
+        console.error(isDirectory ? 'Failed to delete folder:' : 'Failed to delete file:', error)
+        message.error(
+          error?.message || (isDirectory ? 'Failed to delete folder' : 'Failed to delete file')
+        )
       } finally {
         const latestDeletingPaths = new Set(deletingPaths.value)
         latestDeletingPaths.delete(node.key)
@@ -599,7 +603,7 @@ const openCreateDirectoryModal = () => {
   if (!props.threadId) return
   const targetDirectory = resolveWorkspaceTargetDirectory()
   if (!targetDirectory) {
-    message.warning('只能在 workspace 目录下新建文件夹')
+    message.warning('You can only create folders inside the workspace directory')
     return
   }
   newDirectoryName.value = ''
@@ -617,11 +621,11 @@ const createDirectory = async () => {
   const directoryName = newDirectoryName.value.trim()
 
   if (!targetDirectory) {
-    message.warning('只能在 workspace 目录下新建文件夹')
+    message.warning('You can only create folders inside the workspace directory')
     return
   }
   if (!directoryName) {
-    message.warning('请输入文件夹名')
+    message.warning('Please enter a folder name')
     return
   }
 
@@ -636,10 +640,10 @@ const createDirectory = async () => {
     )
     await refreshDirectoryChildren(targetDirectory)
     closeCreateDirectoryModal()
-    message.success('文件夹创建成功')
+    message.success('Folder created successfully')
   } catch (error) {
-    console.error('创建文件夹失败:', error)
-    message.error(error?.message || '创建文件夹失败')
+    console.error('Failed to create folder:', error)
+    message.error(error?.message || 'Failed to create folder')
   } finally {
     creatingDirectory.value = false
   }
@@ -649,7 +653,7 @@ const openUploadFilePicker = () => {
   if (!props.threadId || uploadingFile.value) return
   const targetDirectory = resolveWorkspaceTargetDirectory()
   if (!targetDirectory) {
-    message.warning('只能上传到 workspace 目录')
+    message.warning('You can only upload files to the workspace directory')
     return
   }
   if (uploadInputRef.value) {
@@ -664,7 +668,7 @@ const handleUploadInputChange = async (event) => {
 
   const targetDirectory = resolveWorkspaceTargetDirectory()
   if (!targetDirectory) {
-    message.warning('只能上传到 workspace 目录')
+    message.warning('You can only upload files to the workspace directory')
     event.target.value = ''
     return
   }
@@ -679,10 +683,10 @@ const handleUploadInputChange = async (event) => {
       props.agentConfigId
     )
     await refreshDirectoryChildren(targetDirectory)
-    message.success('文件上传成功')
+    message.success('File uploaded successfully')
   } catch (error) {
-    console.error('上传文件失败:', error)
-    message.error(error?.message || '上传文件失败')
+    console.error('File upload failed:', error)
+    message.error(error?.message || 'File upload failed')
   } finally {
     uploadingFile.value = false
     event.target.value = ''
@@ -712,7 +716,7 @@ const downloadFile = async (fileItem) => {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
   } catch (error) {
-    console.error('下载文件失败:', error)
+    console.error('File download failed:', error)
   }
 }
 
@@ -1001,7 +1005,7 @@ watch(useInlinePreview, (isInline) => {
   padding: 8px;
   min-height: 0; /* Important for flex child scroll */
 
-  /* 自定义滚动条 */
+  /* Custom scrollbar */
   &::-webkit-scrollbar {
     width: 6px;
   }
@@ -1314,7 +1318,7 @@ watch(useInlinePreview, (isInline) => {
   color: var(--error-600, #dc2626);
 }
 
-/* 附件列表专用样式 */
+/* Attachment tree specific styles */
 .attachment-tree :deep(.ant-tree-node-content-wrapper) {
   border: 1px solid var(--gray-200);
   border-radius: 6px;

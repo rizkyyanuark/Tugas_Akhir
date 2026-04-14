@@ -95,7 +95,7 @@ import * as echarts from 'echarts'
 import { getColorByIndex } from '@/utils/chartColors'
 import { useThemeStore } from '@/stores/theme'
 
-// CSS 变量解析工具函数
+// CSS variable parsing helper
 function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
@@ -119,34 +119,34 @@ const props = defineProps({
 const conversationToolChartRef = ref(null)
 let conversationToolChart = null
 
-// 表格列定义
+// Table column definitions
 const performerColumns = [
   {
-    title: '排名',
+    title: 'Rank',
     key: 'rank',
     width: '80px',
     align: 'center'
   },
   {
-    title: '智能体ID',
+    title: 'Agent ID',
     key: 'agent_id',
     width: '30%'
   },
   {
-    title: '满意度',
+    title: 'Satisfaction',
     key: 'satisfaction_rate',
     width: '25%',
     align: 'center'
   },
   {
-    title: '对话数',
+    title: 'Conversations',
     key: 'conversation_count',
     width: '20%',
     align: 'center'
   }
 ]
 
-// 计算属性
+// Computed properties
 const totalConversations = computed(() => {
   const conversationCounts = props.agentStats?.agent_conversation_counts || []
   return conversationCounts.reduce((sum, item) => sum + item.conversation_count, 0)
@@ -161,7 +161,7 @@ const topPerformers = computed(() => {
   return props.agentStats?.top_performing_agents || []
 })
 
-// 初始化对话数和工具调用数合并图表
+// Initialize merged chart for conversation counts and tool calls
 const initConversationToolChart = () => {
   if (
     !conversationToolChartRef.value ||
@@ -170,7 +170,7 @@ const initConversationToolChart = () => {
   )
     return
 
-  // 如果已存在图表实例，先销毁
+  // Destroy existing chart instance first if it exists.
   if (conversationToolChart) {
     conversationToolChart.dispose()
     conversationToolChart = null
@@ -181,10 +181,10 @@ const initConversationToolChart = () => {
   const conversationData = props.agentStats.agent_conversation_counts || []
   const toolData = props.agentStats.agent_tool_usage || []
 
-  // 获取所有智能体ID并按对话数+工具调用数排序，取前3个
+  // Collect all agent IDs, rank by conversation + tool-call totals, and keep top 3.
   const allAgentStats = {}
 
-  // 统计每个智能体的总数据量（对话数 + 工具调用数）
+  // Aggregate total volume per agent (conversation count + tool-call count).
   conversationData.forEach((item) => {
     if (!allAgentStats[item.agent_id]) {
       allAgentStats[item.agent_id] = { conversation: 0, tool: 0, total: 0 }
@@ -201,7 +201,7 @@ const initConversationToolChart = () => {
     allAgentStats[item.agent_id].total += item.tool_usage_count
   })
 
-  // 按总数据量降序排序，取前3个
+  // Sort by total volume in descending order and keep top 3.
   const topAgentIds = Object.entries(allAgentStats)
     .sort(([, a], [, b]) => b.total - a.total)
     .slice(0, 3)
@@ -218,7 +218,7 @@ const initConversationToolChart = () => {
       }
     },
     legend: {
-      data: ['对话数', '工具调用数'],
+      data: ['Conversations', 'Tool Calls'],
       right: '0%',
       top: '0%',
       orient: 'horizontal',
@@ -265,7 +265,7 @@ const initConversationToolChart = () => {
     },
     series: [
       {
-        name: '对话数',
+        name: 'Conversations',
         type: 'bar',
         data: topAgentIds.map((agentId) => {
           const item = conversationData.find((d) => d.agent_id === agentId)
@@ -284,7 +284,7 @@ const initConversationToolChart = () => {
         }
       },
       {
-        name: '工具调用数',
+        name: 'Tool Calls',
         type: 'bar',
         data: topAgentIds.map((agentId) => {
           const item = toolData.find((d) => d.agent_id === agentId)
@@ -308,14 +308,14 @@ const initConversationToolChart = () => {
   conversationToolChart.setOption(option)
 }
 
-// 更新图表
+// Update chart
 const updateCharts = () => {
   nextTick(() => {
     initConversationToolChart()
   })
 }
 
-// 监听数据变化
+// Watch data changes
 watch(
   () => props.agentStats,
   () => {
@@ -324,7 +324,7 @@ watch(
   { deep: true }
 )
 
-// 窗口大小变化时重新调整图表
+// Resize chart when window size changes
 const handleResize = () => {
   if (conversationToolChart) conversationToolChart.resize()
 }
@@ -334,7 +334,7 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
 })
 
-// 监听主题变化，重新渲染图表
+// Watch theme changes and re-render chart
 watch(
   () => themeStore.isDark,
   () => {
@@ -346,7 +346,7 @@ watch(
   }
 )
 
-// 组件卸载时清理
+// Cleanup on component unmount
 const cleanup = () => {
   window.removeEventListener('resize', handleResize)
   if (conversationToolChart) {
@@ -355,21 +355,21 @@ const cleanup = () => {
   }
 }
 
-// 导出清理函数供父组件调用
+// Expose cleanup function for parent component
 defineExpose({
   cleanup
 })
 </script>
 
 <style scoped lang="less">
-/* 指标值样式 */
+/* Metric value styles */
 .metric-value {
   font-weight: 500;
   color: var(--gray-1000);
   font-size: 14px;
 }
 
-/* 排名显示样式 */
+/* Rank display styles */
 .rank-display {
   display: flex;
   align-items: center;
@@ -394,7 +394,7 @@ defineExpose({
   }
 }
 
-// AgentStatsComponent 特有的样式
+// AgentStatsComponent specific styles
 .top-performers,
 .metrics-comparison {
   h4 {
