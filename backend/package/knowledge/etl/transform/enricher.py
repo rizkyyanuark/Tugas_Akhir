@@ -16,28 +16,16 @@ from .cleaner import clean_abstract_text
 from ..extract.semantic_scholar import extract_s2_metadata
 from ..extract.openalex import extract_openalex_metadata
 
-# Top-level imports for performance
-import sys
 import os
-from pathlib import Path
-
-# Add repo root to sys.path so 'notebooks' can be imported
-if os.path.exists("/app/notebooks"):
-    repo_root = "/app"
-else:
-    repo_root = str(Path(__file__).resolve().parent.parent.parent.parent.parent.parent)
-
-if repo_root not in sys.path:
-    sys.path.append(repo_root)
 
 try:
-    from notebooks.scraping.scraping_modules.keyword_scraper import (
-        search_scholar_proxy_query, 
+    from knowledge.etl.scraping.keyword_scraper import (
+        search_scholar_proxy_query,
         scrape_publisher_page,
-        search_scholar_proxy_query_html
+        search_scholar_proxy_query_html,
     )
 except ImportError:
-    # Fallback if not in proper environment
+    # Fallback if scraping dependencies are missing
     search_scholar_proxy_query = None
     scrape_publisher_page = None
     search_scholar_proxy_query_html = None
@@ -46,12 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 # ─── Groq API Client ──────────────────────────────────────────
-
-import os
-from ..config import BASE_DIR
-from dotenv import load_dotenv
-
-load_dotenv(BASE_DIR / ".env")
 
 _groq_client = None
 

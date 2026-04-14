@@ -40,3 +40,11 @@ key_base64_for_gitlab.txt
 
 # Gemini workspace
 .gemini
+
+# Secrets & Environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json

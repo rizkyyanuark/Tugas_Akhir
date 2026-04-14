@@ -1,24 +1,24 @@
 <template>
   <a-modal
     :open="props.modelValue"
-    title="检索配置"
+    title="Retrieval Settings"
     width="800px"
     :confirm-loading="loading"
     @ok="handleSave"
     @cancel="handleCancel"
-    ok-text="保存"
-    cancel-text="取消"
+    ok-text="Save"
+    cancel-text="Cancel"
   >
     <div class="search-config-modal">
       <div v-if="loading" class="config-loading">
         <a-spin size="large" />
-        <p>加载配置参数中...</p>
+        <p>Loading configuration parameters...</p>
       </div>
 
       <div v-else-if="error" class="config-error">
-        <a-result status="error" title="配置加载失败" :sub-title="error">
+        <a-result status="error" title="Failed to Load Configuration" :sub-title="error">
           <template #extra>
-            <a-button type="primary" @click="loadQueryParams">重新加载</a-button>
+            <a-button type="primary" @click="loadQueryParams">Reload</a-button>
           </template>
         </a-result>
       </div>
@@ -50,8 +50,8 @@
                   @update:value="(value) => updateMeta(param.key, value)"
                   style="width: 100%"
                 >
-                  <a-select-option value="true">启用</a-select-option>
-                  <a-select-option value="false">关闭</a-select-option>
+                  <a-select-option value="true">Enabled</a-select-option>
+                  <a-select-option value="false">Disabled</a-select-option>
                 </a-select>
                 <a-input-number
                   v-else-if="param.type === 'number'"
@@ -90,19 +90,19 @@ const emit = defineEmits(['update:modelValue', 'save'])
 
 const store = useDatabaseStore()
 
-// 响应式数据
+// Reactive state
 const loading = ref(false)
 const error = ref('')
 const queryParams = ref([])
 const meta = reactive({})
 
-// 计算属性：处理布尔类型的双向绑定
+// Computed: handle two-way binding for boolean fields
 const computedMeta = computed(() => {
   const result = {}
   for (const key in meta) {
     const param = queryParams.value.find((p) => p.key === key)
     if (param?.type === 'boolean') {
-      // 对于布尔类型，返回字符串给 select，但保持内部为布尔值
+      // For booleans, return string values for select while keeping internal value boolean
       result[key] = meta[key].toString()
     } else {
       result[key] = meta[key]
@@ -111,24 +111,24 @@ const computedMeta = computed(() => {
   return result
 })
 
-// 处理值更新
+// Handle value updates
 const updateMeta = (key, value) => {
   const param = queryParams.value.find((p) => p.key === key)
   if (param?.type === 'boolean') {
-    // 将字符串转换回布尔值
+    // Convert string back to boolean
     meta[key] = value === 'true'
   } else {
     meta[key] = value
   }
 }
 
-// 加载查询参数
+// Load query parameters
 const loadQueryParams = async () => {
   try {
     loading.value = true
     error.value = ''
 
-    // 如果没有 databaseId，不执行请求
+    // Skip request if databaseId is missing
     if (!props.databaseId) {
       queryParams.value = []
       loading.value = false
@@ -138,13 +138,13 @@ const loadQueryParams = async () => {
     const response = await queryApi.getKnowledgeBaseQueryParams(props.databaseId)
     queryParams.value = response.params?.options || []
 
-    // 过滤掉 include_distances 配置项，默认为 True 且不可修改
+    // Remove include_distances from UI; it defaults to true and is not editable
     queryParams.value = queryParams.value.filter((param) => param.key !== 'include_distances')
 
-    // 初始化 meta 对象
+    // Initialize meta object
     queryParams.value.forEach((param) => {
       if (param.default !== undefined) {
-        // 对于布尔类型，确保使用布尔值而不是字符串
+        // Ensure boolean defaults are stored as booleans
         if (param.type === 'boolean') {
           meta[param.key] = Boolean(param.default)
         } else {
@@ -153,20 +153,20 @@ const loadQueryParams = async () => {
       }
     })
 
-    // 确保设置 include_distances 为 true（即使不显示也要设置）
+    // Ensure include_distances is always true even if not shown
     meta['include_distances'] = true
 
-    // 加载保存的配置
+    // Load persisted configuration
     loadSavedConfig()
   } catch (err) {
     console.error('Failed to load query params:', err)
-    error.value = err.message || '加载查询参数失败'
+    error.value = err.message || 'Failed to load query parameters'
   } finally {
     loading.value = false
   }
 }
 
-// 加载保存的配置
+// Load saved configuration
 const loadSavedConfig = () => {
   if (!props.databaseId) return
 
@@ -175,10 +175,10 @@ const loadSavedConfig = () => {
     try {
       const savedConfig = JSON.parse(saved)
 
-      // 处理布尔类型转换
+      // Convert persisted boolean string values back to booleans
       queryParams.value.forEach((param) => {
         if (param.type === 'boolean' && savedConfig[param.key] !== undefined) {
-          // 将字符串值转换为布尔值
+          // Convert string value to boolean
           if (typeof savedConfig[param.key] === 'string') {
             savedConfig[param.key] = savedConfig[param.key] === 'true'
           }
@@ -190,64 +190,64 @@ const loadSavedConfig = () => {
       console.warn('Failed to parse saved config:', e)
     }
   }
-  // 确保 include_distances 始终为 true，覆盖任何保存的值
+  // Ensure include_distances stays true and overrides saved values
   meta['include_distances'] = true
 }
 
-// 重置为默认值
+// Reset to defaults
 const resetToDefaults = () => {
   queryParams.value.forEach((param) => {
     if (param.default !== undefined) {
       meta[param.key] = param.default
     }
   })
-  // 确保 include_distances 始终为 true
+  // Ensure include_distances always remains true
   meta['include_distances'] = true
-  message.success('已重置为默认配置')
+  message.success('Reset to default configuration')
 }
 
 defineExpose({ resetToDefaults })
 
-// 保存配置
+// Save configuration
 const handleSave = async () => {
-  // 如果没有 databaseId，不执行保存
+  // Skip save if databaseId is missing
   if (!props.databaseId) {
-    message.error('无法保存配置：缺少知识库ID')
+    message.error('Cannot save configuration: missing knowledge base ID')
     return
   }
 
-  // 确保 include_distances 始终为 true
+  // Ensure include_distances always remains true
   meta['include_distances'] = true
 
-  // 先保存到知识库元数据
+  // Persist to knowledge base metadata first
   try {
     const response = await queryApi.updateKnowledgeBaseQueryParams(props.databaseId, meta)
     if (response.message === 'success') {
-      // 服务器保存成功后，再保存到 localStorage（兼容性）
+      // Save to localStorage after server success for compatibility
       localStorage.setItem(`search-config-${props.databaseId}`, JSON.stringify(meta))
-      message.success('配置已保存')
+      message.success('Configuration saved')
 
-      // 更新 store 中的配置
+      // Update config in store
       Object.assign(store.meta, meta)
 
-      // 触发保存事件
+      // Emit save event
       emit('save', { ...meta })
       emit('update:modelValue', false)
     } else {
-      throw new Error(response.message || '保存失败')
+      throw new Error(response.message || 'Save failed')
     }
   } catch (error) {
-    console.error('保存配置到知识库失败:', error)
-    message.error('保存配置失败：' + error.message)
+    console.error('Failed to save configuration to knowledge base:', error)
+    message.error('Failed to save configuration: ' + error.message)
   }
 }
 
-// 处理取消
+// Handle cancel
 const handleCancel = () => {
   emit('update:modelValue', false)
 }
 
-// 监听弹窗显示状态，显示时加载数据
+// Load data when modal opens
 watch(
   () => props.modelValue,
   (newVal) => {
@@ -285,7 +285,7 @@ watch(
   margin-top: 4px;
 }
 
-// 表单样式优化
+// Form style adjustments
 :deep(.ant-form-item) {
   margin-bottom: 16px;
 }

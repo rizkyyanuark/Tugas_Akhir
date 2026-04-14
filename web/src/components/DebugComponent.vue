@@ -1,7 +1,7 @@
 <template>
   <a-modal
     v-model:open="showModal"
-    title="调试面板（请在生产环境中谨慎使用）"
+    title="Debug Panel (Use with caution in production)"
     width="90%"
     :footer="null"
     :maskClosable="true"
@@ -21,32 +21,36 @@
           <a-button @click="clearLogs" :icon="h(ClearOutlined)" class="icon-only"> </a-button>
           <a-button @click="printSystemConfig">
             <template #icon><SettingOutlined /></template>
-            系统配置
+            System Config
           </a-button>
           <a-button @click="printUserInfo">
             <template #icon><UserOutlined /></template>
-            用户信息
+            User Info
           </a-button>
           <a-button @click="printDatabaseInfo">
             <template #icon><DatabaseOutlined /></template>
-            知识库信息
+            Knowledge Base Info
           </a-button>
           <a-button @click="printAgentConfig">
             <template #icon><RobotOutlined /></template>
-            智能体配置
+            Agent Config
           </a-button>
           <a-button @click="toggleDebugMode" :type="infoStore.debugMode ? 'primary' : 'default'">
             <template #icon><BugOutlined /></template>
-            Debug 模式: {{ infoStore.debugMode ? '开启' : '关闭' }}
+            Debug Mode: {{ infoStore.debugMode ? 'On' : 'Off' }}
           </a-button>
           <a-button @click="toggleFullscreen">
             <template #icon>
               <FullscreenOutlined v-if="!state.isFullscreen" />
               <FullscreenExitOutlined v-else />
             </template>
-            {{ state.isFullscreen ? '退出全屏' : '全屏' }}
+            {{ state.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
           </a-button>
-          <a-tooltip :title="state.autoRefresh ? '点击停止自动刷新' : '点击开启自动刷新'">
+          <a-tooltip
+            :title="
+              state.autoRefresh ? 'Click to stop auto-refresh' : 'Click to start auto-refresh'
+            "
+          >
             <a-button
               :type="state.autoRefresh ? 'primary' : 'default'"
               :class="{ 'auto-refresh-button': state.autoRefresh }"
@@ -55,19 +59,19 @@
               <template #icon>
                 <SyncOutlined :spin="state.autoRefresh" />
               </template>
-              自动刷新
+              Auto Refresh
               <span v-if="state.autoRefresh" class="refresh-interval">(5s)</span>
             </a-button>
           </a-tooltip>
           <a-button @click="openUserSwitcher">
             <template #icon><SwapOutlined /></template>
-            切换用户
+            Switch User
           </a-button>
         </div>
         <div class="filter-group">
           <a-input-search
             v-model:value="state.searchText"
-            placeholder="搜索日志..."
+            placeholder="Search logs..."
             style="width: 200px; height: 32px"
             @search="onSearch"
           />
@@ -108,13 +112,13 @@
             <span class="message">{{ log.message }}</span>
           </div>
         </div>
-        <div v-else class="empty-logs">暂无日志</div>
+        <div v-else class="empty-logs">No logs</div>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
-      <!-- 用户切换 Modal -->
+      <!-- User switcher modal -->
       <a-modal
         v-model:open="state.showUserSwitcher"
-        title="切换用户"
+        title="Switch User"
         :confirmLoading="state.switchingUser"
         :footer="null"
         :bodyStyle="{ padding: '12px' }"
@@ -126,7 +130,7 @@
             </a-list-item>
           </template>
           <template #empty>
-            <a-empty description="暂无用户" />
+            <a-empty description="No users" />
           </template>
         </a-list>
       </a-modal>
@@ -150,10 +154,10 @@ import {
 
 const showModal = defineModel('show')
 
-// 监听 showModal 变化，当打开时获取日志
+// Watch showModal changes and fetch logs when opened
 watch(showModal, (isOpen) => {
   if (isOpen) {
-    // 延迟一下确保 DOM 渲染完成
+    // Delay slightly to ensure DOM is rendered
     setTimeout(fetchLogs, 100)
   }
 })
@@ -198,7 +202,7 @@ const agentStore = useAgentStore()
 const infoStore = useInfoStore()
 const config = configStore.config
 
-// 定义日志级别
+// Define log levels
 const logLevels = [
   { value: 'INFO', label: 'INFO' },
   { value: 'ERROR', label: 'ERROR' },
@@ -208,7 +212,7 @@ const logLevels = [
 
 const logViewer = ref(null)
 
-// 状态管理
+// State management
 const state = reactive({
   fetching: false,
   autoRefresh: false,
@@ -225,9 +229,9 @@ const error = ref('')
 const logContainer = ref(null)
 let autoRefreshInterval = null
 
-// 解析日志行
+// Parse a log line
 const parseLogLine = (line) => {
-  // 支持两种时间戳格式：带毫秒和不带毫秒
+  // Support two timestamp formats: with milliseconds and without
   const match = line.match(
     /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:,\d{3})?)\s*-\s*(\w+)\s*-\s*([^-]+?)\s*-\s*(.+)$/
   )
@@ -243,13 +247,13 @@ const parseLogLine = (line) => {
   return null
 }
 
-// 格式化时间戳
+// Format timestamp
 const formatTimestamp = (timestamp) => {
   try {
-    // 处理带毫秒的格式：将 "2025-03-10 08:26:37,269" 转换为 "2025-03-10 08:26:37.269"
+    // Convert format with milliseconds: "2025-03-10 08:26:37,269" -> "2025-03-10 08:26:37.269"
     let normalizedTimestamp = timestamp.replace(',', '.')
 
-    // 如果没有毫秒，添加 .000
+    // Add .000 when milliseconds are missing
     if (!/\.\d{3}$/.test(normalizedTimestamp)) {
       normalizedTimestamp += '.000'
     }
@@ -257,12 +261,12 @@ const formatTimestamp = (timestamp) => {
     const date = dayjs(normalizedTimestamp)
     return date.isValid() ? date.format('HH:mm:ss.SSS') : timestamp
   } catch (err) {
-    console.error('时间戳格式化错误:', err)
+    console.error('Timestamp formatting error:', err)
     return timestamp
   }
 }
 
-// 处理日志显示
+// Process logs for display
 const processedLogs = computed(() => {
   return state.rawLogs
     .map(parseLogLine)
@@ -273,14 +277,14 @@ const processedLogs = computed(() => {
     })
 })
 
-// 获取日志数据
+// Fetch logs
 const fetchLogs = async () => {
   if (!checkSuperAdminPermission()) return
 
   state.fetching = true
   try {
     error.value = ''
-    // 将选中的日志级别转换为逗号分隔的字符串传递给后端
+    // Convert selected log levels to a comma-separated string for backend
     const levelsParam = state.selectedLevels.join(',')
     const logData = await configApi.getLogs(levelsParam)
     state.rawLogs = logData.log.split('\n').filter((line) => line.trim())
@@ -293,24 +297,24 @@ const fetchLogs = async () => {
     }, 100)
     scrollToBottom()
   } catch (err) {
-    error.value = `错误: ${err.message}`
+    error.value = `Error: ${err.message}`
   } finally {
     state.fetching = false
   }
 }
 
-// 清空日志
+// Clear logs
 const clearLogs = () => {
   if (!checkSuperAdminPermission()) return
   state.rawLogs = []
 }
 
-// 搜索功能
+// Search feature
 const onSearch = () => {
-  // 搜索会通过computed自动触发
+  // Search is handled automatically by computed state
 }
 
-// 日志级别选择相关方法
+// Log level selection helpers
 const isLogLevelSelected = (level) => {
   return state.selectedLevels.includes(level)
 }
@@ -320,7 +324,7 @@ const toggleLogLevel = (level) => {
   const index = currentLevels.indexOf(level)
 
   if (index > -1) {
-    // 如果取消选中后没有选中的级别，默认全选
+    // Prevent empty selection
     if (currentLevels.length === 1) {
       return
     }
@@ -330,11 +334,11 @@ const toggleLogLevel = (level) => {
   }
 
   state.selectedLevels = currentLevels
-  // 切换日志级别后重新获取数据
+  // Refetch logs after log level changes
   fetchLogs()
 }
 
-// 自动刷新
+// Auto refresh
 const toggleAutoRefresh = (value) => {
   if (!checkSuperAdminPermission()) return
 
@@ -350,7 +354,7 @@ const toggleAutoRefresh = (value) => {
   }
 }
 
-// 全屏切换
+// Toggle fullscreen
 const toggleFullscreen = async () => {
   if (!checkSuperAdminPermission()) return
 
@@ -373,11 +377,11 @@ const toggleFullscreen = async () => {
       }
     }
   } catch (err) {
-    console.error('全屏切换失败:', err)
+    console.error('Failed to toggle fullscreen:', err)
   }
 }
 
-// 监听全屏变化
+// Watch fullscreen changes
 const handleFullscreenChange = () => {
   state.isFullscreen = Boolean(
     document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement
@@ -408,19 +412,19 @@ onUnmounted(() => {
   document.removeEventListener('msfullscreenchange', handleFullscreenChange)
 })
 
-// 打印系统配置
+// Print system config
 const printSystemConfig = () => {
   if (!checkSuperAdminPermission()) return
-  console.log('=== 系统配置 ===')
+  console.log('=== System Config ===')
   console.log(config)
 }
 
-// 打印用户信息
+// Print user info
 const printUserInfo = () => {
   if (!checkSuperAdminPermission()) return
-  console.log('=== 用户信息 ===')
+  console.log('=== User Info ===')
   const userInfo = {
-    token: userStore.token ? '*** (已隐藏)' : null,
+    token: userStore.token ? '*** (hidden)' : null,
     userId: userStore.userId,
     username: userStore.username,
     userIdLogin: userStore.userIdLogin,
@@ -434,20 +438,20 @@ const printUserInfo = () => {
   console.log(JSON.stringify(userInfo, null, 2))
 }
 
-// 打印知识库信息
+// Print knowledge base info
 const printDatabaseInfo = async () => {
   if (!checkSuperAdminPermission()) return
 
   try {
-    console.log('=== 知识库信息 ===')
-    console.log('基本信息:', {
+    console.log('=== Knowledge Base Info ===')
+    console.log('Basic info:', {
       databaseId: databaseStore.databaseId,
       databaseName: databaseStore.database.name,
       databaseDesc: databaseStore.database.description,
       fileCount: Object.keys(databaseStore.database.files || {}).length
     })
 
-    console.log('状态信息:', {
+    console.log('State info:', {
       databaseLoading: databaseStore.state.databaseLoading,
       refrashing: databaseStore.state.refrashing,
       searchLoading: databaseStore.state.searchLoading,
@@ -456,32 +460,32 @@ const printDatabaseInfo = async () => {
       queryParamsLoading: databaseStore.state.queryParamsLoading
     })
 
-    console.log('查询参数:', {
+    console.log('Query params:', {
       queryParams: databaseStore.queryParams,
       meta: databaseStore.meta,
       selectedFileCount: databaseStore.selectedRowKeys.length
     })
   } catch (error) {
-    console.error('获取知识库信息失败:', error)
-    message.error('获取知识库信息失败: ' + error.message)
+    console.error('Failed to get knowledge base info:', error)
+    message.error('Failed to get knowledge base info: ' + error.message)
   }
 }
 
-// 切换Debug模式
+// Toggle debug mode
 const toggleDebugMode = () => {
   if (!checkSuperAdminPermission()) return
   infoStore.toggleDebugMode()
 }
 
-// 打印智能体配置
+// Print agent config
 const printAgentConfig = async () => {
   if (!checkSuperAdminPermission()) return
 
   try {
-    console.log('=== 智能体配置信息 ===')
+    console.log('=== Agent Config Info ===')
 
-    // Store状态信息
-    console.log('Store 状态:', {
+    // Store state info
+    console.log('Store state:', {
       isInitialized: agentStore.isInitialized,
       selectedAgentId: agentStore.selectedAgentId,
       defaultAgentId: agentStore.defaultAgentId,
@@ -495,81 +499,81 @@ const printAgentConfig = async () => {
       hasConfigChanges: agentStore.hasConfigChanges
     })
 
-    // 智能体列表信息
-    console.log('智能体列表:', {
+    // Agent list info
+    console.log('Agent list:', {
       count: agentStore.agentsList.length,
       agents: toRaw(agentStore.agentsList)
     })
 
-    // 当前选中智能体信息
+    // Current selected agent info
     if (agentStore.selectedAgent) {
-      console.log('当前选中智能体:', {
+      console.log('Current selected agent:', {
         agent: toRaw(agentStore.selectedAgent),
         isDefault: agentStore.isDefaultAgent,
         configurableItemsCount: Object.keys(agentStore.configurableItems).length
       })
 
-      // 当前智能体配置（仅管理员可见）
+      // Current agent config (admin only)
       if (userStore.isAdmin) {
-        console.log('当前智能体配置:', {
+        console.log('Current agent config:', {
           current: toRaw(agentStore.agentConfig),
           original: toRaw(agentStore.originalAgentConfig),
           hasChanges: agentStore.hasConfigChanges
         })
       } else {
-        console.log('智能体配置: 需要管理员权限查看详细配置')
+        console.log('Agent config: admin permission required for details')
       }
     }
 
-    // 工具信息
+    // Tool info
     const toolsList = agentStore.availableTools ? Object.values(agentStore.availableTools) : []
-    console.log('可用工具:', {
+    console.log('Available tools:', {
       count: toolsList.length,
       tools: toolsList
     })
 
-    // 配置项信息（管理员可见）
+    // Configurable items (admin only)
     if (userStore.isAdmin && agentStore.selectedAgent) {
-      console.log('可配置项:', toRaw(agentStore.configurableItems))
+      console.log('Configurable items:', toRaw(agentStore.configurableItems))
     }
   } catch (error) {
-    console.error('获取智能体配置失败:', error)
-    message.error('获取智能体配置失败: ' + error.message)
+    console.error('Failed to get agent config:', error)
+    message.error('Failed to get agent config: ' + error.message)
   }
 }
 
-// 获取用户列表
+// Fetch user list
 const fetchUsers = async () => {
   try {
     const response = await fetch('/api/auth/users', {
       headers: userStore.getAuthHeaders()
     })
     if (!response.ok) {
-      throw new Error('获取用户列表失败')
+      throw new Error('Failed to fetch user list')
     }
     state.users = await response.json()
   } catch (err) {
-    message.error(`获取用户列表失败: ${err.message}`)
+    message.error(`Failed to fetch user list: ${err.message}`)
   }
 }
 
-// 打开用户选择器
+// Open user switcher
 const openUserSwitcher = () => {
   if (!checkSuperAdminPermission()) return
   state.showUserSwitcher = true
   fetchUsers()
 }
 
-// 切换用户
+// Switch user
 const switchToUser = async (user) => {
   if (!checkSuperAdminPermission()) return
 
-  // 危险操作确认
+  // Dangerous operation confirmation
   Modal.confirm({
-    title: '⚠️ 危险操作确认',
-    content: `确定要切换为用户 "${user.username}" 吗？此操作将被记录。`,
-    okText: '确认切换',
-    cancelText: '取消',
+    title: 'Dangerous Operation Confirmation',
+    content: `Are you sure you want to switch to user "${user.username}"? This action will be logged.`,
+    okText: 'Confirm Switch',
+    cancelText: 'Cancel',
     okType: 'danger',
     onOk: async () => {
       state.switchingUser = true
@@ -580,17 +584,17 @@ const switchToUser = async (user) => {
         })
         if (!response.ok) {
           const error = await response.json()
-          throw new Error(error.detail || '切换用户失败')
+          throw new Error(error.detail || 'Failed to switch user')
         }
         const data = await response.json()
-        // 设置新 token
+        // Set new token
         localStorage.setItem('user_token', data.access_token)
-        message.success(`已切换用户: ${user.username}`)
+        message.success(`Switched user: ${user.username}`)
         state.showUserSwitcher = false
-        // 刷新页面以重新初始化应用
+        // Reload page to reinitialize application
         window.location.reload()
       } catch (err) {
-        message.error(`切换失败: ${err.message}`)
+        message.error(`Switch failed: ${err.message}`)
       } finally {
         state.switchingUser = false
       }
@@ -840,7 +844,7 @@ const switchToUser = async (user) => {
   }
 }
 
-/* 响应式适配 */
+/* Responsive adaptation */
 @media (max-width: 768px) {
   .log-level-selector {
     min-width: 280px;

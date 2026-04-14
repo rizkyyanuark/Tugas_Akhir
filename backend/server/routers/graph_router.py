@@ -1,11 +1,13 @@
+import asyncio
 import traceback
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from server.utils.auth_middleware import get_admin_user
+from server.utils.auth_middleware import get_admin_user, get_superadmin_user
 from yunesa import graph_base, knowledge_base
 from yunesa.knowledge.graphs.adapters.base import GraphAdapter
 from yunesa.knowledge.graphs.adapters.factory import GraphAdapterFactory
+from yunesa.services.task_service import TaskContext, tasker
 from yunesa.storage.postgres.models_business import User
 from yunesa.storage.minio.client import StorageError
 from yunesa.utils.logging_config import logger
@@ -287,3 +289,97 @@ async def add_neo4j_entities(
     except Exception as e:
         logger.error(f"添加实体失败: {e}, {traceback.format_exc()}")
         return {"success": False, "message": f"添加实体失败: {e}", "status": "failed"}
+
+
+# =============================================================================
+# === KG Construction Pipeline (Superadmin Only) ===
+# =============================================================================
+
+
+@graph.post("/kg/build")
+async def build_knowledge_graph(
+    data: dict = Body(default={}),
+    _current_user: User = Depends(get_superadmin_user),
+):
+    """Trigger the full KG construction pipeline as a background task.
+
+    This endpoint is restricted to superadmin users. It enqueues the
+    Knowledge Graph construction pipeline (source loading → backbone →
+    NER → entity resolution → LLM curation → DB ingestion) as a
+    background task and returns a task_id for progress tracking.
+
+    Body params (all optional):
+        test_mode (bool): Limit to 5 papers for quick iteration.  Default: False.
+        max_papers (int): Maximum papers to process.  Default: config value.
+        clear_db (bool): Clear Neo4j/Milvus before ingestion.  Default: True.
+    """
+
+    test_mode: bool = data.get("test_mode", False)
+    max_papers: int | None = data.get("max_papers")
+    clear_db: bool = data.get("clear_db", True)
+
+    async def run_kg_build(context: TaskContext):
+        """Wrapper that runs the synchronous KG pipeline in a thread."""
+        await context.set_progress(5.0, "Initializing KG construction pipeline…")
+
+        from yunesa.knowledge.kg.services.kg_pipeline import KGPipeline
+
+        pipeline = KGPipeline(
+            test_mode=test_mode,
+            max_papers=max_papers,
+            clear_db=clear_db,
+        )
+
+        mode_label = "TEST" if test_mode else "PRODUCTION"
+        await context.set_progress(
+            10.0,
+            f"Pipeline created ({mode_label} mode, max_papers={pipeline.max_papers}). "
+            "Running in background thread…",
+        )
+
+        # KGPipeline.run() is synchronous → offload to thread pool
+        summary = await asyncio.to_thread(pipeline.run)
+
+        await context.set_result(summary)
+        await context.set_progress(100.0, "KG construction completed successfully")
+        return summary
+
+    try:
+        task = await tasker.enqueue(
+            name="KG Construction Pipeline",
+            task_type="kg_build",
+            payload={
+                "test_mode": test_mode,
+                "max_papers": max_papers,
+                "clear_db": clear_db,
+            },
+            coroutine=run_kg_build,
+        )
+        return {
+            "message": "KG build task submitted. Track progress in Task Center.",
+            "status": "queued",
+            "task_id": task.id,
+        }
+    except Exception as e:
+        logger.error(f"Failed to enqueue KG build: {e}, {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue KG build: {e}")
+
+
+@graph.get("/kg/status")
+async def get_kg_build_status(
+    _current_user: User = Depends(get_superadmin_user),
+):
+    """List recent KG build tasks with their status.
+
+    Returns the latest kg_build tasks so the admin can monitor progress
+    without knowing individual task IDs.
+    """
+    try:
+        all_tasks = await tasker.list_tasks(limit=50)
+        kg_tasks = [
+            t for t in all_tasks.get("tasks", []) if t.get("type") == "kg_build"
+        ]
+        return {"success": True, "data": kg_tasks}
+    except Exception as e:
+        logger.error(f"Failed to list KG build tasks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

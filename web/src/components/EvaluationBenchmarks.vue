@@ -1,32 +1,32 @@
 <template>
   <div class="evaluation-benchmarks-container">
-    <!-- 操作栏 -->
+    <!-- Action bar -->
     <div class="benchmarks-header">
       <div class="header-left">
-        <span class="total-count">{{ benchmarks.length }} 个基准</span>
+        <span class="total-count">{{ benchmarks.length }} benchmarks</span>
       </div>
       <div class="header-right">
         <a-button @click="loadBenchmarks">
           <template #icon><ReloadOutlined /></template>
-          刷新
+          Refresh
         </a-button>
         <a-button type="primary" @click="showUploadModal">
           <template #icon><UploadOutlined /></template>
-          上传基准
+          Upload Benchmark
         </a-button>
         <a-button @click="showGenerateModal">
           <template #icon><RobotOutlined /></template>
-          自动生成
+          Auto Generate
         </a-button>
       </div>
     </div>
 
-    <!-- 基准列表 -->
+    <!-- Benchmark list -->
     <div class="benchmarks-list">
       <div v-if="!loading && benchmarks.length === 0" class="empty-state">
         <div class="empty-icon">📋</div>
-        <div class="empty-title">暂无评估基准</div>
-        <div class="empty-description">上传或生成评估基准开始使用</div>
+        <div class="empty-title">No evaluation benchmarks yet</div>
+        <div class="empty-description">Upload or generate benchmarks to get started</div>
       </div>
 
       <div v-else-if="loading" class="loading-state">
@@ -40,7 +40,7 @@
           class="benchmark-item"
           @click="previewBenchmark(benchmark)"
         >
-          <!-- 主要内容 -->
+          <!-- Main content -->
           <div class="benchmark-main">
             <div class="benchmark-header">
               <h4 class="benchmark-name">{{ benchmark.name }}</h4>
@@ -62,85 +62,90 @@
               </div>
             </div>
 
-            <p class="benchmark-desc">{{ benchmark.description || '暂无描述' }}</p>
+            <p class="benchmark-desc">{{ benchmark.description || 'No description' }}</p>
 
-            <!-- 标签区域 -->
+            <!-- Tag section -->
             <div class="benchmark-meta">
               <div class="meta-row">
                 <span
                   v-if="benchmark.has_gold_chunks && benchmark.has_gold_answers"
                   class="type-badge type-both"
                 >
-                  检索 + 问答
+                  Retrieval + QA
                 </span>
                 <span v-else-if="benchmark.has_gold_chunks" class="type-badge type-retrieval">
-                  检索评估
+                  Retrieval Eval
                 </span>
                 <span v-else-if="benchmark.has_gold_answers" class="type-badge type-answer">
-                  问答评估
+                  QA Eval
                 </span>
-                <span v-else class="type-badge type-query">仅查询</span>
+                <span v-else class="type-badge type-query">Query Only</span>
 
                 <span :class="['tag', benchmark.has_gold_chunks ? 'tag-yes' : 'tag-no']">
-                  {{ benchmark.has_gold_chunks ? '✓' : '✗' }} 黄金Chunk
+                  {{ benchmark.has_gold_chunks ? '✓' : '✗' }} Gold Chunk
                 </span>
                 <span :class="['tag', benchmark.has_gold_answers ? 'tag-yes' : 'tag-no']">
-                  {{ benchmark.has_gold_answers ? '✓' : '✗' }} 黄金答案
+                  {{ benchmark.has_gold_answers ? '✓' : '✗' }} Gold Answer
                 </span>
               </div>
             </div>
           </div>
 
-          <!-- 底部信息 -->
+          <!-- Footer info -->
           <div class="benchmark-footer">
             <span class="benchmark-time">{{ formatDate(benchmark.created_at) }}</span>
-            <span class="benchmark-count">{{ benchmark.question_count }} 个问题</span>
+            <span class="benchmark-count">{{ benchmark.question_count }} questions</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 上传模态框 -->
+    <!-- Upload modal -->
     <BenchmarkUploadModal
       v-model:visible="uploadModalVisible"
       :database-id="databaseId"
       @success="onUploadSuccess"
     />
 
-    <!-- 生成模态框 -->
+    <!-- Generate modal -->
     <BenchmarkGenerateModal
       v-model:visible="generateModalVisible"
       :database-id="databaseId"
       @success="onGenerateSuccess"
     />
 
-    <!-- 预览模态框 -->
-    <a-modal v-model:open="previewModalVisible" title="评估基准详情" width="1200px" :footer="null">
+    <!-- Preview modal -->
+    <a-modal
+      v-model:open="previewModalVisible"
+      title="Evaluation Benchmark Details"
+      width="1200px"
+      :footer="null"
+    >
       <div v-if="previewData" class="preview-content">
         <div class="preview-header">
           <h3>{{ previewData.name }}</h3>
           <div class="preview-meta">
             <span class="meta-item">
-              <span class="meta-label">问题数:</span>
+              <span class="meta-label">Question Count:</span>
               {{ previewData.question_count }}
             </span>
             <span class="meta-item">
-              <span class="meta-label">黄金Chunk:</span>
+              <span class="meta-label">Gold Chunk:</span>
               <span :class="previewData.has_gold_chunks ? 'status-yes' : 'status-no'">
-                {{ previewData.has_gold_chunks ? '有' : '无' }}
+                {{ previewData.has_gold_chunks ? 'Yes' : 'No' }}
               </span>
             </span>
             <span class="meta-item">
-              <span class="meta-label">黄金答案:</span>
+              <span class="meta-label">Gold Answer:</span>
               <span :class="previewData.has_gold_answers ? 'status-yes' : 'status-no'">
-                {{ previewData.has_gold_answers ? '有' : '无' }}
+                {{ previewData.has_gold_answers ? 'Yes' : 'No' }}
               </span>
             </span>
           </div>
         </div>
 
         <div class="preview-questions" v-if="previewQuestions && previewQuestions.length > 0">
-          <h4>问题列表 (共{{ previewPagination.total }}条)</h4>
+          <h4>Question List ({{ previewPagination.total }} total)</h4>
           <a-table
             :dataSource="previewQuestions"
             :columns="displayedQuestionColumns"
@@ -171,7 +176,7 @@
                   <div class="question-chunk">
                     {{ record.gold_chunk_ids.slice(0, 3).join(', ') }}
                     <span v-if="record.gold_chunk_ids.length > 3"
-                      >...等{{ record.gold_chunk_ids.length }}个</span
+                      >...and {{ record.gold_chunk_ids.length }} more</span
                     >
                   </div>
                 </a-tooltip>
@@ -224,7 +229,7 @@ const emit = defineEmits(['refresh'])
 
 const taskerStore = useTaskerStore()
 
-// 状态
+// State
 const loading = ref(false)
 const benchmarks = ref([])
 const uploadModalVisible = ref(false)
@@ -240,7 +245,7 @@ const previewPagination = ref({
   loading: false
 })
 
-// 表格列定义
+// Table column definitions
 const questionColumns = [
   {
     title: '#',
@@ -249,21 +254,21 @@ const questionColumns = [
     align: 'center'
   },
   {
-    title: '问题',
+    title: 'Question',
     dataIndex: 'query',
     key: 'query',
     width: 280,
     ellipsis: false
   },
   {
-    title: '黄金Chunk',
+    title: 'Gold Chunk',
     dataIndex: 'gold_chunk_ids',
     key: 'gold_chunk_ids',
     width: 200,
     ellipsis: false
   },
   {
-    title: '黄金答案',
+    title: 'Gold Answer',
     dataIndex: 'gold_answer',
     key: 'gold_answer',
     width: 420,
@@ -278,12 +283,12 @@ const displayedQuestionColumns = computed(() => {
   return questionColumns
 })
 
-// 分页配置
+// Pagination config
 const paginationConfig = computed(() => ({
   current: previewPagination.value.current,
   pageSize: previewPagination.value.pageSize,
   total: previewPagination.value.total,
-  showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
   showSizeChanger: true,
   pageSizeOptions: ['5', '10', '20', '50'],
   showQuickJumper: true,
@@ -292,7 +297,7 @@ const paginationConfig = computed(() => ({
   onShowSizeChange: handlePageSizeChange
 }))
 
-// 加载基准列表
+// Load benchmark list
 const loadBenchmarks = async () => {
   if (!props.databaseId) return
 
@@ -303,46 +308,46 @@ const loadBenchmarks = async () => {
     if (response && response.message === 'success' && Array.isArray(response.data)) {
       benchmarks.value = response.data
     } else {
-      console.error('响应格式不符合预期:', response)
-      message.error('基准数据格式错误')
+      console.error('Unexpected response format:', response)
+      message.error('Invalid benchmark data format')
     }
   } catch (error) {
-    console.error('加载评估基准失败:', error)
-    message.error('加载评估基准失败')
+    console.error('Failed to load evaluation benchmarks:', error)
+    message.error('Failed to load evaluation benchmarks')
   } finally {
     loading.value = false
   }
 }
 
-// 显示上传模态框
+// Show upload modal
 const showUploadModal = () => {
   uploadModalVisible.value = true
 }
 
-// 显示生成模态框
+// Show generate modal
 const showGenerateModal = () => {
   generateModalVisible.value = true
 }
 
-// 上传成功回调
+// Upload success callback
 const onUploadSuccess = () => {
   loadBenchmarks()
-  message.success('基准上传成功')
-  taskerStore.loadTasks() // 刷新任务列表
-  // 通知父组件刷新基准列表
+  message.success('Benchmark uploaded successfully')
+  taskerStore.loadTasks() // Refresh task list
+  // Notify parent component to refresh benchmark list
   emit('refresh')
 }
 
-// 生成成功回调
+// Generation success callback
 const onGenerateSuccess = () => {
   loadBenchmarks()
-  // message.success('基准生成成功'); // 移除，由模态框提示任务提交
-  taskerStore.loadTasks() // 刷新任务列表
-  // 通知父组件刷新基准列表
+  // message.success('Benchmark generated successfully'); // Removed, modal handles submission notice
+  taskerStore.loadTasks() // Refresh task list
+  // Notify parent component to refresh benchmark list
   emit('refresh')
 }
 
-// 分页处理函数
+// Pagination handlers
 const handlePageChange = (page, pageSize) => {
   previewPagination.value.current = page
   previewPagination.value.pageSize = pageSize
@@ -355,7 +360,7 @@ const handlePageSizeChange = (current, size) => {
   loadPreviewQuestions()
 }
 
-// 加载预览问题（分页）
+// Load preview questions (paginated)
 const loadPreviewQuestions = async () => {
   if (!previewData.value?.benchmark_id) return
 
@@ -373,17 +378,17 @@ const loadPreviewQuestions = async () => {
       previewPagination.value.total = response.data.pagination?.total_questions || 0
     }
   } catch (error) {
-    console.error('加载预览问题失败:', error)
-    message.error('加载预览问题失败')
+    console.error('Failed to load preview questions:', error)
+    message.error('Failed to load preview questions')
   } finally {
     previewPagination.value.loading = false
   }
 }
 
-// 预览基准
+// Preview benchmark
 const previewBenchmark = async (benchmark) => {
   try {
-    // 重置分页状态
+    // Reset pagination state
     previewPagination.value = {
       current: 1,
       pageSize: 10,
@@ -399,19 +404,19 @@ const previewBenchmark = async (benchmark) => {
     )
 
     if (response.message === 'success') {
-      // 保存基准ID用于后续分页请求
+      // Save benchmark ID for subsequent pagination requests
       previewData.value = {
         ...response.data,
-        benchmark_id: benchmark.benchmark_id // 手动添加benchmark_id
+        benchmark_id: benchmark.benchmark_id // Manually include benchmark_id
       }
       previewQuestions.value = response.data.questions || []
       previewPagination.value.total = response.data.pagination?.total_questions || 0
-      console.log('预览问题数据:', response.data.questions) // 调试信息
+      console.log('Preview question data:', response.data.questions) // Debug info
       previewModalVisible.value = true
     }
   } catch (error) {
-    console.error('获取基准详情失败:', error)
-    message.error('获取基准详情失败')
+    console.error('Failed to get benchmark details:', error)
+    message.error('Failed to get benchmark details')
   }
 }
 
@@ -423,7 +428,7 @@ const parseDownloadFilename = (contentDisposition) => {
     try {
       return decodeURIComponent(utf8Match[1])
     } catch (error) {
-      console.warn('解析 UTF-8 文件名失败:', error)
+      console.warn('Failed to parse UTF-8 filename:', error)
     }
   }
 
@@ -435,7 +440,7 @@ const parseDownloadFilename = (contentDisposition) => {
   return ''
 }
 
-// 下载基准
+// Download benchmark
 const downloadBenchmark = async (benchmark) => {
   const benchmarkId = benchmark?.benchmark_id
   if (!benchmarkId) return
@@ -460,42 +465,42 @@ const downloadBenchmark = async (benchmark) => {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    message.success('下载成功')
+    message.success('Download successful')
   } catch (error) {
-    console.error('下载基准失败:', error)
-    message.error(`下载失败: ${error.message || '未知错误'}`)
+    console.error('Failed to download benchmark:', error)
+    message.error(`Download failed: ${error.message || 'Unknown error'}`)
   } finally {
     delete downloadingBenchmarkMap[benchmarkId]
   }
 }
 
-// 删除基准
+// Delete benchmark
 const deleteBenchmark = (benchmark) => {
   Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除评估基准"${benchmark.name}"吗？此操作不可恢复。`,
-    okText: '确定',
-    cancelText: '取消',
+    title: 'Confirm Deletion',
+    content: `Are you sure you want to delete evaluation benchmark "${benchmark.name}"? This action cannot be undone.`,
+    okText: 'Confirm',
+    cancelText: 'Cancel',
     onOk: async () => {
       try {
         const response = await evaluationApi.deleteBenchmark(benchmark.benchmark_id)
         if (response.message === 'success') {
-          message.success('删除成功')
+          message.success('Deleted successfully')
           loadBenchmarks()
         }
       } catch (error) {
-        console.error('删除基准失败:', error)
-        message.error('删除基准失败')
+        console.error('Failed to delete benchmark:', error)
+        message.error('Failed to delete benchmark')
       }
     }
   })
 }
 
-// 格式化日期
+// Format date
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -504,7 +509,7 @@ const formatDate = (dateStr) => {
   })
 }
 
-// 组件挂载时加载数据
+// Load data when component mounts
 onMounted(() => {
   loadBenchmarks()
 })
@@ -707,7 +712,7 @@ onMounted(() => {
   height: 200px;
 }
 
-// 预览模态框样式
+// Preview modal styles
 .preview-content {
   .preview-header {
     margin-bottom: 24px;
@@ -768,7 +773,7 @@ onMounted(() => {
       -webkit-line-clamp: 4;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      max-height: 6em; // 4行 * 1.5em line-height
+      max-height: 6em; // 4 lines * 1.5em line-height
       cursor: pointer;
     }
 
@@ -781,7 +786,7 @@ onMounted(() => {
       -webkit-line-clamp: 4;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      max-height: 6em; // 4行 * 1.5em line-height for 13px font
+      max-height: 6em; // 4 lines * 1.5em line-height for 13px font
       cursor: pointer;
     }
 
@@ -812,7 +817,7 @@ onMounted(() => {
         background-color: var(--gray-50);
       }
 
-      // 确保表格单元格内容可以换行
+      // Ensure table cell content can wrap
       .ant-table-cell {
         white-space: normal !important;
         word-wrap: break-word !important;

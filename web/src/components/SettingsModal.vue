@@ -12,11 +12,15 @@
     :bodyStyle="{ padding: 0 }"
   >
     <div class="settings-container">
-      <button class="settings-close-btn lucide-icon-btn" @click="handleClose" aria-label="关闭设置">
+      <button
+        class="settings-close-btn lucide-icon-btn"
+        @click="handleClose"
+        aria-label="Close settings"
+      >
         <X :size="16" />
       </button>
 
-      <!-- 侧边栏 (Desktop) -->
+      <!-- Sidebar (Desktop) -->
       <div class="settings-sider">
         <div class="settings-sider-nav">
           <div
@@ -26,7 +30,7 @@
             v-if="userStore.isAdmin"
           >
             <Settings class="icon" :size="18" />
-            <span>基本设置</span>
+            <span>Basic Settings</span>
           </div>
           <div
             class="sider-item"
@@ -35,7 +39,7 @@
             v-if="userStore.isSuperAdmin"
           >
             <SquareCode class="icon" :size="18" />
-            <span>模型配置</span>
+            <span>Model Settings</span>
           </div>
           <div
             class="sider-item"
@@ -44,7 +48,7 @@
             v-if="userStore.isAdmin"
           >
             <User class="icon" :size="18" />
-            <span>用户管理</span>
+            <span>User Management</span>
           </div>
           <div
             class="sider-item"
@@ -53,7 +57,7 @@
             v-if="userStore.isSuperAdmin"
           >
             <Users class="icon" :size="18" />
-            <span>部门管理</span>
+            <span>Department Management</span>
           </div>
           <div
             class="sider-item"
@@ -70,19 +74,19 @@
           <div class="star-card-header">
             <div class="star-card-badge">
               <Star :size="12" />
-              <span>支持项目</span>
+              <span>Support Project</span>
             </div>
             <button
               class="star-card-close lucide-icon-btn"
               @click="dismissStarCard"
-              aria-label="关闭 Star 提示"
+              aria-label="Close star prompt"
             >
               <X :size="14" />
             </button>
           </div>
-          <p class="star-card-title">给 Yuxi 点个 Star</p>
+          <p class="star-card-title">Give Yuxi a Star</p>
           <p class="star-card-description">
-            如果这个项目帮到了你，欢迎去 GitHub 点亮一个 Star，让更多人看到它。
+            If this project helped you, consider starring it on GitHub so more people can find it.
           </p>
           <a
             class="star-card-link"
@@ -100,7 +104,7 @@
         </div>
       </div>
 
-      <!-- 顶部导航 (Mobile) -->
+      <!-- Top Navigation (Mobile) -->
       <div class="settings-mobile-nav">
         <div
           class="nav-item"
@@ -108,7 +112,7 @@
           @click="activeTab = 'base'"
           v-if="userStore.isAdmin"
         >
-          基本设置
+          Basic Settings
         </div>
         <div
           class="nav-item"
@@ -116,7 +120,7 @@
           @click="activeTab = 'model'"
           v-if="userStore.isSuperAdmin"
         >
-          模型配置
+          Model Settings
         </div>
         <div
           class="nav-item"
@@ -124,7 +128,7 @@
           @click="activeTab = 'user'"
           v-if="userStore.isAdmin"
         >
-          用户管理
+          User Management
         </div>
         <div
           class="nav-item"
@@ -132,7 +136,7 @@
           @click="activeTab = 'department'"
           v-if="userStore.isSuperAdmin"
         >
-          部门管理
+          Department Management
         </div>
         <div
           class="nav-item"
@@ -144,7 +148,7 @@
         </div>
       </div>
 
-      <!-- 内容区域 -->
+      <!-- Content Area -->
       <div class="settings-content-wrapper">
         <div class="settings-content">
           <div v-show="activeTab === 'base'" v-if="userStore.isAdmin">
@@ -225,7 +229,7 @@ onMounted(() => {
   showStarCard.value = localStorage.getItem(STAR_CARD_STORAGE_KEY) !== 'true'
 })
 
-// 根据用户权限设置默认标签页
+// Set default tab based on user permissions
 watch(
   () => props.visible,
   (newVal) => {

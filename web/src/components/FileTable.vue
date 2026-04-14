@@ -4,7 +4,7 @@
       <div class="upload-btn-group">
         <a-button type="primary" size="small" class="upload-btn" @click="showAddFilesModal()">
           <FileUp size="14" />
-          上传
+          Upload
         </a-button>
 
         <a-button
@@ -12,7 +12,7 @@
           type="text"
           size="small"
           @click="showCreateFolderModal"
-          title="新建文件夹"
+          title="Create Folder"
         >
           <template #icon><FolderPlus size="16" /></template>
         </a-button>
@@ -20,7 +20,7 @@
       <div class="panel-actions">
         <a-input
           v-model:value="filenameFilter"
-          placeholder="搜索"
+          placeholder="Search"
           size="small"
           class="action-searcher"
           allow-clear
@@ -36,7 +36,7 @@
             type="text"
             class="panel-action-btn"
             :class="{ active: sortField !== 'filename' }"
-            title="排序"
+            title="Sort"
           >
             <template #icon><ArrowUpDown size="16" /></template>
           </a-button>
@@ -54,13 +54,13 @@
             type="text"
             class="panel-action-btn"
             :class="{ active: statusFilter !== 'all' }"
-            title="筛选状态"
+            title="Filter Status"
           >
             <template #icon><Filter size="16" /></template>
           </a-button>
           <template #overlay>
             <a-menu :selectedKeys="[statusFilter]" @click="handleStatusMenuClick">
-              <a-menu-item key="all">全部状态</a-menu-item>
+              <a-menu-item key="all">All Statuses</a-menu-item>
               <a-menu-item v-for="opt in statusOptions" :key="opt.value">
                 {{ opt.label }}
               </a-menu-item>
@@ -72,7 +72,7 @@
           type="text"
           @click="handleRefresh"
           :loading="refreshing"
-          title="刷新"
+          title="Refresh"
           class="panel-action-btn"
         >
           <template #icon><RotateCw size="16" /></template>
@@ -80,7 +80,7 @@
         <a-button
           type="text"
           @click="toggleSelectionMode"
-          title="多选"
+          title="Multi Select"
           class="panel-action-btn"
           :class="{ active: isSelectionMode }"
         >
@@ -90,7 +90,7 @@
           @click="toggleAutoRefresh"
           size="small"
           :type="autoRefresh ? 'primary' : 'default'"
-          title="自动刷新文件状态"
+          title="Auto refresh file status"
           class="auto-refresh-btn panel-action-btn"
         >
           Auto
@@ -98,7 +98,7 @@
         <a-button
           type="text"
           @click="toggleRightPanel"
-          title="切换右侧面板"
+          title="Toggle Right Panel"
           class="panel-action-btn expand"
           :class="{ expanded: props.rightPanelVisible }"
         >
@@ -115,7 +115,7 @@
           @change="onSelectAllChange"
           style="margin-right: 8px"
         />
-        <span>{{ selectedRowKeys.length }} 项</span>
+        <span>{{ selectedRowKeys.length }} items</span>
       </div>
       <div style="display: flex; gap: 2px">
         <a-button
@@ -125,7 +125,7 @@
           :disabled="!canBatchParse"
           :icon="h(FileText, { size: 16 })"
         >
-          批量解析
+          Parse Selected
         </a-button>
         <a-button
           type="link"
@@ -134,7 +134,7 @@
           :disabled="!canBatchIndex"
           :icon="h(Database, { size: 16 })"
         >
-          批量入库
+          Index Selected
         </a-button>
         <a-button
           type="link"
@@ -144,12 +144,12 @@
           :disabled="!canBatchDelete"
           :icon="h(Trash2, { size: 16 })"
         >
-          批量删除
+          Delete Selected
         </a-button>
       </div>
     </div>
 
-    <!-- 入库/重新入库参数配置模态框 -->
+    <!-- Index/Reindex parameter modal -->
     <a-modal
       v-model:open="indexConfigModalVisible"
       :title="indexConfigModalTitle"
@@ -157,8 +157,8 @@
       width="600px"
     >
       <template #footer>
-        <a-button key="back" @click="handleIndexConfigCancel">取消</a-button>
-        <a-button key="submit" type="primary" @click="handleIndexConfigConfirm">确定</a-button>
+        <a-button key="back" @click="handleIndexConfigCancel">Cancel</a-button>
+        <a-button key="submit" type="primary" @click="handleIndexConfigConfirm">Confirm</a-button>
       </template>
       <div class="index-params">
         <ChunkParamsConfig
@@ -172,16 +172,16 @@
       </div>
     </a-modal>
 
-    <!-- 新建文件夹模态框 -->
+    <!-- Create folder modal -->
     <a-modal
       v-model:open="createFolderModalVisible"
-      title="新建文件夹"
+      title="Create Folder"
       :confirm-loading="createFolderLoading"
       @ok="handleCreateFolder"
     >
       <a-input
         v-model:value="newFolderName"
-        placeholder="请输入文件夹名称"
+        placeholder="Enter folder name"
         @pressEnter="handleCreateFolder"
       />
     </a-modal>
@@ -235,15 +235,15 @@
                   <span class="label">ID:</span> <span class="value">{{ record.file_id }}</span>
                 </div>
                 <div class="info-row">
-                  <span class="label">状态:</span>
+                  <span class="label">Status:</span>
                   <span class="value">{{ getStatusText(record.status) }}</span>
                 </div>
                 <div class="info-row">
-                  <span class="label">时间:</span>
+                  <span class="label">Time:</span>
                   <span class="value">{{ formatRelativeTime(record.created_at) }}</span>
                 </div>
                 <div v-if="record.error_message" class="info-row error">
-                  <span class="label">错误:</span>
+                  <span class="label">Error:</span>
                   <span class="value">{{ record.error_message }}</span>
                 </div>
               </div>
@@ -314,11 +314,11 @@
                 <template v-if="record.is_folder">
                   <a-button type="text" block @click="showCreateFolderModal(record.file_id)">
                     <template #icon><component :is="h(FolderPlus)" size="14" /></template>
-                    新建子文件夹
+                    New Subfolder
                   </a-button>
                   <a-button type="text" block danger @click="handleDeleteFolder(record)">
                     <template #icon><component :is="h(Trash2)" size="14" /></template>
-                    删除文件夹
+                    Delete Folder
                   </a-button>
                 </template>
                 <template v-else>
@@ -333,7 +333,7 @@
                     "
                   >
                     <template #icon><component :is="h(Download)" size="14" /></template>
-                    下载文件
+                    Download File
                   </a-button>
 
                   <!-- Parse Action -->
@@ -345,7 +345,7 @@
                     :disabled="lock"
                   >
                     <template #icon><component :is="h(FileText)" size="14" /></template>
-                    {{ record.status === 'error_parsing' ? '重试解析' : '解析文件' }}
+                    {{ record.status === 'error_parsing' ? 'Retry Parse' : 'Parse File' }}
                   </a-button>
 
                   <!-- Index Action -->
@@ -357,7 +357,7 @@
                     :disabled="lock"
                   >
                     <template #icon><component :is="h(Database)" size="14" /></template>
-                    {{ record.status === 'error_indexing' ? '重试入库' : '入库' }}
+                    {{ record.status === 'error_indexing' ? 'Retry Index' : 'Index' }}
                   </a-button>
 
                   <!-- Reindex Action -->
@@ -369,7 +369,7 @@
                     :disabled="lock"
                   >
                     <template #icon><component :is="h(RotateCw)" size="14" /></template>
-                    重新入库
+                    Reindex
                   </a-button>
 
                   <a-button
@@ -382,7 +382,7 @@
                     "
                   >
                     <template #icon><component :is="h(Trash2)" size="14" /></template>
-                    删除文件
+                    Delete File
                   </a-button>
                 </template>
               </div>
@@ -430,37 +430,37 @@ const store = useDatabaseStore()
 
 const sortField = ref('filename')
 const sortOptions = [
-  { label: '文件名', value: 'filename' },
-  { label: '创建时间', value: 'created_at' },
-  { label: '状态', value: 'status' }
+  { label: 'File Name', value: 'filename' },
+  { label: 'Created At', value: 'created_at' },
+  { label: 'Status', value: 'status' }
 ]
 
 const handleSortMenuClick = (e) => {
   sortField.value = e.key
-  // 排序变化时重置到第一页
+  // Reset to first page when sort changes
   paginationConfig.value.current = 1
 }
 
 const handleStatusMenuClick = (e) => {
   statusFilter.value = e.key
-  // 状态筛选变化时重置到第一页
+  // Reset to first page when status filter changes
   paginationConfig.value.current = 1
 }
 
 // Status text mapping
 const getStatusText = (status) => {
   const map = {
-    uploaded: '已上传',
-    parsing: '解析中',
-    parsed: '已解析',
-    error_parsing: '解析失败',
-    indexing: '入库中',
-    indexed: '已入库',
-    error_indexing: '入库失败',
-    done: '已入库',
-    failed: '入库失败',
-    processing: '处理中',
-    waiting: '等待中'
+    uploaded: 'Uploaded',
+    parsing: 'Parsing',
+    parsed: 'Parsed',
+    error_parsing: 'Parse Failed',
+    indexing: 'Indexing',
+    indexed: 'Indexed',
+    error_indexing: 'Index Failed',
+    done: 'Indexed',
+    failed: 'Index Failed',
+    processing: 'Processing',
+    waiting: 'Waiting'
   }
   return map[status] || status
 }
@@ -540,7 +540,7 @@ const closePopover = (fileId) => {
   }
 }
 
-// 新建文件夹相关
+// Create folder state
 const createFolderModalVisible = ref(false)
 const newFolderName = ref('')
 const createFolderLoading = ref(false)
@@ -551,7 +551,7 @@ const showCreateFolderModal = (parentId = null) => {
     closePopover(parentId)
   }
   newFolderName.value = ''
-  // 如果是事件对象（来自顶部按钮点击），则设为null
+  // If parentId is an event object (from top button click), set to null
   if (parentId && typeof parentId === 'object') {
     parentId = null
   }
@@ -579,25 +579,25 @@ const toggleSelectionMode = () => {
 
 const handleCreateFolder = async () => {
   if (!newFolderName.value.trim()) {
-    message.warning('请输入文件夹名称')
+    message.warning('Please enter a folder name')
     return
   }
 
   createFolderLoading.value = true
   try {
     await documentApi.createFolder(store.databaseId, newFolderName.value, currentParentId.value)
-    message.success('创建成功')
+    message.success('Created successfully')
     createFolderModalVisible.value = false
     handleRefresh()
   } catch (error) {
     console.error(error)
-    message.error('创建失败: ' + (error.message || '未知错误'))
+    message.error('Creation failed: ' + (error.message || 'Unknown error'))
   } finally {
     createFolderLoading.value = false
   }
 }
 
-// 拖拽相关逻辑
+// Drag and drop logic
 const customRow = (record) => {
   return {
     draggable: true,
@@ -605,7 +605,7 @@ const customRow = (record) => {
       console.log('Clicked file record:', record)
     },
     onDragstart: (event) => {
-      // 检查是否是真实文件/文件夹（存在于 store 中）
+      // Check whether this is a real file/folder (exists in store)
       const files = store.database?.files || {}
       if (!files[record.file_id]) {
         event.preventDefault()
@@ -620,13 +620,13 @@ const customRow = (record) => {
         })
       )
       event.dataTransfer.effectAllowed = 'move'
-      // 可以设置一个更好看的拖拽图像
+      // You can set a nicer drag image here
     },
     onDragover: (event) => {
-      // 仅允许放置到真实文件夹中
+      // Allow drop only into real folders
       if (record.is_folder) {
         const files = store.database?.files || {}
-        // 确保是真实的文件夹（有 ID 且在 store 中）
+        // Ensure this is a real folder (has ID and exists in store)
         if (files[record.file_id]) {
           event.preventDefault()
           event.dataTransfer.dropEffect = 'move'
@@ -648,10 +648,10 @@ const customRow = (record) => {
         const { file_id, filename } = JSON.parse(data)
         if (file_id === record.file_id) return
 
-        // 确认移动
+        // Confirm move
         Modal.confirm({
-          title: '移动文件',
-          content: `确定要将 "${filename}" 移动到 "${record.filename}" 吗？`,
+          title: 'Move File',
+          content: `Are you sure you want to move "${filename}" to "${record.filename}"?`,
           onOk: async () => {
             try {
               await store.moveFile(file_id, record.file_id)
@@ -667,10 +667,10 @@ const customRow = (record) => {
   }
 }
 
-// 入库/重新入库参数配置相关
+// Index/reindex parameter state
 const indexConfigModalVisible = ref(false)
 const indexConfigModalLoading = computed(() => store.state.chunkLoading)
-const indexConfigModalTitle = ref('入库参数配置')
+const indexConfigModalTitle = ref('Index Parameters')
 
 const indexParams = ref({
   chunk_size: 1000,
@@ -697,20 +697,20 @@ const buildIndexParamsPayload = () => {
 const currentIndexFileIds = ref([])
 const isBatchIndexOperation = ref(false)
 
-// 分页配置
+// Pagination config
 const paginationConfig = ref({
   current: 1,
   pageSize: 100,
   pageSizeOptions: ['100', '300', '500', '1000']
 })
 
-// 文件总数
+// Total file count
 const totalFiles = computed(() => files.value.length)
 
-// 是否显示分页
+// Whether to show pagination
 const showPagination = computed(() => totalFiles.value > paginationConfig.value.pageSize)
 
-// 分页后的数据
+// Paginated data
 const paginatedFiles = computed(() => {
   const list = filteredFiles.value
   if (!showPagination.value) return list
@@ -720,44 +720,44 @@ const paginatedFiles = computed(() => {
   return list.slice(start, end)
 })
 
-// 表格分页配置
+// Table pagination config
 const tablePagination = computed(() => ({
   current: paginationConfig.value.current,
   pageSize: paginationConfig.value.pageSize,
   total: filteredFiles.value.length,
   showSizeChanger: true,
-  showTotal: (total) => `共 ${total} 项`,
+  showTotal: (total) => `Total ${total} items`,
   pageSizeOptions: paginationConfig.value.pageSizeOptions,
   hideOnSinglePage: true
 }))
 
-// 处理表格变化（分页、每页条数切换）
+// Handle table changes (pagination, page size)
 const handleTableChange = (pagination) => {
   paginationConfig.value.current = pagination.current
   paginationConfig.value.pageSize = pagination.pageSize
 }
 
-// 文件名过滤
+// Filename filtering
 const filenameFilter = ref('')
 const statusFilter = ref('all')
 const statusOptions = [
-  { label: '已上传', value: 'uploaded' },
-  { label: '解析中', value: 'parsing' },
-  { label: '已解析', value: 'parsed' },
-  { label: '解析失败', value: 'error_parsing' },
-  { label: '入库中', value: 'indexing' },
-  { label: '已入库', value: 'indexed' },
-  { label: '入库失败', value: 'error_indexing' }
+  { label: 'Uploaded', value: 'uploaded' },
+  { label: 'Parsing', value: 'parsing' },
+  { label: 'Parsed', value: 'parsed' },
+  { label: 'Parse Failed', value: 'error_parsing' },
+  { label: 'Indexing', value: 'indexing' },
+  { label: 'Indexed', value: 'indexed' },
+  { label: 'Index Failed', value: 'error_indexing' }
 ]
 
-// 紧凑表格列定义
+// Compact table column definitions
 const columnsCompact = [
   {
-    title: '文件名',
+    title: 'File Name',
     dataIndex: 'filename',
     key: 'filename',
     ellipsis: true,
-    width: undefined, // 不设置宽度，让它占据剩余空间
+    width: undefined, // Keep flexible to take remaining space
     sorter: (a, b) => {
       if (a.is_folder && !b.is_folder) return -1
       if (!a.is_folder && b.is_folder) return 1
@@ -766,7 +766,7 @@ const columnsCompact = [
     sortDirections: ['ascend', 'descend']
   },
   {
-    title: '状态',
+    title: 'Status',
     dataIndex: 'status',
     key: 'status',
     width: 60,
@@ -792,13 +792,13 @@ const columnsCompact = [
   { title: '', key: 'action', dataIndex: 'file_id', width: 40, align: 'center' }
 ]
 
-// 构建文件树
+// Build file tree
 const buildFileTree = (fileList) => {
   const nodeMap = new Map()
   const roots = []
   const processedIds = new Set()
 
-  // 1. 初始化节点映射，确保 explicit folder 有 children
+  // 1. Initialize node map and ensure explicit folders have children
   fileList.forEach((file) => {
     const item = { ...file, displayName: file.filename }
     if (item.is_folder && !item.children) {
@@ -807,7 +807,7 @@ const buildFileTree = (fileList) => {
     nodeMap.set(item.file_id, item)
   })
 
-  // 2. 处理 parent_id (强关联)
+  // 2. Resolve parent_id links (strong association)
   fileList.forEach((file) => {
     if (file.parent_id && nodeMap.has(file.parent_id)) {
       const parent = nodeMap.get(file.parent_id)
@@ -820,7 +820,7 @@ const buildFileTree = (fileList) => {
     }
   })
 
-  // 3. 处理剩余项 (Roots 或 路径解析)
+  // 3. Handle remaining items (roots or path parsing)
   fileList.forEach((file) => {
     if (processedIds.has(file.file_id)) return
 
@@ -828,7 +828,7 @@ const buildFileTree = (fileList) => {
     const normalizedName = file.filename.replace(/\\/g, '/')
     const parts = normalizedName.split('/')
 
-    // 检测是否是 URL（URL 不应该被解析为文件夹层级）
+    // Detect URL (URLs should not be parsed as folder hierarchy)
     const isUrl = file.filename.startsWith('http://') || file.filename.startsWith('https://')
 
     if (isUrl || parts.length === 1) {
@@ -883,7 +883,7 @@ const buildFileTree = (fileList) => {
     }
   })
 
-  // 排序：文件夹在前，文件在后，按名称排序
+  // Sort: folders first, then files, by name
   const sortNodes = (nodes) => {
     nodes.sort((a, b) => {
       if (a.is_folder && !b.is_folder) return -1
@@ -920,15 +920,15 @@ const buildFileTree = (fileList) => {
   return roots
 }
 
-// 过滤后的文件列表
+// Filtered file list
 const filteredFiles = computed(() => {
   let filtered = files.value
   const nameFilter = filenameFilter.value.trim().toLowerCase()
   const status = statusFilter.value
 
-  // 应用过滤
+  // Apply filters
   if (nameFilter || status !== 'all') {
-    // 搜索/过滤模式下使用扁平列表
+    // Use flat list in search/filter mode
     return files.value
       .filter((file) => {
         const nameMatch =
@@ -946,12 +946,14 @@ const filteredFiles = computed(() => {
   return buildFileTree(filtered)
 })
 
-// 空状态文本
+// Empty state text
 const emptyText = computed(() => {
-  return filenameFilter.value ? `没有找到包含"${filenameFilter.value}"的文件` : '暂无文件'
+  return filenameFilter.value
+    ? `No files found containing "${filenameFilter.value}"`
+    : 'No files'
 })
 
-// 计算是否可以批量删除
+// Determine whether batch delete is available
 const canBatchDelete = computed(() => {
   return selectedRowKeys.value.some((key) => {
     const file = files.value.find((f) => f.file_id === key)
@@ -959,7 +961,7 @@ const canBatchDelete = computed(() => {
   })
 })
 
-// 计算是否可以批量解析
+// Determine whether batch parse is available
 const canBatchParse = computed(() => {
   return selectedRowKeys.value.some((key) => {
     const file = filteredFiles.value.find((f) => f.file_id === key)
@@ -967,7 +969,7 @@ const canBatchParse = computed(() => {
   })
 })
 
-// 计算是否可以批量入库
+// Determine whether batch index is available
 const canBatchIndex = computed(() => {
   return selectedRowKeys.value.some((key) => {
     const file = filteredFiles.value.find((f) => f.file_id === key)
@@ -986,7 +988,7 @@ const showAddFilesModal = (options = {}) => {
 }
 
 const handleRefresh = () => {
-  // 刷新时重置分页
+  // Reset to first page on refresh
   paginationConfig.value.current = 1
   store.getDatabaseInfo(undefined, true) // Skip query params for manual refresh
 }
@@ -997,7 +999,7 @@ const toggleRightPanel = () => {
 }
 
 const onSelectChange = (keys, selectedRows) => {
-  // 只保留非文件夹的文件ID
+  // Keep only non-folder file IDs
   const fileKeys = selectedRows.filter((row) => !row.is_folder).map((row) => row.file_id)
 
   selectedRowKeys.value = fileKeys
@@ -1010,7 +1012,7 @@ const getCheckboxProps = (record) => ({
 
 const onFilterChange = (e) => {
   filenameFilter.value = e.target.value
-  // 过滤变化时重置到第一页
+  // Reset to first page when filters change
   paginationConfig.value.current = 1
 }
 
@@ -1022,14 +1024,14 @@ const handleDeleteFile = (fileId) => {
 const handleDeleteFolder = (record) => {
   closePopover(record.file_id)
   Modal.confirm({
-    title: '删除文件夹',
-    content: `确定要删除文件夹 "${record.filename}" 及其包含的所有内容吗？`,
-    okText: '确认',
-    cancelText: '取消',
+    title: 'Delete Folder',
+    content: `Are you sure you want to delete folder "${record.filename}" and all its contents?`,
+    okText: 'Confirm',
+    cancelText: 'Cancel',
     onOk: async () => {
       try {
         await store.deleteFile(record.file_id)
-        message.success('删除成功')
+        message.success('Deleted successfully')
       } catch {
         // Error handled in store but we can add extra handling if needed
       }
@@ -1048,7 +1050,7 @@ const handleBatchParse = async () => {
   })
 
   if (validKeys.length === 0) {
-    message.warning('没有可解析的文件')
+    message.warning('No parsable files selected')
     return
   }
 
@@ -1068,13 +1070,13 @@ const handleBatchIndex = async () => {
   })
 
   if (validKeys.length === 0) {
-    message.warning('没有可入库的文件')
+    message.warning('No indexable files selected')
     return
   }
 
   currentIndexFileIds.value = [...validKeys]
   isBatchIndexOperation.value = true
-  indexConfigModalTitle.value = '批量入库参数配置'
+  indexConfigModalTitle.value = 'Batch Index Parameters'
   indexConfigModalVisible.value = true
 }
 
@@ -1087,21 +1089,21 @@ const handleDownloadFile = async (record) => {
   closePopover(record.file_id)
   const dbId = store.databaseId
   if (!dbId) {
-    console.error('无法获取数据库ID，数据库ID:', store.databaseId, '记录:', record)
-    message.error('无法获取数据库ID，请刷新页面后重试')
+    console.error('Failed to get database ID, databaseId:', store.databaseId, 'record:', record)
+    message.error('Failed to get database ID, please refresh and try again')
     return
   }
 
-  console.log('开始下载文件:', { dbId, fileId: record.file_id, record })
+  console.log('Start downloading file:', { dbId, fileId: record.file_id, record })
 
   try {
     const response = await documentApi.downloadDocument(dbId, record.file_id)
 
-    // 获取文件名
+    // Extract filename
     const contentDisposition = response.headers.get('content-disposition')
     let filename = record.filename
     if (contentDisposition) {
-      // 首先尝试匹配RFC 2231格式 filename*=UTF-8''...
+      // Try RFC 2231 format filename*=UTF-8''... first
       const rfc2231Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/)
       if (rfc2231Match) {
         try {
@@ -1110,22 +1112,22 @@ const handleDownloadFile = async (record) => {
           console.warn('Failed to decode RFC2231 filename:', rfc2231Match[1], error)
         }
       } else {
-        // 回退到标准格式 filename="..."
+        // Fallback to standard filename="..." format
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
         if (filenameMatch && filenameMatch[1]) {
           filename = filenameMatch[1].replace(/['"]/g, '')
-          // 解码URL编码的文件名
+          // Decode URL-encoded filename
           try {
             filename = decodeURIComponent(filename)
           } catch (error) {
             console.warn('Failed to decode filename:', filename, error)
-            // 如果解码失败，使用原文件名
+            // If decoding fails, use original filename
           }
         }
       }
     }
 
-    // 创建blob并下载
+    // Create blob and download
     const blob = await response.blob()
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -1137,8 +1139,8 @@ const handleDownloadFile = async (record) => {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
   } catch (error) {
-    console.error('下载文件时出错:', error)
-    const errorMessage = error.message || '下载失败，请稍后重试'
+    console.error('Error while downloading file:', error)
+    const errorMessage = error.message || 'Download failed, please try again later'
     message.error(errorMessage)
   }
 }
@@ -1168,7 +1170,7 @@ const handleIndexFile = async (record) => {
   closePopover(record.file_id)
   currentIndexFileIds.value = [record.file_id]
   isBatchIndexOperation.value = false
-  indexConfigModalTitle.value = '入库参数配置'
+  indexConfigModalTitle.value = 'Index Parameters'
 
   Object.assign(indexParams.value, defaultIndexParams)
   const processingParams = await loadRecordProcessingParams(record)
@@ -1183,7 +1185,7 @@ const handleReindexFile = async (record) => {
   closePopover(record.file_id)
   currentIndexFileIds.value = [record.file_id]
   isBatchIndexOperation.value = false
-  indexConfigModalTitle.value = '重新入库参数配置'
+  indexConfigModalTitle.value = 'Reindex Parameters'
 
   Object.assign(indexParams.value, defaultIndexParams)
   const processingParams = await loadRecordProcessingParams(record)
@@ -1194,21 +1196,21 @@ const handleReindexFile = async (record) => {
   indexConfigModalVisible.value = true
 }
 
-// 入库确认 (统一处理 Index 和 Reindex)
+// Confirm indexing (shared for index and reindex)
 const handleIndexConfigConfirm = async () => {
   try {
-    // 调用 indexFiles 接口 (支持 params)
+    // Call indexFiles API (supports params)
     const result = await store.indexFiles(currentIndexFileIds.value, buildIndexParamsPayload())
     if (result) {
       currentIndexFileIds.value = []
-      // 清空选择
+      // Clear selection
       if (isBatchIndexOperation.value) {
         selectedRowKeys.value = []
       }
-      // 关闭模态框
+      // Close modal
       indexConfigModalVisible.value = false
 
-      // 重置参数为默认值
+      // Reset parameters to defaults
       Object.assign(indexParams.value, {
         chunk_size: 1000,
         chunk_overlap: 200,
@@ -1216,25 +1218,25 @@ const handleIndexConfigConfirm = async () => {
         chunk_preset_id: ''
       })
     } else {
-      // message.error(`入库失败: ${result.message}`); // store already shows message
+      // message.error(`Index failed: ${result.message}`); // store already shows message
     }
   } catch (error) {
-    console.error('入库失败:', error)
-    const errorMessage = error.message || '入库失败，请稍后重试'
+    console.error('Indexing failed:', error)
+    const errorMessage = error.message || 'Indexing failed, please try again later'
     message.error(errorMessage)
   }
 }
 
-// 入库取消
+// Cancel indexing
 const handleIndexConfigCancel = () => {
   indexConfigModalVisible.value = false
   currentIndexFileIds.value = []
   isBatchIndexOperation.value = false
-  // 重置参数为默认值
+  // Reset parameters to defaults
   Object.assign(indexParams.value, defaultIndexParams)
 }
 
-// 导入工具函数
+// Import utility functions
 import { getFileIcon, getFileIconColor, formatRelativeTime } from '@/utils/file_utils'
 import ChunkParamsConfig from '@/components/ChunkParamsConfig.vue'
 </script>
@@ -1353,7 +1355,7 @@ import ChunkParamsConfig from '@/components/ChunkParamsConfig.vue'
   color: var(--gray-500);
 }
 
-/* 统一设置表格操作按钮的图标尺寸 */
+/* Keep consistent icon size for table action buttons */
 .my-table .table-row-actions {
   display: flex;
 }

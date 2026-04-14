@@ -28,7 +28,7 @@
             <span
               v-if="isNodeLoading(data.key)"
               class="folder-loading-icon"
-              aria-label="正在加载"
+              aria-label="Loading"
             ></span>
             <FolderOpen v-else-if="expanded" :size="18" class="folder-icon open" />
             <Folder v-else :size="18" class="folder-icon" />
@@ -170,7 +170,7 @@ const handleNodeClick = (data) => {
 .file-tree-wrapper {
   width: 100%;
 
-  /* 统一节点容器 */
+  /* Unified node container */
   :deep(.ant-tree-treenode) {
     display: flex;
     align-items: center;
@@ -178,12 +178,12 @@ const handleNodeClick = (data) => {
     padding: 0 4px;
     height: 32px;
 
-    /* 隐藏切换器 */
+    /* Hide switcher */
     .ant-tree-switcher {
       display: none;
     }
 
-    /* 缩进单元 */
+    /* Indent unit */
     .ant-tree-indent {
       display: flex;
       align-items: center;
@@ -193,7 +193,7 @@ const handleNodeClick = (data) => {
       }
     }
 
-    /* 内容区域容器 */
+    /* Content area container */
     .ant-tree-node-content-wrapper {
       display: flex;
       align-items: center;
@@ -205,7 +205,7 @@ const handleNodeClick = (data) => {
       border-radius: 4px;
       transition: background-color 0.2s;
 
-      /* 图标容器 */
+      /* Icon container */
       .ant-tree-iconEle {
         display: flex;
         align-items: center;
@@ -221,7 +221,7 @@ const handleNodeClick = (data) => {
         }
       }
 
-      /* 标题文字容器 */
+      /* Title text container */
       .ant-tree-title {
         display: flex;
         align-items: center;

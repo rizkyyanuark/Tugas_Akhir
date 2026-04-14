@@ -2,19 +2,21 @@
   <div class="model-providers-section">
     <div class="header-section">
       <div class="header-content">
-        <div class="section-title">自定义供应商</div>
-        <p class="section-description">添加自定义的LLM供应商，支持OpenAI兼容的API格式。</p>
+        <div class="section-title">Custom Providers</div>
+        <p class="section-description">
+          Add custom LLM providers supporting OpenAI-compatible API format.
+        </p>
       </div>
       <a-button type="primary" @click="openAddCustomProviderModal" class="add-btn lucide-icon-btn">
         <template #icon>
           <Plus :size="16" />
         </template>
-        添加自定义供应商
+        Add Custom Provider
       </a-button>
     </div>
 
     <div class="custom-providers-section">
-      <!-- 自定义供应商列表 -->
+      <!-- Custom provider list -->
       <div
         class="custom-provider-card"
         v-for="(provider, providerId) in customProviders"
@@ -35,7 +37,7 @@
               <template #icon>
                 <PlugZap :size="14" />
               </template>
-              测试连接
+              Test Connection
             </a-button>
             <a-button
               type="text"
@@ -46,19 +48,19 @@
               <template #icon>
                 <Pencil :size="14" />
               </template>
-              编辑
+              Edit
             </a-button>
             <a-popconfirm
-              title="确定要删除这个自定义供应商吗？"
+              title="Are you sure you want to delete this custom provider?"
               @confirm="deleteCustomProvider(providerId)"
-              ok-text="确定"
-              cancel-text="取消"
+              ok-text="Confirm"
+              cancel-text="Cancel"
             >
               <a-button type="text" size="small" danger class="lucide-icon-btn">
                 <template #icon>
                   <Trash2 :size="14" />
                 </template>
-                删除
+                Delete
               </a-button>
             </a-popconfirm>
           </div>
@@ -66,45 +68,45 @@
         <div class="card-content">
           <div class="provider-details">
             <div class="detail-item">
-              <span class="label">API地址:</span>
+              <span class="label">API URL:</span>
               <span class="value">{{ provider.base_url }}</span>
             </div>
             <div class="detail-item">
-              <span class="label">默认模型:</span>
+              <span class="label">Default Model:</span>
               <span class="value">{{ provider.default }}</span>
             </div>
             <div class="detail-item">
-              <span class="label">可用模型:</span>
-              <span class="value">{{ provider.models?.join(', ') || '无' }}</span>
+              <span class="label">Available Models:</span>
+              <span class="value">{{ provider.models?.join(', ') || 'None' }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 无自定义供应商时的提示 -->
+      <!-- Empty state when no custom providers -->
       <div v-if="Object.keys(customProviders).length === 0" class="empty-state">
-        <a-empty description="暂无自定义供应商">
-          <!-- <a-button type="primary" @click="openAddCustomProviderModal">添加自定义供应商</a-button> -->
+        <a-empty description="No custom providers yet">
+          <!-- <a-button type="primary" @click="openAddCustomProviderModal">Add Custom Provider</a-button> -->
         </a-empty>
       </div>
     </div>
 
     <a-divider />
 
-    <!-- 系统内置供应商 -->
+    <!-- Built-in providers -->
     <div class="builtin-providers-section">
       <div class="section-header">
-        <div class="section-subtitle">系统内置供应商</div>
+        <div class="section-subtitle">Built-in Providers</div>
         <div class="providers-stats">
-          <span class="stats-item available"> {{ modelKeys.length }} 可用 </span>
-          <span class="stats-item unavailable"> {{ notModelKeys.length }} 未配置 </span>
+          <span class="stats-item available"> {{ modelKeys.length }} Available </span>
+          <span class="stats-item unavailable"> {{ notModelKeys.length }} Unconfigured </span>
         </div>
       </div>
       <p class="section-description">
-        请在 <code>.env</code> 文件中配置对应的 APIKEY，并重新启动服务
+        Configure the corresponding API key in <code>.env</code> and restart the service
       </p>
 
-      <!-- 已配置的供应商 -->
+      <!-- Configured providers -->
       <div
         class="model-provider-card configured-provider"
         v-for="(item, key) in modelKeys"
@@ -112,7 +114,7 @@
       >
         <div class="card-header" @click="toggleExpand(item)">
           <div :class="{ 'model-icon': true, available: modelStatus[item] }">
-            <img :src="modelIcons[item] || modelIcons.default" alt="模型图标" />
+            <img :src="modelIcons[item] || modelIcons.default" alt="Model icon" />
           </div>
           <div class="model-title-container">
             <div class="model-name">{{ modelNames[item].name }}</div>
@@ -122,9 +124,9 @@
               type="text"
               class="expand-button lucide-icon-btn"
               @click.stop="openProviderConfig(item)"
-              title="配置模型"
+              title="Configure models"
             >
-              <Settings :size="14" /> 已选 {{ modelNames[item].models?.length || 0 }} 个模型
+              <Settings :size="14" /> Selected {{ modelNames[item].models?.length || 0 }} models
             </a-button>
           </div>
         </div>
@@ -137,7 +139,7 @@
         </div>
       </div>
 
-      <!-- 未配置的供应商 -->
+      <!-- Unconfigured providers -->
       <div
         class="model-provider-card unconfigured-provider"
         v-for="(item, key) in notModelKeys"
@@ -145,52 +147,56 @@
       >
         <div class="card-header">
           <div class="model-icon">
-            <img :src="modelIcons[item] || modelIcons.default" alt="模型图标" />
+            <img :src="modelIcons[item] || modelIcons.default" alt="Model icon" />
           </div>
           <div class="model-title-container">
             <div class="model-name">{{ modelNames[item].name }}</div>
             <a :href="modelNames[item].url" target="_blank" class="model-url">
-              查看信息 <CircleHelp :size="13" />
+              View details <CircleHelp :size="13" />
             </a>
           </div>
           <div class="missing-keys">
-            需配置<span>{{ modelNames[item].env }}</span>
+            Required<span>{{ modelNames[item].env }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 模型提供商配置弹窗 -->
+    <!-- Provider configuration modal -->
     <a-modal
       class="provider-config-modal"
       v-model:open="providerConfig.visible"
-      :title="`配置${providerConfig.providerName}模型`"
+      :title="`Configure ${providerConfig.providerName} Models`"
       @ok="saveProviderConfig"
       @cancel="cancelProviderConfig"
-      :okText="'保存配置'"
-      :cancelText="'取消'"
+      :okText="'Save Config'"
+      :cancelText="'Cancel'"
       :ok-type="'primary'"
       :width="800"
     >
       <div v-if="providerConfig.loading" class="modal-loading-container">
         <a-spin :indicator="h(LoaderCircle, { size: 32, color: 'var(--main-color)' })" />
-        <div class="loading-text">正在获取模型列表...</div>
+        <div class="loading-text">Fetching model list...</div>
       </div>
       <div v-else class="modal-config-content">
         <div class="modal-config-header">
           <p class="description">
-            勾选您希望在系统中启用的模型，请注意，列表中可能包含非对话模型，请仔细甄别。
+            Select the models you want to enable in the system. The list may include non-chat
+            models, so please review carefully.
           </p>
         </div>
 
         <div class="modal-models-section">
-          <!-- 警告：检测到失效模型 -->
+          <!-- Warning: detected unavailable models -->
           <div
             v-if="unsupportedModels.length > 0"
             class="simple-notice warning"
             style="margin-bottom: 20px"
           >
-            <p>检测到配置中包含当前供应商列表中不存在的模型。以下模型可能已失效或被供应商移除：</p>
+            <p>
+              Some configured models are not in the current provider list. These models may be
+              unavailable or removed by the provider:
+            </p>
             <div class="unsupported-list">
               <a-tag
                 closable
@@ -211,14 +217,14 @@
               @click="removeAllUnsupported"
               class="clear-btn"
             >
-              一键移除所有失效模型
+              Remove All Unavailable Models
             </a-button>
           </div>
 
           <div class="model-search" v-if="providerConfig.allModels.length > 0">
             <a-input
               v-model:value="providerConfig.searchQuery"
-              placeholder="搜索模型..."
+              placeholder="Search models..."
               allow-clear
             >
               <template #prefix>
@@ -227,11 +233,11 @@
             </a-input>
           </div>
 
-          <!-- 显示选中统计信息 -->
+          <!-- Selected summary -->
           <div class="selection-summary" v-if="providerConfig.allModels.length > 0">
-            <span>已选择 {{ providerConfig.selectedModels.length }} 个模型</span>
+            <span>Selected {{ providerConfig.selectedModels.length }} models</span>
             <span v-if="providerConfig.searchQuery" class="filter-info">
-              （当前筛选显示 {{ filteredModels.length }} 个）
+              (Currently showing {{ filteredModels.length }})
             </span>
           </div>
 
@@ -246,42 +252,44 @@
             </div>
           </div>
 
-          <!-- 手动管理模式 (当无法获取模型列表时) -->
+          <!-- Manual management mode (when model list cannot be fetched) -->
           <div v-if="providerConfig.allModels.length === 0" class="modal-manual-manage">
             <div
               v-if="!modelStatus[providerConfig.provider]"
               class="simple-notice warning"
               style="margin-bottom: 16px"
             >
-              请在 .env 中配置对应的 APIKEY，并重新启动服务
+              Configure the corresponding API key in .env and restart the service
             </div>
 
             <div class="manual-manage-container">
               <div class="manual-header">
                 <div class="simple-notice info">
-                  无法获取模型列表，您可以手动管理模型配置。该提供商暂未适配自动获取模型列表，或者网络请求失败。您可以在下方手动添加或移除模型。
+                  Unable to fetch the model list. You can manage model configuration manually. This
+                  provider may not support automatic model listing yet, or the network request
+                  failed. You can add or remove models below.
                 </div>
               </div>
 
               <div class="manual-add-box" style="margin: 16px 0">
                 <a-input-search
                   v-model:value="manualModelInput"
-                  placeholder="请输入模型ID（如：gpt-4）"
-                  enter-button="添加模型"
+                  placeholder="Enter model ID (e.g., gpt-4)"
+                  enter-button="Add Model"
                   @search="addManualModel"
                 />
               </div>
 
               <div class="current-models-list">
                 <h4 style="margin-bottom: 10px; font-weight: 600">
-                  当前配置的模型 ({{ providerConfig.selectedModels.length }})
+                  Currently Configured Models ({{ providerConfig.selectedModels.length }})
                 </h4>
                 <div
                   v-if="providerConfig.selectedModels.length === 0"
                   class="empty-text"
                   style="color: var(--gray-500); padding: 8px 0"
                 >
-                  暂无配置模型
+                  No models configured
                 </div>
                 <div class="tags-container">
                   <a-tag
@@ -302,14 +310,14 @@
       </div>
     </a-modal>
 
-    <!-- 自定义供应商配置弹窗 -->
+    <!-- Custom provider configuration modal -->
     <a-modal
       v-model:open="customProviderModal.visible"
-      :title="customProviderModal.isEdit ? '编辑自定义供应商' : '添加自定义供应商'"
+      :title="customProviderModal.isEdit ? 'Edit Custom Provider' : 'Add Custom Provider'"
       @ok="saveCustomProvider"
       @cancel="cancelCustomProvider"
-      :okText="'保存'"
-      :cancelText="'取消'"
+      :okText="'Save'"
+      :cancelText="'Cancel'"
       :ok-type="'primary'"
       :width="600"
       :confirmLoading="customProviderModal.loading"
@@ -320,58 +328,59 @@
         :rules="customProviderRules"
         layout="vertical"
       >
-        <a-form-item label="供应商ID" name="providerId" v-if="!customProviderModal.isEdit">
+        <a-form-item label="Provider ID" name="providerId" v-if="!customProviderModal.isEdit">
           <a-input
             v-model:value="customProviderModal.data.providerId"
-            placeholder="请输入唯一的供应商标识符（如：my-provider）"
+            placeholder="Enter a unique provider identifier (e.g., my-provider)"
             :disabled="customProviderModal.isEdit"
           />
         </a-form-item>
 
-        <a-form-item label="供应商名称" name="name">
+        <a-form-item label="Provider Name" name="name">
           <a-input
             v-model:value="customProviderModal.data.name"
-            placeholder="请输入供应商显示名称"
+            placeholder="Enter provider display name"
           />
         </a-form-item>
 
-        <a-form-item label="API地址" name="base_url">
+        <a-form-item label="API URL" name="base_url">
           <a-input
             v-model:value="customProviderModal.data.base_url"
-            placeholder="请输入API基础地址（如：https://api.example.com/v1）"
+            placeholder="Enter API base URL (e.g., https://api.example.com/v1)"
           />
         </a-form-item>
 
-        <a-form-item label="默认模型" name="default">
+        <a-form-item label="Default Model" name="default">
           <a-input
             v-model:value="customProviderModal.data.default"
-            placeholder="请输入默认模型名称"
+            placeholder="Enter default model name"
           />
         </a-form-item>
 
-        <a-form-item label="API密钥" name="env">
+        <a-form-item label="API Key" name="env">
           <a-input
             v-model:value="customProviderModal.data.env"
-            placeholder="请输入API密钥或环境变量名（如：MY_API_KEY）"
+            placeholder="Enter API key or environment variable name (e.g., MY_API_KEY)"
           />
           <div class="form-help-text">
-            支持直接输入API密钥，或使用环境变量名（如：MY_API_KEY），如无密钥填写"无"。
+            You can enter an API key directly or use an environment variable name (e.g.,
+            MY_API_KEY). If no key is needed, enter "none".
           </div>
         </a-form-item>
 
-        <a-form-item label="支持的模型" name="models">
+        <a-form-item label="Supported Models" name="models">
           <a-textarea
             v-model:value="customProviderModal.data.modelsText"
-            placeholder="请输入支持的模型列表，每行一个模型"
+            placeholder="Enter supported models, one model per line"
             :rows="4"
           />
-          <div class="form-help-text">每行输入一个模型名称，例如：gpt-5</div>
+          <div class="form-help-text">Enter one model name per line, e.g., gpt-5</div>
         </a-form-item>
 
-        <a-form-item label="文档地址" name="url">
+        <a-form-item label="Documentation URL" name="url">
           <a-input
             v-model:value="customProviderModal.data.url"
-            placeholder="请输入供应商文档地址（可选）"
+            placeholder="Enter provider documentation URL (optional)"
           />
         </a-form-item>
       </a-form>
@@ -399,44 +408,44 @@ import { customProviderApi } from '@/apis/system_api'
 
 const configStore = useConfigStore()
 
-// 计算属性
+// Computed properties
 const modelNames = computed(() => configStore.config?.model_names)
 const modelStatus = computed(() => configStore.config?.model_provider_status)
 
-// 自定义供应商计算属性
+// Computed custom providers
 const customProviders = computed(() => {
   const providers = configStore.config?.model_names || {}
   return Object.fromEntries(Object.entries(providers).filter(([, value]) => value.custom === true))
 })
 
-// 提供商配置相关状态
+// Provider configuration state
 const providerConfig = reactive({
   visible: false,
   provider: '',
   providerName: '',
   models: [],
-  allModels: [], // 所有可用的模型
-  selectedModels: [], // 用户选择的模型
+  allModels: [], // all available models
+  selectedModels: [], // user-selected models
   loading: false,
   searchQuery: ''
 })
 
-// 筛选 modelStatus 中为真的key
+// Filter keys where modelStatus is true
 const modelKeys = computed(() => {
   return Object.keys(modelStatus.value || {}).filter(
     (key) => modelStatus.value[key] && !customProviders.value[key]
   )
 })
 
-// 筛选 modelStatus 中为假的key
+// Filter keys where modelStatus is false
 const notModelKeys = computed(() => {
   return Object.keys(modelStatus.value || {}).filter((key) => !modelStatus.value[key])
 })
 
-// 模型展开状态管理
+// Model expansion state
 const expandedModels = reactive({})
 
-// 监听 modelKeys 变化，确保新添加的模型也是默认展开状态
+// Watch modelKeys and default-expand newly added models
 watch(
   modelKeys,
   (newKeys) => {
@@ -449,12 +458,12 @@ watch(
   { immediate: true }
 )
 
-// 切换展开状态
+// Toggle expand state
 const toggleExpand = (item) => {
   expandedModels[item] = !expandedModels[item]
 }
 
-// 处理模型选择
+// Handle model selection
 const handleModelSelect = (modelId, checked) => {
   const selectedModels = providerConfig.selectedModels
   const index = selectedModels.indexOf(modelId)
@@ -466,126 +475,133 @@ const handleModelSelect = (modelId, checked) => {
   }
 }
 
-// 打开提供商配置
+// Open provider configuration
 const openProviderConfig = (provider) => {
   providerConfig.provider = provider
   providerConfig.providerName = modelNames.value[provider].name
   providerConfig.allModels = []
   providerConfig.visible = true
   providerConfig.loading = true
-  providerConfig.searchQuery = '' // 重置搜索关键词
+  providerConfig.searchQuery = '' // reset search query
 
-  // 获取当前选择的模型作为初始选中值
+  // Use currently selected models as initial values
   const currentModels = modelNames.value[provider]?.models || []
   providerConfig.selectedModels = [...currentModels]
 
-  // 获取所有可用模型
+  // Fetch all available models
   fetchProviderModels(provider)
 }
 
-// 获取模型提供商的模型列表
+// Fetch model list for a provider
 const fetchProviderModels = (provider) => {
   providerConfig.loading = true
   agentApi
     .getProviderModels(provider)
     .then((data) => {
-      console.log(`${provider} 模型列表:`, data)
+      console.log(`${provider} model list:`, data)
 
-      // 处理各种可能的API返回格式
+      // Handle possible API response formats
       let modelsList = []
 
-      // 情况1: { data: [...] }
+      // Case 1: { data: [...] }
       if (data.data && Array.isArray(data.data)) {
         modelsList = data.data
       }
-      // 情况2: { models: [...] } (字符串数组)
+      // Case 2: { models: [...] } (string array)
       else if (data.models && Array.isArray(data.models)) {
         modelsList = data.models.map((model) => (typeof model === 'string' ? { id: model } : model))
       }
-      // 情况3: { models: { data: [...] } }
+      // Case 3: { models: { data: [...] } }
       else if (data.models && data.models.data && Array.isArray(data.models.data)) {
         modelsList = data.models.data
       }
 
-      console.log('处理后的模型列表:', modelsList)
+      console.log('Processed model list:', modelsList)
       providerConfig.allModels = modelsList
       providerConfig.loading = false
     })
     .catch((error) => {
-      console.error(`获取${provider}模型列表失败:`, error)
-      message.error({ content: `获取${modelNames.value[provider].name}模型列表失败`, duration: 2 })
+      console.error(`Failed to fetch model list for ${provider}:`, error)
+      message.error({
+        content: `Failed to fetch model list for ${modelNames.value[provider].name}`,
+        duration: 2
+      })
       providerConfig.loading = false
     })
 }
 
-// 保存提供商配置
+// Save provider configuration
 const saveProviderConfig = async () => {
   if (!modelStatus.value[providerConfig.provider]) {
-    message.error('请在 .env 中配置对应的 APIKEY，并重新启动服务')
+    message.error('Configure the corresponding API key in .env and restart the service')
     return
   }
 
-  message.loading({ content: '保存配置中...', key: 'save-config', duration: 0 })
+  message.loading({ content: 'Saving configuration...', key: 'save-config', duration: 0 })
 
   try {
-    // 发送选择的模型列表到后端
+    // Send selected models to backend
     const data = await agentApi.updateProviderModels(
       providerConfig.provider,
       providerConfig.selectedModels
     )
-    console.log('更新后的模型列表:', data.models)
+    console.log('Updated model list:', data.models)
 
-    message.success({ content: '模型配置已保存!', key: 'save-config', duration: 2 })
+    message.success({ content: 'Model configuration saved!', key: 'save-config', duration: 2 })
 
-    // 关闭弹窗
+    // Close modal
     providerConfig.visible = false
 
-    // 刷新配置
+    // Refresh config
     configStore.refreshConfig()
   } catch (error) {
-    console.error('保存配置失败:', error)
-    message.error({ content: '保存配置失败: ' + error.message, key: 'save-config', duration: 2 })
+    console.error('Failed to save configuration:', error)
+    message.error({
+      content: 'Failed to save configuration: ' + error.message,
+      key: 'save-config',
+      duration: 2
+    })
   }
 }
 
-// 取消提供商配置
+// Cancel provider configuration
 const cancelProviderConfig = () => {
   providerConfig.visible = false
 }
 
-// 计算筛选后的模型列表
+// Computed filtered model list
 const filteredModels = computed(() => {
   const allModels = providerConfig.allModels || []
   const searchQuery = providerConfig.searchQuery.toLowerCase()
   return allModels.filter((model) => model.id.toLowerCase().includes(searchQuery))
 })
 
-// 计算不支持/已失效的模型
+// Computed unsupported or unavailable models
 const unsupportedModels = computed(() => {
   if (providerConfig.allModels.length === 0) return []
   const availableIds = new Set(providerConfig.allModels.map((m) => m.id))
   return providerConfig.selectedModels.filter((id) => !availableIds.has(id))
 })
 
-// 手动管理相关
+// Manual management state
 const manualModelInput = ref('')
 
-// 添加手动输入的模型
+// Add a manually entered model
 const addManualModel = () => {
   const val = manualModelInput.value.trim()
   if (!val) return
 
   if (providerConfig.selectedModels.includes(val)) {
-    message.warning('该模型已存在')
+    message.warning('Model already exists')
     return
   }
 
   providerConfig.selectedModels.push(val)
   manualModelInput.value = ''
-  message.success('添加成功')
+  message.success('Added successfully')
 }
 
-// 移除模型
+// Remove model
 const removeModel = (modelId) => {
   const idx = providerConfig.selectedModels.indexOf(modelId)
   if (idx > -1) {
@@ -593,16 +609,16 @@ const removeModel = (modelId) => {
   }
 }
 
-// 移除所有不支持的模型
+// Remove all unsupported models
 const removeAllUnsupported = () => {
   const toRemove = unsupportedModels.value
   providerConfig.selectedModels = providerConfig.selectedModels.filter(
     (id) => !toRemove.includes(id)
   )
-  message.success(`已移除 ${toRemove.length} 个失效模型`)
+  message.success(`Removed ${toRemove.length} unavailable models`)
 }
 
-// 自定义供应商管理
+// Custom provider management
 const customProviderForm = ref()
 const customProviderModal = reactive({
   visible: false,
@@ -620,49 +636,51 @@ const customProviderModal = reactive({
   }
 })
 
-// 自定义供应商表单验证规则
+// Validation rules for custom provider form
 const customProviderRules = {
   providerId: [
-    { required: true, message: '请输入供应商ID', trigger: 'blur' },
+    { required: true, message: 'Please enter provider ID', trigger: 'blur' },
     {
       pattern: /^[a-zA-Z0-9_-]+$/,
-      message: '供应商ID只能包含字母、数字、下划线和横线',
+      message: 'Provider ID can only contain letters, numbers, underscores, and hyphens',
       trigger: 'blur'
     },
     {
       validator: (rule, value) => {
         if (!value) return Promise.resolve()
-        // 检查是否与现有供应商ID重复
+        // Check for duplicate provider ID
         if (modelNames.value && modelNames.value[value]) {
-          return Promise.reject('供应商ID已存在，请使用其他ID')
+          return Promise.reject('Provider ID already exists, please use another one')
         }
         return Promise.resolve()
       },
       trigger: 'blur'
     }
   ],
-  name: [{ required: true, message: '请输入供应商名称', trigger: 'blur' }],
+  name: [{ required: true, message: 'Please enter provider name', trigger: 'blur' }],
   base_url: [
-    { required: true, message: '请输入API地址', trigger: 'blur' },
-    { type: 'url', message: '请输入有效的URL地址', trigger: 'blur' }
+    { required: true, message: 'Please enter API URL', trigger: 'blur' },
+    { type: 'url', message: 'Please enter a valid URL', trigger: 'blur' }
   ],
-  default: [{ required: true, message: '请输入默认模型', trigger: 'blur' }],
-  env: [{ required: true, message: '请输入API密钥或环境变量', trigger: 'blur' }]
+  default: [{ required: true, message: 'Please enter default model', trigger: 'blur' }],
+  env: [
+    { required: true, message: 'Please enter API key or environment variable', trigger: 'blur' }
+  ]
 }
 
-// 打开添加自定义供应商弹窗
+// Open add custom provider modal
 const openAddCustomProviderModal = () => {
   customProviderModal.visible = true
   customProviderModal.isEdit = false
   resetCustomProviderForm()
 }
 
-// 打开编辑自定义供应商弹窗
+// Open edit custom provider modal
 const openEditCustomProviderModal = (providerId, provider) => {
   customProviderModal.visible = true
   customProviderModal.isEdit = true
 
-  // 填充表单数据
+  // Fill form data
   customProviderModal.data.providerId = providerId
   customProviderModal.data.name = provider.name
   customProviderModal.data.base_url = provider.base_url
@@ -673,7 +691,7 @@ const openEditCustomProviderModal = (providerId, provider) => {
   customProviderModal.data.url = provider.url || ''
 }
 
-// 重置自定义供应商表单
+// Reset custom provider form
 const resetCustomProviderForm = () => {
   customProviderModal.data = {
     providerId: '',
@@ -688,21 +706,23 @@ const resetCustomProviderForm = () => {
   customProviderForm.value?.resetFields()
 }
 
-// 保存自定义供应商
+// Save custom provider
 const saveCustomProvider = async () => {
   try {
     await customProviderForm.value.validate()
     customProviderModal.loading = true
 
-    // 处理模型列表
+    // Process model list
     const models = customProviderModal.data.modelsText
       .split('\n')
       .map((model) => model.trim())
       .filter((model) => model.length > 0)
 
-    // 校验默认模型必须在支持的模型列表中
+    // Validate that the default model exists in supported models
     if (models.length > 0 && !models.includes(customProviderModal.data.default)) {
-      message.error(`默认模型 "${customProviderModal.data.default}" 不在支持的模型列表中`)
+      message.error(
+        `Default model "${customProviderModal.data.default}" is not in supported models`
+      )
       customProviderModal.loading = false
       return
     }
@@ -722,23 +742,23 @@ const saveCustomProvider = async () => {
         customProviderModal.data.providerId,
         providerData
       )
-      message.success('自定义供应商更新成功')
+      message.success('Custom provider updated successfully')
     } else {
       await customProviderApi.addCustomProvider(customProviderModal.data.providerId, providerData)
-      message.success(`自定义供应商 ${customProviderModal.data.providerId} 添加成功`)
+      message.success(`Custom provider ${customProviderModal.data.providerId} added successfully`)
     }
 
-    // 关闭弹窗并刷新配置
+    // Close modal and refresh config
     customProviderModal.visible = false
     await configStore.refreshConfig()
   } catch (error) {
     if (error.errorFields) {
-      // 表单验证错误
+      // Form validation error
       return
     }
 
-    // 处理API错误响应
-    let errorMessage = '未知错误'
+    // Handle API error response
+    let errorMessage = 'Unknown error'
     if (error.response?.data?.detail) {
       errorMessage = error.response.data.detail
     } else if (error.message) {
@@ -747,48 +767,54 @@ const saveCustomProvider = async () => {
       errorMessage = error
     }
 
-    message.error(`操作失败: ${errorMessage}`)
+    message.error(`Operation failed: ${errorMessage}`)
   } finally {
     customProviderModal.loading = false
   }
 }
 
-// 取消自定义供应商操作
+// Cancel custom provider operation
 const cancelCustomProvider = () => {
   customProviderModal.visible = false
   resetCustomProviderForm()
 }
 
-// 删除自定义供应商
+// Delete custom provider
 const deleteCustomProvider = async (providerId) => {
   try {
     await customProviderApi.deleteCustomProvider(providerId)
-    message.success('自定义供应商删除成功')
+    message.success('Custom provider deleted successfully')
     await configStore.refreshConfig()
   } catch (error) {
-    message.error(`删除失败: ${error.message || error.response?.data?.detail || '未知错误'}`)
+    message.error(
+      `Deletion failed: ${error.message || error.response?.data?.detail || 'Unknown error'}`
+    )
   }
 }
 
-// 测试自定义供应商连接
+// Test custom provider connection
 const testCustomProvider = async (providerId, modelName) => {
   try {
-    message.loading({ content: '正在测试连接...', key: 'test-connection', duration: 0 })
+    message.loading({ content: 'Testing connection...', key: 'test-connection', duration: 0 })
 
     const result = await customProviderApi.testCustomProvider(providerId, modelName)
 
     if (result.status?.status === 'available') {
-      message.success({ content: '连接测试成功', key: 'test-connection', duration: 2 })
+      message.success({
+        content: 'Connection test successful',
+        key: 'test-connection',
+        duration: 2
+      })
     } else {
       message.error({
-        content: `连接测试失败: ${result.status?.message || '未知错误'}`,
+        content: `Connection test failed: ${result.status?.message || 'Unknown error'}`,
         key: 'test-connection',
         duration: 3
       })
     }
   } catch (error) {
     message.error({
-      content: `测试失败: ${error.message || error.response?.data?.detail || '未知错误'}`,
+      content: `Test failed: ${error.message || error.response?.data?.detail || 'Unknown error'}`,
       key: 'test-connection',
       duration: 3
     })
@@ -917,7 +943,7 @@ const testCustomProvider = async (providerId, modelName) => {
   }
 }
 
-// 表单帮助文本样式
+// Form help text style
 .form-help-text {
   font-size: 12px;
   color: var(--gray-600);
@@ -933,14 +959,14 @@ const testCustomProvider = async (providerId, modelName) => {
   padding: 0;
   overflow: hidden;
 
-  // 已配置provider的样式
+  // Styles for configured providers
   &.configured-provider {
     .model-icon {
       filter: grayscale(0%);
     }
   }
 
-  // 未配置provider的样式
+  // Styles for unconfigured providers
   &.unconfigured-provider {
     .card-header {
       background: var(--gray-25);
@@ -1078,7 +1104,7 @@ const testCustomProvider = async (providerId, modelName) => {
     padding: 10px;
     padding-top: 4px;
 
-    // 普通模型卡片样式
+    // Standard model card style
     .card-models {
       width: 100%;
       border-radius: 6px;
@@ -1171,7 +1197,7 @@ const testCustomProvider = async (providerId, modelName) => {
   }
 }
 
-// 针对不同状态的额外样式调整
+// Additional style adjustments for different states
 .unconfigured-provider {
   .card-body {
     .card-models {

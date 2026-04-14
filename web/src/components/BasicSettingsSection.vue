@@ -102,7 +102,7 @@
             <ModelSelectorComponent
               @select-model="handleContentGuardModelSelect"
               :model_spec="configStore.config?.content_guard_llm_model"
-              placeholder="请选择模型"
+              placeholder="Select model"
             />
           </div>
         </div>
@@ -128,14 +128,14 @@
             @click="openLink('http://localhost:7474/')"
             :icon="h(Globe, { size: 18 })"
           >
-            访问
+            Open
           </a-button>
         </div>
 
         <div class="service-link-card">
           <div class="service-info">
-            <h4>API 接口文档</h4>
-            <p>系统接口文档和调试工具</p>
+            <h4>API documentation</h4>
+            <p>System API docs and debugging tools</p>
           </div>
           <a-button
             type="default"
@@ -143,14 +143,14 @@
             @click="openLink('http://localhost:5050/docs')"
             :icon="h(Globe, { size: 18 })"
           >
-            访问
+            Open
           </a-button>
         </div>
 
         <div class="service-link-card">
           <div class="service-info">
-            <h4>MinIO 对象存储</h4>
-            <p>文件存储管理控制台</p>
+            <h4>MinIO object storage</h4>
+            <p>File storage management console</p>
           </div>
           <a-button
             type="default"
@@ -158,7 +158,7 @@
             @click="openLink('http://localhost:9001')"
             :icon="h(Globe, { size: 18 })"
           >
-            访问
+            Open
           </a-button>
         </div>
 
@@ -173,7 +173,7 @@
             @click="openLink('http://localhost:9091/webui/')"
             :icon="h(Globe, { size: 18 })"
           >
-            访问
+            Open
           </a-button>
         </div>
       </div>
@@ -236,7 +236,7 @@ const handleDefaultAgentChange = async (agentId) => {
   isSettingDefaultAgent.value = true
   try {
     await agentStore.setDefaultAgent(agentId)
-    message.success('默认智能体已更新')
+    message.success('Default agent updated')
   } finally {
     isSettingDefaultAgent.value = false
   }

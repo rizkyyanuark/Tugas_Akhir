@@ -1,20 +1,20 @@
 <template>
   <div class="user-management">
-    <!-- 头部区域 -->
+    <!-- Header section -->
     <div class="header-section">
       <div class="header-content">
-        <div class="section-title">用户管理</div>
+        <div class="section-title">User Management</div>
         <p class="section-description">
-          管理系统用户，请谨慎操作。删除用户后该用户将无法登录系统。
+          Manage system users carefully. Deleted users will no longer be able to sign in.
         </p>
       </div>
       <a-button type="primary" @click="showAddUserModal" class="add-btn lucide-icon-btn">
         <template #icon><Plus :size="16" /></template>
-        添加用户
+        Add User
       </a-button>
     </div>
 
-    <!-- 主内容区域 -->
+    <!-- Main content section -->
     <div class="content-section">
       <a-spin :spinning="userManagement.loading">
         <div v-if="userManagement.error" class="error-message">
@@ -23,7 +23,7 @@
 
         <div class="cards-container">
           <div v-if="userManagement.users.length === 0" class="empty-state">
-            <a-empty description="暂无用户数据" />
+            <a-empty description="No user data" />
           </div>
           <div v-else class="user-cards-grid">
             <div v-for="user in userManagement.users" :key="user.id" class="user-card">
@@ -68,21 +68,21 @@
 
               <div class="card-content">
                 <div class="info-item">
-                  <span class="info-label">手机号:</span>
+                  <span class="info-label">Phone:</span>
                   <span class="info-value phone-text">{{ user.phone_number || '-' }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">创建时间:</span>
+                  <span class="info-label">Created At:</span>
                   <span class="info-value time-text">{{ formatTime(user.created_at) }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">最后登录:</span>
+                  <span class="info-label">Last Login:</span>
                   <span class="info-value time-text">{{ formatTime(user.last_login) }}</span>
                 </div>
               </div>
 
               <div class="card-actions">
-                <a-tooltip title="编辑用户">
+                <a-tooltip title="Edit user">
                   <a-button
                     type="text"
                     size="small"
@@ -90,10 +90,10 @@
                     class="action-btn lucide-icon-btn"
                   >
                     <Pencil :size="14" />
-                    <span>编辑</span>
+                    <span>Edit</span>
                   </a-button>
                 </a-tooltip>
-                <a-tooltip title="删除用户">
+                <a-tooltip title="Delete user">
                   <a-button
                     type="text"
                     size="small"
@@ -106,7 +106,7 @@
                     class="action-btn lucide-icon-btn"
                   >
                     <Trash2 :size="14" />
-                    <span>删除</span>
+                    <span>Delete</span>
                   </a-button>
                 </a-tooltip>
               </div>
@@ -116,7 +116,7 @@
       </a-spin>
     </div>
 
-    <!-- 用户表单模态框 -->
+    <!-- User form modal -->
     <a-modal
       v-model:open="userManagement.modalVisible"
       :title="userManagement.modalTitle"
@@ -128,10 +128,10 @@
       class="user-modal"
     >
       <a-form layout="vertical" class="user-form">
-        <a-form-item label="用户名" required class="form-item">
+        <a-form-item label="Username" required class="form-item">
           <a-input
             v-model:value="userManagement.form.username"
-            placeholder="请输入用户名（2-20个字符）"
+            placeholder="Enter username (2-20 characters)"
             size="large"
             @blur="validateAndGenerateUserId"
             :maxlength="20"
@@ -141,30 +141,30 @@
           </div>
         </a-form-item>
 
-        <!-- 显示自动生成的用户ID -->
+        <!-- Display auto-generated user ID -->
         <a-form-item
           v-if="userManagement.form.generatedUserId || userManagement.editMode"
-          label="用户ID"
+          label="User ID"
           class="form-item"
         >
           <a-input
             :value="userManagement.form.generatedUserId"
-            placeholder="自动生成"
+            placeholder="Auto-generated"
             size="large"
             disabled
-            :addon-before="userManagement.editMode ? '已存在ID' : '登录ID'"
+            :addon-before="userManagement.editMode ? 'Existing ID' : 'Login ID'"
           />
           <div v-if="!userManagement.editMode" class="help-text">
-            此ID将用于登录，根据用户名自动生成
+            This ID is used for login and auto-generated from username
           </div>
-          <div v-else class="help-text">编辑模式下不能修改用户ID</div>
+          <div v-else class="help-text">User ID cannot be modified in edit mode</div>
         </a-form-item>
 
-        <!-- 手机号字段 -->
-        <a-form-item label="手机号" class="form-item">
+        <!-- Phone number field -->
+        <a-form-item label="Phone Number" class="form-item">
           <a-input
             v-model:value="userManagement.form.phoneNumber"
-            placeholder="请输入手机号（可选，可用于登录）"
+            placeholder="Enter phone number (optional, can be used for login)"
             size="large"
             :maxlength="11"
           />
@@ -176,24 +176,24 @@
         <template v-if="userManagement.editMode">
           <div class="password-toggle">
             <a-checkbox v-model:checked="userManagement.displayPasswordFields">
-              修改密码
+              Change Password
             </a-checkbox>
           </div>
         </template>
 
         <template v-if="!userManagement.editMode || userManagement.displayPasswordFields">
-          <a-form-item label="密码" required class="form-item">
+          <a-form-item label="Password" required class="form-item">
             <a-input-password
               v-model:value="userManagement.form.password"
-              placeholder="请输入密码"
+              placeholder="Enter password"
               size="large"
             />
           </a-form-item>
 
-          <a-form-item label="确认密码" required class="form-item">
+          <a-form-item label="Confirm Password" required class="form-item">
             <a-input-password
               v-model:value="userManagement.form.confirmPassword"
-              placeholder="请再次输入密码"
+              placeholder="Re-enter password"
               size="large"
             />
           </a-form-item>
@@ -201,25 +201,25 @@
 
         <a-form-item
           v-if="userManagement.editMode && userManagement.form.role === 'superadmin'"
-          label="角色"
+          label="Role"
           class="form-item"
         >
-          <a-input value="超级管理员" size="large" disabled />
-          <div class="help-text">超级管理员账户无法修改角色</div>
+          <a-input value="Super Admin" size="large" disabled />
+          <div class="help-text">Super admin role cannot be changed</div>
         </a-form-item>
-        <a-form-item v-else label="角色" class="form-item">
+        <a-form-item v-else label="Role" class="form-item">
           <a-select v-model:value="userManagement.form.role" size="large">
-            <a-select-option value="user">普通用户</a-select-option>
-            <a-select-option value="admin" v-if="userStore.isSuperAdmin">管理员</a-select-option>
+            <a-select-option value="user">User</a-select-option>
+            <a-select-option value="admin" v-if="userStore.isSuperAdmin">Admin</a-select-option>
           </a-select>
         </a-form-item>
 
-        <!-- 部门选择器（仅超级管理员可见） -->
-        <a-form-item v-if="userStore.isSuperAdmin" label="部门" class="form-item">
+        <!-- Department selector (Super Admin only) -->
+        <a-form-item v-if="userStore.isSuperAdmin" label="Department" class="form-item">
           <a-select
             v-model:value="userManagement.form.departmentId"
             size="large"
-            placeholder="请选择部门"
+            placeholder="Select a department"
           >
             <a-select-option
               v-for="dept in departmentManagement.departments"
@@ -245,50 +245,50 @@ import { formatDateTime } from '@/utils/time'
 
 const userStore = useUserStore()
 
-// 用户管理相关状态
+// User management state
 const userManagement = reactive({
   loading: false,
   users: [],
   error: null,
   modalVisible: false,
-  modalTitle: '添加用户',
+  modalTitle: 'Add User',
   editMode: false,
   editUserId: null,
   form: {
     username: '',
-    generatedUserId: '', // 自动生成的user_id
-    phoneNumber: '', // 手机号
+    generatedUserId: '', // auto-generated user_id
+    phoneNumber: '', // phone number
     password: '',
     confirmPassword: '',
-    role: 'user', // 默认角色
-    departmentId: null, // 部门ID
-    usernameError: '', // 用户名错误信息
-    phoneError: '' // 手机号错误信息
+    role: 'user', // default role
+    departmentId: null, // department ID
+    usernameError: '', // username error message
+    phoneError: '' // phone number error message
   },
-  displayPasswordFields: true // 编辑时是否显示密码字段
+  displayPasswordFields: true // whether to show password fields in edit mode
 })
 
-// 部门列表（仅超级管理员使用）
+// Department list (Super Admin only)
 const departmentManagement = reactive({
   departments: []
 })
 
-// 获取部门列表
+// Fetch department list
 const fetchDepartments = async () => {
-  if (!userStore.isSuperAdmin) return // 普通管理员不需要获取所有部门列表
+  if (!userStore.isSuperAdmin) return // Non-super admins do not need all departments
   try {
     const departments = await departmentApi.getDepartments()
     departmentManagement.departments = departments
   } catch (error) {
-    console.error('获取部门列表失败:', error)
+    console.error('Failed to fetch department list:', error)
   }
 }
 
-// 添加验证用户名并生成user_id的函数
+// Validate username and generate user_id
 const validateAndGenerateUserId = async () => {
   const username = userManagement.form.username.trim()
 
-  // 清空之前的错误和生成的ID
+  // Clear previous errors and generated ID
   userManagement.form.usernameError = ''
   userManagement.form.generatedUserId = ''
 
@@ -296,7 +296,7 @@ const validateAndGenerateUserId = async () => {
     return
   }
 
-  // 在编辑模式下，不需要重新生成user_id
+  // No need to regenerate user_id in edit mode
   if (userManagement.editMode) {
     return
   }
@@ -305,26 +305,26 @@ const validateAndGenerateUserId = async () => {
     const result = await userStore.validateUsernameAndGenerateUserId(username)
     userManagement.form.generatedUserId = result.user_id
   } catch (error) {
-    userManagement.form.usernameError = error.message || '用户名验证失败'
+    userManagement.form.usernameError = error.message || 'Username validation failed'
   }
 }
 
-// 验证手机号格式
+// Validate phone number format
 const validatePhoneNumber = (phone) => {
   if (!phone) {
-    return true // 手机号可选
+    return true // phone number is optional
   }
 
-  // 中国大陆手机号格式验证
+  // Mainland China phone number format validation
   const phoneRegex = /^1[3-9]\d{9}$/
   return phoneRegex.test(phone)
 }
 
-// 监听密码字段显示状态变化
+// Watch password field visibility changes
 watch(
   () => userManagement.displayPasswordFields,
   (newVal) => {
-    // 当取消显示密码字段时，清空密码输入
+    // Clear password inputs when hiding password fields
     if (!newVal) {
       userManagement.form.password = ''
       userManagement.form.confirmPassword = ''
@@ -332,22 +332,22 @@ watch(
   }
 )
 
-// 监听手机号输入变化
+// Watch phone number input changes
 watch(
   () => userManagement.form.phoneNumber,
   (newPhone) => {
     userManagement.form.phoneError = ''
 
     if (newPhone && !validatePhoneNumber(newPhone)) {
-      userManagement.form.phoneError = '请输入正确的手机号格式'
+      userManagement.form.phoneError = 'Please enter a valid phone number format'
     }
   }
 )
 
-// 格式化时间显示
+// Format time display
 const formatTime = (timeStr) => formatDateTime(timeStr)
 
-// 获取用户列表
+// Fetch user list
 const fetchUsers = async () => {
   try {
     userManagement.loading = true
@@ -355,16 +355,16 @@ const fetchUsers = async () => {
     userManagement.users = users
     userManagement.error = null
   } catch (error) {
-    console.error('获取用户列表失败:', error)
-    userManagement.error = '获取用户列表失败'
+    console.error('Failed to fetch user list:', error)
+    userManagement.error = 'Failed to fetch user list'
   } finally {
     userManagement.loading = false
   }
 }
 
-// 打开添加用户模态框
+// Open add user modal
 const showAddUserModal = () => {
-  userManagement.modalTitle = '添加用户'
+  userManagement.modalTitle = 'Add User'
   userManagement.editMode = false
   userManagement.editUserId = null
   userManagement.form = {
@@ -373,7 +373,7 @@ const showAddUserModal = () => {
     phoneNumber: '',
     password: '',
     confirmPassword: '',
-    role: 'user', // 默认角色为普通用户
+    role: 'user', // default role is user
     departmentId: null,
     usernameError: '',
     phoneError: ''
@@ -382,14 +382,14 @@ const showAddUserModal = () => {
   userManagement.modalVisible = true
 }
 
-// 打开编辑用户模态框
+// Open edit user modal
 const showEditUserModal = (user) => {
-  userManagement.modalTitle = '编辑用户'
+  userManagement.modalTitle = 'Edit User'
   userManagement.editMode = true
   userManagement.editUserId = user.id
   userManagement.form = {
     username: user.username,
-    generatedUserId: user.user_id || '', // 编辑模式显示现有的user_id
+    generatedUserId: user.user_id || '', // show existing user_id in edit mode
     phoneNumber: user.phone_number || '',
     password: '',
     confirmPassword: '',
@@ -398,136 +398,136 @@ const showEditUserModal = (user) => {
     usernameError: '',
     phoneError: ''
   }
-  userManagement.displayPasswordFields = false // 默认不显示密码字段
+  userManagement.displayPasswordFields = false // hide password fields by default
   userManagement.modalVisible = true
 }
 
-// 处理用户表单提交
+// Handle user form submit
 const handleUserFormSubmit = async () => {
   try {
-    // 简单验证
+    // Basic validation
     if (!userManagement.form.username.trim()) {
-      notification.error({ message: '用户名不能为空' })
+      notification.error({ message: 'Username cannot be empty' })
       return
     }
 
-    // 验证用户名长度
+    // Validate username length
     if (
       userManagement.form.username.trim().length < 2 ||
       userManagement.form.username.trim().length > 20
     ) {
-      notification.error({ message: '用户名长度必须在 2-20 个字符之间' })
+      notification.error({ message: 'Username length must be between 2 and 20 characters' })
       return
     }
 
-    // 验证手机号
+    // Validate phone number
     if (userManagement.form.phoneNumber && !validatePhoneNumber(userManagement.form.phoneNumber)) {
-      notification.error({ message: '请输入正确的手机号格式' })
+      notification.error({ message: 'Please enter a valid phone number format' })
       return
     }
 
     if (userManagement.displayPasswordFields) {
       if (!userManagement.form.password) {
-        notification.error({ message: '密码不能为空' })
+        notification.error({ message: 'Password cannot be empty' })
         return
       }
 
       if (userManagement.form.password !== userManagement.form.confirmPassword) {
-        notification.error({ message: '两次输入的密码不一致' })
+        notification.error({ message: 'The two passwords do not match' })
         return
       }
     }
 
     userManagement.loading = true
 
-    // 根据模式决定创建还是更新用户
+    // Create or update user based on mode
     if (userManagement.editMode) {
-      // 创建更新数据对象
+      // Build update payload
       const updateData = {
         username: userManagement.form.username.trim(),
         role: userManagement.form.role
       }
 
-      // 添加手机号字段
+      // Add phone number field
       if (userManagement.form.phoneNumber) {
         updateData.phone_number = userManagement.form.phoneNumber
       }
 
-      // 超级管理员可以修改部门
+      // Super admin can update department
       if (userStore.isSuperAdmin && userManagement.form.departmentId) {
         updateData.department_id = userManagement.form.departmentId
       }
 
-      // 如果显示了密码字段并且填写了密码，才更新密码
+      // Update password only when password fields are visible and filled
       if (userManagement.displayPasswordFields && userManagement.form.password) {
         updateData.password = userManagement.form.password
       }
 
       await userStore.updateUser(userManagement.editUserId, updateData)
-      notification.success({ message: '用户更新成功' })
+      notification.success({ message: 'User updated successfully' })
     } else {
-      // 创建新用户
+      // Create new user
       const createData = {
         username: userManagement.form.username.trim(),
         password: userManagement.form.password,
         role: userManagement.form.role
       }
 
-      // 超级管理员可以指定部门
+      // Super admin can assign department
       if (userStore.isSuperAdmin && userManagement.form.departmentId) {
         createData.department_id = userManagement.form.departmentId
       }
 
-      // 添加手机号字段（如果填写了）
+      // Add phone number field when provided
       if (userManagement.form.phoneNumber) {
         createData.phone_number = userManagement.form.phoneNumber
       }
 
       await userStore.createUser(createData)
-      notification.success({ message: '用户创建成功' })
+      notification.success({ message: 'User created successfully' })
     }
 
-    // 重新获取用户列表
+    // Refresh user list
     await fetchUsers()
     userManagement.modalVisible = false
   } catch (error) {
-    console.error('用户操作失败:', error)
+    console.error('User operation failed:', error)
     notification.error({
-      message: '操作失败',
-      description: error.message || '请稍后重试'
+      message: 'Operation failed',
+      description: error.message || 'Please try again later'
     })
   } finally {
     userManagement.loading = false
   }
 }
 
-// 删除用户
+// Delete user
 const confirmDeleteUser = (user) => {
-  // 自己不能删除自己
+  // Users cannot delete themselves
   if (user.id === userStore.userId) {
-    notification.error({ message: '不能删除自己的账户' })
+    notification.error({ message: 'You cannot delete your own account' })
     return
   }
 
-  // 确认对话框
+  // Confirmation dialog
   Modal.confirm({
-    title: '确认删除用户',
-    content: `确定要删除用户 "${user.username}" 吗？此操作不可撤销。`,
-    okText: '删除',
+    title: 'Confirm User Deletion',
+    content: `Are you sure you want to delete user "${user.username}"? This action cannot be undone.`,
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     async onOk() {
       try {
         userManagement.loading = true
         await userStore.deleteUser(user.id)
-        notification.success({ message: '用户删除成功' })
-        // 重新获取用户列表
+        notification.success({ message: 'User deleted successfully' })
+        // Refresh user list
         await fetchUsers()
       } catch (error) {
-        console.error('删除用户失败:', error)
+        console.error('Failed to delete user:', error)
         notification.error({
-          message: '删除失败',
-          description: error.message || '请稍后重试'
+          message: 'Deletion failed',
+          description: error.message || 'Please try again later'
         })
       } finally {
         userManagement.loading = false
@@ -549,7 +549,7 @@ const getRoleClass = (role) => {
   }
 }
 
-// 在组件挂载时获取用户列表
+// Fetch user list on component mount
 onMounted(async () => {
   await fetchUsers()
   await fetchDepartments()

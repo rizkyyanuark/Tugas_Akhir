@@ -1,7 +1,7 @@
 <template>
   <div class="status-bar">
     <div class="status-bar-content">
-      <!-- 左侧：系统信息 -->
+      <!-- Left: system information -->
       <div class="status-left">
         <div class="system-info">
           <div class="system-details">
@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <!-- 右侧：时间和用户信息 -->
+      <!-- Right: time and user information -->
       <div class="status-right">
         <div class="time-info">
           <Clock class="icon" />
@@ -25,7 +25,7 @@
           <a-badge :count="activeTaskCount" :overflow-count="99" class="task-center-badge">
             <span class="task-center-button">
               <ClipboardList class="icon" />
-              <span class="task-center-label">任务中心</span>
+              <span class="task-center-label">Task Center</span>
             </span>
           </a-badge>
         </div>
@@ -43,41 +43,41 @@ import { useTaskerStore } from '@/stores/tasker'
 import { storeToRefs } from 'pinia'
 import dayjs from '@/utils/time'
 
-// 使用 stores
+// Stores
 const infoStore = useInfoStore()
 const userStore = useUserStore()
 const taskerStore = useTaskerStore()
 const { activeCount: activeCountRef } = storeToRefs(taskerStore)
 
-// 响应式数据
+// Reactive state
 const currentTime = ref('')
 
-// 计算属性
+// Computed properties
 const branding = computed(() => infoStore.branding)
 
-// 用户名计算属性
+// Current user name
 const currentUser = computed(() => {
-  return userStore.username || '游客'
+  return userStore.username || 'Guest'
 })
 
-// 问候语计算属性
+// Greeting text
 const greeting = computed(() => {
   const hour = dayjs().tz('Asia/Shanghai').hour()
   let greetingText = ''
 
   if (hour >= 5 && hour < 12) {
-    greetingText = '早上好'
+    greetingText = 'Good morning'
   } else if (hour >= 12 && hour < 14) {
-    greetingText = '中午好'
+    greetingText = 'Good noon'
   } else if (hour >= 14 && hour < 18) {
-    greetingText = '下午好'
+    greetingText = 'Good afternoon'
   } else if (hour >= 18 && hour < 22) {
-    greetingText = '晚上好'
+    greetingText = 'Good evening'
   } else {
-    greetingText = '夜深了'
+    greetingText = 'It is late'
   }
 
-  return `${greetingText}！${currentUser.value}`
+  return `${greetingText}! ${currentUser.value}`
 })
 
 const activeTaskCount = computed(() => activeCountRef.value || 0)
@@ -86,24 +86,24 @@ const openTaskCenter = () => {
   taskerStore.openDrawer()
 }
 
-// 更新时间
+// Update time
 const updateTime = () => {
   const now = dayjs().tz('Asia/Shanghai')
-  currentTime.value = now.format('YYYY年MM月DD日 HH:mm:ss')
+  currentTime.value = now.format('YYYY-MM-DD HH:mm:ss')
 }
 
-// 定时器
+// Timer
 let timeInterval = null
 
 onMounted(async () => {
   updateTime()
   timeInterval = setInterval(updateTime, 1000)
 
-  // 获取用户信息
+  // Fetch user information
   try {
     await userStore.getCurrentUser()
   } catch (error) {
-    console.error('获取用户信息失败:', error)
+    console.error('Failed to fetch user information:', error)
   }
 })
 
@@ -239,7 +239,7 @@ onUnmounted(() => {
   color: var(--gray-900, #111827);
 }
 
-// 响应式设计
+// Responsive design
 @media (max-width: 768px) {
   .status-bar {
     height: 44px;
@@ -274,7 +274,7 @@ onUnmounted(() => {
   }
 
   .current-time {
-    display: none; // 在小屏幕上隐藏时间
+    display: none; // Hide time on small screens
   }
 }
 </style>

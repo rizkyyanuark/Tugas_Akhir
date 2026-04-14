@@ -17,7 +17,7 @@ defineProps({
   },
   text: {
     type: String,
-    default: '加载中...'
+    default: 'Loading...'
   }
 })
 </script>

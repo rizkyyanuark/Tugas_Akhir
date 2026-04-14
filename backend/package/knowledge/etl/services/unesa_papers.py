@@ -5,7 +5,7 @@ Pure Python orchestrators decoupled from Airflow context.
 This isolates testing and execution, keeping Airflow DAG files lightweight.
 """
 import pandas as pd
-import os
+
 import logging
 from pathlib import Path
 
@@ -26,7 +26,7 @@ def run_scholars_extraction(test_mode: bool = False) -> str:
     from ..load.supabase_loader import SupabaseLoader
     loader = SupabaseLoader()
     
-    response = loader.client.table("lecturers").select("nama_dosen, scholar_id", "nama_norm", "scopus_id").execute()
+    response = loader.client.table("lecturers").select("nama_dosen, scholar_id, nama_norm, scopus_id").execute()
     
     targets = []
     for r in response.data:
@@ -129,29 +129,9 @@ def run_database_commit(cleaned_csv_path: str):
 
     df = pd.read_csv(cleaned_csv_path, dtype=str).fillna("")
 
-    # 1. UPSERT to PostgreSQL (Master Ledger)
     postgres_loader = SupabaseLoader()
     papers_count = postgres_loader.upsert_papers(df)
     links_count = postgres_loader.link_papers_to_lecturers(df)
 
     logger.info(
-        f"✅ [PostgreSQL] Loaded {papers_count} papers and {links_count} links.")
-
-    # 2. Trigger KG Webhook directly from the worker (User Request)
-    import requests
-    import uuid
-    kg_url = os.environ.get("KG_BACKEND_URL", "http://ta-kg-backend:8000")
-    batch_id = f"batch_{uuid.uuid4().hex[:8]}"
-
-    payload = {
-        "task_name": "unesa_papers_etl",
-        "batch_id": batch_id,
-        "status": "ETL_SUCCESS"
-    }
-
-    try:
-        res = requests.post(f"{kg_url}/api/v1/kg/trigger", json=payload, timeout=10)
-        res.raise_for_status()
-        logger.info(f"✅ KG Backend Construction Triggered! Batch ID: {batch_id}")
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to trigger KG webhook: {e}")
+        f"✅ Loaded {papers_count} papers and {links_count} links to Supabase.")

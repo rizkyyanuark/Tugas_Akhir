@@ -19,6 +19,7 @@ WORKDIR /app
 # -- Environment --
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
+    UV_HTTP_TIMEOUT=300 \
     HF_HOME="/app/.cache/huggingface"
 
 # -- System Dependencies --
@@ -40,14 +41,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"
-
-# -- Pre-download NLP Models at Build Time --
-RUN python -m spacy download en_core_web_sm && \
-    python -c "from gliner import GLiNER; \
-               print('Caching GLiNER model...'); \
-               GLiNER.from_pretrained('urchade/gliner_small-v2.1', load_tokenizer=True); \
-               print('Model cached successfully!');" \
-    && rm -rf /tmp/*
 
 # ── LAYER 2: Server code (BUSTS on every code change) ──────
 COPY backend/server /app/server

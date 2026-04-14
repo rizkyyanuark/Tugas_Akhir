@@ -25,7 +25,7 @@
             :disabled="state.checkingStatus"
             class="status-check-button"
           >
-            {{ state.checkingStatus ? '检查中...' : '检查' }}
+            {{ state.checkingStatus ? 'Checking...' : 'Check' }}
           </a-button>
         </div>
       </div>
@@ -66,7 +66,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: '请选择模型'
+    default: 'Please select a model'
   },
   size: {
     type: String,
@@ -78,17 +78,17 @@ const props = defineProps({
 const configStore = useConfigStore()
 const emit = defineEmits(['select-model'])
 
-// 状态管理
+// State management
 const state = reactive({
-  currentModelStatus: null, // 当前模型状态
-  checkingStatus: false // 是否正在检查状态
+  currentModelStatus: null, // Current model status
+  checkingStatus: false // Whether status check is running
 })
 
-// 从configStore中获取所需数据
+// Get required data from configStore
 const modelNames = computed(() => configStore.config?.model_names)
 const modelStatus = computed(() => configStore.config?.model_provider_status)
 
-// 筛选 modelStatus 中为真的key
+// Filter keys where modelStatus is true
 const modelKeys = computed(() => {
   return Object.keys(modelStatus.value || {}).filter((key) => modelStatus.value?.[key])
 })
@@ -125,12 +125,12 @@ const displayModelProvider = computed(() => resolvedModel.value.provider || '')
 const displayModelName = computed(() => resolvedModel.value.name || '')
 const displayModelText = computed(() => displayModelName.value || props.placeholder)
 
-// 当前模型状态
+// Current model status
 const currentModelStatus = computed(() => {
   return state.currentModelStatus
 })
 
-// 检查当前模型状态
+// Check current model status
 const checkCurrentModelStatus = async () => {
   const { provider, name } = resolvedModel.value
   if (!provider || !name) return
@@ -144,7 +144,7 @@ const checkCurrentModelStatus = async () => {
       state.currentModelStatus = null
     }
   } catch (error) {
-    console.error(`检查当前模型 ${provider}/${name} 状态失败:`, error)
+    console.error(`Failed to check status of current model ${provider}/${name}:`, error)
     state.currentModelStatus = { status: 'error', message: error.message }
   } finally {
     state.checkingStatus = false
@@ -160,21 +160,21 @@ const modelStatusIcon = computed(() => {
   return '○'
 })
 
-// 获取当前模型状态提示文本
+// Get tooltip text for current model status
 const getCurrentModelStatusTooltip = () => {
   const status = currentModelStatus.value
-  if (!status) return '状态未知'
+  if (!status) return 'Unknown status'
 
   let statusText = ''
-  if (status.status === 'available') statusText = '可用'
-  else if (status.status === 'unavailable') statusText = '不可用'
-  else if (status.status === 'error') statusText = '错误'
+  if (status.status === 'available') statusText = 'Available'
+  else if (status.status === 'unavailable') statusText = 'Unavailable'
+  else if (status.status === 'error') statusText = 'Error'
 
-  const message = status.message || '无详细信息'
+  const message = status.message || 'No details'
   return `${statusText}: ${message}`
 }
 
-// 选择模型的方法
+// Model selection handler
 const handleSelectModel = async (provider, name) => {
   const sep = resolvedSep.value || '/'
   const separator = sep || '/'
@@ -184,7 +184,7 @@ const handleSelectModel = async (provider, name) => {
 </script>
 
 <style lang="less" scoped>
-// 变量定义
+// Variable definitions
 @status-success: var(--color-success-500);
 @status-error: var(--color-error-500);
 @status-warning: var(--color-warning-500);
@@ -197,7 +197,7 @@ const handleSelectModel = async (provider, name) => {
 @status-indicator-font-size: 11px;
 @model-provider-color: var(--gray-500);
 
-// 主选择器样式
+// Main selector styles
 .model-select {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -212,7 +212,7 @@ const handleSelectModel = async (provider, name) => {
   align-items: center;
   gap: 0.5rem;
 
-  // 修饰符类
+  // Modifier classes
   &.borderless {
     border: none;
   }
@@ -229,7 +229,7 @@ const handleSelectModel = async (provider, name) => {
     font-size: 16px;
   }
 
-  // 内容区域
+  // Content area
   .model-select-content {
     display: flex;
     align-items: center;
@@ -237,7 +237,7 @@ const handleSelectModel = async (provider, name) => {
     min-width: 0;
     width: 100%;
 
-    // 模型信息区域
+    // Model info area
     .model-info {
       flex: 1;
       min-width: 0;
@@ -256,7 +256,7 @@ const handleSelectModel = async (provider, name) => {
       }
     }
 
-    // 状态控制区域
+    // Status controls area
     .model-status-controls {
       display: flex;
       align-items: center;
@@ -264,14 +264,14 @@ const handleSelectModel = async (provider, name) => {
       flex: 0;
       margin-left: auto;
 
-      // 状态指示器
+      // Status indicator
       .model-status-indicator {
         font-size: @status-indicator-font-size;
         font-weight: bold;
         padding: @status-indicator-padding;
         border-radius: 3px;
 
-        // 状态样式修饰符
+        // Status style modifiers
         &.available {
           color: @status-success;
         }
@@ -285,7 +285,7 @@ const handleSelectModel = async (provider, name) => {
         }
       }
 
-      // 检查按钮
+      // Check button
       .status-check-button {
         font-size: @status-check-button-font-size;
         padding: @status-check-button-padding;
@@ -294,12 +294,12 @@ const handleSelectModel = async (provider, name) => {
   }
 }
 
-// 滚动菜单样式
+// Scrollable menu styles
 .scrollable-menu {
   max-height: 300px;
   overflow-y: auto;
 
-  // 自定义滚动条样式
+  // Custom scrollbar styles
   &::-webkit-scrollbar {
     width: @scrollbar-width;
   }
@@ -321,7 +321,7 @@ const handleSelectModel = async (provider, name) => {
 </style>
 
 <style lang="less" scoped>
-// 将全局样式移到scoped中以避免样式污染
+// Move global styles into scoped to avoid style pollution
 :deep(.ant-dropdown-menu) {
   &.scrollable-menu {
     max-height: 300px;

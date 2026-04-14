@@ -7,7 +7,7 @@
       :rows="rows"
       :auto-size="autoSize"
     />
-    <a-tooltip v-if="name" title="使用 AI 生成或优化描述">
+    <a-tooltip v-if="name" title="Use AI to generate or refine the description">
       <a-button
         class="ai-btn"
         type="text"
@@ -18,7 +18,7 @@
         <template #icon>
           <WandSparkles size="14" />
         </template>
-        <span v-if="!loading" class="ai-text">{{ modelValue?.trim() ? '润色' : '生成' }}</span>
+        <span v-if="!loading" class="ai-text">{{ modelValue?.trim() ? 'Refine' : 'Generate' }}</span>
       </a-button>
     </a-tooltip>
   </div>
@@ -63,7 +63,7 @@ const loading = ref(false)
 
 const generateDescription = async () => {
   if (!props.name?.trim()) {
-    message.warning('请先输入知识库名称')
+    message.warning('Please enter a knowledge base name first')
     return
   }
 
@@ -72,13 +72,13 @@ const generateDescription = async () => {
     const result = await databaseApi.generateDescription(props.name, props.modelValue, props.files)
     if (result.status === 'success' && result.description) {
       emit('update:modelValue', result.description)
-      message.success('描述生成成功')
+      message.success('Description generated successfully')
     } else {
-      message.error(result.message || '生成失败')
+      message.error(result.message || 'Generation failed')
     }
   } catch (error) {
-    console.error('生成描述失败:', error)
-    message.error(error.message || '生成描述失败')
+    console.error('Description generation failed:', error)
+    message.error(error.message || 'Description generation failed')
   } finally {
     loading.value = false
   }

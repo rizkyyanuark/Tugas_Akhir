@@ -1,6 +1,6 @@
 <template>
   <HeaderComponent
-    :title="database.name || '数据库信息加载中'"
+    :title="database.name || 'Loading database information'"
     :loading="loading"
     class="database-info-header"
   >
@@ -23,7 +23,7 @@
           >ID:
           <span style="user-select: all">{{ database.db_id || 'N/A' }}</span>
         </span>
-        <span class="file-count">{{ database.row_count || 0 }} 文件</span>
+        <span class="file-count">{{ database.row_count || 0 }} files</span>
         <a-tag color="blue">{{ database.embed_info?.name }}</a-tag>
         <a-tag
           :color="getKbTypeColor(database.kb_type || 'lightrag')"
@@ -37,32 +37,36 @@
     </template>
   </HeaderComponent>
 
-  <!-- 添加编辑对话框 -->
-  <a-modal v-model:open="editModalVisible" title="编辑知识库信息">
+  <!-- Edit dialog -->
+  <a-modal v-model:open="editModalVisible" title="Edit knowledge base information">
     <template #footer>
       <a-button danger @click="deleteDatabase" style="margin-right: auto; margin-left: 0">
-        <DeleteOutlined /> 删除数据库
+        <DeleteOutlined /> Delete database
       </a-button>
-      <a-button key="back" @click="editModalVisible = false">取消</a-button>
-      <a-button key="submit" type="primary" @click="handleEditSubmit">确定</a-button>
+      <a-button key="back" @click="editModalVisible = false">Cancel</a-button>
+      <a-button key="submit" type="primary" @click="handleEditSubmit">Confirm</a-button>
     </template>
     <a-form :model="editForm" :rules="rules" ref="editFormRef" layout="vertical">
-      <a-form-item label="知识库名称" name="name" required>
-        <a-input v-model:value="editForm.name" placeholder="请输入知识库名称" />
+      <a-form-item label="Knowledge base name" name="name" required>
+        <a-input v-model:value="editForm.name" placeholder="Please enter a knowledge base name" />
       </a-form-item>
-      <a-form-item label="知识库描述" name="description">
+      <a-form-item label="Knowledge base description" name="description">
         <AiTextarea
           v-model="editForm.description"
           :name="editForm.name"
-          placeholder="请输入知识库描述"
+          placeholder="Please enter a knowledge base description"
           :rows="4"
         />
       </a-form-item>
-      <!-- 仅对 LightRAG 类型显示 LLM 配置 -->
-      <a-form-item v-if="database.kb_type === 'lightrag'" label="语言模型 (LLM)" name="llm_info">
+      <!-- Show LLM settings only for LightRAG type -->
+      <a-form-item
+        v-if="database.kb_type === 'lightrag'"
+        label="Language model (LLM)"
+        name="llm_info"
+      >
         <ModelSelectorComponent
           :model_spec="llmModelSpec"
-          placeholder="请选择模型"
+          placeholder="Select model"
           @select-model="handleLLMSelect"
           style="width: 100%"
         />
@@ -100,7 +104,7 @@ const editForm = reactive({
 })
 
 const rules = {
-  name: [{ required: true, message: '请输入知识库名称' }]
+  name: [{ required: true, message: 'Please enter a knowledge base name' }]
 }
 
 const backToDatabase = () => {
@@ -110,7 +114,7 @@ const backToDatabase = () => {
 const showEditModal = () => {
   editForm.name = database.value.name || ''
   editForm.description = database.value.description || ''
-  // 如果是 LightRAG 类型，加载当前的 LLM 配置
+  // Load current LLM settings for LightRAG type
   if (database.value.kb_type === 'lightrag') {
     const llmInfo = database.value.llm_info || {}
     editForm.llm_info.provider = llmInfo.provider || ''
@@ -128,7 +132,7 @@ const handleEditSubmit = () => {
         description: editForm.description
       }
 
-      // 如果是 LightRAG 类型，包含 llm_info
+      // Include llm_info for LightRAG type
       if (database.value.kb_type === 'lightrag') {
         updateData.llm_info = {
           provider: editForm.llm_info.provider,
@@ -140,11 +144,11 @@ const handleEditSubmit = () => {
       editModalVisible.value = false
     })
     .catch((err) => {
-      console.error('表单验证失败:', err)
+      console.error('Form validation failed:', err)
     })
 }
 
-// LLM 模型选择处理
+// LLM model selection handler
 const llmModelSpec = computed(() => {
   const provider = editForm.llm_info?.provider || ''
   const modelName = editForm.llm_info?.model_name || ''
@@ -155,7 +159,7 @@ const llmModelSpec = computed(() => {
 })
 
 const handleLLMSelect = (spec) => {
-  console.log('LLM选择:', spec)
+  console.log('LLM selection:', spec)
   if (typeof spec !== 'string' || !spec) return
 
   const index = spec.indexOf('/')

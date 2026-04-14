@@ -27,7 +27,7 @@
           </a-menu-item>
           <a-menu-divider />
           <a-menu-item key="docs" @click="openDocs" :icon="BookOpenIcon">
-            <span class="menu-text">文档中心</span>
+            <span class="menu-text">Documentation</span>
           </a-menu-item>
           <a-menu-item
             key="theme"
@@ -35,7 +35,7 @@
             :icon="themeStore.isDark ? SunIcon : MoonIcon"
           >
             <span class="menu-text">{{
-              themeStore.isDark ? '切换到浅色模式' : '切换到深色模式 (Beta)'
+              themeStore.isDark ? 'Switch to light mode' : 'Switch to dark mode (Beta)'
             }}</span>
           </a-menu-item>
           <a-menu-divider v-if="userStore.isAdmin" />
@@ -45,7 +45,7 @@
             @click="showDebug = true"
             :icon="TerminalIcon"
           >
-            <span class="menu-text">调试面板（非生产环境）</span>
+            <span class="menu-text">Debug Panel (Non-production)</span>
           </a-menu-item>
           <a-menu-item
             v-if="userStore.isAdmin"
@@ -53,20 +53,20 @@
             @click="goToSetting"
             :icon="SettingsIcon"
           >
-            <span class="menu-text">系统设置</span>
+            <span class="menu-text">System Settings</span>
           </a-menu-item>
           <a-menu-item key="logout" @click="logout" :icon="LogOutIcon">
-            <span class="menu-text">退出登录</span>
+            <span class="menu-text">Sign Out</span>
           </a-menu-item>
         </a-menu>
       </template>
     </a-dropdown>
-    <a-button v-else-if="showButton" type="primary" @click="goToLogin"> 登录 </a-button>
+    <a-button v-else-if="showButton" type="primary" @click="goToLogin"> Login </a-button>
 
-    <!-- 个人资料弹窗 -->
+    <!-- Profile modal -->
     <a-modal v-model:open="profileModalVisible" :footer="null" width="420px" class="profile-modal">
       <div class="profile-content">
-        <!-- 头像区域 -->
+        <!-- Avatar section -->
         <div class="avatar-section">
           <div class="avatar-container">
             <div class="avatar-display">
@@ -94,84 +94,84 @@
                   :loading="avatarUploading"
                 >
                   <template #icon><Upload size="14" /></template>
-                  {{ userStore.avatar ? '更换头像' : '上传头像' }}
+                  {{ userStore.avatar ? 'Change Avatar' : 'Upload Avatar' }}
                 </a-button>
               </a-upload>
-              <div class="avatar-tips">支持 JPG、PNG 格式，文件不超过 5MB</div>
+              <div class="avatar-tips">Supports JPG/PNG, file size up to 5MB</div>
             </div>
           </div>
         </div>
 
-        <!-- 用户信息区域 -->
+        <!-- User information section -->
         <div class="info-section">
           <div class="info-item">
-            <div class="info-label">用户名</div>
+            <div class="info-label">Username</div>
             <div class="info-value" v-if="!profileEditing">
-              {{ userStore.username || '未设置' }}
+              {{ userStore.username || 'Not set' }}
             </div>
             <div class="info-value" v-else>
               <a-input
                 v-model:value="editedProfile.username"
-                placeholder="请输入用户名（2-20个字符）"
+                placeholder="Enter username (2-20 characters)"
                 :max-length="20"
                 style="width: 240px"
               />
             </div>
           </div>
           <div class="info-item">
-            <div class="info-label">用户ID</div>
+            <div class="info-label">User ID</div>
             <div class="info-value user-id" v-if="!profileEditing">
-              {{ userStore.userIdLogin || '未设置' }}
+              {{ userStore.userIdLogin || 'Not set' }}
             </div>
             <div class="info-value" v-else>
               <a-input :value="userStore.userIdLogin || ''" disabled style="width: 240px" />
             </div>
           </div>
           <div class="info-item">
-            <div class="info-label">手机号</div>
+            <div class="info-label">Phone</div>
             <div class="info-value" v-if="!profileEditing">
-              {{ userStore.phoneNumber || '未设置' }}
+              {{ userStore.phoneNumber || 'Not set' }}
             </div>
             <div class="info-value" v-else>
               <a-input
                 v-model:value="editedProfile.phone_number"
-                placeholder="请输入手机号"
+                placeholder="Enter phone number"
                 :max-length="11"
                 style="width: 200px"
               />
             </div>
           </div>
           <div class="info-item">
-            <div class="info-label">角色</div>
+            <div class="info-label">Role</div>
             <div class="info-value" :style="{ color: getRoleColor(userStore.userRole) }">
               {{ userRoleText }}
             </div>
           </div>
           <div class="info-item" v-if="userStore.departmentId">
-            <div class="info-label">部门</div>
-            <div class="info-value">{{ userStore.departmentName || '默认部门' }}</div>
+            <div class="info-label">Department</div>
+            <div class="info-value">{{ userStore.departmentName || 'Default Department' }}</div>
           </div>
         </div>
 
-        <!-- 操作区域 -->
+        <!-- Actions -->
         <div class="actions-section">
           <a-space>
             <template v-if="!profileEditing">
-              <a-button type="primary" @click="startEdit"> 编辑资料 </a-button>
-              <a-button @click="profileModalVisible = false"> 关闭 </a-button>
+              <a-button type="primary" @click="startEdit"> Edit Profile </a-button>
+              <a-button @click="profileModalVisible = false"> Close </a-button>
             </template>
             <template v-else>
               <a-button type="primary" @click="saveProfile" :loading="avatarUploading">
-                保存
+                Save
               </a-button>
-              <a-button @click="cancelEdit"> 取消 </a-button>
+              <a-button @click="cancelEdit"> Cancel </a-button>
             </template>
           </a-space>
         </div>
       </div>
     </a-modal>
 
-    <!-- 调试面板 Modal -->
+    <!-- Debug panel modal -->
     <DebugComponent v-model:show="showDebug" />
   </div>
 </template>
@@ -198,7 +198,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const themeStore = useThemeStore()
 
-// 预定义图标组件，避免 Vue 警告
+// Predefined icon components to avoid Vue warnings
 const BookOpenIcon = h(BookOpen, { size: '16' })
 const SunIcon = h(Sun, { size: '16' })
 const MoonIcon = h(Moon, { size: '16' })
@@ -206,13 +206,13 @@ const TerminalIcon = h(Terminal, { size: '16' })
 const SettingsIcon = h(Settings, { size: '16' })
 const LogOutIcon = h(LogOut, { size: '16' })
 
-// 调试面板状态
+// Debug panel state
 const showDebug = ref(false)
 
 // Inject settings modal methods
 const { openSettingsModal } = inject('settingsModal', {})
 
-// 个人资料弹窗状态
+// Profile modal state
 const profileModalVisible = ref(false)
 const avatarUploading = ref(false)
 const profileEditing = ref(false)
@@ -232,29 +232,29 @@ defineProps({
   }
 })
 
-// 用户角色显示文本
+// User role display text
 const userRoleText = computed(() => {
   switch (userStore.userRole) {
     case 'superadmin':
-      return '超级管理员'
+      return 'Super Admin'
     case 'admin':
-      return '管理员'
+      return 'Admin'
     case 'user':
-      return '普通用户'
+      return 'User'
     default:
-      return '未知角色'
+      return 'Unknown Role'
   }
 })
 
-// 退出登录
+// Sign out
 const logout = () => {
   userStore.logout()
-  message.success('已退出登录')
-  // 跳转到首页
+  message.success('Signed out successfully')
+  // Redirect to login page
   router.push('/login')
 }
 
-// 前往登录页
+// Go to login page
 const goToLogin = () => {
   router.push('/login')
 }
@@ -267,19 +267,19 @@ const toggleTheme = () => {
   themeStore.toggleTheme()
 }
 
-// 前往设置页
+// Open settings
 const goToSetting = () => {
   if (openSettingsModal) {
     openSettingsModal()
   }
 }
 
-// 打开个人资料页面
+// Open profile modal
 const openProfile = async () => {
   profileModalVisible.value = true
   profileEditing.value = false
 
-  // 刷新用户信息并初始化编辑表单
+  // Refresh user info and initialize edit form
   try {
     await userStore.getCurrentUser()
     editedProfile.value = {
@@ -287,11 +287,11 @@ const openProfile = async () => {
       phone_number: userStore.phoneNumber || ''
     }
   } catch (error) {
-    console.error('刷新用户信息失败:', error)
+    console.error('Failed to refresh user information:', error)
   }
 }
 
-// 角色标签颜色
+// Role color
 const getRoleColor = (role) => {
   switch (role) {
     case 'superadmin':
@@ -305,7 +305,7 @@ const getRoleColor = (role) => {
   }
 }
 
-// 开始编辑个人资料
+// Start editing profile
 const startEdit = () => {
   profileEditing.value = true
   editedProfile.value = {
@@ -314,7 +314,7 @@ const startEdit = () => {
   }
 }
 
-// 取消编辑
+// Cancel editing
 const cancelEdit = () => {
   profileEditing.value = false
   editedProfile.value = {
@@ -323,25 +323,25 @@ const cancelEdit = () => {
   }
 }
 
-// 保存个人资料
+// Save profile
 const saveProfile = async () => {
   try {
-    // 验证用户名
+    // Validate username
     if (
       editedProfile.value.username &&
       (editedProfile.value.username.trim().length < 2 ||
         editedProfile.value.username.trim().length > 20)
     ) {
-      message.error('用户名长度必须在 2-20 个字符之间')
+      message.error('Username length must be between 2 and 20 characters')
       return
     }
 
-    // 验证手机号格式
+    // Validate phone number format
     if (
       editedProfile.value.phone_number &&
       !validatePhoneNumber(editedProfile.value.phone_number)
     ) {
-      message.error('请输入正确的手机号格式')
+      message.error('Please enter a valid phone number')
       return
     }
 
@@ -349,39 +349,39 @@ const saveProfile = async () => {
       username: editedProfile.value.username?.trim() || undefined,
       phone_number: editedProfile.value.phone_number || undefined
     })
-    message.success('个人资料更新成功！')
+    message.success('Profile updated successfully!')
     profileEditing.value = false
   } catch (error) {
-    console.error('更新个人资料失败:', error)
-    message.error('更新失败：' + (error.message || '请稍后重试'))
+    console.error('Failed to update profile:', error)
+    message.error('Update failed: ' + (error.message || 'Please try again later'))
   }
 }
 
-// 手机号验证
+// Phone number validation
 const validatePhoneNumber = (phone) => {
-  if (!phone) return true // 空手机号允许
+  if (!phone) return true // Empty phone number is allowed
   const phoneRegex = /^1[3-9]\d{9}$/
   return phoneRegex.test(phone)
 }
 
-// 头像上传前验证
+// Validate avatar before upload
 const beforeUpload = (file) => {
   const isImage = file.type.startsWith('image/')
   if (!isImage) {
-    message.error('只能上传图片文件！')
+    message.error('Only image files are allowed!')
     return false
   }
 
   const isLt5M = file.size / 1024 / 1024 < 5
   if (!isLt5M) {
-    message.error('图片大小不能超过 5MB！')
+    message.error('Image size cannot exceed 5MB!')
     return false
   }
 
   return true
 }
 
-// 处理头像上传
+// Handle avatar upload
 const handleAvatarChange = async (info) => {
   if (info.file.status === 'uploading') {
     avatarUploading.value = true
@@ -393,14 +393,14 @@ const handleAvatarChange = async (info) => {
     return
   }
 
-  // 手动处理文件上传
+  // Handle file upload manually
   try {
     avatarUploading.value = true
     await userStore.uploadAvatar(info.file.originFileObj || info.file)
-    message.success('头像上传成功！')
+    message.success('Avatar uploaded successfully!')
   } catch (error) {
-    console.error('头像上传失败:', error)
-    message.error('头像上传失败：' + (error.message || '请稍后重试'))
+    console.error('Avatar upload failed:', error)
+    message.error('Avatar upload failed: ' + (error.message || 'Please try again later'))
   } finally {
     avatarUploading.value = false
   }
@@ -472,11 +472,11 @@ const handleAvatarChange = async (info) => {
   }
 
   &.admin {
-    background-color: var(--color-info-500); /* 蓝色，管理员 */
+    background-color: var(--color-info-500); /* Blue for admin */
   }
 
   &.user {
-    background-color: var(--color-success-500); /* 绿色，普通用户 */
+    background-color: var(--color-success-500); /* Green for regular user */
   }
 }
 
@@ -572,7 +572,7 @@ const handleAvatarChange = async (info) => {
           border: 3px solid var(--gray-150);
           box-shadow: 0 2px 8px var(--shadow-2);
 
-          // 确保图标居中
+          // Keep icon centered
           :deep(svg) {
             color: var(--gray-400);
           }

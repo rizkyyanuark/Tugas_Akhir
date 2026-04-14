@@ -36,7 +36,7 @@ const parsedContent = computed(() => {
 
 const chartUrl = computed(() => {
   const content = parsedContent.value
-  // chart 返回数组格式 [{ type: "text", text: "url", id: "..." }]
+  // chart returns array format [{ type: "text", text: "url", id: "..." }]
   if (Array.isArray(content) && content.length > 0 && content[0].type === 'text') {
     return content[0].text
   }

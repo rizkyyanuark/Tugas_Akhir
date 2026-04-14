@@ -4,7 +4,7 @@
       <div class="sep-header">
         <span class="note">{{ operationLabel }}</span>
         <span class="separator" v-if="kbName">|</span>
-        <span class="description" v-if="kbName">知识库: {{ kbName }}</span>
+        <span class="description" v-if="kbName">Knowledge Base: {{ kbName }}</span>
         <span class="separator" v-if="queryText">|</span>
         <span class="description">{{ queryText }}</span>
       </div>
@@ -40,9 +40,11 @@ const args = computed(() => {
   }
 })
 
-const toolName = computed(() => props.toolCall.name || props.toolCall.function?.name || '知识库')
+const toolName = computed(
+  () => props.toolCall.name || props.toolCall.function?.name || 'Knowledge Base'
+)
 
-const operationLabel = computed(() => `${toolName.value} 搜索`)
+const operationLabel = computed(() => `${toolName.value} Search`)
 
 const kbName = computed(() => args.value.kb_name || '')
 const queryText = computed(() => args.value.query_text || '')

@@ -1,30 +1,30 @@
 <template>
   <a-modal
     v-model:open="visible"
-    title="自动生成评估基准"
+    title="Auto Generate Evaluation Benchmark"
     width="600px"
     :confirmLoading="generating"
     @ok="handleGenerate"
     @cancel="handleCancel"
   >
     <a-form ref="formRef" :model="formState" :rules="rules" layout="vertical">
-      <a-form-item label="基准名称" name="name">
-        <a-input v-model:value="formState.name" placeholder="请输入评估基准名称" />
+      <a-form-item label="Benchmark Name" name="name">
+        <a-input v-model:value="formState.name" placeholder="Enter benchmark name" />
       </a-form-item>
 
-      <a-form-item label="描述" name="description">
+      <a-form-item label="Description" name="description">
         <a-textarea
           v-model:value="formState.description"
-          placeholder="请输入评估基准描述（可选）"
+          placeholder="Enter benchmark description (optional)"
           :rows="3"
         />
       </a-form-item>
 
-      <a-form-item label="生成参数" name="params" :extra="extraText">
+      <a-form-item label="Generation Parameters" name="params" :extra="extraText">
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item
-              label="问题数量"
+              label="Question Count"
               name="count"
               :labelCol="{ span: 24 }"
               :wrapperCol="{ span: 24 }"
@@ -34,13 +34,13 @@
                 :min="1"
                 :max="100"
                 style="width: 100%"
-                placeholder="生成问题数量"
+                placeholder="Number of questions to generate"
               />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item
-              label="相似chunks数量"
+              label="Similar Chunks Count"
               name="neighbors_count"
               :labelCol="{ span: 24 }"
               :wrapperCol="{ span: 24 }"
@@ -50,36 +50,36 @@
                 :min="0"
                 :max="10"
                 style="width: 100%"
-                placeholder="每次选取的相似chunks数量"
+                placeholder="Number of similar chunks selected each time"
               />
             </a-form-item>
           </a-col>
         </a-row>
       </a-form-item>
 
-      <a-form-item label="LLM配置" name="llm_config">
-        <a-card size="small" title="配置参数">
+      <a-form-item label="LLM Configuration" name="llm_config">
+        <a-card size="small" title="Configuration Parameters">
           <a-form-item
-            label="LLM模型配置"
+            label="LLM Model"
             name="llm_model_spec"
-            :rules="[{ required: true, message: '请选择LLM模型' }]"
+            :rules="[{ required: true, message: 'Please select an LLM model' }]"
           >
             <ModelSelectorComponent
               :model_spec="formState.llm_model_spec"
-              placeholder="选择用于生成问题的LLM模型"
+              placeholder="Select an LLM model for question generation"
               size="small"
               @select-model="handleSelectLLMModel"
             />
           </a-form-item>
 
           <a-form-item
-            label="Embedding模型"
+            label="Embedding Model"
             name="embedding_model_id"
-            :rules="[{ required: true, message: '请选择Embedding模型' }]"
+            :rules="[{ required: true, message: 'Please select an embedding model' }]"
           >
             <EmbeddingModelSelector
               v-model:value="formState.embedding_model_id"
-              placeholder="请选择用于相似度计算的Embedding模型"
+              placeholder="Select an embedding model for similarity calculation"
               size="default"
             />
           </a-form-item>
@@ -98,7 +98,7 @@
                   :max="2"
                   :step="0.1"
                   style="width: 100%"
-                  placeholder="控制生成内容的随机性"
+                  placeholder="Control generation randomness"
                 />
               </a-form-item>
             </a-col>
@@ -115,7 +115,7 @@
                   :max="4000"
                   :step="100"
                   style="width: 100%"
-                  placeholder="生成内容的最大长度"
+                  placeholder="Maximum generated content length"
                 />
               </a-form-item>
             </a-col>
@@ -146,7 +146,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'success'])
 
-// 响应式数据
+// Reactive state
 const formRef = ref()
 const generating = ref(false)
 
@@ -164,25 +164,30 @@ const formState = reactive({
   }
 })
 
-// 表单验证规则
+// Form validation rules
 const rules = {
   name: [
-    { required: true, message: '请输入基准名称', trigger: 'blur' },
-    { min: 2, max: 100, message: '基准名称长度应在2-100个字符之间', trigger: 'blur' }
+    { required: true, message: 'Please enter a benchmark name', trigger: 'blur' },
+    {
+      min: 2,
+      max: 100,
+      message: 'Benchmark name length should be between 2 and 100 characters',
+      trigger: 'blur'
+    }
   ],
-  count: [{ required: true, message: '请输入生成问题数量', trigger: 'blur' }]
+  count: [{ required: true, message: 'Please enter question count', trigger: 'blur' }]
 }
 
-// 双向绑定visible
+// Two-way bind visible
 const visible = computed({
   get: () => props.visible,
   set: (val) => emit('update:visible', val)
 })
 
-// 说明文本
+// Help text
 const extraText = computed(() =>
   h('span', {}, [
-    '需要了解评估基准生成原理？查看',
+    'Want to learn how benchmark generation works? See ',
     h(
       'a',
       {
@@ -190,15 +195,15 @@ const extraText = computed(() =>
         target: '_blank',
         rel: 'noopener noreferrer'
       },
-      '使用说明'
+      'Documentation'
     )
   ])
 )
 
-// 生成基准
+// Generate benchmark
 const handleGenerate = async () => {
   try {
-    // 表单验证
+    // Form validation
     await formRef.value.validate()
 
     generating.value = true
@@ -218,27 +223,27 @@ const handleGenerate = async () => {
     const response = await evaluationApi.generateBenchmark(props.databaseId, params)
 
     if (response.message === 'success') {
-      message.success('生成任务已提交，请稍后查看结果')
+      message.success('Generation task submitted. Please check results later.')
       handleCancel()
       emit('success')
     } else {
-      message.error(response.message || '生成失败')
+      message.error(response.message || 'Generation failed')
     }
   } catch (error) {
-    console.error('生成失败:', error)
-    message.error('生成失败')
+    console.error('Generation failed:', error)
+    message.error('Generation failed')
   } finally {
     generating.value = false
   }
 }
 
-// 取消操作
+// Cancel action
 const handleCancel = () => {
   visible.value = false
   resetForm()
 }
 
-// 重置表单
+// Reset form
 const resetForm = () => {
   formRef.value?.resetFields()
   Object.assign(formState, {
@@ -257,13 +262,13 @@ const resetForm = () => {
   generating.value = false
 }
 
-// 选择LLM模型
+// Select LLM model
 const handleSelectLLMModel = (modelSpec) => {
   formState.llm_model_spec = modelSpec
   formState.llm_config.model = modelSpec
 }
 
-// 监听visible变化
+// Watch visible changes
 watch(visible, (val) => {
   if (!val) {
     resetForm()

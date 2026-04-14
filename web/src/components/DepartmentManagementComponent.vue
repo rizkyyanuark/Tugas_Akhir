@@ -1,18 +1,20 @@
 <template>
   <div class="department-management">
-    <!-- 头部区域 -->
+    <!-- Header section -->
     <div class="header-section">
       <div class="header-content">
-        <div class="section-title">部门管理</div>
-        <p class="section-description">管理系统部门，部门下的用户会被隔离管理。</p>
+        <div class="section-title">Department Management</div>
+        <p class="section-description">
+          Manage system departments. Users in each department are isolated.
+        </p>
       </div>
       <a-button type="primary" @click="showAddDepartmentModal" class="add-btn lucide-icon-btn">
         <template #icon><Plus :size="16" /></template>
-        添加部门
+        Add Department
       </a-button>
     </div>
 
-    <!-- 主内容区域 -->
+    <!-- Main content section -->
     <div class="content-section">
       <a-spin :spinning="departmentManagement.loading">
         <div v-if="departmentManagement.error" class="error-message">
@@ -37,11 +39,11 @@
                 <span class="description-text">{{ record.description || '-' }}</span>
               </template>
               <template v-if="column.key === 'userCount'">
-                <span>{{ record.user_count ?? 0 }} 人</span>
+                <span>{{ record.user_count ?? 0 }} users</span>
               </template>
               <template v-if="column.key === 'action'">
                 <a-space>
-                  <a-tooltip title="编辑部门">
+                  <a-tooltip title="Edit Department">
                     <a-button
                       type="text"
                       size="small"
@@ -51,7 +53,7 @@
                       <Pencil :size="14" />
                     </a-button>
                   </a-tooltip>
-                  <a-tooltip title="删除部门">
+                  <a-tooltip title="Delete Department">
                     <a-button
                       type="text"
                       size="small"
@@ -70,12 +72,12 @@
         </template>
 
         <div v-else class="empty-state">
-          <a-empty description="暂无部门数据" />
+          <a-empty description="No department data" />
         </div>
       </a-spin>
     </div>
 
-    <!-- 部门表单模态框 -->
+    <!-- Department form modal -->
     <a-modal
       v-model:open="departmentManagement.modalVisible"
       :title="departmentManagement.modalTitle"
@@ -87,19 +89,19 @@
       class="department-modal"
     >
       <a-form layout="vertical" class="department-form">
-        <a-form-item label="部门名称" required class="form-item">
+        <a-form-item label="Department Name" required class="form-item">
           <a-input
             v-model:value="departmentManagement.form.name"
-            placeholder="请输入部门名称"
+            placeholder="Please enter a department name"
             size="large"
             :maxlength="50"
           />
         </a-form-item>
 
-        <a-form-item label="部门描述" class="form-item">
+        <a-form-item label="Department Description" class="form-item">
           <a-textarea
             v-model:value="departmentManagement.form.description"
-            placeholder="请输入部门描述（可选）"
+            placeholder="Please enter a department description (optional)"
             :rows="3"
             :maxlength="255"
             show-count
@@ -111,16 +113,17 @@
         <template v-if="!departmentManagement.editMode">
           <div class="admin-section-title">
             <Users :size="16" />
-            <span>部门管理员</span>
+            <span>Department Admin</span>
           </div>
           <p class="admin-section-hint">
-            创建部门时必须同时创建管理员，该管理员将负责管理本部门用户
+            Creating a department requires creating an admin at the same time. This admin will
+            manage users in this department.
           </p>
 
-          <a-form-item label="管理员用户ID" required class="form-item">
+          <a-form-item label="Admin User ID" required class="form-item">
             <a-input
               v-model:value="departmentManagement.form.adminUserId"
-              placeholder="请输入管理员用户ID（3-20位字母/数字/下划线）"
+              placeholder="Enter admin user ID (3-20 letters/numbers/underscores)"
               size="large"
               :maxlength="20"
               @blur="checkAdminUserId"
@@ -128,31 +131,31 @@
             <div v-if="departmentManagement.form.userIdError" class="error-text">
               {{ departmentManagement.form.userIdError }}
             </div>
-            <div v-else class="help-text">此ID将用于登录</div>
+            <div v-else class="help-text">This ID will be used for login</div>
           </a-form-item>
 
-          <a-form-item label="密码" required class="form-item">
+          <a-form-item label="Password" required class="form-item">
             <a-input-password
               v-model:value="departmentManagement.form.adminPassword"
-              placeholder="请输入管理员密码"
+              placeholder="Enter admin password"
               size="large"
               :maxlength="50"
             />
           </a-form-item>
 
-          <a-form-item label="确认密码" required class="form-item">
+          <a-form-item label="Confirm Password" required class="form-item">
             <a-input-password
               v-model:value="departmentManagement.form.adminConfirmPassword"
-              placeholder="请再次输入密码"
+              placeholder="Please re-enter password"
               size="large"
               :maxlength="50"
             />
           </a-form-item>
 
-          <a-form-item label="手机号（可选）" class="form-item">
+          <a-form-item label="Phone Number (optional)" class="form-item">
             <a-input
               v-model:value="departmentManagement.form.adminPhone"
-              placeholder="请输入手机号（可用于登录）"
+              placeholder="Enter phone number (can be used for login)"
               size="large"
               :maxlength="11"
             />
@@ -172,42 +175,42 @@ import { notification, Modal } from 'ant-design-vue'
 import { departmentApi, apiSuperAdminGet } from '@/apis'
 import { Delete as Trash2, Edit3 as Pencil, Plus, Users } from 'lucide-vue-next'
 
-// 表格列定义
+// Table column definitions
 const columns = [
   {
-    title: '部门名称',
+    title: 'Department Name',
     dataIndex: 'name',
     key: 'name',
     width: 200
   },
   {
-    title: '描述',
+    title: 'Description',
     dataIndex: 'description',
     key: 'description',
     ellipsis: true
   },
   {
-    title: '用户数量',
+    title: 'User Count',
     dataIndex: 'user_count',
     key: 'userCount',
     width: 100,
     align: 'center'
   },
   {
-    title: '操作',
+    title: 'Actions',
     key: 'action',
     width: 120,
     align: 'center'
   }
 ]
 
-// 部门管理状态
+// Department management state
 const departmentManagement = reactive({
   loading: false,
   departments: [],
   error: null,
   modalVisible: false,
-  modalTitle: '添加部门',
+  modalTitle: 'Add Department',
   editMode: false,
   editDepartmentId: null,
   form: {
@@ -222,7 +225,7 @@ const departmentManagement = reactive({
   }
 })
 
-// 获取部门列表
+// Fetch department list
 const fetchDepartments = async () => {
   try {
     departmentManagement.loading = true
@@ -230,16 +233,16 @@ const fetchDepartments = async () => {
     const departments = await departmentApi.getDepartments()
     departmentManagement.departments = departments
   } catch (error) {
-    console.error('获取部门列表失败:', error)
-    departmentManagement.error = '获取部门列表失败'
+    console.error('Failed to fetch department list:', error)
+    departmentManagement.error = 'Failed to fetch department list'
   } finally {
     departmentManagement.loading = false
   }
 }
 
-// 打开添加部门模态框
+// Open add department modal
 const showAddDepartmentModal = () => {
-  departmentManagement.modalTitle = '添加部门'
+  departmentManagement.modalTitle = 'Add Department'
   departmentManagement.editMode = false
   departmentManagement.editDepartmentId = null
   departmentManagement.form = {
@@ -255,9 +258,9 @@ const showAddDepartmentModal = () => {
   departmentManagement.modalVisible = true
 }
 
-// 打开编辑部门模态框
+// Open edit department modal
 const showEditDepartmentModal = (department) => {
-  departmentManagement.modalTitle = '编辑部门'
+  departmentManagement.modalTitle = 'Edit Department'
   departmentManagement.editMode = true
   departmentManagement.editDepartmentId = department.id
   departmentManagement.form = {
@@ -273,27 +276,27 @@ const showEditDepartmentModal = (department) => {
   departmentManagement.modalVisible = true
 }
 
-// 验证手机号格式
+// Validate phone number format
 const validatePhoneNumber = (phone) => {
   if (!phone) {
-    return true // 手机号可选
+    return true // Phone number is optional
   }
   const phoneRegex = /^1[3-9]\d{9}$/
   return phoneRegex.test(phone)
 }
 
-// 监听手机号输入变化
+// Watch phone number input changes
 watch(
   () => departmentManagement.form.adminPhone,
   (newPhone) => {
     departmentManagement.form.phoneError = ''
     if (newPhone && !validatePhoneNumber(newPhone)) {
-      departmentManagement.form.phoneError = '请输入正确的手机号格式'
+      departmentManagement.form.phoneError = 'Please enter a valid phone number format'
     }
   }
 )
 
-// 检查管理员用户ID是否可用
+// Check if admin user ID is available
 const checkAdminUserId = async () => {
   const userId = departmentManagement.form.adminUserId.trim()
   departmentManagement.form.userIdError = ''
@@ -302,97 +305,98 @@ const checkAdminUserId = async () => {
     return
   }
 
-  // 验证格式
+  // Validate format
   if (!/^[a-zA-Z0-9_]+$/.test(userId)) {
-    departmentManagement.form.userIdError = '用户ID只能包含字母、数字和下划线'
+    departmentManagement.form.userIdError =
+      'User ID can only contain letters, numbers, and underscores'
     return
   }
 
   if (userId.length < 3 || userId.length > 20) {
-    departmentManagement.form.userIdError = '用户ID长度必须在3-20个字符之间'
+    departmentManagement.form.userIdError = 'User ID length must be between 3 and 20 characters'
     return
   }
 
-  // 检查是否已存在
+  // Check whether it already exists
   try {
     const result = await apiSuperAdminGet(`/api/auth/check-user-id/${userId}`)
     if (!result.is_available) {
-      departmentManagement.form.userIdError = '该用户ID已被使用'
+      departmentManagement.form.userIdError = 'This user ID is already in use'
     }
   } catch (error) {
-    console.error('检查用户ID失败:', error)
+    console.error('Failed to check user ID:', error)
   }
 }
 
-// 处理部门表单提交
+// Handle department form submission
 const handleDepartmentFormSubmit = async () => {
   try {
-    // 验证部门名称
+    // Validate department name
     if (!departmentManagement.form.name.trim()) {
-      notification.error({ message: '部门名称不能为空' })
+      notification.error({ message: 'Department name cannot be empty' })
       return
     }
 
     if (departmentManagement.form.name.trim().length < 2) {
-      notification.error({ message: '部门名称至少2个字符' })
+      notification.error({ message: 'Department name must be at least 2 characters' })
       return
     }
 
-    // 验证管理员用户ID
+    // Validate admin user ID
     const adminUserId = departmentManagement.form.adminUserId.trim()
     if (!adminUserId) {
-      notification.error({ message: '请输入管理员用户ID' })
+      notification.error({ message: 'Please enter admin user ID' })
       return
     }
 
     if (!/^[a-zA-Z0-9_]+$/.test(adminUserId)) {
-      notification.error({ message: '用户ID只能包含字母、数字和下划线' })
+      notification.error({ message: 'User ID can only contain letters, numbers, and underscores' })
       return
     }
 
     if (adminUserId.length < 3 || adminUserId.length > 20) {
-      notification.error({ message: '用户ID长度必须在3-20个字符之间' })
+      notification.error({ message: 'User ID length must be between 3 and 20 characters' })
       return
     }
 
     if (departmentManagement.form.userIdError) {
-      notification.error({ message: '管理员用户ID已存在或格式错误' })
+      notification.error({ message: 'Admin user ID already exists or format is invalid' })
       return
     }
 
-    // 验证密码
+    // Validate password
     if (!departmentManagement.form.adminPassword) {
-      notification.error({ message: '请输入管理员密码' })
+      notification.error({ message: 'Please enter admin password' })
       return
     }
 
     if (
       departmentManagement.form.adminPassword !== departmentManagement.form.adminConfirmPassword
     ) {
-      notification.error({ message: '两次输入的密码不一致' })
+      notification.error({ message: 'The two passwords do not match' })
       return
     }
 
-    // 验证手机号
+    // Validate phone number
     if (
       departmentManagement.form.adminPhone &&
       !validatePhoneNumber(departmentManagement.form.adminPhone)
     ) {
-      notification.error({ message: '请输入正确的手机号格式' })
+      notification.error({ message: 'Please enter a valid phone number format' })
       return
     }
 
     departmentManagement.loading = true
 
     if (departmentManagement.editMode) {
-      // 更新部门
+      // Update department
       await departmentApi.updateDepartment(departmentManagement.editDepartmentId, {
         name: departmentManagement.form.name.trim(),
         description: departmentManagement.form.description.trim() || undefined
       })
-      notification.success({ message: '部门更新成功' })
+      notification.success({ message: 'Department updated successfully' })
     } else {
-      // 创建部门，同时创建管理员
+      // Create department and admin at the same time
       await departmentApi.createDepartment({
         name: departmentManagement.form.name.trim(),
         description: departmentManagement.form.description.trim() || undefined,
@@ -401,43 +405,45 @@ const handleDepartmentFormSubmit = async () => {
         admin_phone: departmentManagement.form.adminPhone || undefined
       })
 
-      notification.success({ message: `部门创建成功，管理员 "${adminUserId}" 已创建` })
+      notification.success({
+        message: `Department created successfully, admin "${adminUserId}" has been created`
+      })
     }
 
-    // 重新获取部门列表
+    // Refresh department list
     await fetchDepartments()
     departmentManagement.modalVisible = false
   } catch (error) {
-    console.error('部门操作失败:', error)
+    console.error('Department operation failed:', error)
     notification.error({
-      message: '操作失败',
-      description: error.message || '请稍后重试'
+      message: 'Operation failed',
+      description: error.message || 'Please try again later'
     })
   } finally {
     departmentManagement.loading = false
   }
 }
 
-// 删除部门
+// Delete department
 const confirmDeleteDepartment = (department) => {
   Modal.confirm({
-    title: '确认删除部门',
-    content: `确定要删除部门 "${department.name}" 吗？此操作不可撤销。该部门下的用户会被迁移到默认部门，部门级配置和部门 API Key 会一并清理。`,
-    okText: '删除',
+    title: 'Confirm Department Deletion',
+    content: `Are you sure you want to delete department "${department.name}"? This action cannot be undone. Users in this department will be migrated to the default department, and department-level settings and API keys will be cleaned up.`,
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     async onOk() {
       try {
         departmentManagement.loading = true
         await departmentApi.deleteDepartment(department.id)
-        notification.success({ message: '部门删除成功' })
-        // 重新获取部门列表
+        notification.success({ message: 'Department deleted successfully' })
+        // Refresh department list
         await fetchDepartments()
       } catch (error) {
-        console.error('删除部门失败:', error)
+        console.error('Failed to delete department:', error)
         notification.error({
-          message: '删除失败',
-          description: error.message || '请稍后重试'
+          message: 'Deletion failed',
+          description: error.message || 'Please try again later'
         })
       } finally {
         departmentManagement.loading = false
@@ -446,7 +452,7 @@ const confirmDeleteDepartment = (department) => {
   })
 }
 
-// 在组件挂载时获取部门列表
+// Fetch department list on component mount
 onMounted(() => {
   fetchDepartments()
 })

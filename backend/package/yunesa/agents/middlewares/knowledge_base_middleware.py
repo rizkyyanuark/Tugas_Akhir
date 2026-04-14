@@ -1,4 +1,4 @@
-"""知识库中间件 - 提供通用知识库工具"""
+"""Knowledge base middleware providing common KB tools."""
 
 from collections.abc import Callable
 
@@ -10,20 +10,21 @@ from yunesa.utils.logging_config import logger
 
 
 class KnowledgeBaseMiddleware(AgentMiddleware):
-    """知识库中间件 - 提供通用知识库工具
+    """Knowledge base middleware providing common KB tools.
 
-    提供 3 个通用工具：
-    - list_kbs: 列出用户可访问的知识库
-    - get_mindmap: 获取指定知识库的思维导图
-    - query_kb: 在指定知识库中检索
+    Provides 3 generic tools:
+    - list_kbs: list user-accessible knowledge bases
+    - get_mindmap: get mindmap of a specified knowledge base
+    - query_kb: retrieve content from a specified knowledge base
     """
 
     def __init__(self):
         super().__init__()
-        # 预加载通用知识库工具
+        # Preload common KB tools.
         self.kb_tools = get_common_kb_tools()
         self.tools = self.kb_tools
-        logger.debug(f"Initialized KnowledgeBaseMiddleware with {len(self.kb_tools)} tools")
+        logger.debug(
+            f"Initialized KnowledgeBaseMiddleware with {len(self.kb_tools)} tools")
 
     async def awrap_model_call(
         self, request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]

@@ -2,10 +2,10 @@
   <BaseToolCall :tool-call="toolCall" hide-params>
     <template #header>
       <div class="sep-header">
-        <span class="note">提问</span>
+        <span class="note">Question</span>
         <span class="separator">|</span>
         <span class="description">{{ shortQuestionSummary }}</span>
-        <span v-if="userAnswer" class="tag tag-answered"> 已回答: {{ displayAnswer }} </span>
+        <span v-if="userAnswer" class="tag tag-answered"> Answered: {{ displayAnswer }} </span>
       </div>
     </template>
   </BaseToolCall>
@@ -22,7 +22,7 @@ const props = defineProps({
   }
 })
 
-// 解析参数
+// Parse arguments
 const parsedArgs = computed(() => {
   const args = props.toolCall.args || props.toolCall.function?.arguments
   if (!args) return {}
@@ -34,7 +34,7 @@ const parsedArgs = computed(() => {
   }
 })
 
-// 解析结果
+// Parse result
 const parsedResult = computed(() => {
   const content = props.toolCall.tool_call_result?.content
   if (!content) return null
@@ -62,17 +62,17 @@ const questions = computed(() => {
 })
 
 const shortQuestionSummary = computed(() => {
-  if (!questions.value.length) return '无问题'
+  if (!questions.value.length) return 'No questions'
 
   const firstQuestion = questions.value[0].question
   const shortFirstQuestion =
     firstQuestion.length > 36 ? firstQuestion.slice(0, 36) + '...' : firstQuestion
 
   if (questions.value.length === 1) return shortFirstQuestion
-  return `${shortFirstQuestion} 等 ${questions.value.length} 题`
+  return `${shortFirstQuestion} and ${questions.value.length} questions`
 })
 
-// 用户答案
+// User answer
 const userAnswer = computed(() => {
   const result = parsedResult.value
   if (!result) return null
@@ -92,7 +92,7 @@ const formatSingleAnswer = (answer) => {
   return String(answer)
 }
 
-// 显示答案
+// Display answer
 const displayAnswer = computed(() => {
   const answer = userAnswer.value
   if (!answer) return ''

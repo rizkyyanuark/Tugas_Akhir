@@ -25,10 +25,10 @@ from .prompt import DEEP_PROMPT
 
 
 class DeepAgent(BaseAgent):
-    name = "深度分析"
-    description = "具备规划、深度分析和子智能体协作能力的智能体，可以处理复杂的多步骤任务"
-    capabilities = ["file_upload", "files"]  # 支持文件上传功能
-    metadata = {"examples": ["调研一下多模态 GraphRAG 的相关论文"]}
+    name = "Deep Analysis"
+    description = "An agent with planning, deep analysis, and sub-agent collaboration capabilities for complex multi-step tasks"
+    capabilities = ["file_upload", "files"]  # Supports file upload capability
+    metadata = {"examples": ["Research papers related to multimodal GraphRAG"]}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -36,7 +36,7 @@ class DeepAgent(BaseAgent):
         self.checkpointer = None
 
     async def get_tools(self):
-        """返回 Deep Agent 的专用工具"""
+        """Return Deep Agent specific tools."""
         from yunesa import config
 
         tools = []
@@ -46,24 +46,26 @@ class DeepAgent(BaseAgent):
                 tools.append(tavily)
 
         if not tools:
-            logger.warning("No search tools configured, DeepAgent will work without web search")
+            logger.warning(
+                "No search tools configured, DeepAgent will work without web search")
         return tools
 
     async def get_graph(self, context=None, **kwargs):
 
-        context = context or self.context_schema()  # 获取上下文配置
+        # Get context configuration.
+        context = context or self.context_schema()
         system_prompt = f"{DEEP_PROMPT.strip()}\n\n{context.system_prompt or ''}"
 
         model = load_chat_model(context.model)
         sub_model = load_chat_model(context.subagents_model)
         search_tools = await self.get_tools()
         all_mcp_tools = await get_tools_from_all_servers()
-        # 合并搜索工具和 MCP 工具
+        # Merge search tools and MCP tools.
 
-        # 从数据库加载 subagent specs（工具名称已解析）
+        # Load subagent specs from DB (tool names already resolved).
         user_subagents = await get_subagents_from_names(context.subagents)
 
-        # 主 Agent 上下文优化：90k tokens 触发压缩（128k context window 的 70%）
+        # Main agent context optimization: trigger compression at 90k tokens (70% of 128k context window).
         summary_middleware = SummaryOffloadMiddleware(
             model=model,
             trigger=("tokens", 90000),
@@ -77,10 +79,11 @@ class DeepAgent(BaseAgent):
             default_tools=search_tools,
             subagents=user_subagents,
             default_middleware=[
-                FilesystemMiddleware(backend=create_agent_composite_backend),  # 文件系统后端
+                # Filesystem backend
+                FilesystemMiddleware(backend=create_agent_composite_backend),
                 PatchToolCallsMiddleware(),
                 summary_middleware,
-                # 子 Agent 搜索工具限制：tavily_search 最多 8 次
+                # Sub-agent search tool limit: tavily_search at most 8 times.
                 ToolCallLimitMiddleware(
                     tool_name="tavily_search",
                     run_limit=8,
@@ -90,27 +93,30 @@ class DeepAgent(BaseAgent):
             general_purpose_agent=True,
         )
 
-        # 使用 create_deep_agent 创建深度智能体
+        # Create deep agent graph using create_agent.
         graph = create_agent(
             model=model,
             system_prompt=system_prompt,
             middleware=[
-                FilesystemMiddleware(backend=create_agent_composite_backend),  # 文件系统后端
+                # Filesystem backend
+                FilesystemMiddleware(backend=create_agent_composite_backend),
                 RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
-                SkillsMiddleware(),  # Skills 中间件（提示词注入、依赖展开、动态激活）
-                save_attachments_to_fs,  # 附件注入提示词
-                TodoListMiddleware(system_prompt="任务结束前，应该检查维护的待办事项列表是否结束。"),
+                # Skills middleware (prompt injection, dependency expansion, dynamic activation)
+                SkillsMiddleware(),
+                save_attachments_to_fs,  # Inject attachment context into prompt
+                TodoListMiddleware(
+                    system_prompt="Before ending the task, check whether the maintained todo list is completed."),
                 PatchToolCallsMiddleware(),
-                KnowledgeBaseMiddleware(),  # 知识库工具
+                KnowledgeBaseMiddleware(),  # Knowledge-base tools
                 subagents_middleware,
                 summary_middleware,
-                # 工具调用限制：tavily_search 总调用最多 20 次
+                # Tool call limit: tavily_search at most 20 calls per thread.
                 ToolCallLimitMiddleware(
                     tool_name="tavily_search",
                     thread_limit=20,
                     exit_behavior="continue",
                 ),
-                # 总工具调用轮次限制：防止单次运行无限循环
+                # Total tool-call round limit: prevent infinite loops in a single run.
                 ToolCallLimitMiddleware(
                     run_limit=50,
                     exit_behavior="end",

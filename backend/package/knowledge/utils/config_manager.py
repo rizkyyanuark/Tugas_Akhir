@@ -86,9 +86,47 @@ class ConfigManager:
 
     def _update_deep(self, d, key_path, value):
         """Helper to update nested dicts using snake_case or underscore paths."""
-        # Simple implementation for flat keys for now
-        # Can be expanded for nested key overrides if needed (e.g. DATABASE_PORT)
-        d[key_path] = value
+        # Try to find if the key matches a nested structure
+        # e.g., 'crawler_headless' could be d['crawler']['headless']
+        parts = key_path.split('_')
+        
+        # If it's a simple key, just set it
+        if len(parts) == 1:
+            d[key_path] = self._parse_value(value)
+            return
+
+        # Try to traverse the dictionary
+        current = d
+        for i, part in enumerate(parts[:-1]):
+            # If the part exists as a key and it is a dict, go deeper
+            if part in current and isinstance(current[part], dict):
+                current = current[part]
+            else:
+                # If we can't find a nested dict, we stop and set the remaining as a flat key
+                # This handles keys like 'supabase_url' remain flat if 'supabase' isn't a dict
+                remaining_key = "_".join(parts[i:])
+                current[remaining_key] = self._parse_value(value)
+                return
+        
+        # Set the final part
+        current[parts[-1]] = self._parse_value(value)
+
+    def _parse_value(self, value):
+        """Parse string environment variables into appropriate Python types."""
+        if isinstance(value, str):
+            if value.lower() in ('true', 'yes', 'on'):
+                return True
+            if value.lower() in ('false', 'no', 'off'):
+                return False
+            if value.lower() == 'none':
+                return None
+            try:
+                if '.' in value:
+                    return float(value)
+                return int(value)
+            except ValueError:
+                return value
+        return value
 
 def load_config(name: str) -> ConfigDict:
     """Convenience function to load a config by name."""
