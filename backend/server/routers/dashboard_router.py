@@ -17,10 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.routers.auth_router import get_admin_user
 from server.utils.auth_middleware import get_db
-from ta_backend_core.assistant.repositories.conversation_repository import ConversationRepository
-from ta_backend_core.assistant.storage.postgres.models_business import User
-from ta_backend_core.assistant.utils.datetime_utils import UTC, ensure_shanghai, shanghai_now, utc_now
-from ta_backend_core.assistant.utils.logging_config import logger
+from yunesa.repositories.conversation_repository import ConversationRepository
+from yunesa.storage.postgres.models_business import User
+from yunesa.utils.datetime_utils import UTC, ensure_shanghai, shanghai_now, utc_now
+from yunesa.utils.logging_config import logger
 
 
 dashboard = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -136,7 +136,7 @@ async def get_all_conversations(
     current_user: User = Depends(get_admin_user),
 ):
     """获取所有对话（管理员权限）"""
-    from ta_backend_core.assistant.storage.postgres.models_business import Conversation, ConversationStats
+    from yunesa.storage.postgres.models_business import Conversation, ConversationStats
 
     try:
         # Build query
@@ -253,7 +253,7 @@ async def get_user_activity_stats(
 ):
     """获取用户活动统计（管理员权限）"""
     try:
-        from ta_backend_core.assistant.storage.postgres.models_business import Conversation, User
+        from yunesa.storage.postgres.models_business import Conversation, User
 
         now = utc_now()
         # PostgreSQL with asyncpg requires naive datetime for naive DateTime columns
@@ -327,7 +327,7 @@ async def get_tool_call_stats(
 ):
     """获取工具调用统计（管理员权限）"""
     try:
-        from ta_backend_core.assistant.storage.postgres.models_business import ToolCall
+        from yunesa.storage.postgres.models_business import ToolCall
 
         now = utc_now()
         # PostgreSQL with asyncpg requires naive datetime for naive DateTime columns
@@ -402,8 +402,8 @@ async def get_knowledge_stats(
 ):
     """获取知识库统计（管理员权限）"""
     try:
-        from ta_backend_core.assistant.repositories.knowledge_base_repository import KnowledgeBaseRepository
-        from ta_backend_core.assistant.repositories.knowledge_file_repository import KnowledgeFileRepository
+        from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
+        from yunesa.repositories.knowledge_file_repository import KnowledgeFileRepository
 
         kb_repo = KnowledgeBaseRepository()
         file_repo = KnowledgeFileRepository()
@@ -491,7 +491,7 @@ async def get_agent_analytics(
 ):
     """获取智能体分析（管理员权限）"""
     try:
-        from ta_backend_core.assistant.storage.postgres.models_business import Conversation, Message, MessageFeedback, ToolCall
+        from yunesa.storage.postgres.models_business import Conversation, Message, MessageFeedback, ToolCall
 
         # 获取所有智能体
         agents_result = await db.execute(
@@ -587,7 +587,7 @@ async def get_dashboard_stats(
     current_user: User = Depends(get_admin_user),
 ):
     """获取基础统计（管理员权限）"""
-    from ta_backend_core.assistant.storage.postgres.models_business import Conversation, Message, MessageFeedback
+    from yunesa.storage.postgres.models_business import Conversation, Message, MessageFeedback
 
     try:
         # Basic counts
@@ -661,7 +661,7 @@ async def get_all_feedbacks(
     current_user: User = Depends(get_admin_user),
 ):
     """获取所有反馈记录（管理员权限）"""
-    from ta_backend_core.assistant.storage.postgres.models_business import Conversation, Message, MessageFeedback, User
+    from yunesa.storage.postgres.models_business import Conversation, Message, MessageFeedback, User
 
     try:
         # Build query with joins including User table
@@ -739,7 +739,7 @@ async def get_call_timeseries_stats(
 ):
     """获取调用分析时间序列统计（管理员权限）"""
     try:
-        from ta_backend_core.assistant.storage.postgres.models_business import Conversation, Message, ToolCall
+        from yunesa.storage.postgres.models_business import Conversation, Message, ToolCall
 
         # 计算时间范围（使用北京时间 UTC+8）
         now = utc_now()
@@ -953,7 +953,7 @@ async def get_call_timeseries_stats(
         # 计算统计指标
         if type == "tools":
             # 对于工具调用，显示所有时间的总数（与ToolStatsComponent保持一致）
-            from ta_backend_core.assistant.storage.postgres.models_business import ToolCall
+            from yunesa.storage.postgres.models_business import ToolCall
 
             total_count_result = await db.execute(select(func.count(ToolCall.id)))
             total_count = total_count_result.scalar() or 0
@@ -1078,7 +1078,7 @@ async def get_academic_stats(
 
     # 3. Get conversation count from local DB
     try:
-        from ta_backend_core.assistant.storage.postgres.models_business import Conversation
+        from yunesa.storage.postgres.models_business import Conversation
 
         total_conv_result = await db.execute(select(func.count(Conversation.id)))
         conversations_count = total_conv_result.scalar() or 0

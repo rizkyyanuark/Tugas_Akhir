@@ -3,10 +3,10 @@
     v-if="message.message_type === 'multimodal_image' && message.image_content"
     class="message-image"
   >
-    <img :src="`data:image/jpeg;base64,${message.image_content}`" alt="用户上传的图片" />
+    <img :src="`data:image/jpeg;base64,${message.image_content}`" alt="Uploaded image" />
   </div>
   <div class="message-box" :class="[message.type, customClasses]">
-    <!-- 用户消息 -->
+    <!-- User message -->
     <div
       v-if="message.type === 'human'"
       class="message-copy-btn human-copy"
@@ -20,7 +20,7 @@
 
     <p v-else-if="message.type === 'system'" class="message-text-system">{{ message.content }}</p>
 
-    <!-- 助手消息 -->
+    <!-- Assistant message -->
     <div v-else-if="message.type === 'ai'" class="assistant-message">
       <div v-if="parsedData.reasoning_content" class="reasoning-box">
         <a-collapse v-model:activeKey="reasoningActiveKey" :bordered="false">
@@ -29,7 +29,7 @@
           </template>
           <a-collapse-panel
             key="show"
-            :header="message.status == 'reasoning' ? '正在思考...' : '推理过程'"
+            :header="message.status == 'reasoning' ? 'Thinking...' : 'Reasoning'"
             class="reasoning-header"
           >
             <p class="reasoning-content">{{ parsedData.reasoning_content }}</p>
@@ -37,7 +37,7 @@
         </a-collapse>
       </div>
 
-      <!-- 消息内容 -->
+      <!-- Message content -->
       <MdPreview
         v-if="parsedData.content"
         ref="editorRef"
@@ -52,15 +52,19 @@
 
       <div v-else-if="parsedData.reasoning_content" class="empty-block"></div>
 
-      <!-- 错误提示块 -->
+      <!-- Error hint block -->
       <div v-if="displayError" class="error-hint">
         <span v-if="getErrorMessage">{{ getErrorMessage }}</span>
-        <span v-else-if="message.error_type === 'interrupted'">回答生成已中断</span>
-        <span v-else-if="message.error_type === 'unexpect'">生成过程中出现异常</span>
-        <span v-else-if="message.error_type === 'content_guard_blocked'"
-          >检测到敏感内容，已中断输出</span
+        <span v-else-if="message.error_type === 'interrupted'"
+          >Response generation was interrupted</span
         >
-        <span v-else>{{ message.error_type || '未知错误' }}</span>
+        <span v-else-if="message.error_type === 'unexpect'"
+          >An error occurred during generation</span
+        >
+        <span v-else-if="message.error_type === 'content_guard_blocked'"
+          >Sensitive content detected, output stopped</span
+        >
+        <span v-else>{{ message.error_type || 'Unknown error' }}</span>
       </div>
 
       <div v-if="validToolCalls && validToolCalls.length > 0" class="tool-calls-container">
@@ -74,9 +78,9 @@
       </div>
 
       <div v-if="message.isStoppedByUser" class="retry-hint">
-        你停止生成了本次回答
+        You stopped this response generation
         <span class="retry-link" @click="emit('retryStoppedMessage', message.id)"
-          >重新编辑问题</span
+          >Edit and resend</span
         >
       </div>
 
@@ -96,12 +100,12 @@
           @openRefs="emit('openRefs', $event)"
         />
       </div>
-      <!-- 错误消息 -->
+      <!-- Error message -->
     </div>
 
     <div v-if="infoStore.debugMode" class="status-info">{{ message }}</div>
 
-    <!-- 自定义内容 -->
+    <!-- Custom content -->
     <slot></slot>
   </div>
 </template>
@@ -122,32 +126,32 @@ import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/preview.css'
 
 const props = defineProps({
-  // 消息角色：'user'|'assistant'|'sent'|'received'
+  // Message role: 'user'|'assistant'|'sent'|'received'
   message: {
     type: Object,
     required: true
   },
-  // 是否正在处理中
+  // Whether processing is in progress
   isProcessing: {
     type: Boolean,
     default: false
   },
-  // 自定义类
+  // Custom classes
   customClasses: {
     type: Object,
     default: () => ({})
   },
-  // 是否显示推理过程
+  // Whether to show reasoning content
   showRefs: {
     type: [Array, Boolean],
     default: () => false
   },
-  // 是否为最新消息
+  // Whether this is the latest message
   isLatestMessage: {
     type: Boolean,
     default: false
   },
-  // 是否显示调试信息 (已废弃，使用 infoStore.debugMode)
+  // Whether to show debug information (deprecated, use infoStore.debugMode)
   debugMode: {
     type: Boolean,
     default: false
@@ -158,7 +162,7 @@ const editorRef = ref()
 
 const emit = defineEmits(['retry', 'retryStoppedMessage', 'openRefs'])
 
-// 复制状态
+// Copy state
 const isCopied = ref(false)
 
 const copyToClipboard = async (text) => {
@@ -166,7 +170,7 @@ const copyToClipboard = async (text) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text)
     } else {
-      // 降级处理：使用传统的 execCommand 方法
+      // Fallback for older browsers using execCommand.
       const textArea = document.createElement('textarea')
       textArea.value = text
       textArea.style.position = 'fixed'
@@ -188,48 +192,48 @@ const copyToClipboard = async (text) => {
   }
 }
 
-// 推理面板展开状态
+// Reasoning panel expansion state
 const reasoningActiveKey = ref(['hide'])
 
-// 错误消息处理
+// Error message handling
 const displayError = computed(() => {
-  // 简化错误判断：只检查明确的错误类型标识
+  // Simplified error check: only explicit error type markers.
   return !!(props.message.error_type || props.message.extra_metadata?.error_type)
 })
 
 const getErrorMessage = computed(() => {
-  // 优先使用直接的 error_message 字段
+  // Prefer direct error_message first.
   if (props.message.error_message) {
     return props.message.error_message
   }
 
-  // 其次从 extra_metadata 中获取具体的错误信息
+  // Then try error details in extra_metadata.
   if (props.message.extra_metadata?.error_message) {
     return props.message.extra_metadata.error_message
   }
 
-  // 对于已知的错误类型，返回默认提示
+  // Return default text for known error types.
   switch (props.message.error_type) {
     case 'interrupted':
-      return '回答生成已中断'
+      return 'Response generation was interrupted'
     case 'content_guard_blocked':
-      return '检测到敏感内容，已中断输出'
+      return 'Sensitive content detected, output stopped'
     case 'unexpect':
-      return '生成过程中出现异常'
+      return 'An error occurred during generation'
     case 'agent_error':
-      return '智能体获取失败'
+      return 'Failed to load agent'
     default:
       return null
   }
 })
 
-// 引入智能体 store
+// Agent store
 const agentStore = useAgentStore()
 const { availableKnowledgeBases } = storeToRefs(agentStore)
 const infoStore = useInfoStore()
 const themeStore = useThemeStore()
 
-// 提取消息来源
+// Extract message sources
 const messageSources = computed(() => {
   if (props.message.type === 'ai') {
     return MessageProcessor.extractSourcesFromMessage(props.message, availableKnowledgeBases.value)
@@ -237,17 +241,17 @@ const messageSources = computed(() => {
   return { knowledgeChunks: [], webSources: [] }
 })
 
-// 主题设置 - 根据系统主题动态切换
+// Theme based on system setting
 const theme = computed(() => (themeStore.isDark ? 'dark' : 'light'))
 
-// 过滤有效的工具调用
+// Filter valid tool calls
 const validToolCalls = computed(() => {
   if (!props.message.tool_calls || !Array.isArray(props.message.tool_calls)) {
     return []
   }
 
   return props.message.tool_calls.filter((toolCall) => {
-    // 过滤掉无效的工具调用
+    // Filter out invalid tool calls
     return (
       toolCall &&
       (toolCall.id || toolCall.name) &&
@@ -549,7 +553,7 @@ const parsedData = computed(() => {
   }
 }
 
-// 多模态消息样式
+// Multimodal message styles
 .message-image {
   border-radius: 12px;
   overflow: hidden;

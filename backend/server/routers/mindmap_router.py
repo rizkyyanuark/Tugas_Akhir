@@ -13,11 +13,11 @@ import textwrap
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from ta_backend_core.assistant.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 from server.utils.auth_middleware import get_admin_user
-from ta_backend_core.assistant import knowledge_base
-from ta_backend_core.assistant.models import select_model
-from ta_backend_core.assistant.utils import logger
+from yunesa import knowledge_base
+from yunesa.models import select_model
+from yunesa.utils import logger
 
 mindmap = APIRouter(prefix="/mindmap", tags=["mindmap"])
 
@@ -243,7 +243,7 @@ async def generate_mindmap(
 
             # 保存思维导图到知识库元数据
             try:
-                from ta_backend_core.assistant.repositories.knowledge_base_repository import KnowledgeBaseRepository
+                from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
                 await KnowledgeBaseRepository().update(db_id, {"mindmap": mindmap_data})
                 logger.info(f"思维导图已保存到知识库: {db_id}")
@@ -339,7 +339,7 @@ async def get_database_mindmap(db_id: str, current_user: User = Depends(get_admi
         思维导图数据
     """
     try:
-        from ta_backend_core.assistant.repositories.knowledge_base_repository import KnowledgeBaseRepository
+        from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         kb_repo = KnowledgeBaseRepository()
         kb = await kb_repo.get_by_id(db_id)

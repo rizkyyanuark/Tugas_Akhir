@@ -3,9 +3,9 @@
     <div class="graph-container-compact">
       <div v-if="!isGraphSupported" class="graph-disabled">
         <div class="disabled-content">
-          <h4>知识图谱不可用</h4>
-          <p>当前知识库类型 "{{ kbTypeLabel }}" 不支持知识图谱功能。</p>
-          <p>只有 LightRAG 类型的知识库支持知识图谱。</p>
+          <h4>Knowledge Graph Unavailable</h4>
+          <p>The current knowledge base type "{{ kbTypeLabel }}" does not support graphs.</p>
+          <p>Only LightRAG knowledge bases support the knowledge graph feature.</p>
         </div>
       </div>
       <div v-else class="graph-wrapper">
@@ -21,7 +21,7 @@
               <div class="actions-left">
                 <a-input
                   v-model:value="searchInput"
-                  placeholder="搜索实体"
+                  placeholder="Search entities"
                   style="width: 240px"
                   @keydown.enter="onSearch"
                   allow-clear
@@ -38,7 +38,7 @@
                   :icon="h(ReloadOutlined)"
                   :loading="graph.fetching"
                   @click="loadGraph"
-                  title="刷新"
+                  title="Refresh"
                 />
               </div>
               <div class="actions-right">
@@ -46,14 +46,14 @@
                   class="action-btn"
                   :icon="h(SettingOutlined)"
                   @click="showSettings = true"
-                  title="设置"
+                  title="Settings"
                 />
               </div>
             </div>
           </template>
         </GraphCanvas>
 
-        <!-- 详情浮动卡片 -->
+        <!-- Floating details card -->
         <GraphDetailPanel
           :visible="graph.showDetailDrawer"
           :item="graph.selectedItem"
@@ -64,11 +64,11 @@
       </div>
     </div>
 
-    <!-- 设置模态框 -->
-    <a-modal v-model:open="showSettings" title="图谱设置" :footer="null" width="300px">
+    <!-- Settings modal -->
+    <a-modal v-model:open="showSettings" title="Graph Settings" :footer="null" width="300px">
       <div class="settings-form">
         <a-form layout="vertical">
-          <a-form-item label="最大节点数 (limit)">
+          <a-form-item label="Maximum nodes (limit)">
             <a-input-number
               v-model:value="graphLimit"
               :min="10"
@@ -77,7 +77,7 @@
               style="width: 100%"
             />
           </a-form-item>
-          <a-form-item label="搜索深度 (depth)">
+          <a-form-item label="Search depth (depth)">
             <a-input-number
               v-model:value="graphDepth"
               :min="1"
@@ -87,7 +87,7 @@
             />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" @click="applySettings" style="width: 100%"> 应用 </a-button>
+            <a-button type="primary" @click="applySettings" style="width: 100%">Apply</a-button>
           </a-form-item>
         </a-form>
       </div>
@@ -132,7 +132,7 @@ const searchInput = ref('')
 
 const graph = reactive(useGraph(graphRef))
 
-// 计算属性：是否支持知识图谱
+// Whether current KB type supports knowledge graph.
 const isGraphSupported = computed(() => {
   const type = kbType.value?.toLowerCase()
   return type === 'lightrag'
@@ -157,7 +157,7 @@ const loadGraph = async () => {
     }
   } catch (e) {
     console.error('Failed to load graph:', e)
-    message.error('加载图谱失败')
+    message.error('Failed to load graph')
   } finally {
     graph.fetching = false
   }
@@ -173,7 +173,7 @@ const onSearch = () => {
 }
 
 const scheduleGraphLoad = (delay = 200) => {
-  // 确保组件激活且数据库支持图谱功能
+  // Ensure component is active and graph is supported for this database.
   if (!props.active || !isGraphSupported.value || !databaseId.value) {
     return
   }

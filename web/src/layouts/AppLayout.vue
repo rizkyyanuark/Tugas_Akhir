@@ -98,24 +98,42 @@ console.log(route)
 
 const activeTaskCount = computed(() => activeCountRef.value || 0)
 
-// Navigation menu section with agent items
-const isLiteMode = import.meta.env.VITE_LITE_MODE === 'true'
-
+// Navigation menu aligned with reference flow (without Knowledge Base)
 const mainList = computed(() => {
   const items = [
     {
-      name: 'Chatbot',
+      name: 'Agent',
       path: '/agent',
       icon: Bot,
       activeIcon: Bot
-    },
-    {
+    }
+  ]
+
+  if (userStore.isAdmin) {
+    items.push({
+      name: 'Knowledge Graph',
+      path: '/graph',
+      activePaths: ['/graph'],
+      icon: LibraryBig,
+      activeIcon: LibraryBig
+    })
+
+    if (userStore.isSuperAdmin) {
+      items.push({
+        name: 'Extension Management',
+        path: '/extensions',
+        icon: Blocks,
+        activeIcon: Blocks
+      })
+    }
+
+    items.push({
       name: 'Dashboard',
       path: '/dashboard',
       icon: BarChart3,
       activeIcon: BarChart3
-    }
-  ]
+    })
+  }
 
   return items
 })

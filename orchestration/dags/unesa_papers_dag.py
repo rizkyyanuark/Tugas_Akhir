@@ -28,7 +28,7 @@ from docker.types import Mount
 
 # ─── Constants ──────────────────────────────────────────────────
 ETL_WORKER_IMAGE = "tugas-akhir/etl-worker:latest"
-DOCKER_NETWORK = "tugas_akhir_default"
+DOCKER_NETWORK = "yuxi-know_app-network"
 DATA_VOLUME = "tugas_akhir_etl_data"  # Named volume shared with Airflow
 
 # Environment variables to inject into worker containers.

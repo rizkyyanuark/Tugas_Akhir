@@ -13,7 +13,7 @@
       >
         <template #content>
           <slot name="options-left">
-            <div class="no-options">没有配置 options</div>
+            <div class="no-options">No options configured</div>
           </slot>
         </template>
         <a-button type="text" class="expand-btn">
@@ -37,7 +37,7 @@
       :disabled="disabled"
     />
 
-    <!-- @ 提及选择弹窗 -->
+    <!-- @ mention selector popup -->
     <div
       v-if="mentionPopupVisible"
       ref="mentionDropdownRef"
@@ -45,11 +45,11 @@
       :style="mentionDropdownStyle"
     >
       <div class="mention-popup">
-        <!-- 文件列表 -->
+        <!-- File list -->
         <div v-if="mentionItems.files.length > 0 || showFileSearchPrompt" class="mention-group">
-          <div class="mention-group-title">文件</div>
+          <div class="mention-group-title">Files</div>
           <div v-if="showFileSearchPrompt" class="mention-search-placeholder">
-            输入相关内容以搜索文件
+            Type to search files
           </div>
           <template v-else>
             <div
@@ -63,9 +63,9 @@
           </template>
         </div>
 
-        <!-- 知识库列表 -->
+        <!-- Knowledge base list -->
         <div v-if="mentionItems.knowledgeBases.length > 0" class="mention-group">
-          <div class="mention-group-title">知识库</div>
+          <div class="mention-group-title">Knowledge Bases</div>
           <div
             v-for="(item, index) in mentionItems.knowledgeBases"
             :key="'kb-' + item.value"
@@ -76,7 +76,7 @@
           </div>
         </div>
 
-        <!-- MCP 列表 -->
+        <!-- MCP list -->
         <div v-if="mentionItems.mcps.length > 0" class="mention-group">
           <div class="mention-group-title">MCP</div>
           <div
@@ -89,7 +89,7 @@
           </div>
         </div>
 
-        <!-- Skills 列表 -->
+        <!-- Skills list -->
         <div v-if="mentionItems.skills.length > 0" class="mention-group">
           <div class="mention-group-title">Skills</div>
           <div
@@ -102,7 +102,7 @@
           </div>
         </div>
 
-        <!-- Subagents 列表 -->
+        <!-- Subagents list -->
         <div v-if="mentionItems.subagents.length > 0" class="mention-group">
           <div class="mention-group-title">Subagents</div>
           <div
@@ -115,14 +115,14 @@
           </div>
         </div>
 
-        <!-- 无结果 -->
-        <div v-if="!hasAnyItems" class="mention-empty">暂无可引用的项</div>
+        <!-- No results -->
+        <div v-if="!hasAnyItems" class="mention-empty">No items available to mention</div>
       </div>
     </div>
 
     <div class="send-button-container">
       <slot name="actions-right"></slot>
-      <a-tooltip :title="isLoading ? '停止回答' : ''">
+      <a-tooltip :title="isLoading ? 'Stop response' : ''">
         <a-button
           @click="handleSendOrStop"
           :disabled="sendButtonDisabled"
@@ -146,7 +146,7 @@
 import { ref, computed, onMounted, nextTick, watch, onBeforeUnmount, useSlots } from 'vue'
 import { SendOutlined, ArrowUpOutlined, PauseOutlined, PlusOutlined } from '@ant-design/icons-vue'
 
-// 点击外部关闭下拉框
+// Close dropdown when clicking outside.
 const mentionDropdownRef = ref(null)
 const closeMentionPopup = (e) => {
   if (!mentionPopupVisible.value) return
@@ -157,7 +157,7 @@ const closeMentionPopup = (e) => {
 
 const inputRef = ref(null)
 const optionsExpanded = ref(false)
-// 用于防抖的定时器
+// Debounce timer.
 const debounceTimer = ref(null)
 const props = defineProps({
   modelValue: {
@@ -166,7 +166,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: '输入问题...'
+    default: 'Ask a question...'
   },
   isLoading: {
     type: Boolean,
@@ -201,7 +201,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'send', 'keydown'])
 const slots = useSlots()
 
-// @ 提及功能是否启用
+// Whether @ mention is enabled.
 const mentionEnabled = computed(() => {
   if (!props.mention) return false
   const { files, knowledgeBases, mcps, skills, subagents } = props.mention
@@ -227,14 +227,14 @@ const formatMentionToken = (type, value) => {
   return `@${prefix}:${value}`
 }
 
-// 检测是否在 @ 触发位置
+// Check whether cursor is in an @ trigger context.
 const checkMentionTrigger = (textarea) => {
   if (!textarea || !mentionEnabled.value) return false
 
   const cursorPos = textarea.selectionStart
   const textBeforeCursor = inputValue.value.slice(0, cursorPos)
 
-  // 检查是否以 @ 结尾（刚输入 @）或 @ 后有内容
+  // Check if text ends with @ or contains @ query text.
   const atMatch = textBeforeCursor.match(/@(\S*)$/)
   if (atMatch) {
     mentionQuery.value = atMatch[1]
@@ -248,7 +248,7 @@ const checkMentionTrigger = (textarea) => {
   return false
 }
 
-// 更新提及候选项
+// Update mention candidates.
 const updateMentionItems = (query = '') => {
   if (!props.mention) {
     mentionItems.value = { files: [], knowledgeBases: [], mcps: [], skills: [], subagents: [] }
@@ -353,7 +353,7 @@ const updateMentionItems = (query = '') => {
   }
 }
 
-// 检查项是否被选中
+// Check whether candidate item is selected.
 const isItemSelected = (type, index) => {
   if (mentionSelectedIndex.value < 0) return false
 
@@ -375,7 +375,7 @@ const isItemSelected = (type, index) => {
   }
 }
 
-// 是否有任何候选项
+// Whether any candidate item exists.
 const showFileSearchPrompt = computed(() => {
   return Boolean(props.mention?.files?.length) && !mentionQuery.value
 })
@@ -392,7 +392,7 @@ const hasAnyItems = computed(() => {
   )
 })
 
-// 获取弹出框位置
+// Compute mention popup position.
 const mentionDropdownStyle = computed(() => {
   if (!inputRef.value) return {}
 
@@ -416,14 +416,14 @@ const insertMention = (item) => {
   const mentionValue = item.insertValue || item.value
   const mentionText = formatMentionToken(item.type, mentionValue)
 
-  // 移除 @ 及后面的查询内容，插入完整的提及项
+  // Replace @ query with selected mention token.
   const newTextBefore = textBeforeCursor.replace(/@(\S*)$/, `${mentionText} `)
   const textAfterCursor = inputValue.value.slice(cursorPos)
 
   const newValue = newTextBefore + textAfterCursor
   emit('update:modelValue', newValue)
 
-  // 重置光标位置到插入内容之后
+  // Reset cursor position after inserted mention.
   nextTick(() => {
     const newCursorPos = newTextBefore.length
     textarea.setSelectionRange(newCursorPos, newCursorPos)
@@ -434,18 +434,18 @@ const insertMention = (item) => {
   mentionQuery.value = ''
 }
 
-// 滚动到选中项
+// Scroll selected item into view.
 const scrollToItem = (index) => {
   nextTick(() => {
     const popup = mentionDropdownRef.value?.querySelector('.mention-popup')
     if (!popup) return
 
-    // 查找所有 mention-item 元素
+    // Find all mention-item elements.
     const items = popup.querySelectorAll('.mention-item')
     const selectedItem = items[index]
 
     if (selectedItem) {
-      // 检查元素是否在可视区域内
+      // Check if element is outside visible viewport.
       const popupRect = popup.getBoundingClientRect()
       const itemRect = selectedItem.getBoundingClientRect()
 
@@ -458,7 +458,7 @@ const scrollToItem = (index) => {
   })
 }
 
-// 处理键盘导航
+// Handle keyboard navigation.
 const handleMentionNavigation = (e) => {
   if (!mentionPopupVisible.value) return
 
@@ -501,14 +501,14 @@ const hasOptionsLeft = computed(() => {
   return Boolean(renderedNodes && renderedNodes.length)
 })
 
-// 图标映射
+// Icon map.
 const iconComponents = {
   SendOutlined: SendOutlined,
   ArrowUpOutlined: ArrowUpOutlined,
   PauseOutlined: PauseOutlined
 }
 
-// 根据传入的图标名动态获取组件
+// Resolve icon component from prop name.
 const getIcon = computed(() => {
   if (props.isLoading) {
     return PauseOutlined
@@ -516,15 +516,15 @@ const getIcon = computed(() => {
   return iconComponents[props.sendIcon] || ArrowUpOutlined
 })
 
-// 创建本地引用以进行双向绑定
+// Local computed for v-model binding.
 const inputValue = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
 })
 
-// 处理键盘事件
+// Handle keydown events.
 const handleKeyPress = (e) => {
-  // @ 提及键盘导航
+  // @ mention keyboard navigation
   if (mentionPopupVisible.value) {
     if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
       handleMentionNavigation(e)
@@ -535,7 +535,7 @@ const handleKeyPress = (e) => {
   emit('keydown', e)
 }
 
-// 检测 @ 触发
+// Detect @ trigger.
 const handleKeyUp = (e) => {
   if (e.key === '@' && mentionEnabled.value) {
     nextTick(() => {
@@ -544,12 +544,12 @@ const handleKeyUp = (e) => {
   }
 }
 
-// 处理输入事件
+// Handle input events.
 const handleInput = (e) => {
   const value = e.target.value
   emit('update:modelValue', value)
 
-  // 检测 @ 触发（每次输入后检查）
+  // Check @ trigger after each input.
   if (mentionEnabled.value && !mentionPopupVisible.value) {
     const cursorPos = e.target.selectionStart
     const textBeforeCursor = value.slice(0, cursorPos)
@@ -558,7 +558,7 @@ const handleInput = (e) => {
     }
   }
 
-  // 如果弹出框打开，更新查询结果
+  // Update query results while popup is open.
   if (mentionPopupVisible.value) {
     nextTick(() => {
       checkMentionTrigger(e.target)
@@ -566,12 +566,12 @@ const handleInput = (e) => {
   }
 }
 
-// 处理发送按钮点击
+// Handle send button click.
 const handleSendOrStop = () => {
   emit('send')
 }
 
-// @ 提及功能状态
+// @ mention state.
 const mentionPopupVisible = ref(false)
 const mentionQuery = ref('')
 const mentionItems = ref({ files: [], knowledgeBases: [], mcps: [], skills: [], subagents: [] })
@@ -587,14 +587,14 @@ const adjustTextareaHeight = () => {
   textarea.style.height = `${textarea.scrollHeight}px`
 }
 
-// 聚焦输入框
+// Focus input.
 const focusInput = () => {
   if (inputRef.value && !props.disabled) {
     inputRef.value.focus()
   }
 }
 
-// 监听输入值变化
+// Watch input value changes.
 watch(inputValue, () => {
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
@@ -616,7 +616,7 @@ onMounted(() => {
   })
 })
 
-// 组件卸载时清除定时器和事件监听器
+// Clean up timers and event listeners on unmount.
 onBeforeUnmount(() => {
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
@@ -624,7 +624,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeMentionPopup)
 })
 
-// 公开方法供父组件调用
+// Expose methods for parent.
 defineExpose({
   focus: () => inputRef.value?.focus(),
   closeOptions: () => {
@@ -746,7 +746,7 @@ defineExpose({
 
   &:active {
     color: var(--main-color);
-    // 移除点击缩小效果
+    // Keep size stable on click.
   }
 
   .anticon {
@@ -759,7 +759,7 @@ defineExpose({
   }
 }
 
-// Popover 选项样式
+// Popover options styles
 .popover-options {
   min-width: 160px;
   max-width: 200px;
@@ -818,7 +818,7 @@ defineExpose({
 
   &:active {
     box-shadow: 0 2px 4px var(--shadow-2);
-    // 移除点击动画效果
+    // Keep click animation minimal.
   }
 
   &:disabled {
@@ -836,7 +836,7 @@ defineExpose({
   }
 }
 
-// @ 提及弹窗样式
+// @ mention popup styles
 .mention-dropdown-wrapper {
   position: absolute;
   z-index: 1000;

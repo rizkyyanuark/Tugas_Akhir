@@ -4,13 +4,13 @@
       <div class="loading-bar"></div>
     </div>
     <div class="layout-wrapper" :class="{ 'content-loading': loading }">
-      <!-- 左侧：工具列表 -->
+      <!-- Left: tool list -->
       <div class="sidebar-list">
         <div class="sidebar-toolbar">
           <div class="search-box">
             <a-input
               v-model:value="searchQuery"
-              placeholder="搜索工具..."
+              placeholder="Search tools..."
               allow-clear
               class="search-input"
             >
@@ -18,13 +18,13 @@
             </a-input>
           </div>
 
-          <a-tooltip title="刷新工具">
+          <a-tooltip title="Refresh tools">
             <a-button class="sidebar-tool" :disabled="loading" @click="fetchTools">
               <RotateCw :size="14" />
             </a-button>
           </a-tooltip>
 
-          <a-tooltip :title="`当前分类：${currentCategoryLabel}`">
+          <a-tooltip :title="`Current category：${currentCategoryLabel}`">
             <a-dropdown trigger="click">
               <a-button
                 class="sidebar-tool category-trigger"
@@ -34,7 +34,7 @@
               </a-button>
               <template #overlay>
                 <a-menu :selectedKeys="[selectedCategory || 'all']" @click="handleCategorySelect">
-                  <a-menu-item key="all">全部分类</a-menu-item>
+                  <a-menu-item key="all">All categories</a-menu-item>
                   <a-menu-item v-for="cat in categories" :key="cat">
                     {{ categoryLabels[cat] || cat }}
                   </a-menu-item>
@@ -46,7 +46,7 @@
 
         <div class="list-container">
           <div v-if="filteredTools.length === 0" class="empty-text">
-            <a-empty :image="false" description="无匹配工具" />
+            <a-empty :image="false" description="No matching tools" />
           </div>
           <template v-for="(tool, index) in filteredTools" :key="tool.id">
             <div
@@ -79,12 +79,12 @@
         </div>
       </div>
 
-      <!-- 右侧：详情面板 -->
+      <!-- Right: detail panel -->
       <div class="main-panel">
         <div v-if="!currentTool" class="unselected-state">
           <div class="hint-box">
             <Wrench :size="40" class="text-muted" />
-            <p>请在左侧选择工具查看详情</p>
+            <p>Select a tool from the left panel to view details</p>
           </div>
         </div>
 
@@ -100,17 +100,17 @@
             <div class="detail-section">
               <div class="section-header">
                 <FileText :size="14" />
-                <span>描述</span>
+                <span>Description</span>
               </div>
               <div class="section-content description">
-                {{ currentTool.description || '无描述' }}
+                {{ currentTool.description || 'No description' }}
               </div>
             </div>
 
             <div class="detail-section" v-if="currentTool.config_guide">
               <div class="section-header">
                 <FileText :size="14" />
-                <span>配置说明</span>
+                <span>Configuration Guide</span>
               </div>
               <div class="section-content description config-guide">
                 {{ currentTool.config_guide }}
@@ -120,7 +120,7 @@
             <div class="detail-section">
               <div class="section-header">
                 <Tag :size="14" />
-                <span>分类</span>
+                <span>Category</span>
               </div>
               <div class="section-content">
                 <a-tag :color="categoryColors[currentTool.category] || 'default'">
@@ -132,18 +132,18 @@
             <div class="detail-section">
               <div class="section-header">
                 <Tags :size="14" />
-                <span>标签</span>
+                <span>Tags</span>
               </div>
               <div class="section-content">
                 <a-tag v-for="tag in currentTool.tags" :key="tag">{{ tag }}</a-tag>
-                <span v-if="!currentTool.tags?.length" class="text-muted">无</span>
+                <span v-if="!currentTool.tags?.length" class="text-muted">None</span>
               </div>
             </div>
 
             <div class="detail-section" v-if="currentTool.args?.length">
               <div class="section-header">
                 <List :size="14" />
-                <span>参数</span>
+                <span>Arguments</span>
               </div>
               <div class="section-content">
                 <a-table
@@ -188,9 +188,9 @@ const currentTool = ref(null)
 
 const categories = ['buildin', 'mysql', 'debug']
 const categoryLabels = {
-  buildin: '内置工具',
+  buildin: 'Built-in Tools',
   mysql: 'MySQL',
-  debug: '调试'
+  debug: 'Debug'
 }
 const categoryColors = {
   buildin: 'blue',
@@ -199,9 +199,9 @@ const categoryColors = {
 }
 
 const argColumns = [
-  { title: '参数名', dataIndex: 'name', key: 'name' },
-  { title: '类型', dataIndex: 'type', key: 'type', width: 80 },
-  { title: '描述', dataIndex: 'description', key: 'description' }
+  { title: 'Parameter', dataIndex: 'name', key: 'name' },
+  { title: 'Type', dataIndex: 'type', key: 'type', width: 80 },
+  { title: 'Description', dataIndex: 'description', key: 'description' }
 ]
 
 const filteredTools = computed(() => {
@@ -225,7 +225,7 @@ const filteredTools = computed(() => {
 const currentCategoryLabel = computed(
   () =>
     categoryLabels[selectedCategory.value] ||
-    (selectedCategory.value ? selectedCategory.value : '全部分类')
+    (selectedCategory.value ? selectedCategory.value : 'All categories')
 )
 
 const fetchTools = async () => {
@@ -233,12 +233,12 @@ const fetchTools = async () => {
   try {
     const result = await toolApi.getTools()
     tools.value = result?.data || []
-    // 默认选中第一个工具
+    // Select the first tool by default
     if (!currentTool.value && tools.value.length > 0) {
       currentTool.value = tools.value[0]
     }
   } catch {
-    message.error('加载工具失败')
+    message.error('Failed to load tools')
   } finally {
     loading.value = false
   }
@@ -254,7 +254,7 @@ const handleCategorySelect = ({ key }) => {
 
 onMounted(fetchTools)
 
-// 暴露方法给父组件
+// Expose methods to the parent component
 defineExpose({
   fetchTools
 })

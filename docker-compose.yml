@@ -1,120 +1,183 @@
-# ══════════════════════════════════════════════════════════════
-# Tugas Akhir — Unified Docker Compose (AgenticRAG-Style)
-# ══════════════════════════════════════════════════════════════
-# Usage:
-#   docker compose up --build              # Core services (api + web + dbs)
-#   docker compose --profile etl up -d     # + Airflow ETL
-#   docker compose --profile monitoring up # + Prometheus/Grafana
-# ══════════════════════════════════════════════════════════════
-
-# ── Shared environment anchor (AgenticRAG pattern: x-api-worker-env) ──
-x-api-env: &api-env
+x-api-worker-env: &api-worker-env
+  HOST_IP: ${HOST_IP:-}
+  LITE_MODE: ${LITE_MODE:-false}
   RUNNING_IN_DOCKER: "true"
-  SUPABASE_URL: ${SUPABASE_URL:-}
-  SUPABASE_KEY: ${SUPABASE_KEY:-}
-  NEO4J_URI: bolt://graph:7687
-  NEO4J_USERNAME: ${NEO4J_USER:-neo4j}
-  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-71509325}
-  NEO4J_DATABASE: ${NEO4J_DATABASE:-infokom-unesa}
-  MILVUS_HOST: milvus
-  MILVUS_PORT: "19530"
-  REDIS_URL: redis://redis:6379/0
-  GROQ_API_KEY: ${GROQ_API_KEY:-}
-  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-  HF_TOKEN: ${HF_TOKEN:-}
-  GLINER_MODEL_NAME: ${GLINER_MODEL_NAME:-urchade/gliner_small-v2.1}
-  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-  OPIK_WORKSPACE: ${OPIK_WORKSPACE:-}
-  OPIK_API_KEY: ${OPIK_API_KEY:-}
-  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,etcd,redis,postgres
+  MODEL_DIR_IN_DOCKER: /models
+  # DBs and other services
+  POSTGRES_URL: ${POSTGRES_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-yuxi_know}}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  NEO4J_URI: ${NEO4J_URI:-bolt://graph:7687}
+  NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-0123456789}
+  MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-default}
+  MILVUS_TOKEN: ${MILVUS_TOKEN:-}
+  MINIO_URI: ${MINIO_URI:-http://minio:9000}
+  # Sandbox related
+  YUXI_DOCKER_API_BASE: ${YUXI_DOCKER_API_BASE:-http://localhost}
+  SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-provisioner}
+  SANDBOX_PROVISIONER_URL: ${SANDBOX_PROVISIONER_URL:-http://sandbox-provisioner:8002}
+  SANDBOX_VIRTUAL_PATH_PREFIX: ${SANDBOX_VIRTUAL_PATH_PREFIX:-/home/gem/user-data}
+  SANDBOX_EXEC_TIMEOUT_SECONDS: ${SANDBOX_EXEC_TIMEOUT_SECONDS:-180}
+  SANDBOX_MAX_OUTPUT_BYTES: ${SANDBOX_MAX_OUTPUT_BYTES:-262144}
+  # LightRAG
+  EMBEDDING_TIMEOUT: ${EMBEDDING_TIMEOUT:-600}
+  LLM_TIMEOUT: ${LLM_TIMEOUT:-600}
+  # Agent run
+  RUN_CANCEL_KEY_TTL_SECONDS: ${RUN_CANCEL_KEY_TTL_SECONDS:-1800}
+  RUN_EVENTS_STREAM_TTL_SECONDS: ${RUN_EVENTS_STREAM_TTL_SECONDS:-7200}
+  # Other environment variables
+  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,sandbox-provisioner,api.siliconflow.cn
+  no_proxy: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,sandbox-provisioner,api.siliconflow.cn
 
 services:
-  # ════════════════════════════════════════════════════════════
-  # APPLICATION SERVICES
-  # ════════════════════════════════════════════════════════════
-
   api:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    image: ta-api:0.6.0
-    container_name: api
+    image: yunesa-api:0.6.0
+    container_name: api-dev
     working_dir: /app
     volumes:
       - ./backend/server:/app/server
       - ./backend/package:/app/package
-      - ./backend/pyproject.toml:/app/pyproject.toml
-      - ./backend/uv.lock:/app/uv.lock
-      - ./configs:/app/configs:ro
-      - ./data:/app/data
+      - ./saves:/app/saves
+      - ./backend/test:/app/test
+      - ./backend/scripts:/app/scripts
+      - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
       - ./.env:/app/.env
+      - ${MODEL_DIR:-./models}:/models # Use default value when the environment variable is undefined
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "${KG_BACKEND_PORT:-5050}:5050"
+      - "5050:5050"
     networks:
-      - ta-network
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
+    # region api_envs
     environment:
-      <<: *api-env
-    command: uvicorn server.main:app --host 0.0.0.0 --port 5050 --reload --reload-dir /app/server --reload-dir /app/package
+      <<: *api-worker-env
+    # endregion api_envs
+    command: uv run --no-dev uvicorn server.main:app --host 0.0.0.0 --port 5050
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5050/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5050/api/system/health || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      timeout: 15s
+      retries: 8
+      start_period: 180s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      milvus:
+      minio:
         condition: service_healthy
-      graph:
+      sandbox-provisioner:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 2G
 
-  telegram-bot:
+  worker:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    image: ta-api:0.6.0
-    container_name: telegram-bot
+    image: yunesa-api:0.6.0
+    container_name: worker-dev
     working_dir: /app
     volumes:
       - ./backend/server:/app/server
       - ./backend/package:/app/package
+      - ./saves:/app/saves
+      - ./backend/test:/app/test
+      - ./backend/scripts:/app/scripts
+      - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
+      - ./.env:/app/.env
       - ./backend/pyproject.toml:/app/pyproject.toml
       - ./backend/uv.lock:/app/uv.lock
-      - ./configs:/app/configs:ro
-      - ./data:/app/data
-      - ./.env:/app/.env
+      - ${MODEL_DIR:-./models}:/models
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - ta-network
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
-      <<: *api-env
-    command: python -m ta_backend_core.assistant.telegram_bot
+      <<: *api-worker-env
+    command: uv run --no-dev arq server.worker_main.WorkerSettings
+    healthcheck:
+      disable: true
     restart: unless-stopped
     depends_on:
-      - api
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      sandbox-provisioner:
+        condition: service_healthy
+
+  sandbox-provisioner:
+    build:
+      context: ./docker/sandbox_provisioner
+      dockerfile: Dockerfile
+    image: yunesa-sandbox-provisioner:0.6.0
+    container_name: sandbox-provisioner
+    volumes:
+      - ./saves:/app/saves
+      - ./docker/sandbox_provisioner/app.py:/app/app.py:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8002:8002"
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Common provisioner settings
+      - PROVISIONER_BACKEND=${SANDBOX_PROVISIONER_BACKEND:-docker}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest}
+      - SANDBOX_CONTAINER_PORT=${SANDBOX_CONTAINER_PORT:-8080}
+      - MEMORY_SANDBOX_URL_TEMPLATE=${MEMORY_SANDBOX_URL_TEMPLATE:-http://agent-sandbox:8000}
+      - SANDBOX_HEALTH_TIMEOUT_SECONDS=${SANDBOX_HEALTH_TIMEOUT_SECONDS:-300}
+      - SANDBOX_IDLE_TIMEOUT_SECONDS=${SANDBOX_IDLE_TIMEOUT_SECONDS:-120}
+      - SANDBOX_IDLE_CHECK_INTERVAL_SECONDS=${SANDBOX_IDLE_CHECK_INTERVAL_SECONDS:-10}
+      - SANDBOX_EXEC_TIMEOUT_SECONDS=${SANDBOX_EXEC_TIMEOUT_SECONDS:-180}
+      # Optional proxy for sandbox-provisioner container
+      - HTTP_PROXY=${SANDBOX_HTTP_PROXY:-}
+      - HTTPS_PROXY=${SANDBOX_HTTPS_PROXY:-}
+      - NO_PROXY=localhost,127.0.0.1,host.docker.internal
+      # Docker backend only
+      - DOCKER_NETWORK=${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
+      - DOCKER_THREADS_HOST_PATH=${SANDBOX_DOCKER_THREADS_HOST_PATH:-}
+      - DOCKER_SANDBOX_PREFIX=${SANDBOX_DOCKER_SANDBOX_PREFIX:-yuxi-sandbox}
+      - DOCKER_SANDBOX_HOST=${SANDBOX_DOCKER_SANDBOX_HOST:-host.docker.internal}
+      # Kubernetes backend only
+      - K8S_NAMESPACE=${SANDBOX_K8S_NAMESPACE:-yuxi-know}
+      - NODE_HOST=${SANDBOX_NODE_HOST:-host.docker.internal}
+      - KUBECONFIG_PATH=${KUBECONFIG_PATH:-}
+      - THREAD_PVC=${THREAD_PVC:-yuxi-thread}
+      - SKILLS_PVC=${SKILLS_PVC:-yuxi-skills}
+    command: >
+      sh -lc "python -c 'import docker' >/dev/null 2>&1 || pip install --no-cache-dir 'docker>=7.1.0';
+      uvicorn app:app --host 0.0.0.0 --port 8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
 
   web:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
       target: development
-    image: ta-web:0.6.0
-    container_name: web
+    image: yunesa-web:0.6.0
+    container_name: web-dev
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public
@@ -122,62 +185,46 @@ services:
       - ./web/vite.config.js:/app/vite.config.js
     ports:
       - "5173:5173"
+    depends_on:
+      - api
     networks:
-      - ta-network
+      - app-network
     environment:
       - NODE_ENV=development
       - VITE_API_URL=http://api:5050
-    command: pnpm run dev --host 0.0.0.0
-    depends_on:
-      - api
+      - VITE_USE_RUNS_API=${VITE_USE_RUNS_API:-false}
+      - VITE_LITE_MODE=${LITE_MODE:-}
+    command: pnpm run server
     restart: unless-stopped
-
-  # ════════════════════════════════════════════════════════════
-  # DATABASES & INFRASTRUCTURE
-  # ════════════════════════════════════════════════════════════
 
   # region neo4j
   graph:
-    image: neo4j:${NEO4J_VERSION:-5.15}-enterprise
+    image: neo4j:5.26
     container_name: graph
     ports:
       - "7474:7474"
       - "7687:7687"
     volumes:
-      - ./docker/volumes/neo4j/data:/data
-      - ./docker/volumes/neo4j/logs:/var/lib/neo4j/logs
+      - neo4j-data:/data
+      - neo4j-logs:/var/lib/neo4j/logs
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 30s
+      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u ${NEO4J_USERNAME:-neo4j} -p ${NEO4J_PASSWORD:-0123456789} 'RETURN 1;' >/dev/null || exit 1"]
+      interval: 20s
       timeout: 10s
-      retries: 15
-      start_period: 60s
+      retries: 5
+      start_period: 30s
     environment:
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-71509325}
-      - NEO4J_server_memory_heap_initial__size=256m
-      - NEO4J_server_memory_heap_max__size=1G
-      - NEO4J_server_memory_pagecache_size=256m
-      - NEO4J_initial_dbms_default__database=${NEO4J_DATABASE:-infokom-unesa}
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-      - NEO4J_server_http_listen__address=0.0.0.0:7474
+      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-0123456789}
       - NEO4J_server_bolt_listen__address=0.0.0.0:7687
-      - NEO4J_server_bolt_tls__level=DISABLED
-      - NEO4J_server_config_strict__validation_enabled=false
-      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
-      - NEO4J_apoc_export_file_enabled=true
-      - NEO4J_apoc_import_file_enabled=true
-      - NEO4J_server_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_server_http_listen__address=0.0.0.0:7474
+      - ENTITY_EMBEDDING=true
     networks:
-      - ta-network
+      - app-network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1500M
   # endregion neo4j
 
   etcd:
-    container_name: milvus-etcd
+    container_name: milvus-etcd-dev
     image: quay.io/coreos/etcd:v3.5.5
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -185,7 +232,7 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     volumes:
-      - ./docker/volumes/milvus/etcd:/etcd
+      - etcd-data:/etcd
     command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
       test: ["CMD", "etcdctl", "endpoint", "health"]
@@ -194,7 +241,7 @@ services:
       retries: 5
       start_period: 30s
     networks:
-      - ta-network
+      - app-network
     restart: unless-stopped
 
   minio:
@@ -204,8 +251,8 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
     volumes:
-      - ./docker/volumes/milvus/minio:/minio_data
-      - ./docker/volumes/milvus/minio_config:/root/.minio
+      - minio-data:/minio_data
+      - minio-config:/root/.minio
     command: minio server /minio_data --address 0.0.0.0:9000 --console-address 0.0.0.0:9001
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -217,11 +264,11 @@ services:
       - "9000:9000"
       - "9001:9001"
     networks:
-      - ta-network
+      - app-network
     restart: unless-stopped
 
   milvus:
-    image: milvusdb/milvus:v2.4.9
+    image: milvusdb/milvus:v2.5.6
     container_name: milvus
     command: ["milvus", "run", "standalone"]
     security_opt:
@@ -231,8 +278,8 @@ services:
       MINIO_ADDRESS: minio:9000
       MILVUS_LOG_LEVEL: error
     volumes:
-      - ./docker/volumes/milvus/milvus:/var/lib/milvus
-      - ./docker/volumes/milvus/logs:/var/lib/milvus/logs
+      - milvus-data:/var/lib/milvus
+      - milvus-logs:/var/lib/milvus/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 60s
@@ -243,271 +290,138 @@ services:
       - "19530:19530"
       - "9091:9091"
     depends_on:
-      - etcd
-      - minio
+      - "etcd"
+      - "minio"
     networks:
-      - ta-network
+      - app-network
     restart: unless-stopped
 
   postgres:
-    image: postgres:${POSTGRES_VERSION:-13}
+    image: ${POSTGRES_IMAGE:-postgres:16}
     container_name: postgres
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-71509325}
-      - POSTGRES_DB=${POSTGRES_DB:-airflow}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-yuxi_know}
+      - TZ=${TZ:-Asia/Shanghai}
     volumes:
-      - ./docker/volumes/postgresql:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-yuxi_know} || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
     networks:
-      - ta-network
+      - app-network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
 
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
     volumes:
-      - ./docker/volumes/redis:/data
+      - redis-data:/data
     networks:
-      - ta-network
+      - app-network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 384M
 
-  # ════════════════════════════════════════════════════════════
-  # ETL / AIRFLOW (profile: etl)
-  # ════════════════════════════════════════════════════════════
-
+  # ============================================================================
+  # ETL & ORCHESTRATION (Profile: etl)
+  # ============================================================================
+  
   etl-worker:
-    profiles: ["etl"]
     build:
       context: .
       dockerfile: docker/etl-worker.Dockerfile
     image: tugas-akhir/etl-worker:latest
-    container_name: etl-worker-dummy
-    command: ["echo", "ETL Worker Image Built Successfully"]
+    profiles: ["etl"]
     networks:
-      - ta-network
-    deploy:
-      replicas: 0 # Does not stay running, used purely to force compose to build the image needed by Airflow DockerOperator
-
+      - app-network
+    env_file:
+      - .env
 
   airflow-init:
-    profiles: ["etl"]
     build:
       context: .
       dockerfile: docker/airflow.Dockerfile
-    image: ta-airflow:2.8.1
-    container_name: airflow-init
+    profiles: ["etl"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
     env_file:
       - .env
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-71509325}@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
-    volumes:
-      - ./orchestration/dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./configs:/opt/airflow/configs:ro
-      - etl_data:/opt/airflow/data
     command: >
       bash -c "
-        airflow db migrate &&
-        airflow users create --role Admin --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --email admin@example.com --firstname Airflow --lastname Admin || true
+      airflow db init &&
+      airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true
       "
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 512M
 
   airflow-webserver:
-    profiles: ["etl"]
-    image: ta-airflow:2.8.1
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
     container_name: airflow-webserver
-    env_file:
-      - .env
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-71509325}@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
-      AIRFLOW__WEBSERVER__WORKERS: 1
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
-    volumes:
-      - ./orchestration/dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./configs:/opt/airflow/configs:ro
-      - etl_data:/opt/airflow/data
-    ports:
-      - "${AIRFLOW_HTTP_PORT:-8080}:8080"
-    command: webserver
+    profiles: ["etl"]
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
+    ports:
+      - "8080:8080"
     networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 4G
+      - app-network
+    env_file:
+      - .env
+    volumes:
+      - ./orchestration/dags:/opt/airflow/dags:ro
+      - airflow-logs:/opt/airflow/logs
+    command: webserver
 
   airflow-scheduler:
-    profiles: ["etl"]
-    image: ta-airflow:2.8.1
+    build:
+      context: .
+      dockerfile: docker/airflow.Dockerfile
     container_name: airflow-scheduler
-    env_file:
-      - .env
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-71509325}@postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
-    volumes:
-      - ./orchestration/dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./configs:/opt/airflow/configs:ro
-      - etl_data:/opt/airflow/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: scheduler
+    profiles: ["etl"]
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
     networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-
-  # ════════════════════════════════════════════════════════════
-  # MONITORING (profile: monitoring)
-  # ════════════════════════════════════════════════════════════
-
-  node-exporter:
-    profiles: ["monitoring"]
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: unless-stopped
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-
-  cadvisor:
-    profiles: ["monitoring"]
-    image: gcr.io/cadvisor/cadvisor:v0.47.0
-    container_name: cadvisor
-    restart: unless-stopped
-    privileged: true
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-
-  prometheus:
-    profiles: ["monitoring"]
-    image: prom/prometheus:latest
-    container_name: prometheus
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    restart: unless-stopped
-    depends_on:
-      - node-exporter
-      - cadvisor
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=72h"
-    networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-  grafana:
-    profiles: ["monitoring"]
-    image: grafana/grafana:latest
-    container_name: grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - app-network
     env_file:
       - .env
     volumes:
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "${GRAFANA_HTTP_PORT:-3000}:3000"
-    restart: unless-stopped
-    networks:
-      - ta-network
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-# ════════════════════════════════════════════════════════════
-# VOLUMES & NETWORKS
-# ════════════════════════════════════════════════════════════
-
-volumes:
-  etl_data:
-  prometheus_data:
-  grafana_data:
+      - ./orchestration/dags:/opt/airflow/dags:ro
+      - airflow-logs:/opt/airflow/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
 
 networks:
-  ta-network:
+  app-network:
     driver: bridge
-    name: ta-network
+    name: ${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
+
+volumes:
+  postgres-data:
+  neo4j-data:
+  neo4j-logs:
+  etcd-data:
+  minio-data:
+  minio-config:
+  milvus-data:
+  milvus-logs:
+  redis-data:
+  airflow-logs:

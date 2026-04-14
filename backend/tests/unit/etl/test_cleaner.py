@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from ta_backend_core.knowledge.etl.transform.cleaner import clean_text
+from knowledge.etl.transform.cleaner import clean_text
 
 
 def test_clean_text_basic():

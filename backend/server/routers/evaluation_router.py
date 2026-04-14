@@ -2,9 +2,9 @@ import traceback
 
 from fastapi import APIRouter, HTTPException, Depends, File, Form, Body, UploadFile
 from fastapi.responses import FileResponse
-from ta_backend_core.assistant.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 from server.utils.auth_middleware import get_admin_user
-from ta_backend_core.assistant.utils import logger
+from yunesa.utils import logger
 
 # 创建路由器
 evaluation = APIRouter(prefix="/evaluation", tags=["evaluation"])
@@ -21,7 +21,7 @@ async def get_evaluation_benchmark_by_db(
     db_id: str, benchmark_id: str, page: int = 1, page_size: int = 10, current_user: User = Depends(get_admin_user)
 ):
     """根据 db_id 获取评估基准详情（支持分页）"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         # 验证分页参数
@@ -43,7 +43,7 @@ async def get_evaluation_benchmark_by_db(
 @evaluation.delete("/benchmarks/{benchmark_id}")
 async def delete_evaluation_benchmark(benchmark_id: str, current_user: User = Depends(get_admin_user)):
     """删除评估基准"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()
@@ -57,7 +57,7 @@ async def delete_evaluation_benchmark(benchmark_id: str, current_user: User = De
 @evaluation.get("/benchmarks/{benchmark_id}/download")
 async def download_evaluation_benchmark(benchmark_id: str, current_user: User = Depends(get_admin_user)):
     """下载评估基准文件"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()
@@ -87,7 +87,7 @@ async def get_evaluation_results_by_db(
     current_user: User = Depends(get_admin_user),
 ):
     """获取评估结果（带 db_id，支持分页）"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         # 验证分页参数
@@ -109,7 +109,7 @@ async def get_evaluation_results_by_db(
 @evaluation.delete("/databases/{db_id}/results/{task_id}")
 async def delete_evaluation_result_by_db(db_id: str, task_id: str, current_user: User = Depends(get_admin_user)):
     """删除评估结果（带 db_id）"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()
@@ -134,7 +134,7 @@ async def upload_evaluation_benchmark(
     current_user: User = Depends(get_admin_user),
 ):
     """上传评估基准文件"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         # 验证文件格式
@@ -166,7 +166,7 @@ async def upload_evaluation_benchmark(
 @evaluation.get("/databases/{db_id}/benchmarks")
 async def get_evaluation_benchmarks(db_id: str, current_user: User = Depends(get_admin_user)):
     """获取知识库的评估基准列表"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()
@@ -182,7 +182,7 @@ async def generate_evaluation_benchmark(
     db_id: str, params: dict = Body(...), current_user: User = Depends(get_admin_user)
 ):
     """自动生成评估基准"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()
@@ -196,7 +196,7 @@ async def generate_evaluation_benchmark(
 @evaluation.post("/databases/{db_id}/run")
 async def run_evaluation(db_id: str, params: dict = Body(...), current_user: User = Depends(get_admin_user)):
     """运行RAG评估"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()
@@ -215,7 +215,7 @@ async def run_evaluation(db_id: str, params: dict = Body(...), current_user: Use
 @evaluation.get("/databases/{db_id}/history")
 async def get_evaluation_history(db_id: str, current_user: User = Depends(get_admin_user)):
     """获取知识库的评估历史记录"""
-    from ta_backend_core.assistant.services.evaluation_service import EvaluationService
+    from yunesa.services.evaluation_service import EvaluationService
 
     try:
         service = EvaluationService()

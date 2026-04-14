@@ -5,7 +5,7 @@ import logging
 from fastapi import Request
 from sqlalchemy.orm import Session
 
-from ta_backend_core.assistant.storage.postgres.models_business import OperationLog, User
+from yunesa.storage.postgres.models_business import OperationLog, User
 
 
 def setup_logging():

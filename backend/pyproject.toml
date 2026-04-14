@@ -1,58 +1,65 @@
-# ══════════════════════════════════════════════════════════════
-# Backend Workspace — Unified Build Root
-# ══════════════════════════════════════════════════════════════
-# Pattern: Identical to AgenticRAG's `backend/pyproject.toml`
-#
-# This workspace ties together:
-#   - server/   → FastAPI HTTP layer (thin controller)
-#   - package/  → strwythura core domain library (heavy logic)
-#   - tests/    → pytest suite (unit + integration + e2e)
-#
-# The `strwythura` package is installed as an EDITABLE dependency,
-# meaning `from strwythura.kg...` works everywhere without
-# PYTHONPATH hacks.
-# ══════════════════════════════════════════════════════════════
-
 [project]
-name = "strwythura-workspace"
-version = "0.1.0"
-description = "Backend workspace for UNESA Academic KG Pipeline"
+name = "yunesa-workspace"
+version = "0.6.0"
+description = "Yunesa backend workspace"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.14"
 dependencies = [
-    # --- HTTP Layer ---
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0",
-
-    # --- Core Domain Package (editable install) ---
-    "ta-backend-core",
+    "fastapi>=0.121",
+    "uvicorn[standard]>=0.34.2",
+    "arq>=0.26.3",
+    "Yunesa",
+]
+[tool.ruff]
+line-length = 120  # Maximum code line length
+lint.select = [         # Selected rules
+    "F",
+    "E",
+    "W",
+    "UP",
 ]
 
-[tool.uv.workspace]
-members = ["package"]
+[tool.uv]
+
+[[tool.uv.index]]
+name = "tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.uv.sources]
-ta-backend-core = { workspace = true }
+Yunesa = { path = "package", editable = true }
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 
-# ── Pytest Configuration (Yuxi-style) ──────────────────────
+
 [tool.pytest.ini_options]
 addopts = "-v --tb=short"
-testpaths = ["tests/unit", "tests/integration", "tests/e2e"]
+testpaths = ["test/unit", "test/integration", "test/e2e"]
 pythonpath = [".", "package"]
 markers = [
     "unit: marks tests that run without live services",
-    "integration: marks tests that require Neo4j/Weaviate/Supabase",
-    "e2e: marks end-to-end tests (full pipeline)",
-    "slow: marks tests as slow (>30s)",
+    "auth: marks tests that require authentication",
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests"
 ]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
-# ── Dependency Groups ──────────────────────────────────────
+
 [dependency-groups]
 dev = [
-    "ruff>=0.12.0",
+    "ruff>=0.12.1",
 ]
 test = [
     "pytest>=8.0.0",
-    "pytest-cov>=6.0.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-httpx>=0.32.0",
+    "pytest-cov>=6.0.0",
 ]

@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import patch, MagicMock
-from ta_backend_core.knowledge.kg.llm_client import GroqClient
+from knowledge.kg.llm_client import GroqClient
 import requests
 
 

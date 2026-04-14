@@ -8,7 +8,7 @@ import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHash, VerificationError, VerifyMismatchError
 
-from ta_backend_core.assistant.utils.datetime_utils import utc_now
+from yunesa.utils.datetime_utils import utc_now
 
 # JWT配置
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "ta_know_secure_key")

@@ -37,7 +37,7 @@
         >
           <LoaderCircle v-if="chatUIStore.creatingNewChat" size="18" class="loading-icon" />
           <MessageSquarePlus v-else size="18" />
-          创建新对话
+          Create New Chat
         </button>
       </div>
       <div class="conversation-list">
@@ -51,7 +51,7 @@
             @click.middle="handleMiddleClickDelete(chat.id)"
           >
             <div class="conversation-title">
-              <span>{{ chat.title || '新的对话' }}</span>
+              <span>{{ chat.title || 'New Chat' }}</span>
             </div>
             <div class="actions-mask"></div>
             <div class="conversation-actions" @click.stop>
@@ -63,21 +63,21 @@
                       @click.stop="togglePin(chat.id)"
                       :icon="h(chat.is_pinned ? PinOff : Pin, { size: 14 })"
                     >
-                      {{ chat.is_pinned ? '取消置顶' : '置顶' }}
+                      {{ chat.is_pinned ? 'Unpin' : 'Pin' }}
                     </a-menu-item>
                     <a-menu-item
                       key="rename"
                       @click.stop="renameChat(chat.id)"
                       :icon="h(Pencil, { size: 14 })"
                     >
-                      重命名
+                      Rename
                     </a-menu-item>
                     <a-menu-item
                       key="delete"
                       @click.stop="deleteChat(chat.id)"
                       :icon="h(Trash2, { size: 14 })"
                     >
-                      删除
+                      Delete
                     </a-menu-item>
                   </a-menu>
                 </template>
@@ -91,7 +91,7 @@
             </div>
           </div>
         </template>
-        <div v-else class="empty-list">暂无对话历史</div>
+        <div v-else class="empty-list">No chat history yet</div>
         <div v-if="hasMoreChats" class="load-more-wrapper">
           <a-button
             type="text"
@@ -99,7 +99,7 @@
             :loading="isLoadingMore"
             @click="handleLoadMore"
           >
-            {{ isLoadingMore ? '加载中...' : '加载更多' }}
+            {{ isLoadingMore ? 'Loading...' : 'Load More' }}
           </a-button>
         </div>
       </div>
@@ -126,7 +126,7 @@ import { useInfoStore } from '@/stores/info'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 
-// 使用 chatUI store
+// Chat UI store
 const chatUIStore = useChatUIStore()
 const infoStore = useInfoStore()
 const userStore = useUserStore()
@@ -187,10 +187,10 @@ const emit = defineEmits([
   'load-more-chats'
 ])
 
-// 按置顶和时间倒序排列的对话列表
+// Chats sorted by pin state and reverse time.
 const sortedChats = computed(() => {
   return [...props.chatsList].sort((a, b) => {
-    // 置顶的排在前面
+    // Pinned chats should come first.
     if (a.is_pinned !== b.is_pinned) {
       return a.is_pinned ? -1 : 1
     }
@@ -230,7 +230,7 @@ const renameChat = async (chatId) => {
 
     let newTitle = chat.title
     Modal.confirm({
-      title: '重命名对话',
+      title: 'Rename Chat',
       content: h('div', { style: { marginTop: '12px' } }, [
         h('input', {
           value: newTitle,
@@ -246,11 +246,11 @@ const renameChat = async (chatId) => {
           }
         })
       ]),
-      okText: '确认',
-      cancelText: '取消',
+      okText: 'Confirm',
+      cancelText: 'Cancel',
       onOk: () => {
         if (!newTitle.trim()) {
-          message.warning('标题不能为空')
+          message.warning('Title cannot be empty')
           return Promise.reject()
         }
         emit('rename-chat', { chatId, title: newTitle })
@@ -258,7 +258,7 @@ const renameChat = async (chatId) => {
       onCancel: () => {}
     })
   } catch (error) {
-    console.error('重命名对话失败:', error)
+    console.error('Failed to rename chat:', error)
   }
 }
 
@@ -287,7 +287,7 @@ const togglePin = (chatId) => {
   overflow: hidden;
 
   .sidebar-content {
-    // 保持内部宽度，避免折叠时压缩
+    // Keep internal width to avoid layout squeeze while collapsed.
     width: 280px;
     min-width: 280px;
     height: 100%;
@@ -516,7 +516,7 @@ const togglePin = (chatId) => {
         }
       }
 
-      // 默认显示置顶图标
+      // Show pin indicator by default.
       &:has(.pinned-indicator) {
         .conversation-actions,
         .actions-mask {

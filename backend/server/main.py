@@ -135,7 +135,7 @@ class TriggerResponse(BaseModel):
 async def run_kg_pipeline(payload: WebhookPayload):
     logger.info(f"🚀 Starting KG pipeline for batch: {payload.batch_id}")
     try:
-        from ta_backend_core.knowledge.kg.services.kg_pipeline import KGPipeline
+        from knowledge.kg.services.kg_pipeline import KGPipeline
         pipeline = KGPipeline(test_mode=False) 
         summary = pipeline.run()
         logger.info(f"✅ KG pipeline completed for batch: {payload.batch_id}")

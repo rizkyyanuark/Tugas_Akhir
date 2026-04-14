@@ -10,6 +10,6 @@ if sys.platform == "win32":
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from ta_backend_core.assistant.services.run_worker import WorkerSettings
+from yunesa.services.run_worker import WorkerSettings
 
 __all__ = ["WorkerSettings"]

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from ta_backend_core.assistant.services.tool_service import get_tool_metadata
+from yunesa.services.tool_service import get_tool_metadata
 from server.utils.auth_middleware import get_admin_user
-from ta_backend_core.assistant.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 
 tools = APIRouter(prefix="/system/tools", tags=["tools"])
 

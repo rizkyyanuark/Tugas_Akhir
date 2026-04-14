@@ -37,7 +37,7 @@ import sys
 from pathlib import Path
 
 try:
-    from ta_backend_core.knowledge.etl.transform import cleaner
+    from knowledge.etl.transform import cleaner
 except ImportError as e:
     print(f"⚠️ Could not import ETL cleaner: {e}")
     cleaner = None

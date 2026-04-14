@@ -29,7 +29,8 @@ Thumbs.db
 *.md
 !README.md
 scratch_yuxi
-notebooks
+# notebooks (needed by etl-worker)
+!notebooks
 infra/monitoring
 
 # CI/CD & cloud

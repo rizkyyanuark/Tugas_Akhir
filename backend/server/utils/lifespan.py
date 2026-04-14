@@ -3,15 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-from ta_backend_core.assistant.services.task_service import tasker
-from ta_backend_core.assistant.services.mcp_service import ensure_builtin_mcp_servers_in_db
-from ta_backend_core.assistant.services.subagent_service import init_builtin_subagents
-from ta_backend_core.assistant.services.run_queue_service import close_queue_clients, get_redis_client
-from ta_backend_core.assistant.storage.postgres.manager import pg_manager
-from ta_backend_core.assistant.knowledge import knowledge_base
-from ta_backend_core.assistant.utils import logger
-from ta_backend_core.assistant.agents.backends.sandbox import init_sandbox_provider, shutdown_sandbox_provider
-from ta_backend_core.assistant import get_version
+from yunesa.services.task_service import tasker
+from yunesa.services.mcp_service import ensure_builtin_mcp_servers_in_db
+from yunesa.services.subagent_service import init_builtin_subagents
+from yunesa.services.run_queue_service import close_queue_clients, get_redis_client
+from yunesa.storage.postgres.manager import pg_manager
+from yunesa.knowledge import knowledge_base
+from yunesa.utils import logger
+from yunesa.agents.backends.sandbox import init_sandbox_provider, shutdown_sandbox_provider
+from yunesa import get_version
 
 
 @asynccontextmanager
@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"⚠️ SpaCy model not available: {e}")
 
     try:
-        from ta_backend_core.knowledge.kg.models.gliner_model import GLiNER
+        from knowledge.kg.models.gliner_model import GLiNER
         gliner_model = GLiNER.from_pretrained(
             os.environ.get("GLINER_MODEL_NAME", "urchade/gliner_small-v2.1"),
             load_tokenizer=True

@@ -42,9 +42,9 @@
             <div class="todo-popover-card">
               <div class="todo-popover-header">
                 <div class="todo-popover-title-wrap">
-                  <span class="todo-popover-title">当前任务</span>
+                  <span class="todo-popover-title">Current Tasks</span>
                   <span class="todo-popover-summary"
-                    >{{ completedTodoCount }}/{{ totalTodoCount }} 已完成</span
+                    >{{ completedTodoCount }}/{{ totalTodoCount }} completed</span
                   >
                 </div>
                 <span class="todo-popover-progress">{{ todoProgress }}%</span>
@@ -80,7 +80,7 @@
             <span class="todo-entry-icon" aria-hidden="true">
               <SquareCheck :size="16" />
             </span>
-            <span>待办</span>
+            <span>Todos</span>
           </button>
         </a-popover>
       </div>
@@ -92,10 +92,10 @@
           class="input-action-btn"
           :class="{ active: isPanelOpen }"
           @click.stop="$emit('toggle-panel')"
-          title="查看文件"
+          title="View Files"
         >
           <FolderCode :size="18" />
-          <span>文件</span>
+          <span>Files</span>
         </button>
         <slot name="actions-left-extra"></slot>
       </div>
@@ -143,7 +143,7 @@ const emit = defineEmits([
 const inputRef = ref(null)
 const currentImage = ref(null)
 const todoPopoverOpen = ref(false)
-const placeholder = '问点什么？使用 @ 可以提及哦~'
+const placeholder = 'Ask anything... use @ to mention resources'
 
 const totalTodoCount = computed(() => props.todos.length)
 const completedTodoCount = computed(
@@ -212,12 +212,12 @@ defineExpose({
 
 const getTodoStatusLabel = (status) => {
   const labelMap = {
-    completed: '已完成',
-    in_progress: '进行中',
-    pending: '待处理',
-    cancelled: '已取消'
+    completed: 'Completed',
+    in_progress: 'In Progress',
+    pending: 'Pending',
+    cancelled: 'Cancelled'
   }
-  return labelMap[status] || '未知状态'
+  return labelMap[status] || 'Unknown Status'
 }
 </script>
 
@@ -244,7 +244,7 @@ const getTodoStatusLabel = (status) => {
   margin-bottom: 10px;
 }
 
-// 输入框操作按钮通用样式（穿透到 slot 内容）
+// Shared styles for input action buttons (applied through slot content)
 :deep(.input-action-btn) {
   display: flex;
   align-items: center;
@@ -413,7 +413,7 @@ const getTodoStatusLabel = (status) => {
   color: var(--gray-500);
 }
 
-// slot 内容的 hide-text 响应式样式
+// Responsive hide-text style for slot content
 :deep(.hide-text) {
   @media (max-width: 768px) {
     display: none;

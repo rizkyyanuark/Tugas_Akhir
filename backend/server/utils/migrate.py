@@ -7,8 +7,8 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-from ta_backend_core.assistant.utils import logger
-from ta_backend_core.assistant.utils.datetime_utils import shanghai_now
+from yunesa.utils import logger
+from yunesa.utils.datetime_utils import shanghai_now
 
 
 class DatabaseMigrator:
