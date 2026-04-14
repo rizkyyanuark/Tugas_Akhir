@@ -1,13 +1,13 @@
 <template>
   <div class="query-section" :class="{ collapsed: !visible }" :style="style">
     <div class="query-section-layout">
-      <!-- 主内容区域 -->
+      <!-- Main content area -->
       <div class="query-main">
         <div class="query-input-container">
           <div class="search-input-wrapper">
             <a-textarea
               v-model:value="queryText"
-              placeholder="输入查询内容..."
+              placeholder="Enter query content..."
               :auto-size="{ minRows: 2, maxRows: 6 }"
               class="search-textarea"
               @press-enter.prevent="onQuery"
@@ -15,25 +15,25 @@
             <div class="search-actions">
               <div class="query-examples-compact">
                 <div class="examples-label-group">
-                  <a-tooltip title="点击手动生成测试问题" placement="bottom">
+                  <a-tooltip title="Click to manually generate test questions" placement="bottom">
                     <a-button
                       type="text"
                       size="small"
                       class="examples-label-btn"
                       @click="() => generateSampleQuestions(false)"
                     >
-                      示例:
+                      Examples:
                     </a-button>
                   </a-tooltip>
                 </div>
                 <div class="examples-container">
-                  <!-- 加载中或生成中 -->
+                  <!-- Loading or generating -->
                   <div v-if="loadingQuestions || generatingQuestions" class="loading-text">
                     <a-spin size="small" />
-                    <span>{{ generatingQuestions ? 'AI生成中...' : '加载中...' }}</span>
+                    <span>{{ generatingQuestions ? 'AI generating...' : 'Loading...' }}</span>
                   </div>
 
-                  <!-- 示例轮播 -->
+                  <!-- Example carousel -->
                   <transition v-else-if="queryExamples.length > 0" name="fade" mode="out-in">
                     <a-button
                       type="link"
@@ -46,14 +46,14 @@
                     </a-button>
                   </transition>
 
-                  <!-- 空状态 - 添加文件后会自动生成 -->
+                  <!-- Empty state - automatically generated after adding files -->
                   <span v-else style="color: var(--gray-500); font-size: 12px"
-                    >暂无问题，请点击左侧按钮生成</span
+                    >No questions yet, click the button on the left to generate</span
                   >
                 </div>
               </div>
               <div style="display: flex; gap: 12px; align-items: center">
-                <a-tooltip :title="showRawData ? '切换至格式化显示' : '切换至原始数据'">
+                <a-tooltip :title="showRawData ? 'Switch to formatted view' : 'Switch to raw data'">
                   <a-button
                     type="text"
                     shape="circle"
@@ -79,50 +79,54 @@
         </div>
 
         <div class="query-results" v-if="queryResult">
-          <!-- 原始数据显示 -->
+          <!-- Raw data view -->
           <div v-if="showRawData" class="result-raw">
             <pre>{{ JSON.stringify(queryResult, null, 2) }}</pre>
           </div>
 
-          <!-- 格式化显示 -->
+          <!-- Formatted view -->
           <div v-else>
-            <!-- LightRAG 返回对象格式 -->
+            <!-- LightRAG object response format -->
             <div v-if="isLightRAGResult" class="lightrag-result">
-              <!-- 元数据信息 -->
+              <!-- Metadata -->
               <div v-if="queryResult.metadata" class="lightrag-metadata">
                 <div class="metadata-row">
-                  <span class="metadata-label">查询模式:</span>
+                  <span class="metadata-label">Query Mode:</span>
                   <span class="metadata-value query-mode">{{
                     queryResult.metadata.query_mode
                   }}</span>
                 </div>
                 <div v-if="queryResult.metadata.processing_info" class="metadata-row">
-                  <span class="metadata-label">统计:</span>
+                  <span class="metadata-label">Stats:</span>
                   <span class="metadata-value">
-                    找到
-                    {{ queryResult.metadata.processing_info.total_entities_found || 0 }} 个实体,
-                    {{ queryResult.metadata.processing_info.total_relations_found || 0 }} 个关系,
-                    使用 {{ queryResult.metadata.processing_info.final_chunks_count || 0 }} 个文档块
+                    Found
+                    {{ queryResult.metadata.processing_info.total_entities_found || 0 }} entities,
+                    {{
+                      queryResult.metadata.processing_info.total_relations_found || 0
+                    }}
+                    relationships, using
+                    {{ queryResult.metadata.processing_info.final_chunks_count || 0 }} document
+                    chunks
                   </span>
                 </div>
-                <!-- 高级关键词 -->
+                <!-- High-level keywords -->
                 <div v-if="queryResult.metadata.keywords?.high_level" class="metadata-row">
-                  <span class="metadata-label">高级关键词:</span>
+                  <span class="metadata-label">High-level Keywords:</span>
                   <span class="keywords-text">{{
-                    queryResult.metadata.keywords.high_level.join('、')
+                    queryResult.metadata.keywords.high_level.join(', ')
                   }}</span>
                 </div>
-                <!-- 低级关键词 -->
+                <!-- Low-level keywords -->
                 <div v-if="queryResult.metadata.keywords?.low_level" class="metadata-row">
-                  <span class="metadata-label">低级关键词:</span>
+                  <span class="metadata-label">Low-level Keywords:</span>
                   <span class="keywords-text">{{
-                    queryResult.metadata.keywords.low_level.join('、')
+                    queryResult.metadata.keywords.low_level.join(', ')
                   }}</span>
                 </div>
               </div>
 
               <a-collapse v-model:activeKey="lightragActiveKeys" ghost>
-                <!-- 实体信息 -->
+                <!-- Entity information -->
                 <a-collapse-panel
                   v-if="queryResult.data.entities && queryResult.data.entities.length > 0"
                   key="entities"
@@ -130,7 +134,7 @@
                   <template #header>
                     <div class="collapse-header">
                       <Network :size="16" />
-                      <span>实体 ({{ queryResult.data.entities.length }})</span>
+                      <span>Entities ({{ queryResult.data.entities.length }})</span>
                     </div>
                   </template>
                   <div class="lightrag-entities">
@@ -144,11 +148,11 @@
                         <span class="entity-type">{{ entity.entity_type }}</span>
                       </div>
                       <div class="entity-description">
-                        <strong>描述:</strong> {{ entity.description }}
+                        <strong>Description:</strong> {{ entity.description }}
                       </div>
                       <div class="entity-meta">
                         <span class="meta-item">
-                          <strong>来源:</strong> {{ formatSourceIds(entity.source_id) }}
+                          <strong>Source:</strong> {{ formatSourceIds(entity.source_id) }}
                         </span>
                         <a
                           v-if="entity.file_path"
@@ -157,14 +161,14 @@
                           class="meta-link"
                         >
                           <FileText :size="14" />
-                          查看文件
+                          View File
                         </a>
                       </div>
                     </div>
                   </div>
                 </a-collapse-panel>
 
-                <!-- 关系信息 -->
+                <!-- Relationship information -->
                 <a-collapse-panel
                   v-if="queryResult.data.relationships && queryResult.data.relationships.length > 0"
                   key="relationships"
@@ -172,7 +176,7 @@
                   <template #header>
                     <div class="collapse-header">
                       <Link :size="16" />
-                      <span>关系 ({{ queryResult.data.relationships.length }})</span>
+                      <span>Relationships ({{ queryResult.data.relationships.length }})</span>
                     </div>
                   </template>
                   <div class="lightrag-relationships">
@@ -186,18 +190,20 @@
                         <ArrowRight :size="14" class="rel-arrow" />
                         <span class="rel-tgt">{{ rel.tgt_id }}</span>
                         <span v-if="rel.weight !== undefined" class="rel-weight">
-                          权重: {{ rel.weight.toFixed(2) }}
+                          Weight: {{ rel.weight.toFixed(2) }}
                         </span>
                       </div>
                       <div class="relationship-description">
-                        <strong>描述:</strong> {{ rel.description }}
+                        <strong>Description:</strong> {{ rel.description }}
                       </div>
                       <div v-if="rel.keywords" class="relationship-keywords">
                         <Tags :size="14" />
                         <span class="keywords-text">{{ rel.keywords }}</span>
                       </div>
                       <div class="relationship-meta">
-                        <span class="meta-item"> <strong>来源:</strong> {{ rel.source_id }} </span>
+                        <span class="meta-item">
+                          <strong>Source:</strong> {{ rel.source_id }}
+                        </span>
                         <a
                           v-if="rel.file_path"
                           :href="rel.file_path"
@@ -205,14 +211,14 @@
                           class="meta-link"
                         >
                           <FileText :size="14" />
-                          查看文件
+                          View File
                         </a>
                       </div>
                     </div>
                   </div>
                 </a-collapse-panel>
 
-                <!-- 文档块 -->
+                <!-- Document chunks -->
                 <a-collapse-panel
                   v-if="queryResult.data.chunks && queryResult.data.chunks.length > 0"
                   key="chunks"
@@ -220,7 +226,7 @@
                   <template #header>
                     <div class="collapse-header">
                       <FileText :size="16" />
-                      <span>文档块 ({{ queryResult.data.chunks.length }})</span>
+                      <span>Document Chunks ({{ queryResult.data.chunks.length }})</span>
                     </div>
                   </template>
                   <div class="lightrag-chunks">
@@ -230,7 +236,7 @@
                       class="lightrag-chunk-card"
                     >
                       <div class="chunk-header">
-                        <span class="chunk-ref">引用 [{{ chunk.reference_id }}]</span>
+                        <span class="chunk-ref">Reference [{{ chunk.reference_id }}]</span>
                         <span class="chunk-id">{{ chunk.chunk_id }}</span>
                       </div>
                       <div class="chunk-content">
@@ -244,14 +250,14 @@
                           class="meta-link"
                         >
                           <FileText :size="14" />
-                          查看文件
+                          View File
                         </a>
                       </div>
                     </div>
                   </div>
                 </a-collapse-panel>
 
-                <!-- 参考文档 -->
+                <!-- References -->
                 <a-collapse-panel
                   v-if="queryResult.data.references && queryResult.data.references.length > 0"
                   key="references"
@@ -259,7 +265,7 @@
                   <template #header>
                     <div class="collapse-header">
                       <FileText :size="16" />
-                      <span>参考文档 ({{ queryResult.data.references.length }})</span>
+                      <span>References ({{ queryResult.data.references.length }})</span>
                     </div>
                   </template>
                   <div class="lightrag-references">
@@ -278,28 +284,28 @@
               </a-collapse>
             </div>
 
-            <!-- LightRAG 返回字符串格式 -->
+            <!-- LightRAG string response format -->
             <div v-else-if="typeof queryResult === 'string'" class="result-text">
               {{ queryResult }}
             </div>
 
-            <!-- Milvus 返回列表格式 -->
+            <!-- Milvus list response format -->
             <div v-else-if="Array.isArray(queryResult)" class="result-list">
               <div v-if="queryResult.length === 0" class="no-results">
-                <p>未找到相关结果</p>
+                <p>No relevant results found</p>
               </div>
               <div v-else>
                 <div class="result-summary">
-                  <strong>检索到 {{ queryResult.length }} 个相关文档块：</strong>
+                  <strong>Retrieved {{ queryResult.length }} relevant document chunks:</strong>
                 </div>
                 <div v-for="(chunk, index) in queryResult" :key="index" class="result-item">
                   <div class="result-header">
                     <span class="result-index">#{{ index + 1 }}</span>
                     <span v-if="chunk.score" class="result-score">
-                      相似度: {{ (chunk.score * 100).toFixed(2) }}%
+                      Similarity: {{ (chunk.score * 100).toFixed(2) }}%
                     </span>
                     <span v-if="chunk.rerank_score" class="result-rerank-score">
-                      重排序分数: {{ (chunk.rerank_score * 100).toFixed(2) }}%
+                      Rerank Score: {{ (chunk.rerank_score * 100).toFixed(2) }}%
                     </span>
                   </div>
 
@@ -309,28 +315,28 @@
 
                   <div class="result-metadata">
                     <span v-if="chunk.metadata?.source" class="metadata-item">
-                      <strong>来源:</strong> {{ chunk.metadata.source }}
+                      <strong>Source:</strong> {{ chunk.metadata.source }}
                     </span>
                     <span v-if="chunk.metadata?.file_id" class="metadata-item">
-                      <strong>文件ID:</strong> {{ chunk.metadata.file_id }}
+                      <strong>File ID:</strong> {{ chunk.metadata.file_id }}
                     </span>
                     <span v-if="chunk.metadata?.chunk_index !== undefined" class="metadata-item">
-                      <strong>块索引:</strong> {{ chunk.metadata.chunk_index }}
+                      <strong>Chunk Index:</strong> {{ chunk.metadata.chunk_index }}
                     </span>
                     <span v-if="chunk.distance !== undefined" class="metadata-item">
-                      <strong>距离:</strong> {{ chunk.distance.toFixed(4) }}
+                      <strong>Distance:</strong> {{ chunk.distance.toFixed(4) }}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- 其他格式（降级处理） -->
+            <!-- Other format (fallback) -->
             <div v-else class="result-unknown">
               <pre>{{ JSON.stringify(queryResult, null, 2) }}</pre>
             </div>
           </div>
-          <!-- 关闭格式化显示的div -->
+          <!-- End formatted view container -->
         </div>
       </div>
     </div>
@@ -345,6 +351,8 @@ import { queryApi } from '@/apis/knowledge_api'
 import { SearchOutlined } from '@ant-design/icons-vue'
 import { Braces, Tags, Network, Link, FileText, ArrowRight } from 'lucide-vue-next'
 
+const NOT_GENERATED_CN = '\u8fd8\u6ca1\u6709\u751f\u6210'
+
 const store = useDatabaseStore()
 
 defineProps({
@@ -358,14 +366,14 @@ defineProps({
   }
 })
 
-// 声明事件
+// Emit events
 defineEmits(['toggleVisible'])
 
 const searchLoading = computed(() => store.state.searchLoading)
 const queryResult = ref('')
 const showRawData = ref(false)
 
-// 判断是否是 LightRAG 格式的查询结果
+// Determine whether the query result is in LightRAG format
 const isLightRAGResult = computed(() => {
   return (
     queryResult.value &&
@@ -375,34 +383,34 @@ const isLightRAGResult = computed(() => {
   )
 })
 
-// 查询测试
+// Query input
 const queryText = ref('')
 
-// 示例问题相关
+// Sample questions state
 const queryExamples = ref([])
 const currentExampleIndex = ref(0)
 const loadingQuestions = ref(false)
 const generatingQuestions = ref(false)
 
-// 示例轮播相关
+// Example carousel state
 let exampleCarouselInterval = null
 
-// LightRAG 折叠面板激活的 key
+// Active keys for LightRAG collapse panels
 const lightragActiveKeys = ref(['entities', 'relationships', 'chunks'])
 
-// 方法定义
+// Methods
 
-// 格式化 source_id（限制显示长度）
+// Format source_id (truncate display)
 const formatSourceIds = (sourceId) => {
   if (!sourceId) return ''
   const ids = sourceId.split('<SEP>')
   if (ids.length > 1) {
-    return `${ids[0]} ... (+${ids.length - 1} 个来源)`
+    return `${ids[0]} ... (+${ids.length - 1} sources)`
   }
   return sourceId
 }
 
-// 从文件路径中提取文件名
+// Extract filename from file path
 const extractFileName = (filePath) => {
   if (!filePath) return ''
   try {
@@ -413,7 +421,7 @@ const extractFileName = (filePath) => {
   }
 }
 
-// 加载示例问题
+// Load sample questions
 const loadSampleQuestions = async () => {
   if (!store.database?.db_id) return
 
@@ -423,33 +431,33 @@ const loadSampleQuestions = async () => {
     if (data.questions && data.questions.length > 0) {
       queryExamples.value = data.questions
     } else {
-      // 如果没有问题，清空列表
+      // Clear list if no questions
       queryExamples.value = []
     }
   } catch (error) {
-    // 404表示还没有生成问题，清空问题列表
+    // 404 means questions have not been generated yet; clear list silently
     if (
       error.status === 404 ||
       error?.message?.includes('404') ||
-      error?.message?.includes('还没有生成')
+      error?.message?.includes(NOT_GENERATED_CN)
     ) {
       queryExamples.value = []
     } else {
-      console.error('加载示例问题失败:', error)
+      console.error('Failed to load sample questions:', error)
     }
   } finally {
     loadingQuestions.value = false
   }
 }
 
-// 清空问题列表
+// Clear question list
 const clearQuestions = () => {
   queryExamples.value = []
   currentExampleIndex.value = 0
   stopExampleCarousel()
 }
 
-// 生成示例问题
+// Generate sample questions
 const generateSampleQuestions = async (silent = false) => {
   if (!store.database?.db_id) return
 
@@ -459,19 +467,19 @@ const generateSampleQuestions = async (silent = false) => {
     if (data.questions && data.questions.length > 0) {
       queryExamples.value = data.questions
       if (!silent) {
-        message.success(`成功生成 ${data.questions.length} 个测试问题`)
+        message.success(`Successfully generated ${data.questions.length} test questions`)
       }
-      // 开始轮播
+      // Start carousel
       if (!exampleCarouselInterval) {
         startExampleCarousel()
       }
     }
   } catch (error) {
-    console.error('生成示例问题失败:', error)
-    // 静默模式下不显示错误消息（自动生成时）
+    console.error('Failed to generate sample questions:', error)
+    // Suppress error toast in silent mode (automatic generation)
     if (!silent) {
-      // 提取详细错误信息
-      let errorMsg = '未知错误'
+      // Extract detailed error message
+      let errorMsg = 'Unknown error'
       if (error.response?.data?.detail) {
         errorMsg = error.response.data.detail
       } else if (error.detail) {
@@ -483,7 +491,7 @@ const generateSampleQuestions = async (silent = false) => {
       } else {
         errorMsg = JSON.stringify(error)
       }
-      message.error('生成失败: ' + errorMsg)
+      message.error('Generation failed: ' + errorMsg)
     }
   } finally {
     generatingQuestions.value = false
@@ -500,7 +508,7 @@ const startExampleCarousel = () => {
 
   exampleCarouselInterval = setInterval(() => {
     currentExampleIndex.value = (currentExampleIndex.value + 1) % queryExamples.value.length
-  }, 10000) // 每10秒切换一次
+  }, 10000) // Switch every 10 seconds
 }
 
 const stopExampleCarousel = () => {
@@ -510,20 +518,20 @@ const stopExampleCarousel = () => {
   }
 }
 
-// 监听知识库ID变化，切换知识库时重新加载问题
+// Watch knowledge base ID changes and reload questions when switching databases
 watch(
   () => store.database?.db_id,
   async (newDbId, oldDbId) => {
-    // 如果知识库ID发生变化
+    // If knowledge base ID changed
     if (newDbId && newDbId !== oldDbId) {
-      // 停止当前轮播
+      // Stop current carousel
       stopExampleCarousel()
-      // 清空当前问题列表
+      // Clear current question list
       queryExamples.value = []
       currentExampleIndex.value = 0
-      // 重新加载新知识库的问题
+      // Reload questions for new knowledge base
       await loadSampleQuestions()
-      // 如果有问题，启动轮播
+      // Start carousel if questions exist
       if (queryExamples.value.length > 0) {
         startExampleCarousel()
       }
@@ -534,13 +542,13 @@ watch(
 
 const onQuery = async () => {
   if (!queryText.value.trim()) {
-    message.error('请输入查询内容')
+    message.error('Please enter query content')
     return
   }
 
   store.state.searchLoading = true
 
-  // 从store中获取配置参数
+  // Get config parameters from store
   const queryMeta = { ...store.meta }
 
   try {
@@ -555,33 +563,33 @@ const onQuery = async () => {
   }
 }
 
-// 组件挂载时启动示例轮播
+// Start sample carousel on mount
 onMounted(async () => {
-  // 加载查询参数
+  // Load query parameters
   store.loadQueryParams()
 
-  // 加载示例问题
+  // Load sample questions
   await loadSampleQuestions()
 
-  // 如果有示例问题，启动轮播
+  // Start carousel if sample questions exist
   if (queryExamples.value.length > 0) {
     startExampleCarousel()
   }
-  // 不自动生成，只在创建知识库和添加文件时由 DataBaseInfoView 触发生成
+  // Do not auto-generate here; DataBaseInfoView triggers generation on KB creation/file upload
 })
 
-// 组件卸载时停止示例轮播
+// Stop sample carousel on unmount
 onUnmounted(() => {
-  // 停止示例轮播
+  // Stop sample carousel
   stopExampleCarousel()
 })
 
-// 检查是否已有问题
+// Check whether questions exist
 const hasQuestions = () => {
   return queryExamples.value.length > 0
 }
 
-// 暴露给父组件的方法和属性
+// Expose methods and state to parent component
 defineExpose({
   generateSampleQuestions,
   loadSampleQuestions,
@@ -603,7 +611,7 @@ defineExpose({
   overflow: hidden;
 }
 
-// 主内容区域
+// Main content area
 .query-main {
   display: flex;
   flex-direction: column;
@@ -913,7 +921,7 @@ defineExpose({
   opacity: 0;
 }
 
-// LightRAG 结果样式
+// LightRAG result styles
 .lightrag-metadata {
   padding: 12px 16px;
   background-color: var(--gray-0);

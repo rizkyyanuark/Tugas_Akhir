@@ -11,12 +11,12 @@
       <!-- Statistical Info Panel -->
       <div class="graph-stats-panel" v-if="graphData.nodes.length > 0">
         <div class="stat-item">
-          <span class="stat-label">节点</span>
+          <span class="stat-label">Nodes</span>
           <span class="stat-value">{{ graphData.nodes.length }}</span>
           <span v-if="graphInfo?.node_count" class="stat-total">/ {{ graphInfo.node_count }}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">边</span>
+          <span class="stat-label">Edges</span>
           <span class="stat-value">{{ graphData.edges.length }}</span>
           <span v-if="graphInfo?.edge_count" class="stat-total">/ {{ graphInfo.edge_count }}</span>
         </div>
@@ -80,7 +80,7 @@ const defaultLayout = {
   collide: { radius: 40, strength: 0.8, iterations: 3 }
 }
 
-// CSS 变量解析工具函数
+// CSS variable helper
 function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
@@ -104,7 +104,7 @@ function formatData() {
     data: {
       label: n[props.labelField] ?? n.name ?? String(n.id),
       degree: degrees.get(String(n.id)) || 0,
-      original: n // 保存原始数据
+      original: n // Preserve original data
     }
   }))
 
@@ -114,7 +114,7 @@ function formatData() {
     target: String(e.target_id),
     data: {
       label: e.type ?? '',
-      original: e // 保存原始数据
+      original: e // Preserve original data
     }
   }))
 
@@ -212,21 +212,21 @@ function initGraph() {
       {
         type: 'click-select',
         degree: 1,
-        state: 'selected', // 选中的状态
-        neighborState: 'active', // 相邻节点附着状态
-        unselectedState: 'inactive', // 未选中节点状态
+        state: 'selected', // Selected state
+        neighborState: 'active', // Adjacent node state
+        unselectedState: 'inactive', // Unselected node state
         multiple: true,
         trigger: ['shift'],
-        // 禁用默认的选中效果，避免与自定义事件冲突
+        // Keep default selection behavior enabled to avoid custom event conflicts
         disableDefault: false
       }
     ]
   })
 
-  // 绑定事件
+  // Bind events
   graphInstance.on('node:click', (evt) => {
     const { target } = evt
-    // 获取节点ID
+    // Get node ID
     const nodeId = target.id
     const nodeData = graphInstance.getNodeData(nodeId)
     emit('node-click', nodeData)
@@ -240,7 +240,7 @@ function initGraph() {
   })
 
   graphInstance.on('canvas:click', (evt) => {
-    // 只有点击画布空白处才触发
+    // Trigger only when clicking blank canvas area
     if (!evt.target) {
       emit('canvas-click')
     }
@@ -254,7 +254,7 @@ function setGraphData() {
   if (!graphInstance) return
   const data = formatData()
 
-  console.log('开始设置图谱数据:', {
+  console.log('Start setting graph data:', {
     nodes: data.nodes.length,
     edges: data.edges.length
   })
@@ -262,27 +262,27 @@ function setGraphData() {
   graphInstance.setData(data)
   graphInstance.render()
 
-  // 手动触发布局重新计算，确保节点分布
+  // Manually trigger layout recalculation to ensure node distribution
   setTimeout(() => {
     try {
       if (graphInstance && graphInstance.layout) {
         graphInstance.layout()
-        console.log('触发布局重新计算')
+        console.log('Triggered layout recalculation')
       }
     } catch (error) {
-      console.warn('布局重新计算失败:', error)
+      console.warn('Layout recalculation failed:', error)
     }
 
-    // 等待力导向布局稳定后再应用高亮
+    // Wait for force layout to stabilize before applying highlights
     setTimeout(() => {
       applyHighlightKeywords()
       emit('data-rendered')
-      console.log('图谱渲染完成，布局已稳定')
+      console.log('Graph render complete, layout stabilized')
     }, 1500)
-  }, 10) // 等待 10ms 确保布局完成
+  }, 10) // Wait 10ms to ensure layout starts
 }
 
-// 关键词高亮功能
+// Keyword highlighting
 function applyHighlightKeywords() {
   if (!graphInstance || !props.highlightKeywords || props.highlightKeywords.length === 0) return
 
@@ -306,7 +306,7 @@ function applyHighlightKeywords() {
   }
 }
 
-// 清除高亮
+// Clear highlights
 function clearHighlights() {
   if (!graphInstance) return
 
@@ -412,7 +412,7 @@ watch(
   { deep: true }
 )
 
-// 监听关键词变化
+// Watch keyword changes
 watch(
   () => props.highlightKeywords,
   () => {
@@ -424,7 +424,7 @@ watch(
   { deep: true }
 )
 
-// 监听主题切换，重新加载图形
+// Watch theme changes and reload graph
 watch(
   () => themeStore.isDark,
   () => {
@@ -435,7 +435,7 @@ watch(
 )
 
 onMounted(() => {
-  // ResizeObserver 监听容器尺寸，自动重渲染
+  // Use ResizeObserver to rerender on container resize
   if (window.ResizeObserver) {
     resizeObserver = new ResizeObserver(() => {
       if (!container.value || !graphInstance) return
@@ -466,7 +466,7 @@ onUnmounted(() => {
   graphInstance = null
 })
 
-// 暴露方法
+// Exposed methods
 defineExpose({
   refreshGraph,
   fitView,
@@ -532,7 +532,7 @@ defineExpose({
   }
 
   .slots {
-    // 让整层覆盖容器默认不接收指针事件（便于穿透到底下画布）
+    // Let overlay layer ignore pointer events by default so interactions pass through to canvas
     pointer-events: none;
     position: absolute;
     top: 0;
@@ -557,7 +557,7 @@ defineExpose({
       }
     }
     .canvas-content {
-      // 中间内容层及其子元素全部穿透
+      // Make middle content layer and children fully passthrough
       pointer-events: none;
       flex: 1;
       background: transparent !important;
@@ -568,7 +568,7 @@ defineExpose({
   }
 }
 
-/* 高亮节点的脉冲动画效果 */
+/* Pulse animation for highlighted nodes */
 @keyframes highlightPulse {
   0% {
     filter: brightness(1);

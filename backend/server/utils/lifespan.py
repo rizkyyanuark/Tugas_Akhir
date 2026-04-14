@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"⚠️ SpaCy model not available: {e}")
 
     try:
-        from knowledge.kg.models.gliner_model import GLiNER
+        from gliner import GLiNER
         gliner_model = GLiNER.from_pretrained(
             os.environ.get("GLINER_MODEL_NAME", "urchade/gliner_small-v2.1"),
             load_tokenizer=True

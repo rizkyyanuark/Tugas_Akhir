@@ -10,7 +10,7 @@ from yunesa.services.skill_service import get_skills_root_dir, is_valid_skill_sl
 
 
 class SelectedSkillsReadonlyBackend(FilesystemBackend):
-    """只读 skills backend，仅暴露选中的技能目录。"""
+    """Read-only skills backend that only exposes selected skill directories."""
 
     def __init__(self, *, selected_slugs: list[str] | None):
         super().__init__(root_dir=get_skills_root_dir(), virtual_mode=True)
@@ -26,7 +26,8 @@ class SelectedSkillsReadonlyBackend(FilesystemBackend):
         normalized = (path or "").strip()
         if not normalized or normalized == "/":
             return None
-        pure = PurePosixPath(normalized if normalized.startswith("/") else f"/{normalized}")
+        pure = PurePosixPath(
+            normalized if normalized.startswith("/") else f"/{normalized}")
         parts = [p for p in pure.parts if p not in ("/", "")]
         return parts[0] if parts else None
 
@@ -74,7 +75,8 @@ class SelectedSkillsReadonlyBackend(FilesystemBackend):
 
         matches: list[dict[str, Any]] = []
         for slug in sorted(self._selected_slugs):
-            result = super().grep_raw(pattern=pattern, path=f"/{slug}", glob=glob)
+            result = super().grep_raw(pattern=pattern,
+                                      path=f"/{slug}", glob=glob)
             if isinstance(result, str):
                 continue
             matches.extend(result)
@@ -101,14 +103,18 @@ class SelectedSkillsReadonlyBackend(FilesystemBackend):
         responses: list[FileDownloadResponse] = []
         for path in paths:
             if not self._is_allowed_file(path):
-                responses.append(FileDownloadResponse(path=path, content=None, error="invalid_path"))
+                responses.append(FileDownloadResponse(
+                    path=path, content=None, error="invalid_path"))
                 continue
             target = self._resolve_path(path)
             if not target.exists():
-                responses.append(FileDownloadResponse(path=path, content=None, error="file_not_found"))
+                responses.append(FileDownloadResponse(
+                    path=path, content=None, error="file_not_found"))
                 continue
             if target.is_dir():
-                responses.append(FileDownloadResponse(path=path, content=None, error="is_directory"))
+                responses.append(FileDownloadResponse(
+                    path=path, content=None, error="is_directory"))
                 continue
-            responses.append(FileDownloadResponse(path=path, content=target.read_bytes(), error=None))
+            responses.append(FileDownloadResponse(
+                path=path, content=target.read_bytes(), error=None))
         return responses

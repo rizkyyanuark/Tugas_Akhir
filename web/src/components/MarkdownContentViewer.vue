@@ -1,17 +1,17 @@
 <template>
   <div class="markdown-content-viewer">
     <div class="viewer-header">
-      <h4>文件内容</h4>
+      <h4>File Content</h4>
       <div class="header-controls">
         <div class="header-info">
-          <span v-if="mappedChunks.length > 0">共 {{ mappedChunks.length }} 个片段</span>
-          <span>总长度 {{ formatTextLength(mergedContent.length) }}</span>
+          <span v-if="mappedChunks.length > 0">Total {{ mappedChunks.length }} chunks</span>
+          <span>Total length {{ formatTextLength(mergedContent.length) }}</span>
         </div>
         <button
           class="toggle-btn"
           v-if="mappedChunks.length > 0"
           @click="toggleChunkPanel"
-          :title="chunkPanelVisible ? '隐藏片段列表' : '显示片段列表'"
+          :title="chunkPanelVisible ? 'Hide chunk list' : 'Show chunk list'"
         >
           <ChevronLeft v-if="chunkPanelVisible" :size="14" />
           <ChevronRight v-else :size="14" />
@@ -20,7 +20,7 @@
     </div>
 
     <div class="viewer-container">
-      <!-- 左侧：Markdown内容 -->
+      <!-- Left: Markdown content -->
       <div class="content-panel">
         <MdPreview
           :modelValue="mergedContent"
@@ -30,7 +30,7 @@
         />
       </div>
 
-      <!-- 右侧：Chunk信息 -->
+      <!-- Right: Chunk info -->
       <div class="chunk-panel" v-show="chunkPanelVisible">
         <div class="chunk-list">
           <div
@@ -59,10 +59,10 @@
       </div>
     </div>
 
-    <!-- 悬浮提示 -->
+    <!-- Floating tooltip -->
     <div v-if="showTooltip && currentChunk" class="chunk-tooltip" :style="tooltipStyle">
       <div class="tooltip-header">
-        <strong>片段信息</strong>
+        <strong>Chunk Info</strong>
       </div>
       <div class="tooltip-content">
         <div class="tooltip-row">
@@ -70,15 +70,15 @@
           <span class="value">{{ currentChunk.id }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="label">序号:</span>
+          <span class="label">Order:</span>
           <span class="value">{{ currentChunk.chunk_order_index }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="label">位置:</span>
+          <span class="label">Range:</span>
           <span class="value">{{ currentChunk.startOffset }} - {{ currentChunk.endOffset }}</span>
         </div>
         <div class="tooltip-row">
-          <span class="label">长度:</span>
+          <span class="label">Length:</span>
           <span class="value">{{ formatTextLength(currentChunk.content.length) }}</span>
         </div>
       </div>
@@ -105,10 +105,10 @@ const props = defineProps({
   }
 })
 
-// 使用主题store
+// Use theme store
 const themeStore = useThemeStore()
 
-// 响应式引用
+// Reactive refs
 const showTooltip = ref(false)
 const currentChunk = ref(null)
 const tooltipStyle = ref({ top: '0px', left: '0px' })
@@ -116,26 +116,26 @@ const activeChunkIndex = ref(null)
 const highlightedChunkIndex = ref(null)
 const chunkPanelVisible = ref(false)
 
-// 主题设置 - 根据系统主题动态切换
+// Theme setting - switch dynamically based on system theme
 const theme = computed(() => (themeStore.isDark ? 'dark' : 'light'))
 
-// 合并chunks
+// Merge chunks
 const mergeResult = computed(() => mergeChunks(props.chunks))
 const mergedContent = computed(() => props.content || mergeResult.value.content)
 const mappedChunks = computed(() => mergeResult.value.chunks)
 
-// 格式化文本长度
+// Format text length
 function formatTextLength(length) {
-  if (!length && length !== 0) return '0 字符'
+  if (!length && length !== 0) return '0 chars'
 
   if (length < 1000) {
-    return `${length} 字符`
+    return `${length} chars`
   } else {
-    return `${(length / 1000).toFixed(1)}k 字符`
+    return `${(length / 1000).toFixed(1)}k chars`
   }
 }
 
-// 高亮chunk
+// Highlight chunk
 function highlightChunk(index) {
   if (!mappedChunks.value?.[index]) return
   highlightedChunkIndex.value = index
@@ -147,18 +147,18 @@ function unhighlightChunk() {
   currentChunk.value = null
 }
 
-// 处理chunk点击
+// Handle chunk click
 function handleChunkClick(index) {
   if (!mappedChunks.value?.[index]) return
   activeChunkIndex.value = index
 }
 
-// 切换chunk面板显示
+// Toggle chunk panel visibility
 function toggleChunkPanel() {
   chunkPanelVisible.value = !chunkPanelVisible.value
 }
 
-// 处理鼠标移动显示tooltip
+// Handle mouse move for tooltip positioning
 function handleMouseMove(event) {
   if (!currentChunk.value) return
 
@@ -168,7 +168,7 @@ function handleMouseMove(event) {
   }
 }
 
-// 生命周期
+// Lifecycle
 onMounted(() => {
   document.addEventListener('mousemove', handleMouseMove)
 })
@@ -247,7 +247,7 @@ onUnmounted(() => {
   padding: 16px;
   background: var(--gray-0);
   border-right: 1px solid var(--gray-200);
-  min-height: 0; /* 关键：确保flex项目可以缩小 */
+  min-height: 0; /* Key: ensure flex items can shrink */
 }
 
 .markdown-content {
@@ -255,7 +255,7 @@ onUnmounted(() => {
   overflow: visible;
 }
 
-/* MdPreview 组件样式覆盖 */
+/* MdPreview style overrides */
 .markdown-content :deep(.md-editor) {
   /* height: auto !important; */
   min-height: 100%;
@@ -280,7 +280,7 @@ onUnmounted(() => {
   overflow-y: auto;
   background: var(--gray-25);
   padding: 16px;
-  min-height: 0; /* 确保flex项目可以缩小 */
+  min-height: 0; /* Ensure flex item can shrink */
 }
 
 .chunk-list {

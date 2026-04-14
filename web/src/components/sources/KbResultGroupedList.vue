@@ -1,7 +1,8 @@
 <template>
   <div class="kb-result-grouped-list">
     <div v-if="showSummary" class="result-summary">
-      找到 {{ normalizedChunks.length }} 个相关文档片段，来自 {{ fileGroupList.length }} 个文件
+      Found {{ normalizedChunks.length }} relevant document chunks from
+      {{ fileGroupList.length }} files
     </div>
 
     <div class="kb-results" v-if="normalizedChunks.length > 0">
@@ -35,10 +36,10 @@
               <span class="chunk-index">#{{ index + 1 }}</span>
               <div class="chunk-scores">
                 <span v-if="typeof chunk.score === 'number'" class="score-item"
-                  >相似度 {{ (chunk.score * 100).toFixed(0) }}%</span
+                  >Similarity {{ (chunk.score * 100).toFixed(0) }}%</span
                 >
                 <span v-if="typeof chunk.rerank_score === 'number'" class="score-item"
-                  >重排序 {{ (chunk.rerank_score * 100).toFixed(0) }}%</span
+                  >Rerank {{ (chunk.rerank_score * 100).toFixed(0) }}%</span
                 >
               </div>
               <span class="chunk-preview">{{ getPreviewText(chunk.content) }}</span>
@@ -56,7 +57,7 @@
     <KbChunkDetailModal
       v-model:open="modalVisible"
       :chunk="selectedChunk"
-      :title-prefix="`文档片段 #${selectedChunkIndex || '-'} `"
+      :title-prefix="`Document Chunk #${selectedChunkIndex || '-'} `"
     />
   </div>
 </template>
@@ -77,7 +78,7 @@ const props = defineProps({
   },
   emptyText: {
     type: String,
-    default: '未找到相关知识库内容'
+    default: 'No relevant knowledge base content found'
   }
 })
 
@@ -93,7 +94,7 @@ const normalizedChunks = computed(() =>
 const fileGroupList = computed(() => {
   const groups = new Map()
   for (const item of normalizedChunks.value) {
-    const filename = item?.metadata?.source || '未知来源'
+    const filename = item?.metadata?.source || 'Unknown Source'
     if (!groups.has(filename)) {
       groups.set(filename, {
         filename,
@@ -109,7 +110,7 @@ const fileGroupList = computed(() => {
 watch(
   fileGroupList,
   (groups) => {
-    // 分组变化时仅清理失效展开项，默认保持折叠状态。
+    // When groups change, only remove invalid expanded items; keep collapsed by default.
     const validFilenames = new Set(groups.map((item) => item.filename))
     expandedFiles.value = new Set(
       [...expandedFiles.value].filter((filename) => validFilenames.has(filename))

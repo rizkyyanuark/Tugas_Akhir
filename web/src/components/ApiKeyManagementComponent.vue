@@ -1,20 +1,21 @@
 <template>
   <div class="apikey-management">
-    <!-- 头部区域 -->
+    <!-- Header section -->
     <div class="header-section">
       <div class="header-content">
-        <div class="section-title">API Key 管理</div>
+        <div class="section-title">API Key Management</div>
         <p class="section-description">
-          创建和管理 API Key，用于外部系统调用 Agent 对话接口。密钥仅显示一次，请妥善保管。
+          Create and manage API keys for external systems calling the Agent conversation API. The full key is shown
+          only once, so store it securely.
         </p>
       </div>
       <a-button type="primary" @click="showCreateModal" class="add-btn lucide-icon-btn">
         <Plus :size="14" />
-        创建 API Key
+        Create API Key
       </a-button>
     </div>
 
-    <!-- 主内容区域 -->
+    <!-- Main content section -->
     <div class="content-section">
       <a-spin :spinning="loading">
         <div v-if="error" class="error-message">
@@ -23,7 +24,7 @@
 
         <div class="cards-container">
           <div v-if="apiKeys.length === 0" class="empty-state">
-            <a-empty description="暂无 API Key，点击上方按钮创建一个" />
+            <a-empty description="No API keys yet. Click the button above to create one." />
           </div>
           <div v-else class="apikey-cards-grid">
             <div v-for="key in apiKeys" :key="key.id" class="apikey-card">
@@ -39,22 +40,22 @@
 
               <div class="card-content">
                 <div class="info-item">
-                  <span class="info-label">过期时间:</span>
-                  <span class="info-value">{{ key.expires_at || '永不过期' }}</span>
+                  <span class="info-label">Expires:</span>
+                  <span class="info-value">{{ key.expires_at || 'Never expires' }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">最后使用:</span>
+                  <span class="info-label">Last used:</span>
                   <span class="info-value">{{ formatTime(key.last_used_at) }}</span>
                 </div>
               </div>
 
               <div class="card-footer">
                 <div class="footer-left">
-                  <span class="switch-label">{{ key.is_enabled ? '已启用' : '已禁用' }}</span>
+                  <span class="switch-label">{{ key.is_enabled ? 'Enabled' : 'Disabled' }}</span>
                   <a-switch :checked="key.is_enabled" size="small" @change="toggleEnabled(key)" />
                 </div>
                 <div class="footer-actions">
-                  <a-tooltip title="重新生成（获取完整密钥）">
+                  <a-tooltip title="Regenerate (get full key)">
                     <a-button
                       type="text"
                       size="small"
@@ -62,19 +63,19 @@
                       class="action-btn lucide-icon-btn"
                     >
                       <RefreshCw :size="14" />
-                      <span>重新生成</span>
+                      <span>Regenerate</span>
                     </a-button>
                   </a-tooltip>
                   <a-popconfirm
-                    title="确定要删除此 API Key 吗？此操作不可恢复。"
+                    title="Are you sure you want to delete this API key? This action cannot be undone."
                     @confirm="deleteKey(key)"
-                    ok-text="确定"
-                    cancel-text="取消"
+                    ok-text="Confirm"
+                    cancel-text="Cancel"
                   >
-                    <a-tooltip title="删除">
+                    <a-tooltip title="Delete">
                       <a-button type="text" size="small" danger class="action-btn lucide-icon-btn">
                         <Trash2 :size="14" />
-                        <span>删除</span>
+                        <span>Delete</span>
                       </a-button>
                     </a-tooltip>
                   </a-popconfirm>
@@ -86,34 +87,34 @@
       </a-spin>
     </div>
 
-    <!-- 创建 Modal -->
+    <!-- Create modal -->
     <a-modal
       v-model:open="createModalVisible"
-      title="创建 API Key"
+      title="Create API Key"
       @ok="handleCreate"
       :confirmLoading="createLoading"
-      ok-text="创建"
-      cancel-text="取消"
+      ok-text="Create"
+      cancel-text="Cancel"
     >
       <a-form layout="vertical" :model="createForm">
-        <a-form-item label="名称" required>
-          <a-input v-model:value="createForm.name" placeholder="如：生产环境API" />
+        <a-form-item label="Name" required>
+          <a-input v-model:value="createForm.name" placeholder="e.g. Production API" />
         </a-form-item>
-        <a-form-item label="过期时间">
+        <a-form-item label="Expiration time">
           <a-date-picker
             v-model:value="createForm.expires_at"
             show-time
-            placeholder="留空表示永不过期"
+            placeholder="Leave blank for no expiration"
             style="width: 100%"
           />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <!-- 密钥显示 Modal (创建后一次性显示) -->
+    <!-- Key display modal (shown once after creation) -->
     <a-modal
       v-model:open="secretModalVisible"
-      title="API Key 已创建"
+      title="API Key Created"
       :closable="true"
       @cancel="secretModalVisible = false"
       :footer="null"
@@ -122,7 +123,7 @@
       <div class="secret-display">
         <a-alert
           type="warning"
-          message="请立即复制密钥，关闭后将无法再次查看完整密钥"
+          message="Copy the key now. You won't be able to view the full key again after closing."
           show-icon
           class="secret-alert"
         />
@@ -130,7 +131,7 @@
           <code class="secret-value">{{ createdSecret }}</code>
           <a-button type="primary" @click="copySecret" class="copy-btn lucide-icon-btn">
             <Copy :size="14" />
-            复制
+            Copy
           </a-button>
         </div>
       </div>
@@ -162,7 +163,7 @@ const createForm = reactive({
 const formatTime = (timeStr) => {
   if (!timeStr) return '-'
   const date = new Date(timeStr)
-  return date.toLocaleString('zh-CN', {
+  return date.toLocaleString('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -178,7 +179,7 @@ const loadApiKeys = async () => {
     const res = await apikeyApi.list()
     apiKeys.value = res.api_keys || []
   } catch (e) {
-    error.value = e.message || '加载失败'
+    error.value = e.message || 'Failed to load'
   } finally {
     loading.value = false
   }
@@ -192,7 +193,7 @@ const showCreateModal = () => {
 
 const handleCreate = async () => {
   if (!createForm.name.trim()) {
-    message.error('请输入名称')
+    message.error('Please enter a name')
     return
   }
 
@@ -209,7 +210,7 @@ const handleCreate = async () => {
     secretModalVisible.value = true
     await loadApiKeys()
   } catch (e) {
-    message.error(e.message || '创建失败')
+    message.error(e.message || 'Creation failed')
   } finally {
     createLoading.value = false
   }
@@ -218,9 +219,9 @@ const handleCreate = async () => {
 const copySecret = async () => {
   try {
     await navigator.clipboard.writeText(createdSecret.value)
-    message.success('已复制到剪贴板')
+    message.success('Copied to clipboard')
   } catch {
-    message.error('复制失败')
+    message.error('Copy failed')
   }
 }
 
@@ -231,27 +232,27 @@ const regenerateKey = async (key) => {
     secretModalVisible.value = true
     await loadApiKeys()
   } catch (e) {
-    message.error(e.message || '重新生成失败')
+    message.error(e.message || 'Regeneration failed')
   }
 }
 
 const toggleEnabled = async (key) => {
   try {
     await apikeyApi.update(key.id, { is_enabled: !key.is_enabled })
-    message.success(key.is_enabled ? '已禁用' : '已启用')
+    message.success(key.is_enabled ? 'Disabled' : 'Enabled')
     await loadApiKeys()
   } catch (e) {
-    message.error(e.message || '操作失败')
+    message.error(e.message || 'Operation failed')
   }
 }
 
 const deleteKey = async (key) => {
   try {
     await apikeyApi.delete(key.id)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     await loadApiKeys()
   } catch (e) {
-    message.error(e.message || '删除失败')
+    message.error(e.message || 'Deletion failed')
   }
 }
 

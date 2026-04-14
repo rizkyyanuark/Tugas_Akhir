@@ -1,26 +1,26 @@
 <template>
   <a-modal
     v-model:open="visible"
-    title="上传评估基准"
+    title="Upload Evaluation Benchmark"
     width="600px"
     :confirmLoading="uploading"
     @ok="handleUpload"
     @cancel="handleCancel"
   >
     <a-form ref="formRef" :model="formState" :rules="rules" layout="vertical">
-      <a-form-item label="基准名称" name="name">
-        <a-input v-model:value="formState.name" placeholder="请输入评估基准名称" />
+      <a-form-item label="Benchmark Name" name="name">
+        <a-input v-model:value="formState.name" placeholder="Enter benchmark name" />
       </a-form-item>
 
-      <a-form-item label="描述" name="description">
+      <a-form-item label="Description" name="description">
         <a-textarea
           v-model:value="formState.description"
-          placeholder="请输入评估基准描述（可选）"
+          placeholder="Enter benchmark description (optional)"
           :rows="3"
         />
       </a-form-item>
 
-      <a-form-item label="基准文件" name="file" :extra="extraText">
+      <a-form-item label="Benchmark File" name="file" :extra="extraText">
         <a-upload-dragger
           v-model:fileList="fileList"
           name="file"
@@ -31,9 +31,9 @@
         >
           <p class="ant-upload-text">
             <FileTextOutlined />
-            点击或拖拽文件到此区域上传
+            Click or drag a file to this area to upload
           </p>
-          <p class="ant-upload-hint">仅支持 JSONL 格式文件（.jsonl）</p>
+          <p class="ant-upload-hint">Only JSONL files are supported (.jsonl)</p>
         </a-upload-dragger>
       </a-form-item>
     </a-form>
@@ -59,7 +59,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'success'])
 
-// 响应式数据
+// Reactive state
 const formRef = ref()
 const fileList = ref([])
 const uploading = ref(false)
@@ -70,25 +70,30 @@ const formState = reactive({
   file: null
 })
 
-// 表单验证规则
+// Form validation rules
 const rules = {
   name: [
-    { required: true, message: '请输入基准名称', trigger: 'blur' },
-    { min: 2, max: 100, message: '基准名称长度应在2-100个字符之间', trigger: 'blur' }
+    { required: true, message: 'Please enter a benchmark name', trigger: 'blur' },
+    {
+      min: 2,
+      max: 100,
+      message: 'Benchmark name length should be between 2 and 100 characters',
+      trigger: 'blur'
+    }
   ],
-  file: [{ required: true, message: '请选择基准文件', trigger: 'change' }]
+  file: [{ required: true, message: 'Please select a benchmark file', trigger: 'change' }]
 }
 
-// 双向绑定visible
+// Two-way bind visible
 const visible = computed({
   get: () => props.visible,
   set: (val) => emit('update:visible', val)
 })
 
-// 说明文本
+// Help text
 const extraText = computed(() =>
   h('span', {}, [
-    '需要了解评估基准格式？查看',
+    'Need benchmark format details? See ',
     h(
       'a',
       {
@@ -96,44 +101,44 @@ const extraText = computed(() =>
         target: '_blank',
         rel: 'noopener noreferrer'
       },
-      '使用说明'
+      'Documentation'
     )
   ])
 )
 
-// 文件上传前验证
+// Pre-upload file validation
 const beforeUpload = async (file) => {
-  // 检查文件类型
+  // Check file type
   if (!file.name.endsWith('.jsonl')) {
-    message.error('仅支持 JSONL 格式文件')
+    message.error('Only JSONL files are supported')
     return false
   }
 
-  // 检查文件大小（限制为100MB）
+  // Check file size (100MB limit)
   const isLt100M = file.size / 1024 / 1024 < 100
   if (!isLt100M) {
-    message.error('文件大小不能超过 100MB')
+    message.error('File size must not exceed 100MB')
     return false
   }
 
   try {
-    // 读取文件内容验证格式
+    // Read file content and validate format
     const content = await new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = (e) => resolve(e.target.result)
-      reader.onerror = () => reject(new Error('文件读取失败'))
+      reader.onerror = () => reject(new Error('Failed to read file'))
       reader.readAsText(file)
     })
 
     const lines = content.trim().split('\n')
 
-    // 验证至少有一行
+    // Ensure at least one line exists
     if (lines.length === 0) {
-      message.error('文件不能为空')
+      message.error('File cannot be empty')
       return false
     }
 
-    // 验证JSON格式
+    // Validate JSON format
     for (let i = 0; i < Math.min(5, lines.length); i++) {
       const line = lines[i].trim()
       if (line) {
@@ -141,32 +146,32 @@ const beforeUpload = async (file) => {
       }
     }
 
-    // 验证通过，设置文件
+    // Validation passed, set file
     formState.file = file
     return true
   } catch (error) {
     if (error instanceof SyntaxError) {
-      message.error('文件格式错误，请检查JSONL格式')
+      message.error('Invalid file format, please check JSONL format')
     } else {
-      message.error('文件验证失败: ' + error.message)
+      message.error('File validation failed: ' + error.message)
     }
     return false
   }
 }
 
-// 移除文件
+// Remove file
 const handleRemove = () => {
   formState.file = null
 }
 
-// 上传文件
+// Upload file
 const handleUpload = async () => {
   try {
-    // 表单验证
+    // Form validation
     await formRef.value.validate()
 
     if (!formState.file) {
-      message.error('请选择基准文件')
+      message.error('Please select a benchmark file')
       return
     }
 
@@ -178,27 +183,27 @@ const handleUpload = async () => {
     })
 
     if (response.message === 'success') {
-      message.success('上传成功')
+      message.success('Upload successful')
       handleCancel()
       emit('success')
     } else {
-      message.error(response.message || '上传失败')
+      message.error(response.message || 'Upload failed')
     }
   } catch (error) {
-    console.error('上传失败:', error)
-    message.error('上传失败')
+    console.error('Upload failed:', error)
+    message.error('Upload failed')
   } finally {
     uploading.value = false
   }
 }
 
-// 取消操作
+// Cancel action
 const handleCancel = () => {
   visible.value = false
   resetForm()
 }
 
-// 重置表单
+// Reset form
 const resetForm = () => {
   formRef.value?.resetFields()
   fileList.value = []
@@ -206,7 +211,7 @@ const resetForm = () => {
   uploading.value = false
 }
 
-// 监听visible变化
+// Watch visible changes
 watch(visible, (val) => {
   if (!val) {
     resetForm()

@@ -117,7 +117,9 @@ app.add_middleware(LoginRateLimitMiddleware)
 app.add_middleware(AuthMiddleware)
 
 
-# ── Strwythura Webhook Integration ──────────────────────────────
+# ── Strwythura Webhook Integration (DEPRECATED) ─────────────────
+# NOTE: KG construction is now triggered via POST /api/graph/kg/build
+# This webhook is kept for backward compatibility with existing Airflow DAGs.
 class WebhookPayload(BaseModel):
     task_name: str = Field(..., description="Name of the Airflow task/DAG")
     batch_id: str = Field(..., description="Unique batch identifier")
@@ -135,7 +137,7 @@ class TriggerResponse(BaseModel):
 async def run_kg_pipeline(payload: WebhookPayload):
     logger.info(f"🚀 Starting KG pipeline for batch: {payload.batch_id}")
     try:
-        from knowledge.kg.services.kg_pipeline import KGPipeline
+        from yunesa.knowledge.kg.services.kg_pipeline import KGPipeline
         pipeline = KGPipeline(test_mode=False) 
         summary = pipeline.run()
         logger.info(f"✅ KG pipeline completed for batch: {payload.batch_id}")

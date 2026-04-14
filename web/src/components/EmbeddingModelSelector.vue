@@ -58,7 +58,7 @@ defineProps({
   },
   placeholder: {
     type: String,
-    default: '请选择嵌入模型'
+    default: 'Please select an embedding model'
   },
   style: {
     type: Object,
@@ -81,7 +81,7 @@ const embedModelChoices = computed(() => {
   return Object.keys(configStore?.config?.embed_model_names || {}) || []
 })
 
-// 检查所有embedding模型状态
+// Check all embedding model statuses
 const checkAllModelStatus = async () => {
   try {
     state.checkingStatus = true
@@ -90,14 +90,14 @@ const checkAllModelStatus = async () => {
       state.modelStatuses = response.status.models
     }
   } catch (error) {
-    console.error('检查所有模型状态失败:', error)
-    message.error('获取模型状态失败')
+    console.error('Failed to check all model statuses:', error)
+    message.error('Failed to get model status')
   } finally {
     state.checkingStatus = false
   }
 }
 
-// 获取模型状态图标
+// Get model status icon
 const getModelStatusIcon = (modelId) => {
   const status = state.modelStatuses[modelId]
   if (!status) return '○'
@@ -107,7 +107,7 @@ const getModelStatusIcon = (modelId) => {
   return '○'
 }
 
-// 获取模型状态颜色
+// Get model status color
 const getModelStatusColor = (modelId) => {
   const status = state.modelStatuses[modelId]
   if (!status) return 'var(--gray-500)'
@@ -117,17 +117,17 @@ const getModelStatusColor = (modelId) => {
   return 'var(--gray-500)'
 }
 
-// 获取模型状态提示文本
+// Get model status tooltip text
 const getModelStatusTooltip = (modelId) => {
   const status = state.modelStatuses[modelId]
-  if (!status) return '状态未知'
+  if (!status) return 'Unknown status'
 
   let statusText = ''
-  if (status.status === 'available') statusText = '可用'
-  else if (status.status === 'unavailable') statusText = '不可用'
-  else if (status.status === 'error') statusText = '错误'
+  if (status.status === 'available') statusText = 'Available'
+  else if (status.status === 'unavailable') statusText = 'Unavailable'
+  else if (status.status === 'error') statusText = 'Error'
 
-  const message = status.message || '无详细信息'
+  const message = status.message || 'No details'
   return `${statusText}: ${message}`
 }
 
@@ -138,5 +138,5 @@ const handleSelect = (value) => {
 </script>
 
 <style lang="less" scoped>
-// 如果需要添加特定样式，可以在这里添加
+// Add component-specific styles here if needed
 </style>

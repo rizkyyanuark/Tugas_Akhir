@@ -104,7 +104,7 @@
         <a-form-item label="Dify API URL" name="dify_api_url">
           <a-input
             v-model:value="editForm.dify_api_url"
-            placeholder="例如: https://api.dify.ai/v1"
+            placeholder="e.g.: https://api.dify.ai/v1"
           />
         </a-form-item>
         <a-form-item label="Dify token" name="dify_token">
@@ -118,18 +118,22 @@
         </a-form-item>
       </template>
 
-      <!-- 仅对 LightRAG 类型显示 LLM 配置 -->
-      <a-form-item v-if="database.kb_type === 'lightrag'" label="语言模型 (LLM)" name="llm_info">
+      <!-- Show LLM config only for LightRAG type -->
+      <a-form-item
+        v-if="database.kb_type === 'lightrag'"
+        label="Language Model (LLM)"
+        name="llm_info"
+      >
         <ModelSelectorComponent
           :model_spec="llmModelSpec"
-          placeholder="请选择模型"
+          placeholder="Please select a model"
           @select-model="handleLLMSelect"
           style="width: 100%"
         />
       </a-form-item>
 
-      <!-- 共享配置（超级管理员可编辑，非共享时本部门管理员也可编辑） -->
-      <a-form-item v-if="canEditShareConfig" label="共享设置" name="share_config">
+      <!-- Share config (super admins can edit all; admins can also edit with backend permission checks) -->
+      <a-form-item v-if="canEditShareConfig" label="Share Settings" name="share_config">
         <a-form-item-rest>
           <ShareConfigForm
             ref="shareConfigFormRef"
@@ -138,11 +142,19 @@
           />
         </a-form-item-rest>
       </a-form-item>
-      <!-- 非编辑状态下显示共享配置信息 -->
-      <a-form-item v-else-if="database.share_config" label="共享设置" name="share_config_readonly">
+      <!-- Show share config in read-only mode when editing is not allowed -->
+      <a-form-item
+        v-else-if="database.share_config"
+        label="Share Settings"
+        name="share_config_readonly"
+      >
         <div class="share-config-readonly">
           <a-tag :color="database.share_config.is_shared !== false ? 'green' : 'blue'">
-            {{ database.share_config.is_shared !== false ? '全员共享' : '指定部门' }}
+            {{
+              database.share_config.is_shared !== false
+                ? 'Shared with everyone'
+                : 'Specific departments'
+            }}
           </a-tag>
           <span v-if="database.share_config.is_shared === false" class="dept-names">
             {{ getAccessibleDeptNames() }}
@@ -178,45 +190,45 @@ const userStore = useUserStore()
 
 const database = computed(() => store.database)
 
-// 部门列表（用于显示部门名称）
+// Department list (for displaying department names)
 const departments = ref([])
 
-// 加载部门列表
+// Load department list
 const loadDepartments = async () => {
   try {
     const res = await departmentApi.getDepartments()
     departments.value = res.departments || res || []
   } catch (e) {
-    console.error('加载部门列表失败:', e)
+    console.error('Failed to load department list:', e)
     departments.value = []
   }
 }
 
-// 初始化时加载部门
+// Load departments on initialization
 onMounted(() => {
   loadDepartments()
 })
 
-// 获取可访问的部门名称
+// Get accessible department names
 const getAccessibleDeptNames = () => {
   const deptIds = database.value?.share_config?.accessible_departments || []
-  if (deptIds.length === 0) return '无'
+  if (deptIds.length === 0) return 'None'
   return deptIds
     .map((id) => {
       const dept = departments.value.find((d) => d.id === id)
-      return dept?.name || `部门${id}`
+      return dept?.name || `Department ${id}`
     })
-    .join('、')
+    .join(', ')
 }
 
-// 是否可以编辑共享配置
-// 规则：1. 超级管理员可以编辑所有
-//       2. 管理员也可以编辑（后端会验证权限）
+// Whether share config is editable
+// Rules: 1. Super admins can edit all
+//        2. Admins can also edit (backend validates permissions)
 const canEditShareConfig = computed(() => {
   if (userStore.isSuperAdmin) {
     return true
   }
-  // 管理员可以编辑共享配置，后端会验证权限
+  // Admins can edit share config, with backend permission validation
   return userStore.isAdmin
 })
 
@@ -227,34 +239,34 @@ const fileList = computed(() => {
     .filter(Boolean)
 })
 
-// 复制数据库ID
+// Copy database ID
 const copyDatabaseId = async () => {
   if (!database.value.db_id) {
-    message.warning('知识库ID为空')
+    message.warning('Knowledge base ID is empty')
     return
   }
 
   try {
     await navigator.clipboard.writeText(database.value.db_id)
-    message.success('知识库ID已复制到剪贴板')
+    message.success('Knowledge base ID copied to clipboard')
   } catch {
-    // 降级方案
+    // Fallback method
     const textArea = document.createElement('textarea')
     textArea.value = database.value.db_id
     document.body.appendChild(textArea)
     textArea.select()
     document.execCommand('copy')
     document.body.removeChild(textArea)
-    message.success('知识库ID已复制到剪贴板')
+    message.success('Knowledge base ID copied to clipboard')
   }
 }
 
-// 返回数据库列表
+// Return to database list
 const backToDatabase = () => {
   router.push('/database')
 }
 
-// 编辑相关逻辑（复用自 DatabaseHeader）
+// Edit logic (reused from DatabaseHeader)
 const editModalVisible = ref(false)
 const editFormRef = ref(null)
 const shareConfigFormRef = ref(null)
@@ -277,12 +289,12 @@ const chunkPresetLabelMap = CHUNK_PRESET_LABEL_MAP
 const editPresetDescription = computed(() => getChunkPresetDescription(editForm.chunk_preset_id))
 
 const rules = {
-  name: [{ required: true, message: '请输入知识库名称' }]
+  name: [{ required: true, message: 'Please enter a knowledge base name' }]
 }
 
-// 打开编辑弹窗
+// Open edit modal
 const showEditModal = () => {
-  console.log('[showEditModal] 被调用')
+  console.log('[showEditModal] invoked')
 
   editForm.name = database.value.name || ''
   editForm.description = database.value.description || ''
@@ -293,7 +305,7 @@ const showEditModal = () => {
   editForm.dify_token = database.value.additional_params?.dify_token || ''
   editForm.dify_dataset_id = database.value.additional_params?.dify_dataset_id || ''
 
-  // 如果是 LightRAG 类型，加载当前的 LLM 配置
+  // If type is LightRAG, load current LLM config
   if (database.value.kb_type === 'lightrag') {
     const llmInfo = database.value.llm_info || {}
     editForm.llm_info.provider = llmInfo.provider || ''
@@ -307,7 +319,7 @@ const handleEditSubmit = () => {
   editFormRef.value
     .validate()
     .then(async () => {
-      // 验证共享配置
+      // Validate share config
       if (shareConfigFormRef.value) {
         const validation = shareConfigFormRef.value.validate()
         if (!validation.valid) {
@@ -316,7 +328,7 @@ const handleEditSubmit = () => {
         }
       }
 
-      // 从 ShareConfigForm 组件直接获取当前值
+      // Get current values directly from ShareConfigForm
       let finalIsShared = true
       let finalDeptIds = []
 
@@ -327,7 +339,7 @@ const handleEditSubmit = () => {
       }
 
       console.log(
-        '[handleEditSubmit] 直接从组件获取 - is_shared:',
+        '[handleEditSubmit] fetched directly from component - is_shared:',
         finalIsShared,
         'dept_ids:',
         JSON.stringify(finalDeptIds)
@@ -349,11 +361,11 @@ const handleEditSubmit = () => {
           !editForm.dify_token?.trim() ||
           !editForm.dify_dataset_id?.trim()
         ) {
-          message.error('请完整填写 Dify API URL、Token 和 Dataset ID')
+          message.error('Please complete Dify API URL, Token, and Dataset ID')
           return
         }
         if (!editForm.dify_api_url.trim().endsWith('/v1')) {
-          message.error('Dify API URL 必须以 /v1 结尾')
+          message.error('Dify API URL must end with /v1')
           return
         }
         updateData.additional_params = {
@@ -373,7 +385,7 @@ const handleEditSubmit = () => {
         JSON.stringify(updateData.share_config)
       )
 
-      // 如果是 LightRAG 类型，包含 llm_info
+      // If type is LightRAG, include llm_info
       if (database.value.kb_type === 'lightrag') {
         updateData.llm_info = {
           provider: editForm.llm_info.provider,
@@ -385,11 +397,11 @@ const handleEditSubmit = () => {
       editModalVisible.value = false
     })
     .catch((err) => {
-      console.error('表单验证失败:', err)
+      console.error('Form validation failed:', err)
     })
 }
 
-// LLM 模型选择处理
+// Handle LLM model selection
 const llmModelSpec = computed(() => {
   const provider = editForm.llm_info?.provider || ''
   const modelName = editForm.llm_info?.model_name || ''
@@ -400,7 +412,7 @@ const llmModelSpec = computed(() => {
 })
 
 const handleLLMSelect = (spec) => {
-  console.log('LLM选择:', spec)
+  console.log('LLM selected:', spec)
   if (typeof spec !== 'string' || !spec) return
 
   const index = spec.indexOf('/')
@@ -424,7 +436,7 @@ const deleteDatabase = () => {
   margin-bottom: 8px;
 }
 
-// 只读共享配置显示
+// Read-only share config display
 .share-config-readonly {
   display: flex;
   align-items: center;

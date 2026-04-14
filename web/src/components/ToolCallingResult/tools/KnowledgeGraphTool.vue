@@ -2,16 +2,18 @@
   <BaseToolCall :tool-call="toolCall" :hide-params="true">
     <template #header>
       <div class="sep-header">
-        <span class="note">知识图谱</span>
+        <span class="note">Knowledge Graph</span>
         <span class="separator" v-if="query">|</span>
         <span class="description">{{ query }}</span>
       </div>
     </template>
     <template #result="{}">
       <div class="knowledge-graph-result">
-        <div class="result-summary">找到 {{ totalNodes }} 个节点, {{ totalRelations }} 个关系</div>
+        <div class="result-summary">
+          Found {{ totalNodes }} nodes, {{ totalRelations }} relationships
+        </div>
 
-        <!-- 图谱可视化容器 -->
+        <!-- Graph visualization container -->
         <div
           class="graph-visualization"
           ref="graphContainerRef"
@@ -23,7 +25,7 @@
                 <a-button
                   @click="refreshGraph"
                   :loading="isRefreshing"
-                  title="重新渲染图谱"
+                  title="Re-render graph"
                   class="refresh-btn"
                 >
                   <ReloadOutlined v-if="!isRefreshing" />
@@ -84,23 +86,23 @@ const query = computed(() => {
   return ''
 })
 
-// 计算属性：解析图谱数据
+// Computed: parse graph data
 const graphData = computed(() => {
   const data = parseData(props.toolCall.tool_call_result?.content)
   const nodes = new Map()
   const edges = []
   let edgeId = 0
 
-  // 处理新格式数据：只关注 triples 字段
+  // Handle new format data: only use the triples field
   if (data && typeof data === 'object' && 'triples' in data) {
     const { triples = [] } = data
 
-    // 处理 triples 数据
+    // Process triples data
     triples.forEach((triple) => {
       if (Array.isArray(triple) && triple.length >= 3) {
         const [source, relation, target] = triple
 
-        // 添加源节点
+        // Add source node
         if (source && typeof source === 'string') {
           if (!nodes.has(source)) {
             nodes.set(source, {
@@ -110,7 +112,7 @@ const graphData = computed(() => {
           }
         }
 
-        // 添加目标节点
+        // Add target node
         if (target && typeof target === 'string') {
           if (!nodes.has(target)) {
             nodes.set(target, {
@@ -120,7 +122,7 @@ const graphData = computed(() => {
           }
         }
 
-        // 添加边
+        // Add edge
         if (
           source &&
           target &&
@@ -146,11 +148,11 @@ const graphData = computed(() => {
   }
 })
 
-// 统计信息
+// Statistics
 const totalNodes = computed(() => graphData.value.nodes.length)
 const totalRelations = computed(() => graphData.value.edges.length)
 
-// 检查容器是否可见
+// Check whether container is visible
 const checkVisibility = () => {
   if (graphContainerRef.value) {
     const rect = graphContainerRef.value.getBoundingClientRect()
@@ -158,7 +160,7 @@ const checkVisibility = () => {
   }
 }
 
-// 当数据变化时强制刷新图表
+// Force chart refresh when data changes
 watch(
   () => props.toolCall,
   async (newData, oldData) => {
@@ -174,7 +176,7 @@ watch(
   { deep: true }
 )
 
-// 组件挂载后确保图表正确初始化
+// Ensure chart initializes correctly after mount
 onMounted(() => {
   checkVisibility()
   if (graphData.value.nodes.length > 0 || graphData.value.edges.length > 0) {

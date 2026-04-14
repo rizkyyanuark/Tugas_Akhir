@@ -16,10 +16,10 @@ from .skills_backend import SelectedSkillsReadonlyBackend
 
 
 class CustomCompositeBackend(CompositeBackend):
-    """修复 glob_info 路由逻辑的 CompositeBackend。
+    """CompositeBackend with fixed `glob_info` routing behavior.
 
-    修复内容：当 path 不匹配任何路由时应该只搜索 default 后端，
-    而不是错误地遍历所有路由后端搜索。
+    Fix: when `path` does not match any route, only search the default backend,
+    instead of incorrectly scanning all routed backends.
     """
 
     def glob_info(self, pattern: str, path: str = "/") -> list[FileInfo]:
@@ -32,14 +32,16 @@ class CustomCompositeBackend(CompositeBackend):
             infos = backend.glob_info(pattern, backend_path)
             return [_remap_file_info_path(fi, route_prefix) for fi in infos]
 
-        # 只在 path 为 None 或 "/" 时搜索所有后端，其他只搜索 default
+        # Search all backends only when path is None or "/"; otherwise use default.
         if path is None or path == "/":
             results: list[FileInfo] = []
             results.extend(self.default.glob_info(pattern, path))
             for route_prefix, backend in self.routes.items():
-                route_pattern = _strip_route_from_pattern(pattern, route_prefix)
+                route_pattern = _strip_route_from_pattern(
+                    pattern, route_prefix)
                 infos = backend.glob_info(route_pattern, "/")
-                results.extend(_remap_file_info_path(fi, route_prefix) for fi in infos)
+                results.extend(_remap_file_info_path(fi, route_prefix)
+                               for fi in infos)
             results.sort(key=lambda x: x.get("path", ""))
             return results
 
@@ -59,9 +61,11 @@ class CustomCompositeBackend(CompositeBackend):
             results: list[FileInfo] = []
             results.extend(await self.default.aglob_info(pattern, path))
             for route_prefix, backend in self.routes.items():
-                route_pattern = _strip_route_from_pattern(pattern, route_prefix)
+                route_pattern = _strip_route_from_pattern(
+                    pattern, route_prefix)
                 infos = await backend.aglob_info(route_pattern, "/")
-                results.extend(_remap_file_info_path(fi, route_prefix) for fi in infos)
+                results.extend(_remap_file_info_path(fi, route_prefix)
+                               for fi in infos)
             results.sort(key=lambda x: x.get("path", ""))
             return results
 
@@ -69,7 +73,7 @@ class CustomCompositeBackend(CompositeBackend):
 
 
 def _get_visible_skills_from_runtime(runtime) -> list[str]:
-    """获取运行时可见的 skills 列表"""
+    """Get the list of runtime-visible skills."""
     context = getattr(runtime, "context", None)
     selected = getattr(context, "_visible_skills", None)
     if not isinstance(selected, list):
@@ -125,7 +129,8 @@ def create_agent_composite_backend(runtime) -> CompositeBackend:
     user_id = _extract_user_id(runtime)
     visible_kbs = _get_visible_knowledge_bases_from_runtime(runtime)
     return CustomCompositeBackend(
-        default=ProvisionerSandboxBackend(thread_id=thread_id, user_id=user_id, visible_skills=visible_skills),
+        default=ProvisionerSandboxBackend(
+            thread_id=thread_id, user_id=user_id, visible_skills=visible_skills),
         routes={
             "/skills/": SelectedSkillsReadonlyBackend(selected_slugs=visible_skills),
             "/home/gem/kbs/": KnowledgeBaseReadonlyBackend(visible_kbs=visible_kbs),

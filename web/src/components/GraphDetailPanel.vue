@@ -13,10 +13,10 @@
           <template v-if="item">
             <a-descriptions :column="1" size="small" :bordered="true">
               <template v-if="type === 'node'">
-                <a-descriptions-item label="名称">{{ item.data?.label }}</a-descriptions-item>
+                <a-descriptions-item label="Name">{{ item.data?.label }}</a-descriptions-item>
                 <a-descriptions-item label="ID">{{ item.id }}</a-descriptions-item>
 
-                <!-- 原始属性 -->
+                <!-- Original properties -->
                 <template v-if="item.data?.original?.properties">
                   <a-descriptions-item
                     v-for="(value, key) in item.data.original.properties"
@@ -27,8 +27,8 @@
                   </a-descriptions-item>
                 </template>
 
-                <!-- 标签 -->
-                <a-descriptions-item label="标签" v-if="item.data?.original?.labels">
+                <!-- Labels -->
+                <a-descriptions-item label="Labels" v-if="item.data?.original?.labels">
                   <div class="tags-container">
                     <a-tag v-for="tag in item.data.original.labels" :key="tag" color="blue">{{
                       tag
@@ -38,9 +38,9 @@
               </template>
 
               <template v-else-if="type === 'edge'">
-                <a-descriptions-item label="类型">{{ item.data?.label }}</a-descriptions-item>
+                <a-descriptions-item label="Type">{{ item.data?.label }}</a-descriptions-item>
 
-                <!-- 原始属性 -->
+                <!-- Original properties -->
                 <template v-if="item.data?.original?.properties">
                   <a-descriptions-item
                     v-for="(value, key) in filteredEdgeProperties"
@@ -72,10 +72,10 @@ const props = defineProps({
 defineEmits(['close'])
 
 const title = computed(() => {
-  return props.type === 'node' ? '节点详情' : '关系详情'
+  return props.type === 'node' ? 'Node Details' : 'Relationship Details'
 })
 
-// 过滤边的属性，隐藏内部字段
+// Filter edge properties and hide internal fields
 const filteredEdgeProperties = computed(() => {
   if (!props.item?.data?.original?.properties) {
     return {}
@@ -84,7 +84,7 @@ const filteredEdgeProperties = computed(() => {
   const properties = props.item.data.original.properties
   const filtered = {}
 
-  // 定义需要隐藏的内部字段
+  // Internal fields to hide
   const hiddenFields = ['source_id', 'target_id', '_id', 'truncate']
 
   Object.keys(properties).forEach((key) => {
@@ -99,14 +99,14 @@ const filteredEdgeProperties = computed(() => {
 
 <style scoped lang="less">
 .detail-card {
-  position: absolute; // 改为 fixed，避免影响父组件布局
+  position: absolute; // Use absolute positioning to avoid affecting parent layout
   top: 80px;
   right: 24px;
   width: 300px;
   max-height: calc(100% - 100px);
   overflow-y: auto;
   z-index: 1000;
-  pointer-events: auto; // 确保可以交互
+  pointer-events: auto; // Ensure interactions are enabled
 
   .info-card {
     background: var(--color-bg-container);
@@ -152,7 +152,7 @@ const filteredEdgeProperties = computed(() => {
   }
 }
 
-/* 卡片过渡动画 */
+/* Card transition animation */
 .slide-fade-enter-active {
   transition: all 0.3s ease-out;
 }

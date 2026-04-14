@@ -6,9 +6,11 @@
 # to execute scraping, transform, and load tasks.
 #
 # NO apache-airflow is installed here.
+# All secrets are injected as environment variables by Airflow.
 # ══════════════════════════════════════════════════════════════
 FROM python:3.11-slim
 
+# ── System Dependencies (Chromium for Selenium-based scrapers) ──
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
@@ -23,27 +25,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# ── Environment Configuration ──────────────────────────────────
 ENV CHROME_BIN=/usr/bin/chromium \
     CHROMEDRIVER_PATH=/usr/bin/chromedriver \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    UV_HTTP_TIMEOUT=300 \
+    DOCKER_ENVIRONMENT=true
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-COPY backend/pyproject.toml /app/pyproject.toml
-COPY backend/uv.lock /app/uv.lock
+# ── LAYER 1: Python Dependencies (cached separately) ────────
+COPY docker/requirements-etl.txt /app/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system --no-cache -r /app/requirements.txt
+
+# ── LAYER 2: Application Code ───────────────────────────────
 COPY backend/package /app/package
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev 2>/dev/null || uv lock && uv sync --no-dev
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/package"
 
-
-ENV PATH="/app/.venv/bin:$PATH"
-
-COPY notebooks /app/notebooks
-COPY configs /app/configs
-
+# ── LAYER 3: Data Directories ───────────────────────────────
+# These directories are the mount points for the shared Docker volume.
+# Airflow mounts the same named volume here for data persistence.
 RUN mkdir -p /app/data/raw /app/data/processed
 
+# ── Entrypoint ──────────────────────────────────────────────
 ENTRYPOINT ["python", "-m", "knowledge.etl.run_worker"]

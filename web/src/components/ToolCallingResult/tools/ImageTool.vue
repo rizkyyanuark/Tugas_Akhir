@@ -39,7 +39,7 @@ const parsedContent = computed(() => {
 
 const imageUrl = computed(() => {
   const content = parsedContent.value
-  // text_to_img_qwen_image 返回 URL 字符串
+  // text_to_img_qwen_image returns a URL string
   if (content && typeof content === 'string' && content.startsWith('http')) {
     return content
   }

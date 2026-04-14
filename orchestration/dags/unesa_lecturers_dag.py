@@ -2,7 +2,6 @@
 Airflow DAG: UNESA Lecturers ETL Pipeline (Level 3 Architecture)
 =================================================================
 PURE ORCHESTRATOR — All heavy work delegated to etl-worker containers.
-Exactly mirrors 'scraping_dosen_infokom_v4.ipynb' notebook logic.
 
 Tasks (via DockerOperator):
   1. extract_web      → Scrape lecturer data from prodi websites
@@ -13,7 +12,16 @@ Tasks (via DockerOperator):
   6. load             → UPSERT to Supabase PostgreSQL
 
 Schedule: Weekly (Sunday 02:00 WIB = Saturday 19:00 UTC)
+
+Maintenance Guide:
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  To add a new Airflow Variable for the worker:                  │
+    │  1. Create it in Airflow UI → Admin → Variables                 │
+    │  2. Add it to _worker_env() below                               │
+    │  3. Reference it in config.py via os.environ.get()              │
+    └─────────────────────────────────────────────────────────────────┘
 """
+
 import os
 from datetime import datetime, timedelta
 
@@ -22,28 +30,48 @@ from airflow.models import Variable
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
 
-# ─── Constants ──────────────────────────────────────────────────
-ETL_WORKER_IMAGE = "tugas-akhir/etl-worker:latest"
-DOCKER_NETWORK = "yuxi-know_app-network"
-DATA_VOLUME = "tugas_akhir_etl_data"  # Shared volume with Airflow/Worker
 
-def _worker_env():
-    """Build environment dict for ETL Worker containers."""
+# ─── Constants ──────────────────────────────────────────────────
+
+ETL_WORKER_IMAGE = "rizyyk/unesa-etl:v2"
+DOCKER_NETWORK = "yuxi-know_app-network"
+DATA_VOLUME = "tugas_akhir_etl_data"
+
+
+def _get_var(key: str, default: str = "") -> str:
+    """Fetch from Airflow Variable first, then fall back to OS env."""
+    return Variable.get(key, default_var=os.environ.get(key, default))
+
+
+def _worker_env() -> dict[str, str]:
+    """
+    Build the complete environment dict for ETL Worker containers.
+
+    Every key that config.py reads via os.environ.get() must be listed here.
+    This is the ONLY bridge between Airflow secrets and the worker container.
+    """
     return {
-        "SUPABASE_URL": Variable.get("SUPABASE_URL", default_var=os.environ.get("SUPABASE_URL", "")),
-        "SUPABASE_KEY": Variable.get("SUPABASE_KEY", default_var=os.environ.get("SUPABASE_KEY", "")),
-        "SERPAPI_KEY": Variable.get("SERPAPI_KEY", default_var=os.environ.get("SERPAPI_KEY", "")),
-        "SCIVAL_EMAIL": os.environ.get("SCIVAL_EMAIL", ""),
-        "SCIVAL_PASS": os.environ.get("SCIVAL_PASS", ""),
-        "BD_PASS_SERP": os.environ.get("BD_PASS_SERP", ""),
-        "BD_USER_SERP": os.environ.get("BD_USER_SERP", ""),
-        "NEO4J_URI": os.environ.get("NEO4J_URI", ""),
-        "NEO4J_USER": os.environ.get("NEO4J_USER", ""),
-        "NEO4J_PASSWORD": os.environ.get("NEO4J_PASSWORD", ""),
-        "GROQ_API_KEY": Variable.get("GROQ_API_KEY", default_var=os.environ.get("GROQ_API_KEY", "")),
-        "KG_BACKEND_URL": os.environ.get("KG_BACKEND_URL", "http://api:8000"),
-        "KG_WEBHOOK_URL": f"{os.environ.get('KG_BACKEND_URL', 'http://api:8000')}/webhook/trigger",
+        # ── Core Infrastructure ──
+        "SUPABASE_URL":       _get_var("SUPABASE_URL"),
+        "SUPABASE_KEY":       _get_var("SUPABASE_KEY"),
+
+        # ── SciVal / Scopus (Elsevier) ──
+        "SCIVAL_EMAIL":       _get_var("SCIVAL_EMAIL"),
+        "SCIVAL_PASS":        _get_var("SCIVAL_PASS"),
+
+        # ── Google Scholar (SerpAPI) ──
+        "SERPAPI_KEY":        _get_var("SERPAPI_KEY"),
+
+        # ── BrightData Proxy ──
+        "BRIGHT_DATA_HOST":   _get_var("BRIGHT_DATA_HOST", "brd.superproxy.io:33335"),
+        "BD_USER_UNLOCKER":   _get_var("BD_USER_UNLOCKER"),
+        "BD_PASS_UNLOCKER":   _get_var("BD_PASS_UNLOCKER"),
+        "BD_USER_SERP":       _get_var("BD_USER_SERP"),
+        "BD_PASS_SERP":       _get_var("BD_PASS_SERP"),
+        "GROQ_API_KEY":       _get_var("GROQ_API_KEY"),
+        "NOTIFICATION_EMAIL": _get_var("NOTIFICATION_EMAIL"),
     }
+
 
 # ─── DAG Configuration ──────────────────────────────────────────
 
@@ -67,7 +95,9 @@ dag = DAG(
     max_active_runs=1,
 )
 
+
 # ─── Shared DockerOperator Config ────────────────────────────────
+
 docker_defaults = {
     "image": ETL_WORKER_IMAGE,
     "docker_url": "unix://var/run/docker.sock",
@@ -75,14 +105,11 @@ docker_defaults = {
     "auto_remove": "success",
     "mount_tmp_dir": False,
     "mounts": [
-        Mount(
-            source=DATA_VOLUME,
-            target="/app/data",
-            type="volume",
-        ),
+        Mount(source=DATA_VOLUME, target="/app/data", type="volume"),
     ],
     "dag": dag,
 }
+
 
 # ─── Task Definitions ───────────────────────────────────────────
 
@@ -128,10 +155,10 @@ load_task = DockerOperator(
     **docker_defaults,
 )
 
-# ─── DAG Pipeline Flow ──────────────────────────────────────────
 
+# ─── DAG Pipeline Flow ──────────────────────────────────────────
 # Step 1 & 2: Parallel extraction
 [extract_web, extract_pddikti] >> merge_task
 
-# Step 3, 4, 5, 6: Sequential processing
+# Step 3 → 6: Sequential processing
 merge_task >> enrich_task >> transform_task >> load_task

@@ -26,25 +26,25 @@ class FileStatus:
 
 
 class KnowledgeBaseException(Exception):
-    \"\"\"Base class for knowledge base exceptions\"\"\"
+    """Base class for knowledge base exceptions"""
 
     pass
 
 
 class KBNotFoundError(KnowledgeBaseException):
-    \"\"\"Knowledge base not found error\"\"\"
+    """Knowledge base not found error"""
 
     pass
 
 
 class KBOperationError(KnowledgeBaseException):
-    \"\"\"Knowledge base operation error\"\"\"
+    """Knowledge base operation error"""
 
     pass
 
 
 class KnowledgeBase(ABC):
-    \"\"\"Abstract base class for knowledge base, defining a unified interface\"\"\"
+    """Abstract base class for knowledge base, defining a unified interface"""
 
     # Class-level processing queue to track all files being processed
     _processing_files = set()
@@ -76,7 +76,7 @@ class KnowledgeBase(ABC):
     def load_metadata(
         self, global_databases_meta: dict[str, dict], files_meta: dict[str, dict], benchmarks_meta: dict[str, dict]
     ):
-        \"\"\"Called by KnowledgeBaseManager to synchronously load metadata\"\"\"
+        """Called by KnowledgeBaseManager to synchronously load metadata"""
         # Filter knowledge bases of current kb_type
         self.databases_meta = {}
         for db_id, meta in global_databases_meta.items():
@@ -117,7 +117,7 @@ class KnowledgeBase(ABC):
         logger.info(f"{self.kb_type}: 加载了 {len(self.databases_meta)} 个数据库的元数据")
 
     def _ensure_metadata_loaded(self):
-        \"\"\"Ensure metadata is loaded (lazy loading)\"\"\"
+        """Ensure metadata is loaded (lazy loading)"""
         if not self._metadata_loaded:
             logger.warning(f"{self.kb_type}: Metadata not loaded yet, ensure KnowledgeBaseManager has called load_metadata()")
 
@@ -162,7 +162,7 @@ class KnowledgeBase(ABC):
     @property
     @abstractmethod
     def kb_type(self) -> str:
-        \"\"\"Knowledge base type identifier\"\"\"
+        """Knowledge base type identifier"""
         pass
 
     @abstractmethod
@@ -624,7 +624,7 @@ class KnowledgeBase(ABC):
             return asyncio.run(self.aquery(query_text, db_id, **kwargs))
 
     def _get_query_params(self, db_id: str) -> dict:
-        \"\"\"Load query parameters from instance metadata\"\"\"
+        """Load query parameters from instance metadata"""
         if db_id in self.databases_meta:
             query_params_meta = self.databases_meta[db_id].get("query_params") or {}
             return query_params_meta.get("options", {})
@@ -1181,7 +1181,7 @@ class KnowledgeBase(ABC):
                     await eval_repo.create_benchmark(payload)
 
     async def _persist_file(self, file_id: str) -> None:
-        \"\"\"Only save single file to database to avoid full traversal\"\"\"
+        """Only save single file to database to avoid full traversal"""
         from yunesa.repositories.knowledge_file_repository import KnowledgeFileRepository
 
         file_repo = KnowledgeFileRepository()
@@ -1218,7 +1218,7 @@ class KnowledgeBase(ABC):
         )
 
     async def _persist_kb(self, db_id: str) -> None:
-        \"\"\"Only save single knowledge base to database to avoid full traversal\"\"\"
+        """Only save single knowledge base to database to avoid full traversal"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         kb_repo = KnowledgeBaseRepository()

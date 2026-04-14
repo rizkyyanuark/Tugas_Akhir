@@ -1,11 +1,11 @@
-# scraping_modules/utils.py
+# knowledge/etl/scraping/utils.py
 import re
 import math
 import pandas as pd
 import numpy as np
 import unicodedata
 from difflib import SequenceMatcher
-from knowledge.etl.scraping.config import PREFIX_TITLES
+from .config import PREFIX_TITLES
 
 def clean_name_expert(name):
     """

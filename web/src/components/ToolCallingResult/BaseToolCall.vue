@@ -1,14 +1,13 @@
 <template>
   <div class="tool-call-display" :class="{ 'is-collapsed': !isExpanded }">
-    <!-- Header Slot -->
+    <!-- Header slot -->
     <div class="tool-header" @click="toggleExpand">
-      <!-- Slot for completely overriding header (not recommended based on new requirement but kept for backward compat if needed, or remove if strict) -->
-      <!-- Actually, the requirement says "tool call 的 header 也要有 slot", but "ICON 保留".
-           So we should probably not use a single "header" slot that replaces everything.
-           Instead, we structure it: Icon + Content + ExpandIcon.
+      <!-- Slot for fully overriding header (kept for backward compatibility) -->
+      <!-- Requirement note: header should still support slots while preserving icon behavior.
+           We keep structure as Icon + Content + ExpandIcon.
       -->
 
-      <!-- Fixed Status Icon -->
+      <!-- Fixed status icon -->
       <span v-if="toolCall.status === 'success' || toolCall.tool_call_result">
         <component v-if="toolIcon" :is="toolIcon" size="16" class="tool-loader tool-success" />
         <CheckCircle v-else size="16" class="tool-loader tool-success" />
@@ -20,14 +19,14 @@
         <Loader size="16" class="tool-loader rotate tool-loading" />
       </span>
 
-      <!-- Content Area with Slots -->
+      <!-- Content area with slots -->
       <div class="tool-header-content">
-        <!-- Generic Header Slot (Overrides specific slots if provided) -->
+        <!-- Generic header slot (overrides specific slots) -->
         <template v-if="$slots.header">
           <slot name="header" :tool-call="toolCall" :tool-name="toolName"></slot>
         </template>
 
-        <!-- Specific State Slots (Fallback) -->
+        <!-- Specific state slots (fallback) -->
         <template v-else>
           <slot
             name="header-success"
@@ -35,7 +34,7 @@
             :tool-name="toolName"
             :result-content="resultContent"
           >
-            工具&nbsp; <span class="tool-name">{{ toolName }}</span> &nbsp; 执行完成
+            Tool&nbsp; <span class="tool-name">{{ toolName }}</span> &nbsp; completed
           </slot>
 
           <slot
@@ -44,36 +43,36 @@
             :tool-name="toolName"
             :error-message="toolCall.error_message"
           >
-            工具&nbsp; <span class="tool-name">{{ toolName }}</span> &nbsp; 执行失败
-            <span v-if="toolCall.error_message">（{{ toolCall.error_message }}）</span>
+            Tool&nbsp; <span class="tool-name">{{ toolName }}</span> &nbsp; failed
+            <span v-if="toolCall.error_message">({{ toolCall.error_message }})</span>
           </slot>
 
           <slot name="header-running" v-else :tool-name="toolName">
-            正在调用工具: &nbsp; <span class="tool-name">{{ toolName }}</span>
+            Calling tool: &nbsp; <span class="tool-name">{{ toolName }}</span>
           </slot>
         </template>
       </div>
 
-      <!-- Fixed Expand Icon -->
+      <!-- Fixed expand icon -->
       <span class="tool-expand-icon">
         <ChevronsDownUp v-if="isExpanded" size="14" />
         <ChevronsUpDown v-else size="14" />
       </span>
     </div>
 
-    <!-- Content Area -->
+    <!-- Content area -->
     <div class="tool-content" v-show="isExpanded">
-      <!-- Params Slot -->
+      <!-- Params slot -->
       <div class="tool-params" v-if="hasParams && !hideParams">
         <slot name="params" :tool-call="toolCall" :args="formattedArgs">
           <div class="tool-params-content">
-            <strong>参数: </strong>
+            <strong>Parameters: </strong>
             <span>{{ formattedArgs }}</span>
           </div>
         </slot>
       </div>
 
-      <!-- Result Slot -->
+      <!-- Result slot -->
       <div class="tool-result" v-if="hasResult">
         <slot name="result" :tool-call="toolCall" :result-content="resultContent">
           <div class="tool-result-content" :data-tool-call-id="toolCall.id">

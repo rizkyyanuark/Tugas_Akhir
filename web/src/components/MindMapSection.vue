@@ -1,29 +1,29 @@
 <template>
   <div class="mindmap-section">
     <div class="section-content">
-      <!-- 加载状态 -->
+      <!-- Loading state -->
       <div v-if="loading" class="loading-state">
         <a-spin size="small" />
-        <span>加载中...</span>
+        <span>Loading...</span>
       </div>
 
-      <!-- 生成中状态 -->
+      <!-- Generating state -->
       <div v-else-if="generating" class="generating-state">
         <a-spin size="small" />
-        <span>AI 正在生成思维导图...</span>
+        <span>AI is generating the mind map...</span>
       </div>
 
-      <!-- 空状态 -->
+      <!-- Empty state -->
       <div v-else-if="!mindmapData" class="empty-state">
         <Network :size="32" />
-        <p>暂无思维导图</p>
+        <p>No mind map yet</p>
         <a-button type="primary" size="small" @click="generateMindmap">
           <template #icon><Sparkles :size="14" /></template>
-          生成思维导图
+          Generate Mind Map
         </a-button>
       </div>
 
-      <!-- 思维导图显示 -->
+      <!-- Mind map display -->
       <div v-else class="mindmap-container">
         <div class="mindmap-toolbar">
           <a-space :size="8">
@@ -32,14 +32,14 @@
               size="small"
               @click="refreshMindmap"
               :loading="generating"
-              title="重新生成"
+              title="Regenerate"
             >
               <template #icon><RefreshCw :size="14" /></template>
-              <span class="toolbar-text">重新生成</span>
+              <span class="toolbar-text">Regenerate</span>
             </a-button>
-            <a-button type="text" size="small" @click="fitView" title="适应视图">
+            <a-button type="text" size="small" @click="fitView" title="Fit View">
               <template #icon><Maximize2 :size="14" /></template>
-              <span class="toolbar-text">适应视图</span>
+              <span class="toolbar-text">Fit View</span>
             </a-button>
           </a-space>
         </div>
@@ -66,8 +66,11 @@ const props = defineProps({
   }
 })
 
+const NOT_FOUND_CN = '\u4e0d\u5b58\u5728'
+const NOT_GENERATED_CN = '\u8fd8\u6ca1\u6709\u751f\u6210'
+
 // ============================================================================
-// 状态管理
+// State management
 // ============================================================================
 
 const loading = ref(false)
@@ -77,11 +80,11 @@ const mindmapSvg = ref(null)
 let markmapInstance = null
 
 // ============================================================================
-// 方法
+// Methods
 // ============================================================================
 
 /**
- * 加载思维导图
+ * Load mind map
  */
 const loadMindmap = async () => {
   if (!props.databaseId) return
@@ -94,23 +97,23 @@ const loadMindmap = async () => {
       mindmapData.value = response.mindmap
       await nextTick()
 
-      // 延迟渲染，确保DOM完全更新
+      // Delay rendering to ensure DOM is fully updated
       setTimeout(() => {
         renderMindmap(response.mindmap)
       }, 100)
     }
   } catch (error) {
-    // 如果是404错误，说明还没有生成，静默处理
+    // If it's a 404, it means no mind map has been generated yet; handle silently
     if (
       error?.message?.includes('404') ||
-      error?.message?.includes('不存在') ||
-      error?.message?.includes('还没有生成')
+      error?.message?.includes(NOT_FOUND_CN) ||
+      error?.message?.includes(NOT_GENERATED_CN)
     ) {
       mindmapData.value = null
     } else {
-      console.error('加载思维导图失败:', error)
+      console.error('Failed to load mind map:', error)
       const errorMsg = error?.message || String(error)
-      message.error('加载思维导图失败: ' + errorMsg)
+      message.error('Failed to load mind map: ' + errorMsg)
     }
   } finally {
     loading.value = false
@@ -118,7 +121,7 @@ const loadMindmap = async () => {
 }
 
 /**
- * 生成思维导图
+ * Generate mind map
  */
 const generateMindmap = async () => {
   if (!props.databaseId) return
@@ -128,38 +131,38 @@ const generateMindmap = async () => {
 
     const response = await mindmapApi.generateMindmap(
       props.databaseId,
-      [], // 使用所有文件
-      '' // 无自定义提示
+      [], // Use all files
+      '' // No custom prompt
     )
 
     mindmapData.value = response.mindmap
 
-    // 等待DOM更新
+    // Wait for DOM update
     await nextTick()
 
-    // 再延迟一点，确保SVG元素完全渲染
+    // Add a short delay to ensure SVG is fully rendered
     setTimeout(() => {
       renderMindmap(response.mindmap)
-      message.success('思维导图生成成功！')
+      message.success('Mind map generated successfully!')
     }, 100)
   } catch (error) {
-    console.error('生成思维导图失败:', error)
+    console.error('Failed to generate mind map:', error)
     const errorMsg = error?.message || String(error)
-    message.error('生成失败: ' + errorMsg)
+    message.error('Generation failed: ' + errorMsg)
   } finally {
     generating.value = false
   }
 }
 
 /**
- * 刷新思维导图
+ * Refresh mind map
  */
 const refreshMindmap = async () => {
   await generateMindmap()
 }
 
 /**
- * 将JSON转换为Markdown
+ * Convert JSON to Markdown
  */
 const jsonToMarkdown = (node, level = 0) => {
   if (!node || !node.content) return ''
@@ -177,39 +180,39 @@ const jsonToMarkdown = (node, level = 0) => {
 }
 
 /**
- * 渲染思维导图
+ * Render mind map
  */
 const renderMindmap = (data, retryCount = 0) => {
   if (!data) return
 
   if (!mindmapSvg.value) {
-    // 如果SVG引用还没准备好，最多重试3次
+    // If SVG ref is not ready, retry up to 3 times
     if (retryCount < 3) {
       setTimeout(() => {
         renderMindmap(data, retryCount + 1)
       }, 100)
       return
     } else {
-      console.error('无法获取SVG容器，渲染失败')
-      message.error('渲染失败：无法找到SVG容器')
+      console.error('Failed to get SVG container, render aborted')
+      message.error('Render failed: SVG container not found')
       return
     }
   }
 
   try {
-    // 清空之前的实例
+    // Clean up previous instance
     if (markmapInstance) {
       markmapInstance.destroy()
     }
 
-    // 将JSON转换为Markdown
+    // Convert JSON to Markdown
     const markdown = jsonToMarkdown(data)
 
-    // 使用Transformer转换
+    // Transform using Transformer
     const transformer = new Transformer()
     const { root } = transformer.transform(markdown)
 
-    // 创建Markmap实例
+    // Create Markmap instance
     markmapInstance = Markmap.create(mindmapSvg.value, {
       duration: 300,
       maxWidth: 200,
@@ -222,20 +225,20 @@ const renderMindmap = (data, retryCount = 0) => {
     markmapInstance.setData(root)
     markmapInstance.fit()
 
-    // 延迟再次适应，确保布局完全稳定
+    // Fit again after a delay to ensure layout is fully stabilized
     setTimeout(() => {
       if (markmapInstance) {
         markmapInstance.fit()
       }
     }, 300)
   } catch (error) {
-    console.error('渲染思维导图失败:', error)
-    message.error('渲染失败: ' + error.message)
+    console.error('Failed to render mind map:', error)
+    message.error('Render failed: ' + error.message)
   }
 }
 
 /**
- * 适应视图
+ * Fit view
  */
 const fitView = () => {
   if (markmapInstance) {
@@ -244,7 +247,7 @@ const fitView = () => {
 }
 
 /**
- * 暴露给父组件的方法
+ * Methods exposed to parent component
  */
 defineExpose({
   refreshMindmap,
@@ -252,10 +255,10 @@ defineExpose({
 })
 
 // ============================================================================
-// 生命周期
+// Lifecycle
 // ============================================================================
 
-// 监听数据库ID变化
+// Watch database ID changes
 watch(
   () => props.databaseId,
   (newId) => {
@@ -266,11 +269,11 @@ watch(
   { immediate: true }
 )
 
-// 监听容器大小变化，自动适应
+// Observe container resize and fit automatically
 let resizeObserver = null
 
 onMounted(() => {
-  // 设置ResizeObserver监听容器大小变化
+  // Set up ResizeObserver for container size changes
   nextTick(() => {
     if (mindmapSvg.value) {
       const container = mindmapSvg.value.parentElement
@@ -286,7 +289,7 @@ onMounted(() => {
   })
 })
 
-// 清理
+// Cleanup
 onUnmounted(() => {
   if (markmapInstance) {
     markmapInstance.destroy()
@@ -382,7 +385,7 @@ onUnmounted(() => {
   display: block;
 }
 
-// 确保父容器有高度
+// Ensure parent container has height
 :deep(.markmap) {
   width: 100% !important;
   height: 100% !important;

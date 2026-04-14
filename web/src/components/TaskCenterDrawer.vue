@@ -1,21 +1,24 @@
 <template>
   <a-modal
     :open="isOpen"
-    title="任务中心"
+    title="Task Center"
     :width="680"
     :footer="null"
     :destroy-on-close="false"
     class="task-center-modal"
     @cancel="handleClose"
   >
-    <p>提醒：任务执行成功，只代表任务已执行完成，但是任务内部可能有问题已捕获，请注意观察日志。</p>
+    <p>
+      Reminder: A successful task only means execution completed. Internal issues may still be
+      captured, so please check task logs.
+    </p>
     <div class="task-center">
       <div class="task-toolbar">
         <div class="task-filter-group">
           <a-segmented v-model:value="statusFilter" :options="taskFilterOptions" />
         </div>
         <div class="task-toolbar-actions">
-          <a-button type="text" @click="handleRefresh" :loading="loadingState"> 刷新 </a-button>
+          <a-button type="text" @click="handleRefresh" :loading="loadingState"> Refresh </a-button>
         </div>
       </div>
 
@@ -24,7 +27,7 @@
         type="error"
         show-icon
         class="task-alert"
-        :message="lastErrorState.message || '加载任务信息失败'"
+        :message="lastErrorState.message || 'Failed to load task information'"
       />
 
       <div v-if="hasTasks" class="task-list">
@@ -35,7 +38,7 @@
           :class="taskCardClasses(task)"
           @click="handleTaskCardClick(task)"
         >
-          <!-- 状态指示器 -->
+          <!-- Status indicator -->
           <div class="task-card-status-indicator" :class="`status-${task.status}`">
             <span class="status-dot"></span>
             <span class="status-text">{{ statusLabel(task.status) }}</span>
@@ -54,7 +57,7 @@
             </div>
           </div>
 
-          <!-- 进度信息 -->
+          <!-- Progress info -->
           <div v-if="!isTaskCompleted(task)" class="task-card-progress">
             <a-progress
               :percent="Math.round(task.progress || 0)"
@@ -71,18 +74,20 @@
             {{ task.error }}
           </div>
 
-          <!-- 底部信息 -->
+          <!-- Footer info -->
           <div class="task-card-footer">
             <div class="task-card-times">
-              <span v-if="task.started_at">开始 {{ formatTime(task.started_at, 'short') }}</span>
+              <span v-if="task.started_at">Started {{ formatTime(task.started_at, 'short') }}</span>
               <span v-if="task.completed_at"
-                >· 完成 {{ formatTime(task.completed_at, 'short') }}</span
+                >· Completed {{ formatTime(task.completed_at, 'short') }}</span
               >
-              <span v-if="!task.started_at">创建 {{ formatTime(task.created_at, 'short') }}</span>
+              <span v-if="!task.started_at"
+                >Created {{ formatTime(task.created_at, 'short') }}</span
+              >
             </div>
             <div class="task-card-actions">
               <a-button type="text" size="small" @click.stop="handleDetail(task.id)">
-                详情
+                Details
               </a-button>
               <a-button
                 type="text"
@@ -91,7 +96,7 @@
                 v-if="canCancel(task)"
                 @click.stop="handleCancel(task.id)"
               >
-                取消
+                Cancel
               </a-button>
               <a-button
                 type="text"
@@ -100,7 +105,7 @@
                 v-if="isTaskCompleted(task)"
                 @click.stop="handleDelete(task.id, task.name)"
               >
-                删除
+                Delete
               </a-button>
             </div>
           </div>
@@ -109,9 +114,10 @@
 
       <div v-else class="task-empty">
         <div class="task-empty-icon">🗂️</div>
-        <div class="task-empty-title">暂无任务</div>
+        <div class="task-empty-title">No tasks yet</div>
         <div class="task-empty-subtitle">
-          当你提交知识库导入或其他后台任务时，会在这里展示实时进度（仅展示最近的 100 个任务）。
+          When you submit knowledge-base import or other background tasks, real-time progress will
+          appear here (only the latest 100 tasks are shown).
         </div>
       </div>
     </div>
@@ -150,7 +156,7 @@ const taskFilterOptions = computed(() => [
   {
     label: () =>
       h('span', { class: 'task-filter-option' }, [
-        '全部',
+        'All',
         h('span', { class: 'filter-count' }, totalTaskCount.value)
       ]),
     value: 'all'
@@ -158,7 +164,7 @@ const taskFilterOptions = computed(() => [
   {
     label: () =>
       h('span', { class: 'task-filter-option' }, [
-        '进行中',
+        'In Progress',
         h('span', { class: 'filter-count' }, inProgressCount.value)
       ]),
     value: 'active'
@@ -166,7 +172,7 @@ const taskFilterOptions = computed(() => [
   {
     label: () =>
       h('span', { class: 'task-filter-option' }, [
-        '已完成',
+        'Completed',
         h('span', { class: 'filter-count' }, completedCount.value)
       ]),
     value: 'success'
@@ -174,7 +180,7 @@ const taskFilterOptions = computed(() => [
   {
     label: () =>
       h('span', { class: 'task-filter-option' }, [
-        '失败',
+        'Failed',
         h('span', { class: 'filter-count' }, failedTaskCount.value)
       ]),
     value: 'failed'
@@ -200,10 +206,10 @@ const hasTasks = computed(() => filteredTasks.value.length > 0)
 const ACTIVE_CLASS_STATUSES = new Set(['pending', 'queued', 'running'])
 const FAILED_STATUSES = new Set(['failed', 'cancelled'])
 const TASK_TYPE_LABELS = {
-  knowledge_ingest: '知识库导入',
-  knowledge_rechunks: '文档重新分块',
-  graph_task: '图谱处理',
-  agent_job: '智能体任务'
+  knowledge_ingest: 'Knowledge Base Ingest',
+  knowledge_rechunks: 'Document Rechunk',
+  graph_task: 'Graph Processing',
+  agent_job: 'Agent Task'
 }
 
 function taskCardClasses(task) {
@@ -215,7 +221,7 @@ function taskCardClasses(task) {
 }
 
 function taskTypeLabel(type) {
-  if (!type) return '后台任务'
+  if (!type) return 'Background Task'
   return TASK_TYPE_LABELS[type] || type
 }
 
@@ -259,11 +265,11 @@ function handleDetail(taskId) {
     return
   }
   const detail = h('div', { class: 'task-detail' }, [
-    h('p', [h('strong', '状态：'), statusLabel(task.status)]),
-    h('p', [h('strong', '进度：'), `${Math.round(task.progress || 0)}%`]),
-    h('p', [h('strong', '更新时间：'), formatTime(task.updated_at)]),
-    h('p', [h('strong', '描述：'), task.message || '-']),
-    h('p', [h('strong', '错误：'), task.error || '-'])
+    h('p', [h('strong', 'Status: '), statusLabel(task.status)]),
+    h('p', [h('strong', 'Progress: '), `${Math.round(task.progress || 0)}%`]),
+    h('p', [h('strong', 'Updated: '), formatTime(task.updated_at)]),
+    h('p', [h('strong', 'Message: '), task.message || '-']),
+    h('p', [h('strong', 'Error: '), task.error || '-'])
   ])
   Modal.info({
     title: task.name,
@@ -278,11 +284,11 @@ function handleCancel(taskId) {
 
 function handleDelete(taskId, taskName) {
   Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除任务"${taskName}"吗？此操作不可恢复。`,
-    okText: '删除',
+    title: 'Confirm Deletion',
+    content: `Are you sure you want to delete task "${taskName}"? This action cannot be undone.`,
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     onOk: () => {
       taskerStore.deleteTask(taskId)
     }
@@ -312,15 +318,15 @@ function getTaskDuration(task) {
     const seconds = diffSeconds % 60
 
     if (hours > 0) {
-      return `${hours}小时${minutes}分钟`
+      return `${hours}h ${minutes}m`
     }
     if (minutes > 0) {
-      return `${minutes}分钟${seconds}秒`
+      return `${minutes}m ${seconds}s`
     }
     if (seconds > 0) {
-      return `${seconds}秒`
+      return `${seconds}s`
     }
-    return '小于1秒'
+    return '< 1s'
   } catch {
     return null
   }
@@ -332,12 +338,12 @@ function isTaskCompleted(task) {
 
 function statusLabel(status) {
   const map = {
-    pending: '等待中',
-    queued: '已排队',
-    running: '进行中',
-    success: '已完成',
-    failed: '失败',
-    cancelled: '已取消'
+    pending: 'Pending',
+    queued: 'Queued',
+    running: 'Running',
+    success: 'Completed',
+    failed: 'Failed',
+    cancelled: 'Cancelled'
   }
   return map[status] || status
 }
@@ -425,7 +431,7 @@ function canCancel(task) {
   box-shadow: 0 2px 8px var(--shadow-1);
 }
 
-/* 状态指示器 */
+/* Status indicator */
 .task-card-status-indicator {
   position: absolute;
   top: 14px;
@@ -500,7 +506,7 @@ function canCancel(task) {
 }
 
 .task-card-header {
-  padding-right: 80px; /* 为状态指示器留出空间 */
+  padding-right: 80px; /* Reserve space for status indicator */
 }
 
 .task-card-info {

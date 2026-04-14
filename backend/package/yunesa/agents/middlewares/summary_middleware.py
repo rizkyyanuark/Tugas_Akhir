@@ -1,8 +1,8 @@
 """Summary + ToolResult Offload Middleware.
 
-基于 LangChain SummarizationMiddleware 实现，额外添加工具结果卸载功能：
-- 保留原有的 summary 历史记录逻辑
-- 将 ToolMessage 的 results 卸载到虚拟文件系统（默认 > 1k 字符）
+Built on top of LangChain SummarizationMiddleware, with additional tool-result offloading:
+- Keep the original summary history behavior
+- Offload ToolMessage results to virtual filesystem (default > 1k characters)
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ Messages to summarize:
 
 _DEFAULT_MESSAGES_TO_KEEP = 20
 _DEFAULT_FALLBACK_MESSAGE_COUNT = 15
-_OFFLOAD_DIR = "/summary_offload"  # 虚拟文件系统路径
+_OFFLOAD_DIR = "/summary_offload"  # Virtual filesystem path.
 
 ContextFraction = tuple[Literal["fraction"], float]
 ContextTokens = tuple[Literal["tokens"], int]
@@ -109,22 +109,22 @@ def _format_offload_placeholder(file_path: str, content_sample: str) -> str:
     """Format the placeholder message for offloaded content."""
     return (
         f"[ToolResultOffloaded]\n\n"
-        f"文件路径: {file_path}\n"
-        f"可以使用 read_file 工具读取完整内容\n\n"
-        f"--- 内容预览 ---\n{content_sample}"
+        f"File path: {file_path}\n"
+        f"Use the read_file tool to read the full content\n\n"
+        f"--- Content Preview ---\n{content_sample}"
     )
 
 
 def _offload_tool_result(msg: ToolMessage, threshold: int, token_counter: TokenCounter) -> dict[str, Any] | None:
-    """卸载单个超阈值的工具结果.
+    """Offload a single over-threshold tool result.
 
     Args:
         msg: ToolMessage
-        threshold: token 数阈值
-        token_counter: token 计数函数
+        threshold: Token threshold.
+        token_counter: Token counting function.
 
     Returns:
-        包含 file 更新的字典，如果没有卸载则返回 None
+        A dictionary containing file updates, or None when no offload occurs.
     """
     content = msg.content
     content_str = _get_content_str(content)
@@ -132,21 +132,23 @@ def _offload_tool_result(msg: ToolMessage, threshold: int, token_counter: TokenC
     if content_str is None:
         return None
 
-    # 计算 token 数
+    # Count tokens.
     msg_tokens = token_counter([msg])
     if msg_tokens <= threshold:
         return None
 
-    # 获取工具名称和参数
+    # Get tool name and call ID.
     tool_name = msg.name or "unknown"
     tool_call_id = msg.tool_call_id or ""
 
-    # 生成文件路径 (工具名称-xxx)
+    # Build file path (toolname-xxx).
     message_id = msg.id or str(uuid.uuid4())[:8]
-    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in tool_name)
-    file_path = (Path(OUTPUTS_DIR_NAME) / f"{_OFFLOAD_DIR}/{safe_name}-{message_id}").as_posix()
+    safe_name = "".join(
+        c if c.isalnum() or c in "-_" else "_" for c in tool_name)
+    file_path = (Path(OUTPUTS_DIR_NAME) /
+                 f"{_OFFLOAD_DIR}/{safe_name}-{message_id}").as_posix()
 
-    # 构建文件头部信息
+    # Build file header metadata.
     header_lines = [
         "=== Tool Invocation ===",
         f"Tool: {tool_name}",
@@ -156,7 +158,7 @@ def _offload_tool_result(msg: ToolMessage, threshold: int, token_counter: TokenC
     ]
     header = "\n".join(header_lines)
 
-    # 保存到 files 格式（包含头部信息）
+    # Save in `files` format (including header metadata).
     from datetime import datetime
 
     timestamp = datetime.now().isoformat()
@@ -168,11 +170,11 @@ def _offload_tool_result(msg: ToolMessage, threshold: int, token_counter: TokenC
         }
     }
 
-    # 创建预览内容
+    # Build preview content.
     preview_lines = content_str.splitlines()[:10]
     content_sample = "\n".join(line[:500] for line in preview_lines)
 
-    # 替换消息内容为占位符
+    # Replace message content with placeholder.
     msg.content = _format_offload_placeholder(file_path, content_sample)
 
     return files_update
@@ -181,15 +183,15 @@ def _offload_tool_result(msg: ToolMessage, threshold: int, token_counter: TokenC
 def _offload_tool_results(
     messages: list[AnyMessage], threshold: int, token_counter: TokenCounter
 ) -> tuple[dict[str, Any], list[AnyMessage]]:
-    """扫描消息列表，卸载所有超阈值的工具结果.
+    """Scan message list and offload all over-threshold tool results.
 
     Args:
-        messages: 消息列表
-        threshold: token 数阈值
-        token_counter: token 计数函数
+        messages: Message list.
+        threshold: Token threshold.
+        token_counter: Token counting function.
 
     Returns:
-        tuple[files 更新字典, 被修改的消息列表]
+        tuple[file update dictionary, modified message list]
     """
     files_update: dict[str, Any] = {}
     modified_messages: list[AnyMessage] = []
@@ -207,16 +209,17 @@ def _offload_tool_results(
 
 
 class SummaryOffloadMiddleware(AgentMiddleware):
-    """总结+工具结果卸载中间件.
+    """Summary + tool-result offload middleware.
 
-    基于 LangChain SummarizationMiddleware，额外功能：
-    - 保留原有的 summary 历史记录逻辑
-    - 将 ToolMessage 的 results 卸载到虚拟文件系统
-      1. 触发 Summary 时，卸载超过阈值的工具结果
-      2. 智能保留策略：
-        - 触发 Summary 时，首先进行卸载
-        - 只有当总 Token 数超过 max_retention_ratio * trigger 时，才进行消息清理(Summary)
-        - 始终保留 System Message
+    Built on LangChain SummarizationMiddleware with extra features:
+    - Keep original summary history behavior
+    - Offload ToolMessage results to virtual filesystem
+        1. When summary triggers, offload tool results above threshold
+        2. Smart retention strategy:
+            - Offload first when summary triggers
+            - Only clean up messages (summary eviction) when total tokens exceed
+                max_retention_ratio * trigger
+            - Always keep the System Message
     """
 
     def __init__(
@@ -228,22 +231,24 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         token_counter: TokenCounter = count_tokens_approximately,
         summary_prompt: str = DEFAULT_SUMMARY_PROMPT,
         trim_tokens_to_summarize: int | None = 4000,
-        # 工具结果卸载参数
+        # Tool-result offload options.
         summary_offload_threshold: int = 1000,
         max_retention_ratio: float = 0.6,
         **deprecated_kwargs: Any,
     ) -> None:
-        """初始化中间件.
+        """Initialize middleware.
 
         Args:
-            model: 用于生成摘要的语言模型
-            trigger: 触发摘要的阈值条件 (建议使用 ("tokens", N))
-            keep: 摘要后保留的消息数量/ token 策略 (作为 fallback)
-            token_counter: token 计数函数
-            summary_prompt: 生成摘要的提示词模板
-            trim_tokens_to_summarize: Summary 时，无损保留的消息数
-            summary_offload_threshold: Summary 时，工具调用结果超过此 token 数阈值则卸载到文件系统
-            max_retention_ratio: 触发 Summary 后，如果不超过此比例（相对于 trigger），则不删除消息。默认 0.6
+            model: Language model used to generate summaries.
+            trigger: Conditions to trigger summary (recommended: ("tokens", N)).
+            keep: Message/token retention strategy after summary (fallback strategy).
+            token_counter: Token counting function.
+            summary_prompt: Prompt template used for summary generation.
+            trim_tokens_to_summarize: Max token size preserved for summary input.
+            summary_offload_threshold: Offload tool results to filesystem when tool
+                result token count exceeds this threshold during summary.
+            max_retention_ratio: After summary trigger, if total tokens do not exceed
+                this ratio (relative to trigger), messages are not deleted. Default 0.6.
         """
         super().__init__()
 
@@ -255,7 +260,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
             self.trigger: ContextSize | list[ContextSize] | None = None
             trigger_conditions: list[ContextSize] = []
         elif isinstance(trigger, list):
-            validated_list = [self._validate_context_size(item, "trigger") for item in trigger]
+            validated_list = [self._validate_context_size(
+                item, "trigger") for item in trigger]
             self.trigger = validated_list
             trigger_conditions = validated_list
         else:
@@ -272,12 +278,13 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         self.summary_prompt = summary_prompt
         self.trim_tokens_to_summarize = trim_tokens_to_summarize
 
-        # 工具结果卸载配置
+        # Tool-result offload configuration.
         self.summary_offload_threshold = summary_offload_threshold
         self.max_retention_ratio = max_retention_ratio
 
-        # 检查 fractional 配置需要的 model profile
-        requires_profile = any(condition[0] == "fraction" for condition in self._trigger_conditions)
+        # Validate model profile when fractional configuration is used.
+        requires_profile = any(
+            condition[0] == "fraction" for condition in self._trigger_conditions)
         if self.keep[0] == "fraction":
             requires_profile = True
         if requires_profile and self._get_profile_limits() is None:
@@ -314,19 +321,20 @@ class SummaryOffloadMiddleware(AgentMiddleware):
 
         total_tokens = self.token_counter(messages)
 
-        # 1. 检查是否触发 Summary
+        # 1. Check whether summary should trigger.
         if not self._should_summarize(messages, total_tokens):
             return None
 
-        # 2. 触发 Summary：卸载超阈值的工具结果
+        # 2. On summary trigger: offload over-threshold tool results.
         files_update: dict[str, Any] = {}
         modified_messages: list[AnyMessage] = []
 
-        agg_files, agg_msgs = _offload_tool_results(messages, self.summary_offload_threshold, self.token_counter)
+        agg_files, agg_msgs = _offload_tool_results(
+            messages, self.summary_offload_threshold, self.token_counter)
         files_update = agg_files
         modified_messages = agg_msgs
 
-        # 3. 检查 Retention Ratio
+        # 3. Check retention ratio.
         current_tokens = self.token_counter(messages)
         trigger_value = self._get_token_trigger_value()
 
@@ -339,7 +347,7 @@ class SummaryOffloadMiddleware(AgentMiddleware):
                 return {"files": files_update, "messages": modified_messages}
             return None
 
-        # 4. 超过 limit，需要 Eviction (Summary)
+        # 4. Over retention limit, perform summary eviction.
         system_msg_count = 0
         messages_to_process = messages
 
@@ -347,7 +355,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
             system_msg_count = 1
             messages_to_process = messages[1:]
 
-        cutoff_relative = self._find_cutoff_by_token_limit(messages_to_process, int(retention_limit))
+        cutoff_relative = self._find_cutoff_by_token_limit(
+            messages_to_process, int(retention_limit))
         cutoff_index = system_msg_count + cutoff_relative
 
         if cutoff_index <= system_msg_count:
@@ -355,11 +364,12 @@ class SummaryOffloadMiddleware(AgentMiddleware):
                 return {"files": files_update, "messages": modified_messages}
             return None
 
-        messages_to_summarize, preserved_messages = self._partition_messages(messages, cutoff_index)
+        messages_to_summarize, preserved_messages = self._partition_messages(
+            messages, cutoff_index)
         summary = self._create_summary(messages_to_summarize)
         new_messages = self._build_new_messages(summary)
 
-        # 如果有 System Message，需要保留在最前面
+        # Keep System Message at the beginning when present.
         final_messages = []
 
         if system_msg_count > 0:
@@ -368,7 +378,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         final_messages.extend(new_messages)
         final_messages.extend(preserved_messages)
 
-        result: dict[str, Any] = {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), *final_messages]}
+        result: dict[str, Any] = {"messages": [
+            RemoveMessage(id=REMOVE_ALL_MESSAGES), *final_messages]}
 
         if files_update:
             result["files"] = files_update
@@ -385,19 +396,20 @@ class SummaryOffloadMiddleware(AgentMiddleware):
 
         total_tokens = self.token_counter(messages)
 
-        # 1. 检查是否触发 Summary
+        # 1. Check whether summary should trigger.
         if not self._should_summarize(messages, total_tokens):
             return None
 
-        # 2. 触发 Summary：卸载超阈值的工具结果
+        # 2. On summary trigger: offload over-threshold tool results.
         files_update: dict[str, Any] = {}
         modified_messages: list[AnyMessage] = []
 
-        agg_files, agg_msgs = _offload_tool_results(messages, self.summary_offload_threshold, self.token_counter)
+        agg_files, agg_msgs = _offload_tool_results(
+            messages, self.summary_offload_threshold, self.token_counter)
         files_update = agg_files
         modified_messages = agg_msgs
 
-        # 3. 检查 Retention Ratio
+        # 3. Check retention ratio.
         current_tokens = self.token_counter(messages)
         trigger_value = self._get_token_trigger_value()
 
@@ -410,7 +422,7 @@ class SummaryOffloadMiddleware(AgentMiddleware):
                 return {"files": files_update, "messages": modified_messages}
             return None
 
-        # 4. 超过 limit，需要 Eviction (Summary)
+        # 4. Over retention limit, perform summary eviction.
         system_msg_count = 0
         messages_to_process = messages
 
@@ -418,7 +430,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
             system_msg_count = 1
             messages_to_process = messages[1:]
 
-        cutoff_relative = self._find_cutoff_by_token_limit(messages_to_process, int(retention_limit))
+        cutoff_relative = self._find_cutoff_by_token_limit(
+            messages_to_process, int(retention_limit))
         cutoff_index = system_msg_count + cutoff_relative
 
         if cutoff_index <= system_msg_count:
@@ -426,7 +439,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
                 return {"files": files_update, "messages": modified_messages}
             return None
 
-        messages_to_summarize, preserved_messages = self._partition_messages(messages, cutoff_index)
+        messages_to_summarize, preserved_messages = self._partition_messages(
+            messages, cutoff_index)
 
         summary = await self._acreate_summary(messages_to_summarize)
         new_messages = self._build_new_messages(summary)
@@ -439,7 +453,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         final_messages.extend(new_messages)
         final_messages.extend(preserved_messages)
 
-        result: dict[str, Any] = {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), *final_messages]}
+        result: dict[str, Any] = {"messages": [
+            RemoveMessage(id=REMOVE_ALL_MESSAGES), *final_messages]}
 
         if files_update:
             result["files"] = files_update
@@ -499,7 +514,7 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         if self.token_counter(messages) <= target_token_count:
             return 0
 
-        # 二分查找
+        # Binary search.
         left, right = 0, len(messages)
         cutoff_candidate = len(messages)
         max_iterations = len(messages).bit_length() + 1
@@ -529,7 +544,7 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         if not messages or self.token_counter(messages) <= max_tokens:
             return 0
 
-        # Binary search for cutoff
+        # Binary search for cutoff.
         left, right = 0, len(messages)
         cutoff_candidate = len(messages)
         max_iterations = len(messages).bit_length() + 1
@@ -637,7 +652,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         for i in range(cutoff_index - 1, -1, -1):
             msg = messages[i]
             if isinstance(msg, AIMessage) and msg.tool_calls:
-                ai_tool_call_ids = {tc.get("id") for tc in msg.tool_calls if tc.get("id")}
+                ai_tool_call_ids = {tc.get("id")
+                                    for tc in msg.tool_calls if tc.get("id")}
                 if tool_call_ids & ai_tool_call_ids:
                     return i
 
@@ -648,14 +664,16 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         if not messages_to_summarize:
             return "No previous conversation history."
 
-        trimmed_messages = self._trim_messages_for_summary(messages_to_summarize)
+        trimmed_messages = self._trim_messages_for_summary(
+            messages_to_summarize)
         if not trimmed_messages:
             return "Previous conversation was too long to summarize."
 
         formatted_messages = get_buffer_string(trimmed_messages)
 
         try:
-            response = self.model.invoke(self.summary_prompt.format(messages=formatted_messages))
+            response = self.model.invoke(
+                self.summary_prompt.format(messages=formatted_messages))
             return response.text.strip()
         except Exception as e:
             return f"Error generating summary: {e!s}"
@@ -665,7 +683,8 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         if not messages_to_summarize:
             return "No previous conversation history."
 
-        trimmed_messages = self._trim_messages_for_summary(messages_to_summarize)
+        trimmed_messages = self._trim_messages_for_summary(
+            messages_to_summarize)
         if not trimmed_messages:
             return "Previous conversation was too long to summarize."
 
@@ -698,7 +717,7 @@ class SummaryOffloadMiddleware(AgentMiddleware):
             return messages[-_DEFAULT_FALLBACK_MESSAGE_COUNT:]
 
 
-# 便捷函数：创建中间件实例
+# Convenience factory: create middleware instance.
 def create_summary_offload_middleware(
     model: str | BaseChatModel,
     *,
@@ -707,7 +726,7 @@ def create_summary_offload_middleware(
     summary_offload_threshold: int = 1000,
     max_retention_ratio: float = 0.6,
 ) -> SummaryOffloadMiddleware:
-    """创建 SummaryOffloadMiddleware 实例的便捷函数"""
+    """Convenience function to create a SummaryOffloadMiddleware instance."""
     return SummaryOffloadMiddleware(
         model=model,
         trigger=trigger,

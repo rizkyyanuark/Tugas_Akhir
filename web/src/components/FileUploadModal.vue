@@ -1,12 +1,12 @@
 <template>
-  <a-modal v-model:open="visible" title="添加文件" width="800px" @cancel="handleCancel">
+  <a-modal v-model:open="visible" title="Add Files" width="800px" @cancel="handleCancel">
     <template #footer>
       <div class="footer-container">
         <a-button type="link" class="help-link-btn" @click="openDocLink">
-          <CircleHelp :size="14" /> 文档处理说明
+          <CircleHelp :size="14" /> Document Processing Guide
         </a-button>
         <div class="footer-buttons">
-          <a-button key="back" @click="handleCancel">取消</a-button>
+          <a-button key="back" @click="handleCancel">Cancel</a-button>
           <a-button
             key="submit"
             type="primary"
@@ -14,14 +14,14 @@
             :loading="chunkLoading"
             :disabled="!canSubmit"
           >
-            添加到知识库
+            Add to Knowledge Base
           </a-button>
         </div>
       </div>
     </template>
 
     <div class="add-files-content">
-      <!-- 1. 顶部操作栏 -->
+      <!-- 1. Top action bar -->
       <div class="top-action-bar">
         <div class="mode-switch">
           <a-segmented
@@ -31,30 +31,30 @@
           />
         </div>
         <div class="auto-index-toggle">
-          <a-checkbox v-model:checked="autoIndex">上传后自动入库</a-checkbox>
+          <a-checkbox v-model:checked="autoIndex">Auto-index after upload</a-checkbox>
         </div>
       </div>
 
-      <!-- 2. 配置面板 -->
+      <!-- 2. Settings panel -->
       <div
         class="settings-panel"
         v-if="folderTreeData.length > 0 || uploadMode !== 'url' || autoIndex"
       >
-        <!-- 第一行：存储位置 + OCR 引擎 -->
+        <!-- First row: storage location + OCR engine -->
         <div
           class="setting-row"
           v-if="folderTreeData.length > 0 || uploadMode !== 'url'"
           :class="{ 'two-cols': uploadMode !== 'url' && folderTreeData.length > 0 }"
         >
           <div class="col-item" v-if="folderTreeData.length > 0">
-            <div class="setting-label">存储位置</div>
+            <div class="setting-label">Storage Location</div>
             <div class="setting-content flex-row">
               <a-tree-select
                 v-model:value="selectedFolderId"
                 show-search
                 class="folder-select"
                 :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
-                placeholder="选择目标文件夹（默认为根目录）"
+                placeholder="Select target folder (default: root folder)"
                 allow-clear
                 tree-default-expand-all
                 :tree-data="folderTreeData"
@@ -62,12 +62,12 @@
               >
               </a-tree-select>
             </div>
-            <p class="param-description">选择文件保存的目标文件夹</p>
+            <p class="param-description">Select the destination folder to save files</p>
           </div>
           <div class="col-item" v-if="uploadMode !== 'url'">
             <div class="setting-label">
-              OCR 引擎
-              <a-tooltip title="检查服务状态">
+              OCR Engine
+              <a-tooltip title="Check service status">
                 <ReloadOutlined
                   class="action-icon refresh-icon"
                   :class="{ spinning: ocrHealthChecking }"
@@ -84,25 +84,25 @@
                 @dropdownVisibleChange="handleOcrDropdownVisibleChange"
               />
               <p class="param-description">
-                <template v-if="!isOcrEnabled"> 不启用 OCR，仅处理文本文件 </template>
+                <template v-if="!isOcrEnabled"> OCR disabled, only text files will be processed </template>
                 <template v-else-if="selectedOcrStatus === 'healthy'">
-                  {{ selectedOcrMessage || '服务正常' }}
+                  {{ selectedOcrMessage || 'Service is healthy' }}
                 </template>
                 <template v-else-if="selectedOcrStatus === 'unknown'">
-                  点击刷新图标检查服务状态
+                  Click the refresh icon to check service status
                 </template>
                 <template v-else>
-                  {{ selectedOcrMessage || '服务异常' }}
+                  {{ selectedOcrMessage || 'Service is unavailable' }}
                 </template>
               </p>
             </div>
           </div>
         </div>
 
-        <!-- 第二行：自动入库配置 (仅在开启时显示) -->
+        <!-- Second row: auto-index settings (shown only when enabled) -->
         <div class="setting-row" v-if="autoIndex">
           <div class="col-item">
-            <div class="setting-label">入库参数配置</div>
+            <div class="setting-label">Index Parameters</div>
             <div class="setting-content">
               <ChunkParamsConfig
                 :temp-chunk-params="indexParams"
@@ -115,20 +115,20 @@
                 "
               />
               <p v-if="isGraphBased" class="param-description">
-                LightRAG 按分隔符预切分，超长片段仍会按 token 大小继续切分。
+                LightRAG pre-splits by separator, and oversized chunks are still split further by token size.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- PDF/图片OCR提醒 (Alert样式优化) -->
+      <!-- PDF/Image OCR reminder -->
       <div v-if="hasPdfOrImageFiles && !isOcrEnabled" class="inline-alert warning">
         <Info :size="16" />
-        <span>检测到PDF或图片文件，建议启用 OCR 以提取文本内容</span>
+        <span>PDF or image files detected. Enable OCR to extract text content.</span>
       </div>
 
-      <!-- 文件上传区域 -->
+      <!-- File upload area -->
       <div class="upload-area" v-if="uploadMode !== 'url'">
         <a-upload-dragger
           class="custom-dragger"
@@ -146,25 +146,27 @@
           @change="handleFileUpload"
           @drop="handleDrop"
         >
-          <p class="ant-upload-text">点击或将文件拖拽到此处</p>
-          <p class="ant-upload-hint">支持类型: {{ uploadHint }}</p>
-          <div class="zip-tip" v-if="hasZipFiles">📦 ZIP包将自动解压提取 Markdown 与图片</div>
+          <p class="ant-upload-text">Click or drag files here</p>
+          <p class="ant-upload-hint">Supported types: {{ uploadHint }}</p>
+          <div class="zip-tip" v-if="hasZipFiles">
+            📦 ZIP files will be automatically extracted into Markdown and images
+          </div>
         </a-upload-dragger>
 
         <div v-if="showAggregateProgress" class="upload-progress-card">
           <div class="progress-header">
             <div class="progress-header-left">
-              <div class="progress-title">上传进度</div>
+              <div class="progress-title">Upload Progress</div>
               <div class="progress-stats inline-in-header">
-                <div class="stat-pill">总计 {{ totalUploadCount }}</div>
+                <div class="stat-pill">Total {{ totalUploadCount }}</div>
                 <div class="stat-pill uploading" v-if="uploadingUploadCount > 0">
-                  上传中 {{ uploadingUploadCount }}
+                  Uploading {{ uploadingUploadCount }}
                 </div>
                 <div class="stat-pill queued" v-if="queuedUploadCount > 0">
-                  排队 {{ queuedUploadCount }}
+                  Queued {{ queuedUploadCount }}
                 </div>
                 <div class="stat-pill error" v-if="failedUploadCount > 0">
-                  失败 {{ failedUploadCount }}
+                  Failed {{ failedUploadCount }}
                 </div>
               </div>
             </div>
@@ -176,7 +178,7 @@
                 class="toggle-progress-btn"
                 @click="progressExpanded = !progressExpanded"
               >
-                <span>{{ progressExpanded ? '收起' : '展开' }}</span>
+                <span>{{ progressExpanded ? 'Collapse' : 'Expand' }}</span>
                 <ChevronUp v-if="progressExpanded" :size="14" />
                 <ChevronDown v-else :size="14" />
               </a-button>
@@ -191,30 +193,32 @@
               </div>
             </div>
 
-            <div class="progress-tip" v-else>当前无失败文件。</div>
+            <div class="progress-tip" v-else>No failed files currently.</div>
 
             <div class="progress-tip" v-if="hasPendingUploads">
-              文件夹上传采用队列模式，最多同时上传 {{ MAX_UPLOAD_CONCURRENCY }} 个文件。
+              Folder upload runs in queue mode, with up to {{ MAX_UPLOAD_CONCURRENCY }} concurrent uploads.
             </div>
-            <div class="progress-tip" v-else>上传队列已完成，可点击“添加到知识库”继续下一步。</div>
+            <div class="progress-tip" v-else>
+              Upload queue is complete. Click "Add to Knowledge Base" to continue.
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- URL 输入区域 -->
+      <!-- URL input area -->
       <div class="url-area" v-if="uploadMode === 'url'">
         <div class="url-input-wrapper">
           <a-textarea
             v-model:value="newUrl"
-            placeholder="输入 URL，一行一个&#10;https://site1.com&#10;https://site2.com"
+            placeholder="Enter URLs, one per line&#10;https://site1.com&#10;https://site2.com"
             :auto-size="{ minRows: 4, maxRows: 8 }"
             class="url-input"
             @keydown.enter.ctrl="handleFetchUrls"
           />
           <div class="url-actions">
             <span class="url-hint">
-              支持批量粘贴，自动过滤空行。
-              <span class="warning-text">需配置白名单，详见文档说明</span>
+              Supports batch paste and automatically removes blank lines.
+              <span class="warning-text">Whitelist setup is required, see documentation.</span>
             </span>
             <a-button
               type="primary"
@@ -223,7 +227,7 @@
               :loading="fetchingUrls"
               :disabled="!newUrl.trim()"
             >
-              加载 URLs
+              Load URLs
             </a-button>
           </div>
         </div>
@@ -250,15 +254,15 @@
         </div>
         <div class="url-empty-tip" v-else>
           <Info :size="16" />
-          <span>输入 URL 后点击加载，系统将自动抓取网页内容</span>
+          <span>Enter URLs and click Load. The system will fetch web content automatically.</span>
         </div>
       </div>
 
-      <!-- 同名文件提示 -->
+      <!-- Same-name file notice -->
       <div v-if="sameNameFiles.length > 0" class="conflict-files-panel">
         <div class="panel-header">
           <Info :size="14" class="icon-warning" />
-          <span>已存在同名文件 ({{ sameNameFiles.length }})</span>
+          <span>Existing files with the same name ({{ sameNameFiles.length }})</span>
         </div>
         <div class="file-list-scroll">
           <div v-for="file in sameNameFiles" :key="file.file_id" class="conflict-item">
@@ -343,10 +347,10 @@ const emit = defineEmits(['update:visible', 'success'])
 
 const store = useDatabaseStore()
 
-// 文件夹选择相关
+// Folder selection state
 const selectedFolderId = ref(null)
 const folderTreeData = computed(() => {
-  // 转换 folderTree 数据为 TreeSelect 需要的格式
+  // Convert folderTree data into TreeSelect format
   const transformData = (nodes) => {
     return nodes
       .map((node) => {
@@ -410,7 +414,7 @@ const acceptedFileTypes = computed(() => {
 
 const uploadHint = computed(() => {
   if (!supportedFileTypes.value.length) {
-    return '加载中...'
+    return 'Loading...'
   }
   const exts = new Set(supportedFileTypes.value)
   exts.add('.zip')
@@ -437,8 +441,8 @@ const loadSupportedFileTypes = async () => {
     const data = await fileApi.getSupportedFileTypes()
     applySupportedFileTypes(data?.file_types)
   } catch (error) {
-    console.error('获取支持的文件类型失败:', error)
-    message.warning('获取支持的文件类型失败，已使用默认配置')
+    console.error('Failed to get supported file types:', error)
+    message.warning('Failed to get supported file types. Default configuration is applied.')
     applySupportedFileTypes(DEFAULT_SUPPORTED_TYPES)
   }
 }
@@ -456,11 +460,11 @@ const databaseId = computed(() => store.databaseId)
 const kbType = computed(() => store.database.kb_type)
 const chunkLoading = computed(() => store.state.chunkLoading)
 
-// 上传模式
+// Upload mode
 const uploadMode = ref('file')
 const MAX_UPLOAD_CONCURRENCY = 10
 
-// 文件列表
+// File list
 const fileList = ref([])
 
 const uploadQueue = ref([])
@@ -507,9 +511,9 @@ const failedDetailItems = computed(() => {
       const detail = file?.response?.detail || file?.error?.message || ''
       return {
         uid,
-        name: file.name || '未命名文件',
+        name: file.name || 'Untitled file',
         status: rawStatus,
-        errorText: detail || '上传失败'
+        errorText: detail || 'Upload failed'
       }
     })
     .filter((item) => item.status === 'error')
@@ -527,28 +531,28 @@ const uploadModeOptions = computed(() => [
     value: 'file',
     label: h('div', { class: 'segmented-option' }, [
       h(FileUp, { size: 16, class: 'option-icon' }),
-      h('span', { class: 'option-text' }, '上传文件')
+      h('span', { class: 'option-text' }, 'Upload Files')
     ])
   },
   {
     value: 'folder',
     label: h('div', { class: 'segmented-option' }, [
       h(FolderUp, { size: 16, class: 'option-icon' }),
-      h('span', { class: 'option-text' }, '上传文件夹')
+      h('span', { class: 'option-text' }, 'Upload Folder')
     ])
   },
   {
     value: 'url',
     label: h('div', { class: 'segmented-option' }, [
       h(Link, { size: 16, class: 'option-icon' }),
-      h('span', { class: 'option-text' }, '解析 URL')
+      h('span', { class: 'option-text' }, 'Parse URL')
     ])
   }
 ])
 
 watch(uploadMode, (val) => {
   isFolderUpload.value = val === 'folder'
-  // 切换模式时清空已选内容，避免混淆
+  // Clear selected content when switching mode to avoid confusion
   fileList.value = []
   sameNameFiles.value = []
   urlList.value = []
@@ -582,17 +586,18 @@ watch(fileList, (newFileList) => {
   uploadTaskProgress.value = nextProgress
 })
 
-// URL 列表
+// URL list
 // Item structure: { url: string, status: 'fetching'|'success'|'error', data: object|null, error: string }
 const urlList = ref([])
 const newUrl = ref('')
 const fetchingUrls = ref(false)
-const CONTENT_EXISTS_ERROR_TEXT = '内容已存在于知识库中'
+const CONTENT_EXISTS_ERROR_TEXT = 'Content already exists in the knowledge base'
+const SAME_CONTENT_CN = '\u76f8\u540c\u5185\u5bb9'
 
-// 同名文件列表（用于显示提示）
+// Same-name file list (for display)
 const sameNameFiles = ref([])
 
-// URL 相关功能
+// URL helpers
 const isValidUrl = (string) => {
   try {
     const url = new URL(string)
@@ -625,11 +630,11 @@ const fetchSingleUrlItem = async (item) => {
     const detailData = error.response?.data?.detail
     const detailMessage =
       (typeof detailData === 'string' ? detailData : detailData?.message) || error.message || ''
-    if (detailMessage.includes('same content') || detailMessage.includes('相同内容')) {
+    if (detailMessage.includes('same content') || detailMessage.includes(SAME_CONTENT_CN)) {
       item.error = CONTENT_EXISTS_ERROR_TEXT
       mergeSameNameFiles(detailData?.same_name_files)
     } else {
-      item.error = detailMessage || '加载失败'
+      item.error = detailMessage || 'Load failed'
     }
   }
 }
@@ -644,7 +649,7 @@ const handleFetchUrls = async () => {
     .filter((l) => l)
   if (lines.length === 0) return
 
-  // 1. 预处理：添加到列表
+  // 1. Preprocess: add to list
   const newItems = []
   for (const url of lines) {
     if (!isValidUrl(url)) {
@@ -659,12 +664,12 @@ const handleFetchUrls = async () => {
 
   if (newItems.length === 0) {
     if (lines.length > 0) {
-      message.warning('没有检测到有效的新 URL')
+      message.warning('No new valid URLs detected')
     }
     return
   }
 
-  newUrl.value = '' // 清空输入框
+  newUrl.value = '' // Clear input
   fetchingUrls.value = true
 
   await Promise.all(newItems.map(fetchSingleUrlItem))
@@ -675,7 +680,7 @@ const removeUrl = (index) => {
   urlList.value.splice(index, 1)
 }
 
-// OCR服务健康状态
+// OCR service health status
 const ocrHealthStatus = ref({
   rapid_ocr: { status: 'unknown', message: '' },
   mineru_ocr: { status: 'unknown', message: '' },
@@ -684,15 +689,15 @@ const ocrHealthStatus = ref({
   deepseek_ocr: { status: 'unknown', message: '' }
 })
 
-// OCR健康检查状态
+// OCR health check state
 const ocrHealthChecking = ref(false)
 
-// 分块参数
+// Chunk parameters
 const chunkParams = ref({
   enable_ocr: 'disable'
 })
 
-// 自动入库相关
+// Auto-index settings
 const autoIndex = ref(false)
 const indexParams = ref({
   chunk_size: 1000,
@@ -724,14 +729,14 @@ const isGraphBased = computed(() => {
 
 const isFolderUpload = ref(false)
 
-// 计算属性：是否启用了OCR
+// Computed: whether OCR is enabled
 const isOcrEnabled = computed(() => {
   return chunkParams.value.enable_ocr !== 'disable'
 })
 
-// 上传模式切换相关逻辑已移除
+// Upload mode switch logic removed
 
-// 计算属性：是否有PDF或图片文件
+// Computed: whether there are PDF/image files
 const hasPdfOrImageFiles = computed(() => {
   if (fileList.value.length === 0) {
     return false
@@ -756,7 +761,7 @@ const hasPdfOrImageFiles = computed(() => {
   })
 })
 
-// 计算属性：是否有ZIP文件
+// Computed: whether there are ZIP files
 const hasZipFiles = computed(() => {
   if (fileList.value.length === 0) {
     return false
@@ -777,12 +782,12 @@ const hasZipFiles = computed(() => {
   })
 })
 
-// 计算属性：OCR选项
+// Computed: OCR options
 const enableOcrOptions = computed(() => [
   {
     value: 'disable',
-    label: '不启用',
-    title: '不启用'
+    label: 'Disable',
+    title: 'Disable'
   },
   {
     value: 'rapid_ocr',
@@ -826,7 +831,7 @@ const enableOcrOptions = computed(() => [
   }
 ])
 
-// 获取当前选中OCR服务的状态
+// Get status of selected OCR service
 const selectedOcrStatus = computed(() => {
   switch (chunkParams.value.enable_ocr) {
     case 'rapid_ocr':
@@ -844,7 +849,7 @@ const selectedOcrStatus = computed(() => {
   }
 })
 
-// 获取当前选中OCR服务的状态消息
+// Get status message of selected OCR service
 const selectedOcrMessage = computed(() => {
   switch (chunkParams.value.enable_ocr) {
     case 'rapid_ocr':
@@ -862,7 +867,7 @@ const selectedOcrMessage = computed(() => {
   }
 })
 
-// OCR服务状态图标映射
+// OCR service status icon mapping
 const STATUS_ICONS = {
   healthy: '✅',
   unavailable: '❌',
@@ -872,20 +877,20 @@ const STATUS_ICONS = {
   unknown: '❓'
 }
 
-// OCR选项标签生成通用函数
+// Shared helper to generate OCR option labels
 const getOcrLabel = (serviceKey, displayName) => {
   const status = ocrHealthStatus.value?.[serviceKey]?.status || 'unknown'
   return `${STATUS_ICONS[status] || '❓'} ${displayName}`
 }
 
-// 兼容性包装器
+// Compatibility wrappers
 const getRapidOcrLabel = () => getOcrLabel('rapid_ocr', 'RapidOCR (ONNX)')
 const getMinerULabel = () => getOcrLabel('mineru_ocr', 'MinerU OCR')
 const getMinerUOfficialLabel = () => getOcrLabel('mineru_official', 'MinerU Official API')
 const getPPStructureV3Label = () => getOcrLabel('pp_structure_v3_ocr', 'PP-Structure-V3')
 const getDeepSeekOcrLabel = () => getOcrLabel('deepseek_ocr', 'DeepSeek OCR')
 
-// 验证OCR服务可用性
+// Validate OCR service availability
 const validateOcrService = () => {
   if (chunkParams.value.enable_ocr === 'disable') {
     return true
@@ -894,7 +899,7 @@ const validateOcrService = () => {
   const status = selectedOcrStatus.value
   if (status === 'unavailable' || status === 'error') {
     const ocrMessage = selectedOcrMessage.value
-    message.error(`OCR服务不可用: ${ocrMessage}`)
+    message.error(`OCR service unavailable: ${ocrMessage}`)
     return false
   }
 
@@ -907,7 +912,7 @@ const handleCancel = () => {
 
 const beforeUpload = (file) => {
   if (!isSupportedExtension(file?.name)) {
-    message.error(`不支持的文件类型：${file?.name || '未知文件'}`)
+    message.error(`Unsupported file type: ${file?.name || 'Unknown file'}`)
     return Upload.LIST_IGNORE
   }
   return true
@@ -925,24 +930,24 @@ const formatFileTime = (timestamp) => {
 
 const showSameNameFilesInUploadArea = (files) => {
   sameNameFiles.value = files
-  // 可以在这里添加其他逻辑，比如自动滚动到提示区域
+  // Add extra behavior here if needed, e.g., auto-scroll to the hint section
 }
 
 const downloadSameNameFile = async (file) => {
   try {
-    // 获取当前数据库ID
+    // Get current database ID
     const currentDbId = databaseId.value
     if (!currentDbId) {
-      message.error('知识库ID不存在')
+      message.error('Knowledge base ID is missing')
       return
     }
 
-    message.loading('正在下载文件...', 0)
+    message.loading('Downloading file...', 0)
     const response = await documentApi.downloadDocument(currentDbId, file.file_id)
     message.destroy()
 
-    // 创建下载链接
-    const blob = await response.blob() // 从 Response 对象中提取 Blob 数据
+    // Create download link
+    const blob = await response.blob() // Extract blob data from the Response object
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -952,42 +957,42 @@ const downloadSameNameFile = async (file) => {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    message.success(`文件 ${file.filename} 下载成功`)
+    message.success(`File ${file.filename} downloaded successfully`)
   } catch (error) {
     message.destroy()
-    console.error('下载文件失败:', error)
-    message.error(`下载文件失败: ${error.message || '未知错误'}`)
+    console.error('Failed to download file:', error)
+    message.error(`Download failed: ${error.message || 'Unknown error'}`)
   }
 }
 
 const deleteSameNameFile = (file) => {
   Modal.confirm({
-    title: '确认删除文件',
-    content: `确定要删除文件 "${file.filename}" 吗？此操作不可恢复。`,
-    okText: '删除',
+    title: 'Confirm File Deletion',
+    content: `Are you sure you want to delete file "${file.filename}"? This action cannot be undone.`,
+    okText: 'Delete',
     okType: 'danger',
-    cancelText: '取消',
+    cancelText: 'Cancel',
     onOk: async () => {
       try {
-        // 获取当前数据库ID
+        // Get current database ID
         const currentDbId = databaseId.value
         if (!currentDbId) {
-          message.error('知识库ID不存在')
+          message.error('Knowledge base ID is missing')
           return
         }
 
-        message.loading('正在删除文件...', 0)
+        message.loading('Deleting file...', 0)
         await documentApi.deleteDocument(currentDbId, file.file_id)
         message.destroy()
 
-        // 从同名文件列表中移除
+        // Remove from same-name file list
         sameNameFiles.value = sameNameFiles.value.filter((f) => f.file_id !== file.file_id)
 
-        message.success(`文件 ${file.filename} 删除成功`)
+        message.success(`File ${file.filename} deleted successfully`)
       } catch (error) {
         message.destroy()
-        console.error('删除文件失败:', error)
-        message.error(`删除文件失败: ${error.message || '未知错误'}`)
+        console.error('Failed to delete file:', error)
+        message.error(`Delete failed: ${error.message || 'Unknown error'}`)
       }
     }
   })
@@ -1036,7 +1041,7 @@ const processUploadQueue = () => {
     activeUploadCount.value += 1
     runUploadTask(task)
       .catch(() => {
-        // 错误已经在 runUploadTask 内处理，这里只保证队列继续消费
+        // Errors are handled in runUploadTask; continue consuming queue here
       })
       .finally(() => {
         activeUploadCount.value -= 1
@@ -1154,16 +1159,16 @@ const runUploadTask = (task) => {
 const handleFileUpload = (info) => {
   if (info?.file?.status === 'error') {
     const file = info.file
-    // 尝试多种方式获取错误信息
+    // Try multiple ways to get error details
     const detail = file?.response?.detail || file?.error?.message || ''
-    if (detail.includes('same content') || detail.includes('相同内容')) {
-      message.error(`${file.name} 已是相同内容文件，无需重复上传`)
+    if (detail.includes('same content') || detail.includes(SAME_CONTENT_CN)) {
+      message.error(`${file.name} has identical content and does not need to be uploaded again`)
     } else {
-      message.error(detail || `文件上传失败：${file.name}`)
+      message.error(detail || `File upload failed: ${file.name}`)
     }
   }
 
-  // 检查是否有同名文件提示
+  // Check whether there is a same-name file notice
   if (info?.file?.status === 'done' && info.file.response) {
     const response = info.file.response
     if (response.has_same_name && response.same_name_files && response.same_name_files.length > 0) {
@@ -1176,7 +1181,7 @@ const handleFileUpload = (info) => {
 
 const handleDrop = () => {}
 
-// 已移除文件夹上传逻辑
+// Folder upload legacy logic removed
 
 const checkOcrHealth = async () => {
   if (ocrHealthChecking.value) return
@@ -1186,8 +1191,8 @@ const checkOcrHealth = async () => {
     const healthData = await ocrApi.getHealth()
     ocrHealthStatus.value = healthData.services
   } catch (error) {
-    console.error('OCR健康检查失败:', error)
-    message.error('OCR服务健康检查失败')
+    console.error('OCR health check failed:', error)
+    message.error('OCR health check failed')
   } finally {
     ocrHealthChecking.value = false
   }
@@ -1215,25 +1220,25 @@ const openDocLink = () => {
 
 const chunkData = async () => {
   if (!databaseId.value) {
-    message.error('请先选择知识库')
+    message.error('Please select a knowledge base first')
     return
   }
 
-  // 验证OCR服务可用性（非 URL 模式下）
+  // Validate OCR service availability (non-URL mode)
   if (uploadMode.value !== 'url' && !validateOcrService()) {
     return
   }
 
-  // URL 模式处理
+  // URL mode handling
   if (uploadMode.value === 'url') {
-    // 过滤出成功的项
+    // Filter successful items
     const successfulItems = urlList.value.filter((item) => item.status === 'success' && item.data)
     if (successfulItems.length === 0) {
-      message.error('请添加并等待至少一个 URL 解析成功')
+      message.error('Please add and wait for at least one URL to be parsed successfully')
       return
     }
 
-    // 批内按内容哈希去重，避免同一批次重复入库
+    // Deduplicate by content hash within this batch to avoid duplicate indexing
     const deduplicatedItems = []
     const seenKeys = new Set()
     let skippedDuplicates = 0
@@ -1248,12 +1253,14 @@ const chunkData = async () => {
     }
 
     if (deduplicatedItems.length === 0) {
-      message.error('URL 内容均为重复项，请更换后重试')
+      message.error('All URL contents are duplicates, please try different URLs')
       return
     }
 
     if (skippedDuplicates > 0) {
-      message.warning(`检测到 ${skippedDuplicates} 个重复 URL 内容，已保留首个并跳过其余项`)
+      message.warning(
+        `Detected ${skippedDuplicates} duplicate URL contents. Kept the first and skipped the rest.`
+      )
     }
 
     try {
@@ -1264,13 +1271,13 @@ const chunkData = async () => {
         Object.assign(params, buildAutoIndexParams())
       }
 
-      // 构造 _preprocessed_map 和 items (minio urls)
+      // Build _preprocessed_map and items (MinIO URLs)
       const items = []
       const preprocessedMap = {}
       for (const item of deduplicatedItems) {
         // item.data = { file_path: "http://minio...", content_hash: "...", filename: "...", ... }
-        // 注意：fetch-url 返回的 file_path 其实是 MinIO URL
-        // 我们需要传递 MinIO URL 给 addDocuments
+        // Note: fetch-url returns file_path as a MinIO URL
+        // We need to pass the MinIO URL to addDocuments
         const minioUrl = item.data.file_path
         items.push(minioUrl)
         preprocessedMap[minioUrl] = {
@@ -1282,10 +1289,10 @@ const chunkData = async () => {
       }
       params._preprocessed_map = preprocessedMap
 
-      // 调用 addFiles (file mode)
+      // Call addFiles (file mode)
       await store.addFiles({
         items: items,
-        contentType: 'file', // 重要：这里改为 file，因为我们已经转成了 minio 上的文件
+        contentType: 'file', // Important: use file since content is already converted to MinIO files
         params,
         parentId: selectedFolderId.value
       })
@@ -1295,18 +1302,18 @@ const chunkData = async () => {
       urlList.value = []
       newUrl.value = ''
     } catch (error) {
-      console.error('URL 提交失败:', error)
-      message.error('URL 提交失败: ' + (error.message || '未知错误'))
+      console.error('URL submission failed:', error)
+      message.error('URL submission failed: ' + (error.message || 'Unknown error'))
     } finally {
       store.state.chunkLoading = false
     }
     return
   }
 
-  // 文件模式处理
+  // File mode handling
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif']
 
-  // 提取已上传的文件信息
+  // Extract uploaded file info
   const items = []
   const content_hashes = {}
   for (const file of fileList.value) {
@@ -1318,11 +1325,11 @@ const chunkData = async () => {
     items.push(file_path)
     if (content_hash) content_hashes[file_path] = content_hash
 
-    // 检查是否需要OCR
+    // Check whether OCR is required
     const ext = file_path.substring(file_path.lastIndexOf('.')).toLowerCase()
     if (imageExtensions.includes(ext) && chunkParams.value.enable_ocr === 'disable') {
       message.error({
-        content: '检测到图片文件，必须启用 OCR 才能提取文本内容。',
+        content: 'Image files detected. OCR must be enabled to extract text content.',
         duration: 5
       })
       return
@@ -1330,7 +1337,7 @@ const chunkData = async () => {
   }
 
   if (items.length === 0) {
-    message.error('请先上传文件')
+    message.error('Please upload files first')
     return
   }
 
@@ -1354,8 +1361,8 @@ const chunkData = async () => {
     fileList.value = []
     sameNameFiles.value = []
   } catch (error) {
-    console.error('文件上传失败:', error)
-    message.error('文件上传失败: ' + (error.message || '未知错误'))
+    console.error('File upload failed:', error)
+    message.error('File upload failed: ' + (error.message || 'Unknown error'))
   } finally {
     store.state.chunkLoading = false
   }
