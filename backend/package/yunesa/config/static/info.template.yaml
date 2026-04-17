@@ -1,0 +1,59 @@
+# Organization information configuration file
+# Used to configure basic website information and branding
+
+# Organization information
+organization:
+  name: "Jiangnan Yuxi" # Full organization name
+  logo: "/favicon.svg" # Logo file path (in web/public)
+  avatar: "/avatar.jpg" # Avatar file path (in web/public)
+  login_bg: "/login-bg.jpg" # Login background image path (in web/public)
+
+# Project information
+branding:
+  name: "Yuxi"
+  title: "Buildable, Orchestrated, and Deployable Agents" # System title
+  subtitle: "Open-source agent platform suite integrating RAG and knowledge graphs" # Used when subtitles is empty
+  subtitles:
+    - "Open-source agent platform suite integrating RAG and knowledge graphs"
+    - "Unified orchestration for agents, knowledge bases, graphs, and toolchains"
+    - "Build agents, connect knowledge, and make decisions verifiable"
+    - "Deploy agents, orchestrate workflows, and scale collaboration"
+    - "Accumulate data, reuse capabilities, and evolve systems"
+
+features:
+  - label: "GitHub Stars"
+    value: "4800+"
+    description: "Recognition and support from the developer community"
+    icon: "stars"
+  - label: "Resolved Issues"
+    value: "300+"
+    description: "Continuous improvement and issue resolution capability"
+    icon: "issues"
+  - label: "Total Commits"
+    value: "1600+"
+    description: "Active development iterations and feature updates"
+    icon: "commits"
+  - label: "Open-Source License"
+    value: "MIT License"
+    description: "Completely free and ready for commercial use"
+    icon: "license"
+
+actions:
+  - name: "Demo Video"
+    icon: "video"
+    url: "https://www.bilibili.com/video/BV1DF14BTETq"
+  - name: "Documentation Center"
+    icon: "docs"
+    url: "https://xerrors.github.io/Yuxi/"
+  - name: "Submit Issue"
+    icon: "issue"
+    url: "https://github.com/xerrors/Yuxi/issues/new/choose"
+  - name: "Development Roadmap"
+    icon: "roadmap"
+    url: "https://xerrors.github.io/Yuxi/develop-guides/roadmap.html"
+
+# Footer information
+footer:
+  copyright: "(C) Jiangnan Yuxi 2026 v0.6.0"
+  user_agreement_url: "/protocols/user-agreement.template.html"
+  privacy_policy_url: "/protocols/privacy-policy.template.html"
