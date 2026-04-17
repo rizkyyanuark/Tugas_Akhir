@@ -4,6 +4,7 @@ Services: UNESA Papers ETL Domain Logic
 Pure Python orchestrators decoupled from Airflow context.
 This isolates testing and execution, keeping Airflow DAG files lightweight.
 """
+import os
 import pandas as pd
 
 import logging

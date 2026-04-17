@@ -8,7 +8,7 @@
 # NO apache-airflow is installed here.
 # All secrets are injected as environment variables by Airflow.
 # ══════════════════════════════════════════════════════════════
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # ── System Dependencies (Chromium for Selenium-based scrapers) ──
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,10 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     fonts-liberation \
     libnss3 \
+    libnss3-dev \
     libxss1 \
     libasound2 \
     libatk-bridge2.0-0 \
     libgtk-3-0 \
+    libgbm1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -1,5 +1,5 @@
 # knowledge/etl/scraping/simcv_client.py
-"""SimCV Client — searches the UNESA SimCV system for lecturer NIP/NIDN data."""
+"""SimCV Client   searches the UNESA SimCV system for lecturer NIP/NIDN data."""
 
 import requests
 from .config import HEADERS

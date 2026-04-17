@@ -35,7 +35,7 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    image: yunesa-api:0.6.0
+    image: tugas-akhir-api:0.6.0
     container_name: api-dev
     working_dir: /app
     volumes:
@@ -82,7 +82,7 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    image: yunesa-api:0.6.0
+    image: tugas-akhir-api:0.6.0
     container_name: worker-dev
     working_dir: /app
     volumes:
@@ -123,7 +123,7 @@ services:
     build:
       context: ./docker/sandbox_provisioner
       dockerfile: Dockerfile
-    image: yunesa-sandbox-provisioner:0.6.0
+    image: tugas-akhir-sandbox-provisioner:0.6.0
     container_name: sandbox-provisioner
     volumes:
       - ./saves:/app/saves
@@ -176,7 +176,7 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       target: development
-    image: yunesa-web:0.6.0
+    image: tugas-akhir-web:0.6.0
     container_name: web-dev
     volumes:
       - ./web/src:/app/src
@@ -297,7 +297,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:16}
+    image: ${POSTGRES_IMAGE:-postgres:${POSTGRES_VERSION:-16}}
     container_name: postgres
     ports:
       - "5432:5432"
@@ -343,7 +343,8 @@ services:
     build:
       context: .
       dockerfile: docker/etl-worker.Dockerfile
-    image: tugas-akhir/etl-worker:latest
+    image: tugas-akhir-etl-worker:latest
+    container_name: etl-worker
     profiles: ["etl"]
     networks:
       - app-network
@@ -354,6 +355,8 @@ services:
     build:
       context: .
       dockerfile: docker/airflow.Dockerfile
+    image: tugas-akhir-airflow:3.1.7
+    container_name: airflow-init
     profiles: ["etl"]
     depends_on:
       postgres:
@@ -362,6 +365,10 @@ services:
       - app-network
     env_file:
       - .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
     command: >
       bash -c "
       airflow db init &&
@@ -372,6 +379,7 @@ services:
     build:
       context: .
       dockerfile: docker/airflow.Dockerfile
+    image: tugas-akhir-airflow:3.1.7
     container_name: airflow-webserver
     profiles: ["etl"]
     restart: unless-stopped
@@ -384,6 +392,13 @@ services:
       - app-network
     env_file:
       - .env
+    environment:
+      - AIRFLOW_ENV=dev
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - DOCKER_NETWORK=${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
+      - HOST_DATA_DIR=${HOST_DATA_DIR:-/c/Users/rizky_11yf1be/Desktop/Tugas_Akhir/data}
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
@@ -393,6 +408,7 @@ services:
     build:
       context: .
       dockerfile: docker/airflow.Dockerfile
+    image: tugas-akhir-airflow:3.1.7
     container_name: airflow-scheduler
     profiles: ["etl"]
     restart: unless-stopped
@@ -403,6 +419,13 @@ services:
       - app-network
     env_file:
       - .env
+    environment:
+      - AIRFLOW_ENV=dev
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - DOCKER_NETWORK=${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
+      - HOST_DATA_DIR=${HOST_DATA_DIR:-/c/Users/rizky_11yf1be/Desktop/Tugas_Akhir/data}
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs

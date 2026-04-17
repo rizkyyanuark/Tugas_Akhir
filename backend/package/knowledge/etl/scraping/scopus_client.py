@@ -1,5 +1,5 @@
 # knowledge/etl/scraping/scopus_client.py
-"""Scopus Paper Client — automates Scopus export to scrape academic papers."""
+"""Scopus Paper Client   automates Scopus export to scrape academic papers."""
 
 import os
 import re
@@ -10,13 +10,12 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 
 from .config import SAVE_DIR, CRAWLER_HEADLESS
 
 def _flip_author_name(name):
-    """Convert 'Last, First Middle' → 'First Middle Last'."""
+    """Convert 'Last, First Middle' -> 'First Middle Last'."""
     name = name.strip()
     if ',' in name:
         parts = name.split(',', 1)
@@ -37,21 +36,31 @@ class ScopusPaperClient:
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
+        # In Docker, use system paths
+        chrome_bin = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+        driver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+        
+        if os.path.exists(chrome_bin):
+            options.binary_location = chrome_bin
+
         prefs = {"download.default_directory": str(SAVE_DIR)}
         options.add_experimental_option("prefs", prefs)
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
         
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        service = Service(executable_path=driver_path) if os.path.exists(driver_path) else Service()
+        self.driver = webdriver.Chrome(service=service, options=options)
         self.wait = WebDriverWait(self.driver, 20)
 
 
     def login(self):
         try:
-            print("📍 Logging in...")
+            print("  Logging in...")
             self.driver.get("https://id.elsevier.com/as/authorization.oauth2?platSite=SVE%2FSciVal&ui_locales=en-US&scope=openid+profile+email+els_auth_info+els_analytics_info&response_type=code&redirect_uri=https%3A%2F%2Fwww.scival.com%2Fidp%2Fcode&prompt=login&client_id=SCIVAL")
             
             try: WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))).click()
@@ -66,10 +75,10 @@ class ScopusPaperClient:
             self.driver.find_element(By.ID, "bdd-elsPrimaryBtn").click()
             
             self.wait.until(EC.url_contains("scival.com"))
-            print("✅ Login Successful")
+            print("  Login Successful")
             return True
         except Exception as e:
-            print(f"❌ Login Failed: {e}")
+            print(f"  Login Failed: {e}")
             return False
 
     def parse_text_content(self, content, author_id_context, cutoff_year=None):
@@ -147,6 +156,9 @@ class ScopusPaperClient:
                     data['Authors'] = "; ".join(_flip_author_name(n) for n in names_only)
                     if ids_found:
                         data['Author IDs'] = "; ".join(ids_found)
+                        # Set primary Scopus_Author_ID to the first ID found that's likely the one we searched for
+                        # (or just the first one if not specified)
+                        data['Scopus_Author_ID'] = ids_found[0]
 
             # 2. Parse Positional Fields
             year_idx = -1
@@ -186,180 +198,150 @@ class ScopusPaperClient:
         return parsed_data
 
     def restart_driver(self):
-        print("      🔄 Restarting Driver...")
+        print("        Restarting Driver...")
         try: self.driver.quit()
         except: pass
         self.setup_driver()
-        self.login()
 
     def run_scraper(self, target_ids, cutoff_year=None):
         if not self.driver: self.setup_driver()
-        if not self.login(): return
+        if not self.login(): return []
 
-        all_papers = []
+        print(f"  Batch Processing {len(target_ids)} IDs via Advanced Search (Cutoff: >{cutoff_year})")
         
-        from selenium.common.exceptions import InvalidSessionIdException, WebDriverException
-
-        for idx, scopus_id in enumerate(target_ids):
-            print(f"   [{idx+1}/{len(target_ids)}] Processing ID: {scopus_id} (Cutoff: >{cutoff_year})")
-            
-            # Proactive driver restart every 10 iterations to prevent memory leaks / connection resets
-            if idx > 0 and idx % 10 == 0:
-                print("      🔄 Proactive driver restart (memory clearance)...")
-                self.restart_driver()
-            
-            # Small buffer between profiles
+        # Build Batch Query: (AU-ID(ID1) OR AU-ID(ID2)) AND PUBYEAR > 2018
+        id_query = " OR ".join([f"AU-ID({sid})" for sid in target_ids])
+        query = f"({id_query})"
+        
+        if cutoff_year:
+            query += f" AND PUBYEAR > {cutoff_year}"
+        
+        try:
+            # Step 1: Navigate to Advanced Search
+            self.driver.get("https://www.scopus.com/search/form.uri?display=advanced")
             time.sleep(2)
             
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    url = f"https://www.scopus.com/authid/detail.uri?authorId={scopus_id}"
-                    # ... navigation ...
-                    self.driver.get(url)
-                    time.sleep(1) # Let the initial JS load
-                    break # Success, proceed to scraping
-                except (InvalidSessionIdException, WebDriverException) as e:
-                    print(f"      ⚠️ Driver Error (Attempt {attempt+1}/{max_retries}): {e}")
-                    self.restart_driver()
-                except Exception as e:
-                    print(f"      ⚠️ Unexpected Error navigating to {scopus_id}: {e}")
-                    break
-            else:
-                print(f"      ❌ Failed to load profile for {scopus_id} after retries.")
-                continue
-
+            # Step 2: Input Query
             try:
-                    # Wait for page
-                    try: self.wait.until(EC.presence_of_element_located((By.ID, "auth_name")))
-                    except: pass
-                    
-                    # A. Click "Export all"
-                    try:
-                        export_all_btn = WebDriverWait(self.driver, 10).until(
-                            EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Export all']]"))
-                        )
-                        export_all_btn.click()
-                    except:
-                        print(f"      ⚠️ No 'Export all' button (0 docs?)")
-                        continue
-                    
-                    # B. Click "Plain text"
-                    try:
-                        plain_text_btn = WebDriverWait(self.driver, 10).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='export-to-plainText']"))
-                        )
-                        plain_text_btn.click()
-                    except Exception as e:
-                        print(f"      ⚠️ 'Plain text' failed: {e}")
-                        continue
-                    
-                    # C. Optimized Strict Field Selection (v3 - Bulk Scan)
-                    try:
-                        # 1. Define Lists (IDs)
-                        required_ids = {
-                            "field_group_authors", "field_group_titles", "field_group_year", 
-                            "field_group_eid", "field_group_sourceTitle", "field_group_sourceDocumentType", 
-                            "field_group_doi", "field_group_abstact", "field_group_authorKeywords"
-                        }
-                        
-                        # 2. Get All Checkboxes in Modal
-                        checkboxes = self.driver.find_elements(By.CSS_SELECTOR, "label[aria-controls] input[type='checkbox'], label.Checkbox-module__jE3jb input[type='checkbox']")
-                        
-                        for cb in checkboxes:
-                            try:
-                                cid = cb.get_attribute("id")
-                                is_checked = cb.is_selected()
-                                
-                                # Logic:
-                                # - If ID in Required -> Check it
-                                # - If ID NOT in Required (and not empty) -> Uncheck it (Implicit Forbidden)
-                                # - If ID is empty (Parent Group checkbox?), we might want to uncheck to clear mess, but required might be inside.
-                                #   Actually, Scopus Parent Groups often don't have IDs or have different structure.
-                                #   Safe bet: Only touch inputs with known IDs.
-                                
-                                if not cid: continue 
-
-                                if cid in required_ids:
-                                    if not is_checked:
-                                        self.driver.execute_script("arguments[0].click();", cb)
-                                else:
-                                    # Forbidden (All non-required IDs)
-                                    if is_checked:
-                                        self.driver.execute_script("arguments[0].click();", cb)
-                                        
-                            except: pass
-
-                        # 3. Double Check Specific Critical Fields (Retry)
-                        # Sometimes dynamic loading or group logic interferes.
-                        time.sleep(0.5)
-                        for rid in required_ids:
-                            try:
-                                cb = self.driver.find_element(By.ID, rid)
-                                if not cb.is_selected():
-                                    # Try robust click again
-                                    self.driver.execute_script("arguments[0].click();", cb)
-                                    # If abstract, try header fallback
-                                    if rid == "field_group_abstact" and not cb.is_selected():
-                                        header = self.driver.find_element(By.CSS_SELECTOR, "label[aria-controls*='field_group_abstact']")
-                                        self.driver.execute_script("arguments[0].click();", header)
-                            except: pass # If missing, likely fine or already handled
-                            
-                    except Exception as e:
-                        print(f"      ⚠️ Field selection failed: {e}")
-                                
-
-                    # D. Submit
-                    driver = self.driver # Alias
-                    start_count = len(list(SAVE_DIR.glob("scopus*.txt")))
-                    
-                    try:
-                        driver.find_element(By.CSS_SELECTOR, "button[data-testid='submit-export-button']").click()
-                        print("      ⬇️ Export Submitted")
-                    except Exception as e:
-                        print(f"      ❌ Submit failed: {e}")
-                        continue
-
-                    # E. Wait for file
-                    txt_file = None
-                    start_wait = time.time()
-                    
-                    # Directories to check
-                    check_dirs = [Path("/opt/airflow/data/scopus_temp"), Path("/tmp/scopus_downloads"), SAVE_DIR]
-                    
-                    while time.time() - start_wait < 90:
-                        all_found_files = []
-                        for d in check_dirs:
-                            if d.exists():
-                                all_found_files.extend(list(d.glob("scopus*.txt")))
-                                
-                        files = sorted(all_found_files, key=os.path.getmtime, reverse=True)
-                        if files:
-                            # Check if valid (not empty, not crdownload)
-                            f = files[0]
-                            if f.stat().st_size > 0 and (time.time() - f.stat().st_mtime) < 30:
-                                txt_file = f
-                                break
-                        time.sleep(2)
-                    
-                    if txt_file:
-                        time.sleep(1) # Ensure write complete
-                        with open(txt_file, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                        
-                        recs = self.parse_text_content(content, scopus_id, cutoff_year)
-                        print(f"      ✅ Extracted {len(recs)} papers.")
-                        all_papers.extend(recs)
-                        
-                        try: txt_file.unlink() # Cleanup
-                        except: pass
-                    else:
-                        print("      ❌ Download timed out.")
-                        
+                search_box = self.wait.until(EC.visibility_of_element_located((By.ID, "searchView")))
+                search_box.clear()
+                search_box.send_keys(query)
+                
+                # Click Search
+                self.driver.find_element(By.ID, "advSearch").click()
+                print(f"        Query Submitted: {query[:50]}...")
             except Exception as e:
-                print(f"      ❌ Error: {e}")
-                    
-        return all_papers
+                print(f"        Search Input Failed: {e}")
+                return []
+
+            # Step 3: Wait for Results and Export
+            try:
+                # Wait for results page elements
+                self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".results-header, #resultsHeader, #selectAllCheck")))
+                
+                # Check "Select all" results
+                try:
+                    select_all = self.wait.until(EC.element_to_be_clickable((By.ID, "selectAllCheck")))
+                    if not select_all.is_selected():
+                        self.driver.execute_script("arguments[0].click();", select_all)
+                except:
+                    # Alternative selector
+                    select_all = self.driver.find_element(By.CSS_SELECTOR, "label[for='selectAllCheck'], input[name='selectAllCheck']")
+                    self.driver.execute_script("arguments[0].click();", select_all)
+
+                # Click Export
+                export_btn = self.wait.until(EC.element_to_be_clickable((By.ID, "export_results")))
+                export_btn.click()
+            except Exception as e:
+                print(f"         Results Export button not found or failed: {e}")
+                return []
+            
+            # Step 4: Click "Plain text"
+            try:
+                plain_text_btn = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button[data-testid='export-to-plainText']"))
+                )
+                plain_text_btn.click()
+            except Exception as e:
+                print(f"         'Plain text' failed: {e}")
+                return []
+            
+            # Step 5: Optimized Field Selection
+            try:
+                required_ids = {
+                    "field_group_authors", "field_group_titles", "field_group_year", 
+                    "field_group_eid", "field_group_sourceTitle", "field_group_sourceDocumentType", 
+                    "field_group_doi", "field_group_abstact", "field_group_authorKeywords"
+                }
+                
+                checkboxes = self.driver.find_elements(By.CSS_SELECTOR, "label[aria-controls] input[type='checkbox'], label.Checkbox-module__jE3jb input[type='checkbox']")
+                
+                for cb in checkboxes:
+                    try:
+                        cid = cb.get_attribute("id")
+                        if not cid: continue 
+                        is_checked = cb.is_selected()
+                        if cid in required_ids:
+                            if not is_checked: self.driver.execute_script("arguments[0].click();", cb)
+                        else:
+                            if is_checked: self.driver.execute_script("arguments[0].click();", cb)
+                    except: pass
+                
+                # Double check
+                time.sleep(0.5)
+                for rid in required_ids:
+                    try:
+                        cb = self.driver.find_element(By.ID, rid)
+                        if not cb.is_selected(): self.driver.execute_script("arguments[0].click();", cb)
+                    except: pass
+            except Exception as e:
+                print(f"         Field selection failed: {e}")
+
+            # Step 6: Submit Export
+            try:
+                self.driver.find_element(By.CSS_SELECTOR, "button[data-testid='submit-export-button']").click()
+                print("         Batch Export Submitted")
+            except Exception as e:
+                print(f"        Submit failed: {e}")
+                return []
+
+            # Step 7: Wait for file
+            txt_file = None
+            start_wait = time.time()
+            check_dirs = [Path("/app/data/scopus_temp"), Path("/tmp/scopus_downloads"), SAVE_DIR]
+            
+            # 300s timeout for large batches
+            while time.time() - start_wait < 300:
+                all_found_files = []
+                for d in check_dirs:
+                    if d.exists(): all_found_files.extend(list(d.glob("scopus*.txt")))
+                        
+                files = sorted(all_found_files, key=os.path.getmtime, reverse=True)
+                if files:
+                    f = files[0]
+                    if f.stat().st_size > 0 and (time.time() - f.stat().st_mtime) < 30:
+                        txt_file = f
+                        break
+                time.sleep(2)
+            
+            if txt_file:
+                time.sleep(1)
+                with open(txt_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                recs = self.parse_text_content(content, "BATCH_MODE", cutoff_year)
+                print(f"        Extracted {len(recs)} papers from entire batch.")
+                
+                try: txt_file.unlink() # Cleanup
+                except: pass
+                return recs
+            else:
+                print("        Download timed out after 300s.")
+                return []
+
+        except Exception as e:
+            print(f"        Batch Error: {e}")
+            return []
 
 def deduplicate_papers(df):
     """
@@ -371,7 +353,7 @@ def deduplicate_papers(df):
     if df.empty: return df
     
     initial_count = len(df)
-    print(f"   🧹 Deduplicating {initial_count} records...")
+    print(f"     Deduplicating {initial_count} records...")
     
     # helper to clean years
     def clean_year(y):
@@ -440,7 +422,7 @@ def deduplicate_papers(df):
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
     
     final_count = len(df)
-    print(f"   ✅ Final Count: {final_count} (Removed {initial_count - final_count} total)")
+    print(f"     Final Count: {final_count} (Removed {initial_count - final_count} total)")
     return df
 
 def process_scopus_data(df):
@@ -457,14 +439,14 @@ def process_scopus_data(df):
     df = deduplicate_papers(df)
 
     # 2. Clean Authors (Flip Name)
-    print("🧹 Cleaning Author Names...")
+    print("  Cleaning Author Names...")
     if 'Authors' in df.columns:
         df['Authors'] = df['Authors'].apply(
             lambda x: "; ".join([_flip_author_name(n) for n in str(x).split(';')]) if pd.notna(x) else x
         )
 
     # 3. Enrichment (TLDR)
-    print("✨ Enriching with TLDR (Semantic Scholar)...")
+    print("  Enriching with TLDR (Semantic Scholar)...")
     try:
         from .semantic_client import SemanticScholarClient
         s2_client = SemanticScholarClient()
@@ -495,20 +477,20 @@ def process_scopus_data(df):
                                 df.at[idx, 'TLDR'] = tldr_text
                                 modified_count += 1
             except Exception as e:
-                print(f"   ⚠️ Enrichment error for '{title[:20]}': {e}")
+                print(f"      Enrichment error for '{title[:20]}': {e}")
                 
             # Rate limit handling is inside client, but adding small buffer here just in case
             if idx % 10 == 0: time.sleep(0.5)
             
-        print(f"   ✅ Enriched {modified_count} papers with TLDR")
+        print(f"     Enriched {modified_count} papers with TLDR")
         
     except ImportError:
-        print("   ⚠️ SemanticScholarClient not found, skipping enrichment.")
+        print("      SemanticScholarClient not found, skipping enrichment.")
     except Exception as e:
-        print(f"   ❌ Enrichment failed: {e}")
+        print(f"     Enrichment failed: {e}")
 
     # 4. Filter Columns
-    print("✨ Filtering Columns...")
+    print("  Filtering Columns...")
     target_cols = [
         'Authors', 'Author IDs', 'Title', 'Year', 'Journal', 
         'Link', 'Abstract', 'Keywords', 'Document Type', 'DOI', 'TLDR'

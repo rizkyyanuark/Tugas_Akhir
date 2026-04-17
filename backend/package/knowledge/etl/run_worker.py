@@ -108,7 +108,7 @@ def _paper_transform(test_mode: bool):
 
 
 def _paper_load(test_mode: bool):
-    """UPSERT cleaned papers to Supabase PostgreSQL + trigger KG webhook."""
+    """UPSERT cleaned papers to Supabase PostgreSQL."""
     from knowledge.etl.services.unesa_papers import run_database_commit
     from knowledge.etl.config import PROCESSED_DATA_DIR
 

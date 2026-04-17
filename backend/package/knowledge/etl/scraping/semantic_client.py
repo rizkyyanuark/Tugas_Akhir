@@ -11,17 +11,17 @@ from pathlib import Path
 try:
     from knowledge.etl.transform import cleaner
 except ImportError as e:
-    print(f"⚠️ Could not import ETL cleaner: {e}")
+    print(f"   Could not import ETL cleaner: {e}")
     cleaner = None
 
 def _deep_clean_abstract(text):
     if not text: return ""
     import re
     cleaned = str(text).strip()
-    # Hapus noise awalan seperti "Abstrak—", "Abstract:" walau ada spasi di awal
-    cleaned = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-—–:.]+[\s]*', '', cleaned)
+    # Hapus noise awalan seperti "Abstrak ", "Abstract:" walau ada spasi di awal
+    cleaned = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-  :.]+[\s]*', '', cleaned)
     # Hapus blok "Kata Kunci - ..." yang nyangkut di akhir abstract
-    cleaned = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-—–\.].*$', '', cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-  \.].*$', '', cleaned, flags=re.DOTALL)
     
     return cleaner.clean_text(cleaned) if cleaner else cleaned.strip()
 
@@ -64,12 +64,12 @@ class SemanticScholarClient:
                             # print(f"      [S2] Match found ({similarity:.2f}): {returned_title[:50]}...")
                             return item['paperId']
                 if data:
-                    print(f"      ⚠️ [S2] No strict match found. Best was '{data[0].get('title', '')[:50]}...'")
+                    print(f"         [S2] No strict match found. Best was '{data[0].get('title', '')[:50]}...'")
             elif response.status_code == 429:
-                print("      ⚠️ Rate Limit (429). Sleeping 5s...")
+                print("         Rate Limit (429). Sleeping 5s...")
                 time.sleep(5)
         except Exception as e:
-            print(f"      ⚠️ S2 Search Error: {e}")
+            print(f"         S2 Search Error: {e}")
         return None
 
     def get_paper_details(self, paper_id):

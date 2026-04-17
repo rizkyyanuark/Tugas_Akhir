@@ -10,7 +10,7 @@
 # PyTorch/SpaCy/GLiNER dependencies. Docker build goes from
 # 15 minutes → 5 seconds on code-only changes.
 # ══════════════════════════════════════════════════════════════
-FROM python:3.11-slim
+FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # -- Working Directory --
@@ -30,28 +30,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# ── LAYER 1: Project manifest + core package (CACHED) ───────
+# ── LAYER 1: Core Dependency Resolution (MAX CACHE) ─────────
+# Copy ONLY manifest files to resolve external dependencies.
+# This layer includes the 2GB+ AI libraries (PyTorch, etc.).
 COPY backend/pyproject.toml /app/pyproject.toml
 COPY backend/uv.lock /app/uv.lock
-COPY backend/package /app/package
+COPY backend/package/pyproject.toml /app/package/pyproject.toml
 
-# Install all dependencies via uv sync (uses Docker cache mount)
+# Create a skeleton directory structure for the local 'Yunesa' package.
+# This allows 'uv sync' to "install" the local package in editable mode 
+# without needing the actual source code yet.
+RUN mkdir -p /app/package/yunesa && touch /app/package/yunesa/__init__.py
+
+# Initial sync - This layer is CACHED until dependencies change.
+# Changes to your code will NOT trigger this heavy download step.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev 2>/dev/null || uv lock && uv sync --no-dev
 
 # -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"
 
-# ── LAYER 2: Server code (BUSTS on every code change) ──────
+# ── LAYER 2: Actual Source Code (BUSTS on code change) ──────
+# Now copy the real source code. This is very fast (milliseconds).
+COPY backend/package /app/package
 COPY backend/server /app/server
 COPY configs /app/configs
 
+# Final fast sync to link actual source files correctly.
+# This step is nearly instant because all heavy lifting is already cached.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
 # -- Expose Port --
-EXPOSE 8000
+EXPOSE 5050
 
 # -- Health Check --
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:5050/health || exit 1
 
 # -- Default: Run FastAPI with Uvicorn --
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "5050", "--workers", "1"]

@@ -109,32 +109,28 @@ def _fetch_target_scopus_ids(test_target_id: str | None = None) -> list[str]:
         return [test_target_id]
 
     loader = SupabaseLoader()
-    logger.info("      🐳 Fetching Scopus IDs from Supabase instead of CSV...")
-    response = loader.client.table("lecturers").select("scopus_id").execute()
+    logger.info("      🐳 Fetching Scopus IDs from Supabase...")
+    
+    try:
+        response = loader.client.table("lecturers").select("scopus_id").execute()
+        ids: set[str] = set()
+        for row in response.data:
+            sid = str(row.get("scopus_id", "")).strip().replace(".0", "")
+            if sid and sid.lower() not in ("nan", "none", "null"):
+                ids.add(sid)
 
-    ids: set[str] = set()
-    for row in response.data:
-        sid = str(row.get("scopus_id", "")).strip().replace(".0", "")
-        if sid and sid.lower() not in ("nan", "none", "null"):
-            ids.add(sid)
-
-    target_ids = list(ids)
-
-    # --- TEST LIMIT ---
-    # TODO: Remove this limit for production
-    target_ids = target_ids[:1]
-    logger.info(f"🧪 DEBUG: Limited to 1 ID for testing: {target_ids}")
-
-    return target_ids
+        target_ids = list(ids)
+        logger.info(f"      ✅ Found {len(target_ids)} unique Scopus IDs.")
+        return target_ids
+    except Exception as e:
+        logger.error(f"      ❌ Failed to fetch IDs from Supabase: {e}")
+        return []
 
 
-def extract_scopus_papers(limit_per_author: int = 500, test_target_id: str | None = None):
+def extract_scopus_papers(limit_per_author: int = 500, test_target_id: str | None = None, cutoff_year: int | None = None):
     """
     Scrape papers from Scopus using ScopusPaperClient.
-    Saved to data/raw/dosen_papers_scopus_raw.csv.
-
-    Uses batched isolated sessions (5 IDs per batch) to balance
-    speed (fewer logins) and stability (fresh browser per batch).
+    Uses Batched Advanced Search for maximum speed and stability.
     """
     try:
         from knowledge.etl.scraping.scopus_client import ScopusPaperClient
@@ -142,33 +138,36 @@ def extract_scopus_papers(limit_per_author: int = 500, test_target_id: str | Non
         logger.error(f"❌ Failed to load ScopusClient: {e}")
         return []
 
-    logger.info("\n📚 EXTRACT: SCOPUS SCRAPING")
+    logger.info("\n📚 EXTRACT: SCOPUS SCRAPING (BATCH MODE)")
 
     target_ids = _fetch_target_scopus_ids(test_target_id)
-    logger.info(f"🎯 Found {len(target_ids)} Scopus IDs to scrape.")
     if not target_ids:
+        logger.warning("⚠️ No Scopus IDs found to process.")
         return []
 
-    # ── Batched Isolated Sessions ──
+    # ── Batched Advanced Search Sessions ──
+    # Increased batch size as Advanced Search can handle many IDs in one query string
     all_papers: list[dict] = []
-    BATCH_SIZE = 5
+    BATCH_SIZE = 50 
 
     for i in range(0, len(target_ids), BATCH_SIZE):
         batch = target_ids[i : i + BATCH_SIZE]
         batch_num = (i // BATCH_SIZE) + 1
         total_batches = (len(target_ids) + BATCH_SIZE - 1) // BATCH_SIZE
 
-        logger.info(f"\n--- 🔄 Processing Batch [{batch_num}/{total_batches}]: {batch} ---")
+        logger.info(f"\n--- 🔄 Processing Batch [{batch_num}/{total_batches}] ({len(batch)} IDs) ---")
 
-        # Fresh client & driver for EACH BATCH to prevent DevTools memory crashes
         client = ScopusPaperClient(SCIVAL_EMAIL, SCIVAL_PASS)
         client = _apply_docker_chromium_patch(client)
 
         try:
-            papers = client.run_scraper(batch)
+            # Pass cutoff_year to the optimized run_scraper
+            papers = client.run_scraper(batch, cutoff_year=cutoff_year)
             if papers:
                 all_papers.extend(papers)
-                logger.info(f"      ✅ Total accumulated: {len(all_papers)}")
+                logger.info(f"      ✅ Batch total: {len(papers)} | Accumulated: {len(all_papers)}")
+            else:
+                logger.warning(f"      ⚠️ No papers found for this batch.")
         except Exception as e:
             logger.error(f"      ❌ Fatal runtime error on batch {batch_num}: {e}")
         finally:
@@ -178,19 +177,26 @@ def extract_scopus_papers(limit_per_author: int = 500, test_target_id: str | Non
             except Exception:
                 pass
 
-        # Short sleep to let the container OS recover ports
+        # Brief pause between browser sessions
         if batch_num < total_batches:
-            time.sleep(5)
+            time.sleep(3)
 
     # ── Save Results ──
     df_new = pd.DataFrame(all_papers) if all_papers else pd.DataFrame()
     raw_csv = RAW_DATA_DIR / "dosen_papers_scopus_raw.csv"
 
     if not df_new.empty:
+        # Deduplicate results if multiple authors overlap on same papers
+        if "eid" in df_new.columns:
+            initial_count = len(df_new)
+            df_new = df_new.drop_duplicates(subset=["eid"])
+            if len(df_new) < initial_count:
+                logger.info(f"      ✨ Deduplicated {initial_count - len(df_new)} overlapping papers.")
+
         df_new.to_csv(raw_csv, index=False)
-        logger.info(f"\n✅ Saved {len(df_new)} new papers to {raw_csv}")
+        logger.info(f"\n✅ SUCCESS: Saved {len(df_new)} papers to {raw_csv}")
     else:
         pd.DataFrame().to_csv(raw_csv, index=False)
-        logger.info("\n⚠️ No new papers scraped.")
+        logger.info("\n⚠️ No papers collected in this run.")
 
     return all_papers

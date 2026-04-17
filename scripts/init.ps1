@@ -70,6 +70,34 @@ AIRFLOW_FERNET_KEY=dG9wU2VqcmV0RmVybmV0S2V5MTIzNDU2Nzg5MEFCQ0Q=
 }
 
 Write-Host ""
+Write-Host "📂 Creating Docker volume directories..." -ForegroundColor Cyan
+Write-Host "======================================" -ForegroundColor Cyan
+
+$volumeDirs = @(
+    "docker/volumes/postgres/data",
+    "docker/volumes/milvus/etcd",
+    "docker/volumes/milvus/minio",
+    "docker/volumes/milvus/milvus",
+    "docker/volumes/neo4j/data",
+    "docker/volumes/neo4j/logs",
+    "docker/volumes/neo4j/plugins",
+    "docker/volumes/neo4j/import",
+    "docker/volumes/prometheus/data",
+    "docker/volumes/grafana/data",
+    "docker/volumes/redis/data",
+    "logs"
+)
+
+foreach ($dir in $volumeDirs) {
+    if (-not (Test-Path $dir)) {
+        New-Item -Path $dir -ItemType Directory -Force | Out-Null
+        Write-Host "✅ Created $dir" -ForegroundColor Green
+    } else {
+        Write-Host "ℹ️ $dir already exists" -ForegroundColor Gray
+    }
+}
+
+Write-Host ""
 Write-Host "📦 Pulling Docker images..." -ForegroundColor Cyan
 Write-Host "=========================" -ForegroundColor Cyan
 
