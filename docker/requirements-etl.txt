@@ -1,0 +1,26 @@
+# --- Core Data & ETL ---
+pandas>=2.2.3
+numpy>=1.26.4
+requests>=2.32.3
+tqdm>=4.66.4
+python-dotenv>=1.1.0
+pyyaml>=6.0.2
+
+# --- Web Scraping ---
+beautifulsoup4>=4.12.2
+selenium>=4.25.0
+webdriver-manager>=4.0.2
+# Library khusus PDDIKTI milikmu
+pddiktipy>=2.0.6
+
+# --- Database & Storage ---
+# supabase-py akan otomatis menginstall httpx, postgrest, gotrue
+supabase>=2.10.0
+
+# --- Utilitas ---
+pydantic>=2.9.2
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.27.3
+
+# --- AI / LLM ---
+groq>=0.11.0

@@ -1,0 +1,16 @@
+# Shared Database & Infrastructure Configuration
+
+neo4j:
+  default_port: 7687
+  default_db: "infokom-unesa"
+  user: "neo4j"
+  password: "71509325"
+
+milvus:
+  default_host: "milvus-standalone"
+  default_port: 19530
+
+postgres:
+  user: "airflow"
+  db: "airflow"
+  port: 5432

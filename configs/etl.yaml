@@ -1,0 +1,21 @@
+# ETL Pipeline Configuration
+# Priority: .env (Highest) > etl.yaml > default_values
+
+supabase:
+  url: "https://wfjzdhaaldwyiajbyzln.supabase.co"
+  # Keys should stay in .env for security
+
+scival:
+  email: "rizky.22017@mhs.unesa.ac.id"
+  # Passwords should stay in .env
+
+serpapi:
+  # Key should stay in .env
+
+bright_data:
+  # Proxies should stay in .env
+
+crawler:
+  max_retries: 3
+  timeout: 60
+  headless: true

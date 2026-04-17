@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🎓 UNESA Knowledge Graph
+# 🎓 UNESA Knowledge Graph (Project Suncatcher)
 
-**Academic Knowledge Graph Construction & GraphRAG Pipeline**
+**Academic Knowledge Graph Construction & Hybrid GraphRAG Pipeline**
 
-[![Pipeline](https://gitlab.com/rizkyyanuark/Tugas_Akhir/badges/main/pipeline.svg)](https://gitlab.com/rizkyyanuark/Tugas_Akhir/-/pipelines)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://python.org)
-[![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.8.1-017CEE.svg)](https://airflow.apache.org)
+[![Airflow](https://img.shields.io/badge/Apache%20Airflow-2.8.0-017CEE.svg)](https://airflow.apache.org)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5.15-008CC1.svg)](https://neo4j.com)
+[![Vue](https://img.shields.io/badge/Vue.js-3.0-4FC08D.svg)](https://vuejs.org/)
 
-*End-to-end ETL pipeline for constructing a Knowledge Graph from academic publications of INFOKOM UNESA, powered by Apache Airflow orchestration and Neo4j graph database.*
+*Hybrid Architecture: ETL Pipeline (Airflow + Ops) with Agent & UI Layer for explorer of UNESA INFOKOM academic Knowledge Graph.*
 
 </div>
 
@@ -17,221 +17,130 @@
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Architecture](#architecture)
+- [Project Summary](#project-summary)
+- [Architectural Principles (Hybrid Adoption)](#architectural-principles-hybrid-adoption)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Deployment](#deployment)
-- [Monitoring](#monitoring)
-- [Contributing](#contributing)
+- [Directory Structure](#directory-structure)
+- [How to Run (Development)](#how-to-run-development)
+- [Deployment (CI/CD)](#deployment-cicd)
+- [Observability](#observability)
 
-## Overview
+## Project Summary
 
-This project builds an automated data pipeline that:
+Project **Strwythura** focuses on building an academic Knowledge Graph for UNESA using the GraphRAG approach. Instead of using Black-Box solutions, this project maintains **Data Sovereignty** at the *Ingestion* layer (custom Airflow & Entity Resolution), but integrates a UI/Agent framework based on **agenticrag** at the presentation layer.
 
-1. **Extracts** academic publication data from multiple sources (Scopus, Google Scholar, OpenAlex, Semantic Scholar)
-2. **Transforms** raw data through cleaning, deduplication, author mapping, and AI-powered TLDR summarization
-3. **Loads** structured data into Neo4j as a Knowledge Graph and Supabase as a relational data warehouse
-4. **Serves** the Knowledge Graph via a GraphRAG (Graph Retrieval-Augmented Generation) interface
+## Architectural Principles (Hybrid Adoption)
 
-## Architecture
+Based on managerial guidance, this project applies a strict *separation of concerns*:
 
-```mermaid
-flowchart TB
-    subgraph Extract
-        A[Scopus API] --> D[Raw Data]
-        B[Google Scholar] --> D
-        C[OpenAlex API] --> D
-    end
+1. **Ingestion & ETL Layer (Custom / Internal)**
+   - The process of academic data extraction, *entity resolution*, and construction into Neo4j remains 100% controlled by internal scripts using Apache Airflow (`/orchestration`).
+   - Does not use default third-party document parsers to maintain domain-specific accuracy.
 
-    subgraph Transform
-        D --> E[Data Cleaning]
-        E --> F[Deduplication]
-        F --> G[Author Mapping]
-        G --> H[TLDR Summarization]
-    end
+2. **Storage Layer (Neo4j, Milvus, Supabase)**
+   - **Supabase (PostgreSQL):** As a *real-time* Data Warehouse for lecturer & paper tables.
+   - **Neo4j:** As the *System of Record* for relational graphs.
+   - **Milvus:** As a dedicated Vector Database for GraphRAG.
 
-    subgraph Load
-        H --> I[(Neo4j Graph DB)]
-        H --> J[(Supabase DWH)]
-    end
-
-    subgraph Orchestration
-        K[Apache Airflow] -.->|orchestrates| Extract
-        K -.->|orchestrates| Transform
-        K -.->|orchestrates| Load
-    end
-
-    subgraph Monitoring
-        L[Prometheus] --> M[Grafana]
-        I -.->|metrics| L
-        K -.->|metrics| L
-    end
-```
+3. **Agent & UI Layer (Partial Adoption from agenticrag)**
+   - Uses the *application shell* from agenticrag as reference for Chat UI, Tool Orchestration, and Agent Workflow features (`/web` and `/backend/server`).
+   - Addition of custom `/dashboard` routes directly connected to Supabase & Neo4j for statistical visualization (Total Papers, Total Lecturers) directly on the UI.
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Orchestration** | Apache Airflow 2.8.1 | DAG scheduling & workflow management |
-| **Graph Database** | Neo4j 5.15 Enterprise | Knowledge Graph storage & querying |
-| **Data Warehouse** | Supabase (PostgreSQL) | Relational data storage |
-| **Vector Database** | Weaviate | Embedding storage for GraphRAG |
-| **Monitoring** | Prometheus + Grafana | System & application metrics |
-| **Reverse Proxy** | Nginx | Routing & load balancing |
-| **CI/CD** | GitLab CI/CD | Automated build & deployment |
-| **Cloud** | AWS EC2 + ECR | Production hosting |
-| **DNS & Security** | Cloudflare | SSL, DNS, Zero Trust Access |
+| Layer | Primary Technology | Role |
+|-------|-----------------|-------|
+| **Frontend/UI** | Vue 3, Vite | Chat UI, Node Explorer, Academic Dashboard |
+| **Backend/Agent** | FastAPI, LangGraph | *Query routing*, *Tool orchestration*, *Graph traversal* |
+| **Orchestration** | Apache Airflow 2.8.0 | *Job mapping*, *Retry orchestration*, External ETL |
+| **Graph DB** | Neo4j 5.15 | *Knowledge Graph Storage* & *Cypher queries* |
+| **Vector DB** | Milvus | *Semantic similarity search*, LlamaIndex integration |
+| **Relational DB**| Supabase, Redis | Factual tables, temporary memory cache queue |
 
-## Project Structure
+## Directory Structure
 
-```
+The architecture is at the *root-level* hierarchy to facilitate independent *microservices*.
+
+```text
 Tugas_Akhir/
+├── README.md                      # This documentation
+├── Makefile                       # System command shortcuts (make dev-all, make clean)
+├── .env                           # Credentials & Routing (Critical Mismatches solved)
+├── docker-compose.yml             # Root-level container orchestration
+├── docker-compose.prod.yml        # Production override for deployment
 │
-├── README.md                       # You are here
-├── Makefile                        # Shortcut commands (make dev, make deploy)
-├── .env.example                    # Environment variables template
-├── .gitlab-ci.yml                  # CI/CD pipeline definition
-├── pyproject.toml                  # Python project metadata
-├── requirements.txt                # Python dependencies
+├── web/                           # 🟢 Frontend Application (Vite/Vue3)
+│   ├── src/views/DashboardView.vue# Custom Extension: Academic Statistics
+│   └── (agenticrag Application Shell)
 │
-├── src/                            # 🟢 Production Application Code
-│   ├── etl/                        #    ETL Pipeline
-│   │   ├── extract/                #    Data extraction (Scopus, Scholar, etc.)
-│   │   ├── transform/              #    Cleaning, dedup, enrichment, TLDR
-│   │   └── load/                   #    Supabase & Neo4j loaders
-│   ├── backend/                    #    REST API (in development)
-│   ├── frontend/                   #    Web UI (in development)
-│   └── graphrag/                   #    GraphRAG retrieval (in development)
+├── backend/                       # 🟢 Agent & API Service
+│   ├── server/routers/            # API Endpoints (including /stats/academic)
+│   └── package/ta_backend_core/   # LangGraph Agents, Tools & Config (info.local.yaml)
 │
-├── dags/                           # 🟢 Airflow DAG Definitions
-│   ├── unesa_papers_dag.py         #    Main papers ETL pipeline
-│   └── unesa_lecturers_dag.py      #    Lecturers data pipeline
+├── orchestration/                 # 🟢 Airflow Pipeline & Scripts
+│   ├── dags/                      # Pipeline Definitions (unesa_papers_dag.py etc.)
+│   └── (Internal Scraper Scripts)
 │
-├── plugins/                        # 🟢 Airflow Custom Plugins
+├── docker/                        # 🟢 Container Definitions
+│   ├── api.Dockerfile             # Image for backend FastAPI
+│   ├── web.Dockerfile             # Image for frontend Vue
+│   ├── airflow.Dockerfile         # Special Airflow Image + Dependencies
+│   └── etl-worker.Dockerfile      # Independent Scraping execution image
 │
-├── infra/                          # 🟢 Infrastructure & DevOps
-│   ├── docker/                     #    Docker configurations
-│   │   ├── Dockerfile.airflow      #    Custom Airflow image (with Chromium)
-│   │   ├── docker-compose.yml      #    Development environment
-│   │   └── docker-compose.prod.yml #    Production environment
-│   ├── nginx/                      #    Reverse proxy configuration
-│   │   └── nginx.conf
-│   ├── scripts/                    #    Server setup & maintenance
-│   │   ├── setup_server.sh
-│   │   └── setup_swap.sh
-│   └── monitoring/                 #    Observability stack
-│       ├── grafana/                #    Dashboards & provisioning
-│       └── prometheus/             #    Metrics collection
-│
-├── notebooks/                      # 🔬 Research & Experiments
-│   ├── scraping/                   #    Data scraping experiments
-│   ├── training/                   #    ML model training (CPT + SFT)
-│   └── build-graph/                #    KG construction prototypes
-│
-├── data/                           # 📊 Sample & Test Data
-│
-└── docs/                           # 📄 Academic Documents
-    ├── proposal tugas akhir/       #    TA proposal (LaTeX)
-    ├── supabase_new_schema.sql     #    Database schema reference
-    └── flowchart.mmd               #    System flowchart (Mermaid)
+├── configs/                       # Milvus, Redis, Database configurations
+├── monitoring/                    # Grafana & Prometheus (Focus in Phase 3)
+└── scripts/                       # Shell scripts (EC2 setup, etc.)
 ```
 
-## Getting Started
+## How to Run (Development)
 
-### Prerequisites
+The system uses a single Docker Compose. A minimum of **8GB RAM** instance is recommended to lift the entire Graph + Vector + LLM Agent stack.
 
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-- [Python 3.10+](https://python.org)
-- [Make](https://www.gnu.org/software/make/) (optional, for shortcut commands)
-
-### Quick Start (Development)
+### Preparation
 
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/rizkyyanuark/Tugas_Akhir.git
 cd Tugas_Akhir
 
-# 2. Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your API keys and credentials
-
-# 3. Start core services (Airflow + Neo4j)
-make dev
-
-# 4. Start with all profiles (includes monitoring & vector db)
-make dev-all
+# 2. Prepare Environment (Check .env)
+# Ensure AGENTICRAG_BRAND_FILE_PATH, SUPABASE_URL, NEO4J_URI are filled.
 ```
 
-### Available Make Commands
-
-| Command | Description |
-|---------|-------------|
-| `make dev` | Start core services (Airflow + Neo4j) |
-| `make dev-all` | Start all services (core + monitoring + vectordb) |
-| `make down` | Stop all running services |
-| `make logs` | Follow container logs |
-| `make deploy` | Push to GitHub & GitLab (triggers CI/CD) |
-| `make status` | Check GitLab pipeline status |
-| `make help` | Show all available commands |
-
-### Accessing Services (Development)
-
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Airflow | [localhost:8080](http://localhost:8080) | `admin` / *(from .env)* |
-| Neo4j Browser | [localhost:7474](http://localhost:7474) | `neo4j` / *(from .env)* |
-| Grafana | [localhost:3000](http://localhost:3000) | `admin` / *(from .env)* |
-| Prometheus | [localhost:9090](http://localhost:9090) | No auth |
-
-## Deployment
-
-Production deployment is automated via **GitLab CI/CD**. Pushing to the `main` branch triggers:
-
-1. **Build Stage**: Docker image built and pushed to AWS ECR
-2. **Deploy Stage**: Files SCP'd to EC2, Docker Compose up with monitoring
+### Start Full Application (API, Web, Neo4j, Milvus, Redis)
+Only starts the core application (*End-User Layer*).
 
 ```bash
-# Deploy to production
-make deploy
+docker compose up -d postgres graph redis milvus etcd minio api web
 ```
 
-### Production URLs
+### Start Separate ETL & Scraping Mode
+Run this when you only want to process Airflow or build the Graph without starting the UI.
 
-| Service | URL |
-|---------|-----|
-| Airflow | [airflow.tugasakhir.space](https://airflow.tugasakhir.space) |
-| Neo4j | [neo4j.tugasakhir.space](https://neo4j.tugasakhir.space) |
-| Grafana | [grafana.tugasakhir.space](https://grafana.tugasakhir.space) |
-| Prometheus | [prometheus.tugasakhir.space](https://prometheus.tugasakhir.space) |
+```bash
+docker compose --profile etl up -d
+```
 
-> **Note:** Production services are protected by Cloudflare Zero Trust Access (Email OTP).
+Or use the provided `Makefile`.
 
-## Monitoring
+## Deployment (CI/CD)
 
-The monitoring stack includes:
+This project is configured via `.gitlab-ci.yml`. Each *push* to the `main` branch will:
+1. Compile `API`, `Web`, `Airflow`, and `Worker` *images* to AWS ECR.
+2. Open an `SSH` connection to the AWS EC2 Instance.
+3. Synchronize the root directory via `scp`.
+4. Re-execute `docker compose` on the AWS server with `.prod.yml` modification.
 
-- **Prometheus** — Collects metrics from Neo4j, Node Exporter, and Weaviate
-- **Grafana** — Visualizes metrics with pre-configured dashboards
-- **Node Exporter** — System-level metrics (CPU, RAM, Disk)
+> **Current Status:** Deployment successful. Pipeline integration is seamless.
 
-See [`infra/monitoring/README_MONITORING.md`](infra/monitoring/README_MONITORING.md) for detailed monitoring documentation.
+## Observability
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+The system is equipped with:
+- **Opik / Langfuse:** To track *Agent Trace* (LLM Input/Output, *Tool Calling Time*).
+- **Future Steps (Phase 3):** Implementation of Grafana Cloud or local Prometheus setup to monitor *Milvus RAM* load and *Neo4j IOPS*.
 
 ---
-
 <div align="center">
-
-**Rizky Yanuar Kristianto** — Sains Data, Universitas Negeri Surabaya (UNESA)
-
-*Tugas Akhir 2025/2026*
-
+  <b>Rizky Yanuar Kristianto</b> — Data Science, Surabaya State University (UNESA) <br>
+  <i>Knowledge Graph RAG Pipeline 2025/2026</i>
 </div>

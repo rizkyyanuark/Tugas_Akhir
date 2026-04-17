@@ -1,0 +1,392 @@
+<template>
+  <div class="basic-settings-section">
+    <template v-if="userStore.isAdmin">
+      <div class="section-title">Default settings</div>
+      <div class="settings-panel">
+        <template v-if="userStore.isSuperAdmin">
+          <div class="setting-row two-cols">
+            <div class="col-item">
+              <div class="setting-label">
+                {{ items?.default_model?.des || 'Default chat model' }}
+              </div>
+              <div class="setting-content">
+                <ModelSelectorComponent
+                  @select-model="handleChatModelSelect"
+                  :model_spec="configStore.config?.default_model"
+                  placeholder="Select default model"
+                />
+              </div>
+            </div>
+            <div class="col-item">
+              <div class="setting-label">{{ items?.fast_model?.des }}</div>
+              <div class="setting-content">
+                <ModelSelectorComponent
+                  @select-model="handleFastModelSelect"
+                  :model_spec="configStore.config?.fast_model"
+                  placeholder="Select model"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="setting-row two-cols">
+            <div class="col-item">
+              <div class="setting-label">{{ items?.embed_model?.des }}</div>
+              <div class="setting-content">
+                <EmbeddingModelSelector
+                  :value="configStore.config?.embed_model"
+                  @change="handleChange('embed_model', $event)"
+                  style="width: 100%"
+                />
+              </div>
+            </div>
+            <div class="col-item">
+              <div class="setting-label">{{ items?.reranker?.des }}</div>
+              <div class="setting-content">
+                <a-select
+                  class="full-width"
+                  :value="configStore.config?.reranker"
+                  @change="handleChange('reranker', $event)"
+                  placeholder="Select reranker model"
+                >
+                  <a-select-option v-for="(name, idx) in rerankerChoices" :key="idx" :value="name"
+                    >{{ name }}
+                  </a-select-option>
+                </a-select>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div class="setting-row">
+          <div class="col-item">
+            <div class="setting-label">Default agent</div>
+            <div class="setting-content">
+              <a-select
+                class="agent-select"
+                :value="agentStore.defaultAgentId"
+                :options="agentOptions"
+                :loading="isSettingDefaultAgent"
+                :disabled="isSettingDefaultAgent || !agentOptions.length"
+                placeholder="Select default agent"
+                @change="handleDefaultAgentChange"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="userStore.isSuperAdmin">
+        <div class="section-title">Content moderation settings</div>
+        <div class="section">
+          <div class="card">
+            <span class="label">{{ items?.enable_content_guard?.des }}</span>
+            <a-switch
+              :checked="configStore.config?.enable_content_guard"
+              @change="handleChange('enable_content_guard', $event)"
+            />
+          </div>
+          <div class="card" v-if="configStore.config?.enable_content_guard">
+            <span class="label">{{ items?.enable_content_guard_llm?.des }}</span>
+            <a-switch
+              :checked="configStore.config?.enable_content_guard_llm"
+              @change="handleChange('enable_content_guard_llm', $event)"
+            />
+          </div>
+          <div
+            class="card card-select"
+            v-if="
+              configStore.config?.enable_content_guard &&
+              configStore.config?.enable_content_guard_llm
+            "
+          >
+            <span class="label">{{ items?.content_guard_llm_model?.des }}</span>
+            <ModelSelectorComponent
+              @select-model="handleContentGuardModelSelect"
+              :model_spec="configStore.config?.content_guard_llm_model"
+              placeholder="Select model"
+            />
+          </div>
+        </div>
+      </template>
+    </template>
+
+    <!-- Service links section -->
+    <div v-if="userStore.isAdmin" class="section-title">Service links</div>
+    <div v-if="userStore.isAdmin">
+      <p class="section-description">
+        Quick access to system-related external services. Replace localhost with the actual IP
+        address.
+      </p>
+      <div class="services-grid">
+        <div class="service-link-card">
+          <div class="service-info">
+            <h4>Neo4j browser</h4>
+            <p>Graph database management interface</p>
+          </div>
+          <a-button
+            type="default"
+            class="lucide-icon-btn"
+            @click="openLink('http://localhost:7474/')"
+            :icon="h(Globe, { size: 18 })"
+          >
+            Open
+          </a-button>
+        </div>
+
+        <div class="service-link-card">
+          <div class="service-info">
+            <h4>API documentation</h4>
+            <p>System API docs and debugging tools</p>
+          </div>
+          <a-button
+            type="default"
+            class="lucide-icon-btn"
+            @click="openLink('http://localhost:5050/docs')"
+            :icon="h(Globe, { size: 18 })"
+          >
+            Open
+          </a-button>
+        </div>
+
+        <div class="service-link-card">
+          <div class="service-info">
+            <h4>MinIO object storage</h4>
+            <p>File storage management console</p>
+          </div>
+          <a-button
+            type="default"
+            class="lucide-icon-btn"
+            @click="openLink('http://localhost:9001')"
+            :icon="h(Globe, { size: 18 })"
+          >
+            Open
+          </a-button>
+        </div>
+
+        <div class="service-link-card">
+          <div class="service-info">
+            <h4>Milvus WebUI</h4>
+            <p>向量数据库管理界面</p>
+          </div>
+          <a-button
+            type="default"
+            class="lucide-icon-btn"
+            @click="openLink('http://localhost:9091/webui/')"
+            :icon="h(Globe, { size: 18 })"
+          >
+            Open
+          </a-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, h, onMounted, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { useConfigStore } from '@/stores/config'
+import { useAgentStore } from '@/stores/agent'
+import { useUserStore } from '@/stores/user'
+import { Globe } from 'lucide-vue-next'
+import ModelSelectorComponent from '@/components/ModelSelectorComponent.vue'
+import EmbeddingModelSelector from '@/components/EmbeddingModelSelector.vue'
+
+const configStore = useConfigStore()
+const agentStore = useAgentStore()
+const userStore = useUserStore()
+const items = computed(() => configStore.config?._config_items || {})
+const isSettingDefaultAgent = ref(false)
+
+const rerankerChoices = computed(() => {
+  return Object.keys(configStore?.config?.reranker_names || {}) || []
+})
+
+const agentOptions = computed(() =>
+  (agentStore.agents || []).map((agent) => ({
+    label: agent.name || 'Unknown',
+    value: agent.id
+  }))
+)
+
+const handleChange = (key, e) => {
+  configStore.setConfigValue(key, e)
+}
+
+const handleChatModelSelect = (spec) => {
+  if (typeof spec === 'string' && spec) {
+    configStore.setConfigValue('default_model', spec)
+  }
+}
+
+const handleFastModelSelect = (spec) => {
+  if (typeof spec === 'string' && spec) {
+    configStore.setConfigValue('fast_model', spec)
+  }
+}
+
+const handleContentGuardModelSelect = (spec) => {
+  if (typeof spec === 'string' && spec) {
+    configStore.setConfigValue('content_guard_llm_model', spec)
+  }
+}
+
+const handleDefaultAgentChange = async (agentId) => {
+  if (!agentId || agentId === agentStore.defaultAgentId) return
+
+  isSettingDefaultAgent.value = true
+  try {
+    await agentStore.setDefaultAgent(agentId)
+    message.success('Default agent updated')
+  } finally {
+    isSettingDefaultAgent.value = false
+  }
+}
+
+const openLink = (url) => {
+  window.open(url, '_blank')
+}
+
+onMounted(async () => {
+  if (!agentStore.agents.length) {
+    await agentStore.fetchAgents()
+  }
+  if (!agentStore.defaultAgentId) {
+    await agentStore.fetchDefaultAgent()
+  }
+})
+</script>
+
+<style lang="less" scoped>
+.basic-settings-section {
+  .section {
+    background-color: var(--gray-0);
+    padding: 10px 16px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border: 1px solid var(--gray-150);
+  }
+
+  .settings-panel {
+    background-color: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    &.two-cols {
+      flex-direction: row;
+      gap: 20px;
+    }
+
+    .col-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+  }
+
+  .setting-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+  }
+
+  .setting-content {
+    width: 100%;
+
+    .full-width {
+      width: 100%;
+    }
+  }
+
+  .card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .label {
+      margin-right: 20px;
+      font-weight: 500;
+      color: var(--gray-800);
+      flex-shrink: 0;
+      min-width: 140px;
+    }
+
+    &.card-select {
+      align-items: flex-start;
+      gap: 12px;
+
+      .label {
+        margin-right: 0;
+        margin-top: 6px;
+      }
+    }
+  }
+
+  .agent-select {
+    width: 320px;
+    max-width: 100%;
+  }
+
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .service-link-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border: 1px solid var(--gray-150);
+    border-radius: 8px;
+    background: var(--gray-0);
+    transition: all 0.2s;
+    min-height: 70px;
+
+    &:hover {
+      box-shadow: 0 1px 8px var(--gray-150);
+      border-color: var(--gray-100);
+    }
+
+    .service-info {
+      flex: 1;
+      margin-right: 16px;
+
+      h4 {
+        margin: 0 0 4px 0;
+        color: var(--gray-900);
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      p {
+        margin: 0;
+        color: var(--gray-600);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .agent-select {
+      width: 100%;
+    }
+  }
+}
+</style>
