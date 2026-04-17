@@ -39,7 +39,7 @@ class SintaCrawler:
             return []
 
         profiles: list[dict] = []
-        print(f"   📂 Sinta Crawl: {prodi_name}")
+        print(f"     Sinta Crawl: {prodi_name}")
 
         for page in range(1, self.MAX_PAGES + 1):
             try:
@@ -75,7 +75,7 @@ class SintaCrawler:
                 time.sleep(0.5)
 
             except Exception as e:
-                print(f"      ❌ Error page {page}: {e}")
+                print(f"        Error page {page}: {e}")
                 break
 
         return profiles

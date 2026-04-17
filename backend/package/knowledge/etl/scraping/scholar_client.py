@@ -8,6 +8,7 @@ import pandas as pd
 from urllib.parse import urlparse, parse_qs
 from difflib import SequenceMatcher
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class ScholarVerificationClient:
@@ -31,36 +32,42 @@ class ScholarVerificationClient:
             'User-Agent': HEADERS['User-Agent'],
             'Accept-Language': 'en-US,en;q=0.9',
         }
-        self._request_count = 0
-    
-    def _get(self, url, timeout=30, max_retries=3):
-        """Make a proxied GET request with rate limiting and retry."""
-        self._request_count += 1
-        if self._request_count % 5 == 0:
-            time.sleep(random.uniform(2, 4))
-        else:
-            time.sleep(random.uniform(0.5, 1.5))
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
+        if self.proxies:
+            self.session.proxies.update(self.proxies)
         
+        # Disable warnings for proxies
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        
+    
+    def _get(self, url, timeout=45, max_retries=3):
+        """Make a proxied GET request with retry and shared session."""
         for attempt in range(1, max_retries + 1):
             try:
-                resp = requests.get(
+                # Add a small staggered delay for concurrency to avoid 429
+                time.sleep(random.uniform(0.1, 0.5))
+                
+                resp = self.session.get(
                     url, 
-                    headers=self.headers, 
-                    proxies=self.proxies, 
                     timeout=timeout,
                     allow_redirects=True,
                     verify=False
                 )
+                
+                if resp.status_code == 429:
+                    wait = 5 * attempt
+                    print(f"         Google Rate Limit (429). Retrying in {wait}s...")
+                    time.sleep(wait)
+                    continue
+                    
                 return resp
             except requests.exceptions.RequestException as e:
                 if attempt < max_retries:
-                    wait = attempt * 3
+                    wait = attempt * 5
                     time.sleep(wait)
                 else:
-                    print(f"      ⚠️ Request failed after {max_retries} attempts: {type(e).__name__}")
+                    print(f"         Request failed after {max_retries} attempts for {url[:50]}: {type(e).__name__}")
                     return None
     
     def _normalize_name(self, name):
@@ -82,7 +89,7 @@ class ScholarVerificationClient:
             return {'valid': False, 'profile_name': '', 'score': 0}
         
         if 'sorry' in resp.url or 'robot' in resp.text.lower()[:500]:
-            print(f"      ⚠️ Captcha detected for {scholar_id}, retrying in 10s...")
+            print(f"         Captcha detected for {scholar_id}, retrying in 10s...")
             time.sleep(10)
             resp = self._get(url)
             if resp is None or 'sorry' in resp.url:
@@ -179,6 +186,67 @@ class ScholarVerificationClient:
             return match.group(1)
         return None
 
+    def verify_batch(self, tasks, max_workers=5):
+        """
+        Process a list of verification/search tasks in parallel.
+        Tasks list format: [{'index': idx, 'name': str, 'id': str}, ...]
+        Returns: [{'index': idx, 'valid': bool, 'id': str}, ...]
+        """
+        results = []
+        print(f"     Starting Parallel Scholar Verification ({max_workers} threads)...")
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_task = {}
+            
+            for task in tasks:
+                name = task['name']
+                sid = task.get('id')
+                future = executor.submit(self._process_single_lecturer, name, sid)
+                future_to_task[future] = task
+            
+            done_count = 0
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                idx = task['index']
+                name = task['name']
+                try:
+                    res_sid = future.result()
+                    results.append({
+                        'index': idx,
+                        'valid': bool(res_sid),
+                        'id': res_sid
+                    })
+                except Exception as exc:
+                    print(f"        {name} generated an exception: {exc}")
+                    results.append({
+                        'index': idx,
+                        'valid': False,
+                        'id': None
+                    })
+                
+                done_count += 1
+                if done_count % 5 == 0:
+                    print(f"        Progress: {done_count}/{len(tasks)} processed")
+                    
+        return results
+
+    def _process_single_lecturer(self, name, sid):
+        """Logic for a single lecturer: verify or search."""
+        # 1. VERIFY
+        if sid and str(sid).lower() != 'nan' and len(str(sid)) > 5:
+            res = self.verify_id(sid, name)
+            if res and res['valid']:
+                return sid
+        
+        # 2. SEARCH
+        cands = self.search_google(name)
+        for c in cands:
+            res = self.verify_id(c, name)
+            if res and res['valid']:
+                return c
+                
+        return None
+
 
 class ScholarPaperClient:
     """
@@ -227,12 +295,12 @@ class ScholarPaperClient:
                 if resp.status_code == 200:
                     return resp
                 elif resp.status_code == 429:
-                    print(f"      ⚠️ Rate limited (429). Sleeping 20s...")
+                    print(f"         Rate limited (429). Sleeping 20s...")
                     time.sleep(20)
                 else:
-                    print(f"      ⚠️ Status {resp.status_code} for {url}")
+                    print(f"         Status {resp.status_code} for {url}")
             except Exception as e:
-                print(f"      ⚠️ Request error: {e}")
+                print(f"         Request error: {e}")
                 
             time.sleep(attempt * 3)
             
@@ -246,15 +314,15 @@ class ScholarPaperClient:
         
         while len(all_papers) < limit:
             url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart={cstart}&pagesize={pagesize}"
-            print(f"   🔍 Fetching: {url}")
+            print(f"     Fetching: {url}")
             
             resp = self._get(url)
             if not resp:
-                print("      ❌ Failed to fetch page.")
+                print("        Failed to fetch page.")
                 break
                 
             if "sorry" in resp.url or "captcha" in resp.text.lower():
-                print("      ⚠️ Google Scholar Captcha detected!")
+                print("         Google Scholar Captcha detected!")
                 return all_papers
 
             soup = BeautifulSoup(resp.text, 'html.parser')
@@ -313,7 +381,7 @@ class ScholarPaperClient:
     def run_scraper(self, scholars_list, limit_per_author=100):
         """Scrape papers for a list of scholars."""
         all_data = []
-        print(f"🚀 Starting Proxy Scraper for {len(scholars_list)} authors...")
+        print(f"  Starting Proxy Scraper for {len(scholars_list)} authors...")
         
         for idx, item in enumerate(scholars_list):
             sid = item.get('id')
@@ -324,7 +392,7 @@ class ScholarPaperClient:
             
             for p in papers: p['dosen'] = name
             
-            print(f"      ✅ Found {len(papers)} papers.")
+            print(f"        Found {len(papers)} papers.")
             all_data.extend(papers)
         
         return all_data

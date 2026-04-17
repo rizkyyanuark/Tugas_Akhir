@@ -5,12 +5,12 @@ Multi-Source Keyword & Abstract Extraction Module
 Integrated from 'scraping scopus.ipynb' + API fallbacks.
 
 Enrichment flow:
-  1. SerpAPI Citation API → abstract, title, publisher link (structured)
-  1b. BrightData Scholar Page → publisher/PDF link (proxy scraping)
-  2. Publisher/PDF Page → keywords, abstract, DOI (proxy scraping)
-  2b. CrossRef API → DOI fallback (free, title-based)
-  2c. OpenAlex API → keyword/concept fallback (free)
-  3. Semantic Scholar → TLDR
+  1. SerpAPI Citation API   abstract, title, publisher link (structured)
+  1b. BrightData Scholar Page   publisher/PDF link (proxy scraping)
+  2. Publisher/PDF Page   keywords, abstract, DOI (proxy scraping)
+  2b. CrossRef API   DOI fallback (free, title-based)
+  2c. OpenAlex API   keyword/concept fallback (free)
+  3. Semantic Scholar   TLDR
 
 Proxy strategy (from notebook):
   - Session-based BrightData proxy for Scholar + publisher pages
@@ -39,17 +39,17 @@ from pathlib import Path
 try:
     from knowledge.etl.transform import cleaner
 except ImportError as e:
-    print(f"⚠️ Could not import ETL cleaner: {e}")
+    print(f"   Could not import ETL cleaner: {e}")
     cleaner = None
 
 def _deep_clean_abstract(text):
     if not text: return ""
     import re
     cleaned = str(text).strip()
-    # Hapus noise awalan seperti "Abstrak—", "Abstract:" walau ada spasi di awal
-    cleaned = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-—–:.]+[\s]*', '', cleaned)
+    # Hapus noise awalan seperti "Abstrak ", "Abstract:" walau ada spasi di awal
+    cleaned = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-  :.]+[\s]*', '', cleaned)
     # Hapus blok "Kata Kunci - ..." yang nyangkut di akhir abstract
-    cleaned = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-—–\.].*$', '', cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-  \.].*$', '', cleaned, flags=re.DOTALL)
     
     return cleaner.clean_text(cleaned) if cleaner else cleaned.strip()
 
@@ -184,15 +184,15 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
                     if not stream:
                         is_blocked, reason = _detect_anti_bot(resp)
                         if is_blocked:
-                            print(f"      ⛔ Proxy blocked ({reason}). Falling back to direct...")
+                            print(f"        Proxy blocked ({reason}). Falling back to direct...")
                         else:
                             return resp
                     else:
                         return resp
                 else:
-                    print(f"      ⚠️ Proxy Status: {resp.status_code}. Falling back to direct...")
+                    print(f"         Proxy Status: {resp.status_code}. Falling back to direct...")
             except Exception as e:
-                print(f"      💥 Proxy Error: {e}. Falling back to direct...")
+                print(f"        Proxy Error: {e}. Falling back to direct...")
 
     # 2) Direct request (fallback)
     try:
@@ -200,7 +200,7 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
         try:
             requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
         except requests.exceptions.ConnectionError:
-            print(f"      ⛔ Koneksi Server Mati / DNS Error ({url[:40]}). Skip!")
+            print(f"        Koneksi Server Mati / DNS Error ({url[:40]}). Skip!")
             return None
         except requests.exceptions.Timeout:
             pass  # Lanjut saja jika cuma head timeout
@@ -219,7 +219,7 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
 def request_smart(url, timeout=30, stream=False):
     """
     Smart HTTP GET with anti-bot detection + proxy fallback.
-    Flow: known-proxy-domain? → direct request → detect Cloudflare → Web Unlocker
+    Flow: known-proxy-domain?   direct request   detect Cloudflare   Web Unlocker
     """
     headers = _get_headers()
 
@@ -235,7 +235,7 @@ def request_smart(url, timeout=30, stream=False):
         try:
             requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
         except requests.exceptions.ConnectionError:
-            print(f"      ⛔ Koneksi Server Mati / DNS Error ({url[:40]}). Skip!")
+            print(f"        Koneksi Server Mati / DNS Error ({url[:40]}). Skip!")
             return None
         except requests.exceptions.Timeout:
             pass
@@ -250,7 +250,7 @@ def request_smart(url, timeout=30, stream=False):
             if not stream:
                 is_blocked, reason = _detect_anti_bot(resp)
                 if is_blocked:
-                    print(f"      🛡️ Anti-Bot Detected ({reason}). Escalating to Web Unlocker...")
+                    print(f"         Anti-Bot Detected ({reason}). Escalating to Web Unlocker...")
                 else:
                     return resp
             else:
@@ -259,9 +259,9 @@ def request_smart(url, timeout=30, stream=False):
         elif resp.status_code in (403, 503):
             is_blocked, reason = _detect_anti_bot(resp)
             if is_blocked:
-                print(f"      🛡️ Anti-Bot Detected ({reason}). Escalating to Web Unlocker...")
+                print(f"         Anti-Bot Detected ({reason}). Escalating to Web Unlocker...")
             else:
-                print(f"      ⚠️ HTTP {resp.status_code} (non-CF). Trying Web Unlocker...")
+                print(f"         HTTP {resp.status_code} (non-CF). Trying Web Unlocker...")
     except Exception:
         pass
 
@@ -430,7 +430,7 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
     print(f"   [BrightData] Resolving Scholar Citation Page...")
     for attempt in range(max_retries):
         if attempt > 0:
-            print(f"      🔄 Retry {attempt+1}/{max_retries}...")
+            print(f"        Retry {attempt+1}/{max_retries}...")
         resp = request_hybrid_stealth(url, use_proxy=True)
         if not resp:
             continue
@@ -466,7 +466,7 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
         pdf_el = soup.select_one('.gsc_oci_title_ggi a')
         if pdf_el:
             result["pdf_link"] = pdf_el['href']
-            print(f"      📄 Found Direct PDF: {result['pdf_link'][:50]}...")
+            print(f"        Found Direct PDF: {result['pdf_link'][:50]}...")
             # We don't return immediately anymore, we already have citation-page abstract if it was there
 
         # Priority 2: External publisher link
@@ -474,7 +474,7 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
             title_link = title_tag['href']
             if "scholar.google" not in title_link:
                 result["title_link"] = title_link
-                print(f"      ✅ External Publisher Link: {title_link[:40]}...")
+                print(f"        External Publisher Link: {title_link[:40]}...")
                 if result["pdf_link"] or result["title_link"]:
                     return result
 
@@ -505,11 +505,11 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
                             result["pdf_link"] = rescue_links["pdf_direct"]
                         else:
                             result["title_link"] = rescue_links["main_link"]
-                        print(f"      ✨ RESCUE SUCCESS!")
+                        print(f"        RESCUE SUCCESS!")
                         return result
                     
                     if result["snippet"] or result["abstract"]:
-                        print(f"      📝 Rescue found snippet/abstract fallback.")
+                        print(f"        Rescue found snippet/abstract fallback.")
                         return result
 
         # Priority 4: Try cluster page
@@ -521,7 +521,7 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
 
         title_link = title_tag['href']
         if "scholar.google" in title_link:
-            print(f"      ⚠️ Scholar internal link. Fetching cluster...")
+            print(f"         Scholar internal link. Fetching cluster...")
             cluster_resp = request_hybrid_stealth(title_link, use_proxy=True)
             if cluster_resp:
                 links = find_best_links(cluster_resp.text, is_search_result=True)
@@ -538,7 +538,7 @@ def resolve_scholar_citation_proxy(url, max_retries=2):
                         return result
                     
                     if result["snippet"]:
-                        print(f"      📝 Cluster found snippet fallback.")
+                        print(f"        Cluster found snippet fallback.")
                         return result
 
         if result["pdf_link"] or result["title_link"] or result["abstract"] or result["snippet"]:
@@ -556,7 +556,7 @@ def search_scholar_proxy_query_html(title, max_retries=2):
 
     for attempt in range(max_retries):
         if attempt > 0:
-            print(f"      🔄 Retry {attempt+1}/{max_retries}...")
+            print(f"        Retry {attempt+1}/{max_retries}...")
         resp = request_hybrid_stealth(url, use_proxy=True)
         if not resp:
             continue
@@ -623,10 +623,10 @@ def search_scholar_proxy_query_html(title, max_retries=2):
                 result["cached_html"] = a['href']
                 break
                 
-        print(f"      ✅ Found HTML Search Result: {str(result.get('title_text', ''))[:40]}...")
-        if result['pdf_link']: print(f"      📄 PDF Link: {str(result['pdf_link'])[:50]}...")
+        print(f"        Found HTML Search Result: {str(result.get('title_text', ''))[:40]}...")
+        if result['pdf_link']: print(f"        PDF Link: {str(result['pdf_link'])[:50]}...")
         return result
-    print("      ⚠️ No results found on Scholar Search (HTML).")
+    print("         No results found on Scholar Search (HTML).")
     return None
 
 def search_scholar_proxy_query(title, max_retries=2):
@@ -776,7 +776,7 @@ def _extract_keywords_impl(html):
                           .get('itemInfo', {}))
             subjects = item_info.get('subjects', '')
             if subjects:
-                # EBSCO uses ";" separator → normalize to ", "
+                # EBSCO uses ";" separator   normalize to ", "
                 kws = [s.strip() for s in subjects.split(';')
                        if s.strip()]
                 if kws:
@@ -849,7 +849,7 @@ def _extract_keywords_impl(html):
                  if len(li.get_text(strip=True)) > 1]
         if found:
             return ", ".join(found)
-    # Also: h3 'Keywords' → next sibling ul (Springer, Nature)
+    # Also: h3 'Keywords'   next sibling ul (Springer, Nature)
     for h3 in soup.find_all(['h3', 'h4'], string=re.compile(r'^Keywords?$', re.IGNORECASE)):
         sib = h3.find_next_sibling(['ul', 'div'])
         if sib:
@@ -886,7 +886,7 @@ def _extract_keywords_impl(html):
             return ", ".join(kws)
 
     # Strategy 7a: Raw-text search (handles PDF-converted HTML with fragmented spans)
-    # PDF→HTML sering pecah teks ke banyak <span>, sehingga find_all(string=...) gagal
+    # PDF HTML sering pecah teks ke banyak <span>, sehingga find_all(string=...) gagal
     raw_text = soup.get_text(" ", strip=True)
     raw_text = re.sub(r'\s+', ' ', raw_text)
     kw_pattern = re.compile(
@@ -906,9 +906,9 @@ def _extract_keywords_impl(html):
                 word_counts = [len(p.split()) for p in parts]
                 avg_words = sum(word_counts) / len(parts)
                 max_words = max(word_counts)
-                # Keyword asli: rata-rata ≤4 kata/term, tidak ada term >6 kata
-                # "in this study were 15 students with high" = 8 kata → DITOLAK
-                # "e-LKPD, Transformasi Geometri, Translasi" = maks 2 kata → OK
+                # Keyword asli: rata-rata  4 kata/term, tidak ada term >6 kata
+                # "in this study were 15 students with high" = 8 kata   DITOLAK
+                # "e-LKPD, Transformasi Geometri, Translasi" = maks 2 kata   OK
                 if avg_words <= 4 and max_words <= 6:
                     return kw_text
 
@@ -1166,7 +1166,7 @@ def _try_ebsco_detailv2(openurl_url, html_text):
                 f"https://openurl.ebsco.com/"
                 f"EPDB%3A{db}%3A11%3A{an}/detailv2?{params}"
             )
-            print(f"     📚 Trying EBSCO detailv2: {detail_url[:80]}...")
+            print(f"       Trying EBSCO detailv2: {detail_url[:80]}...")
             resp = request_hybrid_stealth(
                 detail_url, use_proxy=False, timeout=30)
             if resp and resp.status_code == 200:
@@ -1175,7 +1175,7 @@ def _try_ebsco_detailv2(openurl_url, html_text):
                 if kws:
                     return kws
     except Exception as e:
-        print(f"     ⚠️ EBSCO detailv2 error: {e}")
+        print(f"        EBSCO detailv2 error: {e}")
     return None
 
 
@@ -1270,13 +1270,13 @@ def extract_keywords_robust(html):
 def scrape_keywords_from_url(link):
     doi = extract_doi(link)
     if doi and "doi.org" not in link and "scholar.google" not in link:
-        print(f"     ✨ DOI detected ({doi}). Redirecting...")
+        print(f"       DOI detected ({doi}). Redirecting...")
         link = f"https://doi.org/{doi}"
     
     pmc_id = get_pmc_id(link)
     if pmc_id:
         kws = fetch_pmc_api_keywords(pmc_id)
-        if kws: return f"🎉 KEYWORDS (PMC API): {', '.join(kws)}"
+        if kws: return f"  KEYWORDS (PMC API): {', '.join(kws)}"
 
     if "ieeexplore.ieee.org" in link and ".pdf" in link:
         # Convert direct PDF links like /ielx7/.../1234567.pdf back into /document/1234567/
@@ -1284,7 +1284,7 @@ def scrape_keywords_from_url(link):
         if match: 
             bn = match.group(1)
             link = f"https://ieeexplore.ieee.org/document/{bn}/"
-            print(f"     🔄 Converted IEEE PDF link to Document HTML: {link}")
+            print(f"       Converted IEEE PDF link to Document HTML: {link}")
 
     try:
         from urllib.parse import urlparse
@@ -1292,35 +1292,35 @@ def scrape_keywords_from_url(link):
         needs_proxy = any(d in domain for d in ["sciencedirect", "researchgate", "ieee", "springer", "wiley", "tandfonline", "sagepub", "acm", "nature"])
         
         if needs_proxy:
-            print(f"     🛡️ Protected domain detected ({domain}). Using Stealth Proxy.")
+            print(f"        Protected domain detected ({domain}). Using Stealth Proxy.")
             resp = request_hybrid_stealth(link, use_proxy=True, stream=True)
         else:
-            print(f"     🌐 Local/Open domain detected ({domain}). Trying Direct Connection...")
+            print(f"       Local/Open domain detected ({domain}). Trying Direct Connection...")
             resp = request_hybrid_stealth(link, use_proxy=False, stream=True)
             if not resp or resp.status_code in [403, 401, 429]:
-                print(f"     ⚠️ Direct connection failed/blocked. Falling back to Stealth Proxy...")
+                print(f"        Direct connection failed/blocked. Falling back to Stealth Proxy...")
                 resp = request_hybrid_stealth(link, use_proxy=True, stream=True)
                 
         if resp and resp.status_code == 200:
             final_url = resp.url
             if "pdf" in resp.headers.get('Content-Type', '').lower():
-                print("     📄 PDF. Parsing...")
+                print("       PDF. Parsing...")
                 html = pdf_to_html_memory(resp.content)
                 if html:
                     kws = extract_keywords_robust(html)
-                    if kws: return f"🎉 KEYWORDS (PDF): {kws}"
+                    if kws: return f"  KEYWORDS (PDF): {kws}"
             else:
-                print(f"     🌐 HTML (Publisher/Interstitial). Parsing...")
+                print(f"       HTML (Publisher/Interstitial). Parsing...")
                 text = resp.content.decode('utf-8', errors='ignore')
                 kws = extract_keywords_robust(text)
-                if kws: return f"🎉 KEYWORDS (Web): {kws}"
+                if kws: return f"  KEYWORDS (Web): {kws}"
                 
                 # FALLBACK FOR INTERSTITIALS (RG, Unesa, etc.)
                 deep = find_best_pdf_link_scored(text, final_url)
                 if deep:
-                    print(f"       🔍 Interstitial detected. Deep PDF Found: {deep[:50]}...")
+                    print(f"         Interstitial detected. Deep PDF Found: {deep[:50]}...")
                     if deep == link or deep in link: 
-                        print("       ❌ Loop detected (Deep link is same as current).")
+                        print("         Loop detected (Deep link is same as current).")
                         return None
                         
                     resp_d = request_hybrid_stealth(deep, use_proxy=True, stream=True)
@@ -1328,9 +1328,9 @@ def scrape_keywords_from_url(link):
                         html_d = pdf_to_html_memory(resp_d.content)
                         if html_d:
                             kws_d = extract_keywords_robust(html_d)
-                            if kws_d: return f"🎉 KEYWORDS (Deep PDF): {kws_d}"
+                            if kws_d: return f"  KEYWORDS (Deep PDF): {kws_d}"
     except Exception as e:
-        print(f"     ❌ Error: {e}")
+        print(f"       Error: {e}")
     return None
 
 
@@ -1342,7 +1342,7 @@ def scrape_keywords_from_url(link):
 def scrape_publisher_page(url, force_proxy=True):
     """
     Visit publisher page and extract keywords, abstract, DOI.
-    Enhanced with: PMC API, IEEE PDF→stamp, OJS meta tags,
+    Enhanced with: PMC API, IEEE PDF stamp, OJS meta tags,
     interstitial deep-link, PDF parsing.
 
     Returns dict: {keywords, abstract, doi, doc_type}
@@ -1368,7 +1368,7 @@ def scrape_publisher_page(url, force_proxy=True):
             result["keywords"] = ", ".join(kws)
             print(f"      [PMC] Keywords: {result['keywords'][:60]}...")
 
-    # IEEE PDF → stamp URL conversion
+    # IEEE PDF   stamp URL conversion
     if "ieeexplore.ieee.org" in url and url.endswith(".pdf"):
         bn = os.path.basename(url).replace(".pdf", "")
         if bn.isdigit():
@@ -1383,7 +1383,7 @@ def scrape_publisher_page(url, force_proxy=True):
             base, ids = parts[0], parts[1]
             if len(ids.strip('/').split('/')) >= 2:
                 url = f"{base}/article/download/{ids}"
-                print(f"      [Publisher] 🔄 Converted OJS Viewer link to Direct Download: {url}")
+                print(f"      [Publisher]   Converted OJS Viewer link to Direct Download: {url}")
 
     try:
         if force_proxy:
@@ -1391,7 +1391,7 @@ def scrape_publisher_page(url, force_proxy=True):
         else:
             resp = request_smart(url, stream=True)
         if not resp:
-            print(f"      [Publisher] ❌ Tidak bisa akses URL")
+            print(f"      [Publisher]   Tidak bisa akses URL")
             return result
 
         content_type = resp.headers.get('Content-Type', '').lower()
@@ -1402,7 +1402,7 @@ def scrape_publisher_page(url, force_proxy=True):
 
         if "pdf" in content_type:
             # Direct PDF
-            print(f"      [Publisher] 📄 PDF langsung. Parsing...")
+            print(f"      [Publisher]   PDF langsung. Parsing...")
             html = pdf_to_html_memory(resp.content)
             if html:
                 if not result["keywords"]:
@@ -1411,9 +1411,9 @@ def scrape_publisher_page(url, force_proxy=True):
                 if not result["abstract"]:
                     result["abstract"] = extract_abstract_from_html(html)
                 if result["keywords"]:
-                    print(f"      [Publisher] ✅ Keywords dari PDF: {result['keywords'][:60]}...")
+                    print(f"      [Publisher]   Keywords dari PDF: {result['keywords'][:60]}...")
                 else:
-                    print(f"      [Publisher] ❌ Keywords tidak ditemukan di PDF")
+                    print(f"      [Publisher]   Keywords tidak ditemukan di PDF")
         else:
             # HTML page
             text = resp.content.decode('utf-8', errors='ignore')
@@ -1426,7 +1426,7 @@ def scrape_publisher_page(url, force_proxy=True):
             if not result["keywords"]:
                 result["keywords"] = extract_keywords_from_html(text)
                 if result["keywords"]:
-                    print(f"      [Publisher] ✅ Keywords dari HTML: {result['keywords'][:60]}...")
+                    print(f"      [Publisher]   Keywords dari HTML: {result['keywords'][:60]}...")
                 
                 # Strategy B: Meta tags (citation_keywords / DC.subject)
                 if not result["keywords"]:
@@ -1449,7 +1449,7 @@ def scrape_publisher_page(url, force_proxy=True):
                                 meta_kws.append(content)
                     if meta_kws:
                         result["keywords"] = _normalize_keywords(", ".join(meta_kws))
-                        print(f"      [Publisher] ✅ Keywords dari meta tags: {result['keywords'][:60]}...")
+                        print(f"      [Publisher]   Keywords dari meta tags: {result['keywords'][:60]}...")
             
             if not result["abstract"]:
                 result["abstract"] = extract_abstract_from_html(text)
@@ -1465,7 +1465,7 @@ def scrape_publisher_page(url, force_proxy=True):
                     meta = soup_doc.find('meta', attrs={'name': re.compile(f'^{meta_name}$', re.IGNORECASE)})
                     if meta and meta.get('content') and meta['content'].strip():
                         result["doc_type"] = meta['content'].strip()
-                        print(f"      [Publisher] ✅ Doc Type dari meta tags: {result['doc_type']}")
+                        print(f"      [Publisher]   Doc Type dari meta tags: {result['doc_type']}")
                         break
                 # 2. Check OJS sub_item sections for "Section"
                 if not result.get("doc_type"):
@@ -1475,7 +1475,7 @@ def scrape_publisher_page(url, force_proxy=True):
                             val_div = section.find('div', class_='value')
                             if val_div and val_div.get_text(strip=True):
                                 result["doc_type"] = val_div.get_text(strip=True).strip()
-                                print(f"      [Publisher] ✅ Doc Type dari HTML: {result['doc_type']}")
+                                print(f"      [Publisher]   Doc Type dari HTML: {result['doc_type']}")
                                 break
 
             # Strategy C: Deep PDF link fallback (Meta tags or Scored Links)
@@ -1493,7 +1493,7 @@ def scrape_publisher_page(url, force_proxy=True):
                     deep = find_best_pdf_link_scored(text, final_url)
                     
                 if deep and deep != url and deep not in url:
-                    print(f"      [Publisher] 🔍 Deep PDF ditemukan: "
+                    print(f"      [Publisher]   Deep PDF ditemukan: "
                           f"{deep[:60]}...")
                     resp_d = request_smart(deep, stream=True)
                     if (resp_d and
@@ -1504,16 +1504,16 @@ def scrape_publisher_page(url, force_proxy=True):
                             kws = extract_keywords_from_html(html_d)
                             if kws:
                                 result["keywords"] = kws
-                                print(f"      [Publisher] ✅ Keywords "
+                                print(f"      [Publisher]   Keywords "
                                       f"(Deep PDF): {kws[:60]}...")
                             if not result["abstract"]:
                                 abs_d = extract_abstract_from_html(html_d)
                                 if abs_d:
                                     result["abstract"] = abs_d
                     else:
-                        print(f"      [Publisher] ❌ Deep PDF gagal diakses")
+                        print(f"      [Publisher]   Deep PDF gagal diakses")
                 else:
-                    print(f"      [Publisher] ❌ Keywords tidak ditemukan di HTML, tidak ada PDF link")
+                    print(f"      [Publisher]   Keywords tidak ditemukan di HTML, tidak ada PDF link")
 
     except Exception as e:
         print(f"      [Publisher] Error: {e}")
@@ -1653,7 +1653,7 @@ def _openalex_lookup(doi="", title=""):
                         best_match = item
                 
                 if best_score < 0.75:
-                    print(f"      ⚠️ [OpenAlex] Hasil tidak cocok (similarity={best_score:.2f}). Skip.")
+                    print(f"         [OpenAlex] Hasil tidak cocok (similarity={best_score:.2f}). Skip.")
                     return {}
                 data = best_match
             else:
@@ -1803,12 +1803,12 @@ def enrich_single_paper(scholar_citation_url, api_key=None):
     Enrich a single paper from its Scholar citation URL.
 
     Integrated flow (notebook + API):
-    1.  SerpAPI Citation → abstract, title, publisher link
-    1b. BrightData Scholar Page → publisher/PDF link (fallback)
-    2a. Publisher Page (proxy) → keywords, abstract, DOI
-    2b. CrossRef → DOI fallback
-    2c. OpenAlex → keyword fallback
-    3.  Semantic Scholar → TLDR
+    1.  SerpAPI Citation   abstract, title, publisher link
+    1b. BrightData Scholar Page   publisher/PDF link (fallback)
+    2a. Publisher Page (proxy)   keywords, abstract, DOI
+    2b. CrossRef   DOI fallback
+    2c. OpenAlex   keyword fallback
+    3.  Semantic Scholar   TLDR
 
     Returns dict: {abstract, keywords, doi, tldr}
     """

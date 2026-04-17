@@ -1,5 +1,5 @@
 """
-ETL Scraping Configuration — Single Source of Truth
+ETL Scraping Configuration   Single Source of Truth
 =====================================================
 All runtime configuration for the ETL scraping pipeline.
 
@@ -9,26 +9,26 @@ Architecture:
     - No dependency on external YAML/JSON config files.
 
 Maintenance Guide:
-    ┌─────────────────────────────────────────────────────────────────┐
-    │  To add a new credential:                                       │
-    │  1. Add it in the "Credentials" section below                   │
-    │  2. Add the key to _worker_env() in both DAG files              │
-    │  3. Create the Airflow Variable via Admin → Variables            │
-    │                                                                  │
-    │  To add a new prodi:                                             │
-    │  1. Append a tuple to PRODI_WEB_CONFIG                           │
-    │  2. Add the SINTA URL to SINTA_DEPTS                             │
-    │  3. Add a parser function in parsers.py if needed                │
-    └─────────────────────────────────────────────────────────────────┘
+                                                                       
+       To add a new credential:                                        
+       1. Add it in the "Credentials" section below                    
+       2. Add the key to _worker_env() in both DAG files               
+       3. Create the Airflow Variable via Admin   Variables             
+                                                                        
+       To add a new prodi:                                              
+       1. Append a tuple to PRODI_WEB_CONFIG                            
+       2. Add the SINTA URL to SINTA_DEPTS                              
+       3. Add a parser function in parsers.py if needed                 
+                                                                       
 """
 
 import os
 from pathlib import Path
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  PATHS
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -43,9 +43,9 @@ else:
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  CRAWLER SETTINGS
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 # Tunable via environment for production overrides without code changes.
 
 CRAWLER_MAX_RETRIES: int = int(os.environ.get("ETL_CRAWLER_MAX_RETRIES", "3"))
@@ -53,9 +53,9 @@ CRAWLER_TIMEOUT: int = int(os.environ.get("ETL_CRAWLER_TIMEOUT", "60"))
 CRAWLER_HEADLESS: bool = os.environ.get("ETL_CRAWLER_HEADLESS", "true").lower() in ("true", "1", "yes")
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  HTTP HEADERS
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 # Shared across all HTTP-based scrapers (web_scraper, sinta, simcv, etc.)
 # Override User-Agent via environment if sites start blocking the default.
 
@@ -71,11 +71,11 @@ HEADERS: dict = {
 }
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  CREDENTIALS — Injected by Airflow DockerOperator
-# ══════════════════════════════════════════════════════════════════════
-# Priority: Environment Variable → empty string default.
-# The worker itself never stores secrets — Airflow owns them.
+#                                                                       
+#  CREDENTIALS   Injected by Airflow DockerOperator
+#                                                                       
+# Priority: Environment Variable   empty string default.
+# The worker itself never stores secrets   Airflow owns them.
 
 # Supabase
 SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
@@ -99,9 +99,9 @@ BD_PASS_SERP: str = os.environ.get("BD_PASS_SERP", "").strip()
 NOTIFICATION_EMAIL: str = os.environ.get("NOTIFICATION_EMAIL", "")
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  PROXY URL (computed)
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 # Constructed from BrightData credentials. Evaluates to empty string
 # if credentials are not set, which disables proxy usage gracefully.
 
@@ -114,21 +114,21 @@ def _build_proxy_url() -> str:
 PROXY_URL: str = _build_proxy_url()
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  FEATURE FLAGS
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 
 ENABLE_SCIVAL: bool = os.environ.get("ETL_ENABLE_SCIVAL", "true").lower() in ("true", "1", "yes")
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  PRODI WEB CONFIG
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 # Each tuple: (kode_prodi, nama_prodi, url, keyword, parser_key)
 #
 # To add a new study program:
 #   1. Append a new tuple here.
-#   2. Register the parser_key in parsers.py → PARSER_MAP.
+#   2. Register the parser_key in parsers.py   PARSER_MAP.
 #   3. Add the SINTA department URL to SINTA_DEPTS below.
 
 PRODI_WEB_CONFIG: list[tuple] = [
@@ -147,11 +147,11 @@ PRODI_WEB_CONFIG: list[tuple] = [
 TARGET_PRODI_NAMES: set[str] = {cfg[1] for cfg in PRODI_WEB_CONFIG}
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  SINTA DEPARTMENT CONFIG
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 # SINTA department author listing URLs.
-# To add: copy the URL from sinta.kemdiktisaintek.go.id → Departments → Authors.
+# To add: copy the URL from sinta.kemdiktisaintek.go.id   Departments   Authors.
 
 SINTA_DEPTS: dict[str, str] = {
     "S1 Teknik Informatika":            "https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/EEE0451E-BD6B-4742-9DDC-37443E9727D8",
@@ -167,9 +167,9 @@ SINTA_DEPTS: dict[str, str] = {
 }
 
 
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 #  DATA CLEANING CONSTANTS
-# ══════════════════════════════════════════════════════════════════════
+#                                                                       
 
 STRICT_AFFILIATION: str = "UNIVERSITAS NEGERI SURABAYA"
 
@@ -180,7 +180,7 @@ PREFIX_TITLES: frozenset[str] = frozenset({
     "en", "rr", "rm", "andes",
 })
 
-# Column type enforcement for ID columns — ensures clean text, never float.
+# Column type enforcement for ID columns   ensures clean text, never float.
 ID_COLUMN_TYPES: dict[str, type] = {
     "nip": str,
     "nidn": str,

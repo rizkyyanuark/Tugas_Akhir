@@ -61,6 +61,33 @@ EOL
     echo -e "\033[32m✅ .env file created successfully! You can edit it later to add BrightData/SerpAPI keys.\033[0m"
 fi
 
+echo -e "\n\033[36m📂 Creating Docker volume directories...\033[0m"
+echo -e "\033[36m======================================\033[0m"
+
+VOLUME_DIRS=(
+    "docker/volumes/postgres/data"
+    "docker/volumes/milvus/etcd"
+    "docker/volumes/milvus/minio"
+    "docker/volumes/milvus/milvus"
+    "docker/volumes/neo4j/data"
+    "docker/volumes/neo4j/logs"
+    "docker/volumes/neo4j/plugins"
+    "docker/volumes/neo4j/import"
+    "docker/volumes/prometheus/data"
+    "docker/volumes/grafana/data"
+    "docker/volumes/redis/data"
+    "logs"
+)
+
+for dir in "${VOLUME_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir"
+        echo -e "\033[32m✅ Created $dir\033[0m"
+    else
+        echo -e "\033[90mℹ️ $dir already exists\033[0m"
+    fi
+done
+
 echo -e "\n\033[36m📦 Pulling Docker images...\033[0m"
 echo -e "\033[36m=========================\033[0m"
 

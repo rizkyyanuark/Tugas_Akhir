@@ -19,4 +19,8 @@ supabase>=2.10.0
 
 # --- Utilitas ---
 pydantic>=2.9.2
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.27.3
 
+# --- AI / LLM ---
+groq>=0.11.0

@@ -1,5 +1,5 @@
 """
-ETL Configuration Module — Single Source of Truth
+ETL Configuration Module - Single Source of Truth
 ===================================================
 All runtime configuration is resolved from ENVIRONMENT VARIABLES.
 No YAML files, no config_manager, no Airflow Variables inside here.
@@ -61,12 +61,15 @@ SCIVAL_EMAIL = os.environ.get("SCIVAL_EMAIL", "")
 SCIVAL_PASS = os.environ.get("SCIVAL_PASS", "")
 
 # ─── BrightData Proxy ─────────────────────────────────────────────────
+BD_USER_SERP = os.environ.get("BD_USER_SERP", "")
 BD_PASS_SERP = os.environ.get("BD_PASS_SERP", "")
 
-# ─── Database ─────────────────────────────────────────────────────────
-NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "")
+# Web Unlocker Zone
+BD_USER_UNLOCKER = os.environ.get("BD_USER_UNLOCKER", "")
+BD_PASS_UNLOCKER = os.environ.get("BD_PASS_UNLOCKER", "")
+
+# Host
+BRIGHT_DATA_HOST = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")
 
 # ─── AI / LLM ─────────────────────────────────────────────────────────
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")

@@ -12,7 +12,7 @@ from .utils import clean_identifier, enforce_strict_types
 class SupabaseClient:
     def __init__(self):
         if not SUPABASE_URL or not SUPABASE_KEY:
-            raise ValueError("❌ Supabase URL or Key missing in config.py!")
+            raise ValueError("  Supabase URL or Key missing in config.py!")
             
         # --- DOCKER/SUPABASE-PY PATCH ---
         # supabase-py > 2.0 strictly validates the key via regex matching JWTs.
@@ -34,14 +34,14 @@ class SupabaseClient:
         finally:
             re.match = original_match # Restore
             
-        print(f"✅ Supabase Client Connected to {SUPABASE_URL}")
+        print(f"  Supabase Client Connected to {SUPABASE_URL}")
 
-    # ─── Cleaning Helpers ────────────────────────────────────────────
+    #     Cleaning Helpers                                             
 
     def _clean_value(self, value):
         """
         Clean a single value for JSON/SQL compliance.
-        Returns: str, int, float, bool, None, dict, or list — NEVER NaN/inf.
+        Returns: str, int, float, bool, None, dict, or list   NEVER NaN/inf.
         """
         if value is None:
             return None
@@ -53,15 +53,15 @@ class SupabaseClient:
         except (ValueError, TypeError):
             pass
 
-        # numpy int → python int
+        # numpy int   python int
         if isinstance(value, (np.integer,)):
             return int(value)
 
-        # numpy bool → python bool
+        # numpy bool   python bool
         if isinstance(value, (np.bool_,)):
             return bool(value)
 
-        # float / numpy float → check nan/inf
+        # float / numpy float   check nan/inf
         if isinstance(value, (float, np.floating)):
             if math.isnan(value) or math.isinf(value):
                 return None
@@ -95,7 +95,7 @@ class SupabaseClient:
                 pass
             return data
 
-    # ─── Lecturers ───────────────────────────────────────────────────
+    #     Lecturers                                                    
 
     def upsert_lecturers(self, df_dosen):
         """
@@ -109,7 +109,7 @@ class SupabaseClient:
         count = 0
         errors = 0
         total = len(df_dosen)
-        print(f"🚀 Upserting {total} lecturers to Supabase...")
+        print(f"  Upserting {total} lecturers to Supabase...")
 
         for _, row in df_dosen.iterrows():
             name = self._clean_value(row.get('nama_dosen'))
@@ -134,7 +134,7 @@ class SupabaseClient:
             try:
                 json.dumps(data)
             except (TypeError, ValueError) as je:
-                print(f"   ⚠️ JSON Error for {name}: {je}")
+                print(f"      JSON Error for {name}: {je}")
                 errors += 1
                 continue
 
@@ -144,12 +144,12 @@ class SupabaseClient:
                 ).execute()
                 count += 1
             except Exception as e:
-                print(f"   ⚠️ Error upserting {name}: {e}")
+                print(f"      Error upserting {name}: {e}")
                 errors += 1
 
-        print(f"✅ Upserted {count}/{total} lecturers. ({errors} errors)")
+        print(f"  Upserted {count}/{total} lecturers. ({errors} errors)")
 
-    # ─── Lecturer Map ────────────────────────────────────────────────
+    #     Lecturer Map                                                 
 
     def get_lecturer_id_map(self):
         """Returns a dict {scopus_id: lecturer_nip} for linking papers."""
@@ -163,7 +163,7 @@ class SupabaseClient:
             if item.get('scopus_id') and item.get('nip')
         }
 
-    # ─── Papers ──────────────────────────────────────────────────────
+    #     Papers                                                       
 
     def upsert_papers(self, df_papers, source='scopus'):
         """
@@ -175,7 +175,7 @@ class SupabaseClient:
         NOTE: Does NOT link to lecturer directly (use link_papers_to_lecturers).
         """
         if df_papers is None or (hasattr(df_papers, 'empty') and df_papers.empty):
-            print("⚠️ No papers to upsert.")
+            print("   No papers to upsert.")
             return
 
         # Convert DataFrame to list of dicts
@@ -244,7 +244,7 @@ class SupabaseClient:
             data_to_upsert.append(row)
 
         if not data_to_upsert:
-            print(f"⚠️ No valid papers to upsert (skipped {skipped}).")
+            print(f"   No valid papers to upsert (skipped {skipped}).")
             return
 
         # Filter valid papers with DOI
@@ -252,13 +252,13 @@ class SupabaseClient:
         skipped_no_doi = len(data_to_upsert) - len(valid_papers)
 
         if not valid_papers:
-            print(f"⚠️ No papers with DOI found (skipped {skipped_no_doi} without DOI).")
+            print(f"   No papers with DOI found (skipped {skipped_no_doi} without DOI).")
             return
 
         total_upserted = 0
         chunk_size = 100
 
-        print(f"🚀 Upserting {len(valid_papers)} papers (by DOI)...")
+        print(f"  Upserting {len(valid_papers)} papers (by DOI)...")
         for i in range(0, len(valid_papers), chunk_size):
             chunk = valid_papers[i:i + chunk_size]
             try:
@@ -266,11 +266,11 @@ class SupabaseClient:
                     chunk, on_conflict="doi"
                 ).execute()
                 total_upserted += len(chunk)
-                print(f"   ✅ Batch {i // chunk_size + 1}: {len(chunk)} papers")
+                print(f"     Batch {i // chunk_size + 1}: {len(chunk)} papers")
             except Exception as e:
-                print(f"   ❌ Batch error at {i}: {e}")
+                print(f"     Batch error at {i}: {e}")
 
-        print(f"✅ Total: {total_upserted} papers upserted. ({skipped + skipped_no_doi} skipped)")
+        print(f"  Total: {total_upserted} papers upserted. ({skipped + skipped_no_doi} skipped)")
 
 
     def link_papers_to_lecturers(self, df_papers):
@@ -288,7 +288,7 @@ class SupabaseClient:
         else:
             papers_list = df_papers
 
-        print(f"🔗 Linking {len(papers_list)} paper records to lecturers...")
+        print(f"  Linking {len(papers_list)} paper records to lecturers...")
         lec_map = self.get_lecturer_id_map() # {scopus_id: nip}
         
         # We need paper_dois. 
@@ -327,10 +327,10 @@ class SupabaseClient:
                 links.add((doi, nip))
         
         if not links:
-            print("   ⚠️ No new links to insert.")
+            print("      No new links to insert.")
             return
 
-        print(f"   🔗 Found {len(links)} lecturer-paper links. Inserting...")
+        print(f"     Found {len(links)} lecturer-paper links. Inserting...")
         # Dictionary for mapping
         link_data = [{"paper_doi": doi, "lecturer_nip": nip} for doi, nip in links]
         
@@ -344,13 +344,13 @@ class SupabaseClient:
                     chunk, on_conflict="paper_doi, lecturer_nip", ignore_duplicates=True
                 ).execute()
                 total_links += len(chunk)
-                print(f"   ✅ Linked batch {i//chunk_size + 1}")
+                print(f"     Linked batch {i//chunk_size + 1}")
             except Exception as e:
-                print(f"      ❌ Link batch error: {e}")
+                print(f"        Link batch error: {e}")
                 
-        print(f"   ✅ Linked {total_links} relationships.")
+        print(f"     Linked {total_links} relationships.")
 
-    # ─── Enrichment ──────────────────────────────────────────────────
+    #     Enrichment                                                   
 
     def get_pending_enrichment_papers(self, limit=100):
         """Returns papers that haven't been enriched yet (no TLDR)."""
@@ -359,7 +359,7 @@ class SupabaseClient:
         res = self.client.table("papers").select(
             "doi, title"
         ).is_("tldr", "null").neq("doi", "null").limit(limit).execute()
-        print(f"🔍 Found {len(res.data)} papers pending enrichment.")
+        print(f"  Found {len(res.data)} papers pending enrichment.")
         return res.data
 
     def update_paper_enrichment(self, paper_doi, tldr):
@@ -372,4 +372,4 @@ class SupabaseClient:
         try:
             self.client.table("papers").update({"tldr": str(tldr)}).eq("doi", paper_doi).execute()
         except Exception as e:
-            print(f"   ❌ Failed to update enrichment for {paper_doi}: {e}")
+            print(f"     Failed to update enrichment for {paper_doi}: {e}")

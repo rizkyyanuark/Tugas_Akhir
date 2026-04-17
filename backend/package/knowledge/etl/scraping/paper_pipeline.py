@@ -5,14 +5,14 @@ Pipeline Scraping Paper Dosen Infokom UNESA
 Industry-grade modular pipeline for paper data acquisition.
 
 Pipeline Flow:
-    Step 1: run_scopus_scraping()      → dosen_papers_scopus.csv  (Scopus Export via Selenium)
-    Step 2: run_scopus_processing()    → dosen_papers_scopus.csv  (Clean + Dedup + TLDR)
-    Step 3: run_supabase_insert()      → Supabase DB (Upsert + Link)
-    Step 4: run_scholar_scraping()     → dosen_papers_scholar_raw.csv (Scholar via SerpAPI)
-    Step 5: run_scholar_enrichment()   → dosen_papers_scholar.csv (Keywords, Abstract, DOI, TLDR)
+    Step 1: run_scopus_scraping()        dosen_papers_scopus.csv  (Scopus Export via Selenium)
+    Step 2: run_scopus_processing()      dosen_papers_scopus.csv  (Clean + Dedup + TLDR)
+    Step 3: run_supabase_insert()        Supabase DB (Upsert + Link)
+    Step 4: run_scholar_scraping()       dosen_papers_scholar_raw.csv (Scholar via SerpAPI)
+    Step 5: run_scholar_enrichment()     dosen_papers_scholar.csv (Keywords, Abstract, DOI, TLDR)
 
 Each step reads from the previous step's output and produces its own output.
-Notebook calls these functions directly — no logic in the notebook.
+Notebook calls these functions directly   no logic in the notebook.
 All credentials auto-loaded from config (credentials_new.json).
 """
 import os
@@ -46,19 +46,19 @@ def run_scopus_scraping(email=None, password=None):
     password = password or SCIVAL_PASS
     from .scopus_client import ScopusPaperClient
 
-    print("\n📚 STEP 1: SCOPUS SCRAPING")
+    print("\n  STEP 1: SCOPUS SCRAPING")
     print("=" * 50)
 
     # 1. Load Target IDs
     if not DOSEN_CSV.exists():
-        print(f"   ❌ '{DOSEN_CSV}' not found!")
+        print(f"     '{DOSEN_CSV}' not found!")
         return
 
     df_dosen = pd.read_csv(DOSEN_CSV, dtype=str)
     target_ids = df_dosen['scopus_id'].dropna().unique().tolist()
     target_ids = [str(x).strip().replace('.0', '') for x in target_ids if x and str(x).strip() != 'nan']
 
-    print(f"   🎯 Found {len(target_ids)} Scopus IDs to scrape.")
+    print(f"     Found {len(target_ids)} Scopus IDs to scrape.")
 
     # 2. Run Scraper
     client = ScopusPaperClient(email, password)
@@ -69,11 +69,11 @@ def run_scopus_scraping(email=None, password=None):
     
     if not df_new.empty:
         df_new.to_csv(SCOPUS_RAW_CSV, index=False)
-        print(f"   ✅ Saved {len(df_new)} new papers to {SCOPUS_RAW_CSV}")
+        print(f"     Saved {len(df_new)} new papers to {SCOPUS_RAW_CSV}")
     else:
         # Create empty raw file to avoid errors in Step 2 if no new papers
         pd.DataFrame().to_csv(SCOPUS_RAW_CSV, index=False)
-        print("   ⚠️ No new papers scraped.")
+        print("      No new papers scraped.")
 
     return df_new
 
@@ -87,7 +87,7 @@ def run_scopus_processing(input_raw=None, output_master=None):
     """
     from .scopus_client import process_scopus_data
 
-    print("\n🔧 STEP 2: SCOPUS PROCESSING")
+    print("\n  STEP 2: SCOPUS PROCESSING")
     print("=" * 50)
 
     raw_file = Path(input_raw) if input_raw else SCOPUS_RAW_CSV
@@ -95,38 +95,38 @@ def run_scopus_processing(input_raw=None, output_master=None):
 
     # 1. Load Raw (New) Data
     if not raw_file.exists():
-        print(f"   ❌ Raw file not found: {raw_file}. Run Step 1 first.")
+        print(f"     Raw file not found: {raw_file}. Run Step 1 first.")
         return
     df_raw = pd.read_csv(raw_file, dtype=str).fillna("")
 
     # 2. Load Master (Existing) Data
     if master_file.exists():
-        print(f"   📂 Loading Master Database: {master_file}")
+        print(f"     Loading Master Database: {master_file}")
         df_master = pd.read_csv(master_file, dtype=str).fillna("")
     else:
-        print("   📂 No Master Database found. Starting fresh.")
+        print("     No Master Database found. Starting fresh.")
         df_master = pd.DataFrame()
 
     # 3. Merge
-    print(f"   🔄 Merging: New ({len(df_raw)}) + Master ({len(df_master)})")
+    print(f"     Merging: New ({len(df_raw)}) + Master ({len(df_master)})")
     df_combined = pd.concat([df_master, df_raw], ignore_index=True)
 
     if df_combined.empty:
-        print("   ⚠️ No data to process.")
+        print("      No data to process.")
         return
 
     # 4. Process (Clean -> Dedup -> Enrich -> Filter)
-    print("   🚀 Starting Processing Pipeline...")
+    print("     Starting Processing Pipeline...")
     df_final = process_scopus_data(df_combined)
 
     # 5. Save Final
     df_final.to_csv(master_file, index=False)
-    print(f"   ✅ Saved {len(df_final)} clean & enriched papers to {master_file}")
+    print(f"     Saved {len(df_final)} clean & enriched papers to {master_file}")
     
     # Optional: Delete raw file after successful processing to prevent re-merging
     try:
         raw_file.unlink()
-        print(f"   🧹 Cleaned up raw file: {raw_file.name}")
+        print(f"     Cleaned up raw file: {raw_file.name}")
     except:
         pass
 
@@ -142,33 +142,33 @@ def run_supabase_insert():
     """
     from .supabase_client import SupabaseClient
 
-    print("\n🚀 STEP 3: SUPABASE INSERT")
+    print("\n  STEP 3: SUPABASE INSERT")
     print("=" * 50)
 
     csv_path = SCOPUS_CSV
     if not csv_path.exists():
-        print(f"   ❌ File not found: {csv_path}")
+        print(f"     File not found: {csv_path}")
         return
 
-    print("   📂 Loading Cleaned Papers...")
+    print("     Loading Cleaned Papers...")
     df = pd.read_csv(csv_path, dtype=str)
-    print(f"   📝 Total Rows: {len(df)}")
+    print(f"     Total Rows: {len(df)}")
 
     try:
         client = SupabaseClient()
 
         # 1. Upsert Papers
-        print("\n   🚀 Upserting Papers to Supabase...")
+        print("\n     Upserting Papers to Supabase...")
         client.upsert_papers(df)
 
         # 2. Link Papers to Lecturers
-        print("\n   🔗 Linking Papers to Lecturers...")
+        print("\n     Linking Papers to Lecturers...")
         client.link_papers_to_lecturers(df)
 
-        print("\n   ✅ Insertion & Linking Complete!")
+        print("\n     Insertion & Linking Complete!")
 
     except Exception as e:
-        print(f"   ❌ Database Error: {e}")
+        print(f"     Database Error: {e}")
 
 
 # ================================================================
@@ -230,21 +230,21 @@ def _serpapi_fetch_author(api_key, scholar_id, start=0, num=100, max_retries=2):
                 # If articles found OR this is the last attempt, return
                 if articles or attempt == max_retries:
                     if attempt > 0 and articles:
-                        print(f"      🔄 Retry {attempt} berhasil ({len(articles)} articles)")
+                        print(f"        Retry {attempt} berhasil ({len(articles)} articles)")
                     return articles, has_next
 
-                # Empty result on non-last attempt → retry
-                print(f"      ⚠️ SerpAPI return kosong (attempt {attempt+1}), retry in 3s...")
+                # Empty result on non-last attempt   retry
+                print(f"         SerpAPI return kosong (attempt {attempt+1}), retry in 3s...")
                 time.sleep(3)
             else:
                 error = resp.json().get("error", resp.text[:200])
-                print(f"      ⚠️ SerpAPI HTTP {resp.status_code}: {error}")
+                print(f"         SerpAPI HTTP {resp.status_code}: {error}")
                 if attempt < max_retries:
                     time.sleep(3)
                 else:
                     return [], False
         except Exception as e:
-            print(f"      ⚠️ SerpAPI Error: {e}")
+            print(f"         SerpAPI Error: {e}")
             if attempt < max_retries:
                 time.sleep(3)
             else:
@@ -258,28 +258,28 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
     Scrape papers from Google Scholar via SerpAPI (google_scholar_author engine).
 
     3-Phase Architecture:
-        Phase 1 — Pure Scrape: Fetch all papers from SerpAPI, no filtering.
+        Phase 1   Pure Scrape: Fetch all papers from SerpAPI, no filtering.
                   Auto-saves every 10 dosen for resume capability.
-        Phase 2 — Batch Dedup: Remove duplicates vs Scopus + cross-dosen.
+        Phase 2   Batch Dedup: Remove duplicates vs Scopus + cross-dosen.
                   Uses exact match (O(1) set) + fuzzy match (SequenceMatcher).
-        Phase 3 — Batch Author Match: Match author names to dosen list.
+        Phase 3   Batch Author Match: Match author names to dosen list.
                   Produces final Authors + Author IDs columns.
 
     Output: dosen_papers_scholar.csv
     """
     api_key = api_key or SERPAPI_KEY
     if not api_key:
-        print("   ❌ SERPAPI_KEY not configured! Add to credentials_new.json.")
+        print("     SERPAPI_KEY not configured! Add to credentials_new.json.")
         return
 
-    print("\n📖 STEP 4: GOOGLE SCHOLAR SCRAPING (3-Phase: Scrape → Dedup → Match)")
+    print("\n  STEP 4: GOOGLE SCHOLAR SCRAPING (3-Phase: Scrape   Dedup   Match)")
     print("=" * 70)
 
     from difflib import SequenceMatcher
     import requests
 
     if not DOSEN_CSV.exists():
-        print(f"   ❌ '{DOSEN_CSV}' not found!")
+        print(f"     '{DOSEN_CSV}' not found!")
         return
 
     # --- Load Dosen Data ---
@@ -309,15 +309,15 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
                 
     if test_target_id:
         targets = [t for t in targets if t['id'] == test_target_id]
-        print(f"   🧪 RUNNING IN TEST MODE FOR ID: {test_target_id}")
+        print(f"     RUNNING IN TEST MODE FOR ID: {test_target_id}")
     else:
-        print(f"   🎯 {len(targets)} dosen with Scholar ID.\n")
+        print(f"     {len(targets)} dosen with Scholar ID.\n")
 
     # ==================================================================
-    # PHASE 1: PURE SCRAPE — Fetch all papers, no filtering
+    # PHASE 1: PURE SCRAPE   Fetch all papers, no filtering
     # ==================================================================
     print("\n" + "=" * 50)
-    print("📡 PHASE 1: PURE SCRAPE (No Filter, Auto-Save)")
+    print("  PHASE 1: PURE SCRAPE (No Filter, Auto-Save)")
     print("=" * 50)
 
     # Temp file for incremental save / resume
@@ -331,7 +331,7 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
             df_temp = pd.read_csv(SCHOLAR_TEMP_CSV, dtype=str).fillna("")
             all_raw_papers = df_temp.to_dict('records')
             scraped_ids = set(df_temp['scholar_id'].unique())
-            print(f"   🔄 [RESUME] Loaded {len(all_raw_papers)} papers from temp file.")
+            print(f"     [RESUME] Loaded {len(all_raw_papers)} papers from temp file.")
             print(f"      Already scraped: {len(scraped_ids)} dosen IDs.")
         except Exception:
             pass
@@ -342,7 +342,7 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
     for i, t in enumerate(targets):
         # Skip if already scraped (resume)
         if t['id'] in scraped_ids:
-            print(f"[{i+1}/{len(targets)}] {t['name']} ({t['id']})... ⏭️ [Resume]")
+            print(f"[{i+1}/{len(targets)}] {t['name']} ({t['id']})...    [Resume]")
             continue
 
         print(f"[{i+1}/{len(targets)}] {t['name']} ({t['id']})...")
@@ -376,32 +376,32 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
             start += 100
             time.sleep(0.3)
 
-        print(f"      📄 {author_count} papers fetched.")
+        print(f"        {author_count} papers fetched.")
         newly_scraped += 1
 
         # Auto-save after each dosen (for resume safety)
         if not test_target_id:
             pd.DataFrame(all_raw_papers).to_csv(SCHOLAR_TEMP_CSV, index=False)
-            print(f"      💾 [Auto-Save] {len(all_raw_papers)} papers saved to temp.")
+            print(f"        [Auto-Save] {len(all_raw_papers)} papers saved to temp.")
 
         time.sleep(1)
 
     # Final save of temp
     if not test_target_id and newly_scraped > 0:
         pd.DataFrame(all_raw_papers).to_csv(SCHOLAR_TEMP_CSV, index=False)
-        print(f"\n   💾 Phase 1 Complete: {len(all_raw_papers)} total raw papers ({total_api_calls} API calls)")
+        print(f"\n     Phase 1 Complete: {len(all_raw_papers)} total raw papers ({total_api_calls} API calls)")
 
     if not all_raw_papers:
-        print("   ⚠️ No papers found.")
+        print("      No papers found.")
         return
 
     df_raw = pd.DataFrame(all_raw_papers)
 
     # ==================================================================
-    # PHASE 2: BATCH DEDUP — Remove duplicates in one pass
+    # PHASE 2: BATCH DEDUP   Remove duplicates in one pass
     # ==================================================================
     print("\n" + "=" * 50)
-    print("🔍 PHASE 2: BATCH DEDUP (Scopus + Cross-Dosen)")
+    print("  PHASE 2: BATCH DEDUP (Scopus + Cross-Dosen)")
     print("=" * 50)
 
     def _normalize_text(text):
@@ -422,7 +422,7 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
             df_scopus = pd.read_csv(SCOPUS_CSV)
             for t in df_scopus['Title'].dropna():
                 scopus_titles_norm.add(_normalize_text(t))
-            print(f"   📚 Loaded {len(scopus_titles_norm)} Scopus titles for dedup.")
+            print(f"     Loaded {len(scopus_titles_norm)} Scopus titles for dedup.")
         except Exception:
             pass
 
@@ -435,18 +435,18 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
     scopus_mask = df_raw['_title_norm'].isin(scopus_titles_norm)
     scopus_dup_count = scopus_mask.sum()
     df_raw = df_raw[~scopus_mask].reset_index(drop=True)
-    print(f"   🔄 Scopus exact dedup: {scopus_dup_count} papers removed.")
+    print(f"     Scopus exact dedup: {scopus_dup_count} papers removed.")
 
     # 2d. Cross-dosen exact dedup (keep first occurrence)
     before_cross = len(df_raw)
     df_raw = df_raw.drop_duplicates(subset='_title_norm', keep='first').reset_index(drop=True)
     cross_exact_dup = before_cross - len(df_raw)
-    print(f"   🔄 Cross-dosen exact dedup: {cross_exact_dup} papers removed.")
+    print(f"     Cross-dosen exact dedup: {cross_exact_dup} papers removed.")
 
-    # 2e. Fuzzy dedup — trigram Jaccard similarity + inverted index
-    #     Avoids O(N²) by only comparing titles sharing many 3-char substrings.
+    # 2e. Fuzzy dedup   trigram Jaccard similarity + inverted index
+    #     Avoids O(N ) by only comparing titles sharing many 3-char substrings.
     #     Benchmarked: 32s on 5640 papers (vs 90+ min brute-force).
-    print(f"   🔄 Fuzzy dedup on {len(df_raw)} remaining papers...")
+    print(f"     Fuzzy dedup on {len(df_raw)} remaining papers...")
     
     from collections import defaultdict
     
@@ -456,9 +456,9 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
         if len(s) < 3: return set()
         return set(s[i:i+3] for i in range(len(s)-2))
     
-    # Inverted index: trigram → set of paper indices
+    # Inverted index: trigram   set of paper indices
     trigram_index = defaultdict(set)
-    trigram_cache = {}  # idx → trigram set (avoid recompute)
+    trigram_cache = {}  # idx   trigram set (avoid recompute)
     fuzzy_dup_indices = set()
     comparisons = 0
     
@@ -505,20 +505,20 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
             print(f"      ... processed {idx}/{len(df_raw)} ({len(fuzzy_dup_indices)} fuzzy dups, {comparisons:,} comparisons)")
 
     df_raw = df_raw.drop(index=fuzzy_dup_indices).reset_index(drop=True)
-    print(f"   🔄 Fuzzy dedup: {len(fuzzy_dup_indices)} papers removed.")
+    print(f"     Fuzzy dedup: {len(fuzzy_dup_indices)} papers removed.")
 
     total_after = len(df_raw)
     total_removed = total_before - total_after
-    print(f"\n   📊 Dedup Summary: {total_before} → {total_after} ({total_removed} duplicates removed)")
+    print(f"\n     Dedup Summary: {total_before}   {total_after} ({total_removed} duplicates removed)")
 
     # Cleanup temp column
     df_raw = df_raw.drop(columns=['_title_norm'])
 
     # ==================================================================
-    # PHASE 3: BATCH AUTHOR MATCH — Match names to dosen list
+    # PHASE 3: BATCH AUTHOR MATCH   Match names to dosen list
     # ==================================================================
     print("\n" + "=" * 50)
-    print("👥 PHASE 3: BATCH AUTHOR MATCH")
+    print("  PHASE 3: BATCH AUTHOR MATCH")
     print("=" * 50)
 
     # --- Author Matching Logic (same as before) ---
@@ -651,7 +651,7 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
     df_raw['Authors'] = authors_col
     df_raw['Author IDs'] = author_ids_col
 
-    print(f"   ✅ Matched {matched_count} papers with multiple dosen co-authors.")
+    print(f"     Matched {matched_count} papers with multiple dosen co-authors.")
 
     # --- Finalize schema ---
     for col in ["Abstract", "Keywords", "Document Type", "DOI", "TLDR"]:
@@ -674,18 +674,18 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
     if test_target_id:
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_colwidth', 80)
-        print(f"\n🧪 TEST MODE OUTPUT (NOT SAVING)")
+        print(f"\n  TEST MODE OUTPUT (NOT SAVING)")
         print(df_final[['Authors', 'Author IDs', 'Title']].head(15))
         return df_final
 
     df_final.to_csv(SCHOLAR_CSV, index=False)
-    print(f"\n   ✅ Saved {len(df_final)} unique Scholar papers -> {SCHOLAR_CSV}")
+    print(f"\n     Saved {len(df_final)} unique Scholar papers -> {SCHOLAR_CSV}")
 
     # Cleanup temp file after successful save
     if SCHOLAR_TEMP_CSV.exists():
         try:
             SCHOLAR_TEMP_CSV.unlink()
-            print(f"   🧹 Cleaned up temp file: {SCHOLAR_TEMP_CSV.name}")
+            print(f"     Cleaned up temp file: {SCHOLAR_TEMP_CSV.name}")
         except:
             pass
 

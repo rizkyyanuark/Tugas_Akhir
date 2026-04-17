@@ -209,7 +209,7 @@ def enforce_strict_types(df, id_columns=None):
 def save_final_csv(df, path, label=""):
     """
     Unified CSV save with automatic ID enforcement and QUOTE_ALL.
-    Single source of truth for all pipeline saves — ensures every CSV
+    Single source of truth for all pipeline saves   ensures every CSV
     output is clean, consistent, and ready for downstream consumption.
     
     Args:
@@ -231,6 +231,6 @@ def save_final_csv(df, path, label=""):
     msg = f"Saved: {path.name} ({len(df)} records)"
     if label:
         msg = f"{label} | {msg}"
-    print(f"   💾 {msg}")
+    print(f"     {msg}")
     
     return df

@@ -10,7 +10,7 @@ and returns a flat list of lecturer dicts ready for downstream merge.
 
 Configuration:
     - HEADERS, CRAWLER_MAX_RETRIES, CRAWLER_TIMEOUT from config.py
-    - Parser functions from parsers.py → PARSER_MAP
+    - Parser functions from parsers.py   PARSER_MAP
 """
 
 import time
@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 
 from .config import HEADERS, STRICT_AFFILIATION, CRAWLER_MAX_RETRIES, CRAWLER_TIMEOUT
 
-# Disable SSL warnings — some UNESA subdomains have expired certs.
+# Disable SSL warnings   some UNESA subdomains have expired certs.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -44,10 +44,10 @@ class WebProdiScraper:
             prodi_name, source_url, source, affiliation, etc.
         """
         results: list[dict] = []
-        print("\n🌐 STARTING WEB SCRAPING...")
+        print("\n--- STARTING WEB SCRAPING ---")
 
         for code, name, url, keyword, parser_key in active_configs:
-            print(f"   🌍 Scraping: {name} ({url})")
+            print(f"     Scraping: {name} ({url})")
             html = self._fetch_with_retry(url)
             if html is None:
                 continue
@@ -57,7 +57,7 @@ class WebProdiScraper:
                 parser_func = self.parser_map.get(parser_key)
 
                 if not parser_func:
-                    print(f"      ⚠️ No parser registered for key: {parser_key}")
+                    print(f"         No parser registered for key: {parser_key}")
                     continue
 
                 entries = parser_func(soup)
@@ -73,10 +73,10 @@ class WebProdiScraper:
                         })
                         results.append(entry)
                         valid_count += 1
-                print(f"      ✅ Parsed: {valid_count}")
+                print(f"        Parsed: {valid_count}")
 
             except Exception as e:
-                print(f"      ❌ Error parsing: {e}")
+                print(f"        Error parsing: {e}")
 
         return results
 
@@ -95,8 +95,8 @@ class WebProdiScraper:
             except Exception as e:
                 if attempt < CRAWLER_MAX_RETRIES - 1:
                     wait = 5 * (attempt + 1)  # Progressive backoff: 5s, 10s, 15s
-                    print(f"      ⚠️ Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
+                    print(f"         Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
                     time.sleep(wait)
                 else:
-                    print(f"      ❌ Failed after {CRAWLER_MAX_RETRIES} attempts: {e}")
+                    print(f"        Failed after {CRAWLER_MAX_RETRIES} attempts: {e}")
         return None

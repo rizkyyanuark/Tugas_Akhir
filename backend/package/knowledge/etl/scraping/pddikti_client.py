@@ -1,5 +1,5 @@
 # knowledge/etl/scraping/pddikti_client.py
-"""PDDIKTI API Client — fetches lecturer data from the national database."""
+"""PDDIKTI API Client   fetches lecturer data from the national database."""
 
 from .config import STRICT_AFFILIATION
 from .utils import make_entry
@@ -14,7 +14,7 @@ class PddiktiClient:
     def __init__(self):
         self.available = pddikti_api is not None
         if not self.available:
-            print("⚠️ PDDIKTI API not installed.")
+            print("   PDDIKTI API not installed.")
 
     def search_lecturers(self, active_configs):
         if not self.available: return []
@@ -26,7 +26,7 @@ class PddiktiClient:
             for cfg in active_configs:
                 code, name, _, keyword, _ = cfg
                 query = f"{keyword} Universitas Negeri Surabaya"
-                print(f"   🔍 PDDIKTI Search: '{query}'...")
+                print("\n--- PDDIKTI: Searching for lecturers...")
                 
                 try:
                     res = client.search_all(query) or {}
@@ -59,8 +59,8 @@ class PddiktiClient:
                         })
                         results.append(entry)
                         count += 1
-                    print(f"      ✅ Added: {count}")
+                    print(f"      Added: {count}")
                     
                 except Exception as e:
-                    print(f"      ❌ API Error: {e}")
+                    print(f"      API Error: {e}")
         return results

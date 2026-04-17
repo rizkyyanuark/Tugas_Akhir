@@ -4,7 +4,7 @@ Transform: Paper Enrichment (Micro-batch)
 Enriches papers with metadata from multiple APIs in priority order:
   Phase 1: Semantic Scholar (FREE) -> Abstract, DOI, TLDR
   Phase 2: OpenAlex (FREE) -> Keywords, Author IDs, DOI
-  Phase 3: Local TLDR Generation (Qwen3.5-0.8B, non-thinking mode) -> TLDR from abstract
+  Phase 3: AI TLDR Generation (Groq Llama-3.1-8B) -> TLDR from abstract
 
 Designed for Airflow micro-batch execution with idempotency.
 """
@@ -68,7 +68,7 @@ def _get_groq_client():
         return None
 
 
-def generate_local_tldr(title: str, abstract: str) -> str:
+def generate_tldr_via_ai(title: str, abstract: str) -> str:
     """
     Generate a 2-sentence TLDR from abstract using Groq API (llama-3.1-8b-instant).
     """
@@ -480,12 +480,12 @@ def enrich_paper_batch(
             except Exception as e:
                 logger.warning(f"      ⚠️ BD Fallback error: {e}")
 
-        # ── Phase 3: Local TLDR Generation (PEFT Qwen2.5 SciTLDR) ──
+        # ── Phase 3: AI TLDR Generation (Groq Llama-3.1-8B) ──
         if not tldr and abstract and len(abstract) > 30:
-            logger.info(f"   [Phase 3] Local SciTLDR (Qwen2.5-0.5B PEFT)...")
-            local_tldr = generate_local_tldr(title, abstract)
-            if local_tldr:
-                tldr = local_tldr
+            logger.info(f"   [Phase 3] AI SciTLDR (Groq Llama-3.1-8B)...")
+            ai_tldr = generate_tldr_via_ai(title, abstract)
+            if ai_tldr:
+                tldr = ai_tldr
                 stats["tldr_local"] += 1
                 logger.info(f"      ✨ Generated: {tldr[:60]}...")
 
@@ -551,7 +551,7 @@ def enrich_paper_batch(
     logger.info(f"   Keywords       : {stats['kw']}/{total}")
     logger.info(f"   DOI            : {stats['doi']}/{total}")
     logger.info(f"   TLDR (total)   : {stats['tldr']}/{total}")
-    logger.info(f"   TLDR (local)   : {stats['tldr_local']}/{total}")
+    logger.info(f"   TLDR (AI)      : {stats['tldr_local']}/{total}")
     logger.info(f"   Authors resolved: {stats['auth_resolved']}/{total}")
     logger.info(f"{'=' * 60}")
 
