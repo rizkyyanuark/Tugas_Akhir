@@ -32,9 +32,9 @@ from yunesa.utils.question_utils import (
 
 
 def _build_state_files(attachments: list[dict]) -> dict:
-    """将附件列表转换为 StateBackend 格式的 files 字典
+    """Convert attachment list into a StateBackend-compatible files dict.
 
-    StateBackend 期望的格式:
+    Expected StateBackend format:
     {
         "/attachments/file.md": {
             "content": ["line1", "line2", ...],
@@ -55,7 +55,7 @@ def _build_state_files(attachments: list[dict]) -> dict:
             continue
 
         now = datetime.now(UTC).isoformat()
-        # 将 markdown 内容按行拆分
+        # Split markdown content by line.
         content_lines = markdown.split("\n")
         files[file_path] = {
             "content": content_lines,
@@ -102,11 +102,11 @@ def _build_langfuse_run_context(
 
 
 def extract_agent_state(values: dict) -> AgentStatePayload:
-    """从 LangGraph state 中提取 agent 状态"""
+    """Extract agent state from LangGraph state values."""
     if not isinstance(values, dict):
         return {"todos": [], "files": {}, "artifacts": []}
 
-    # 直接获取，信任 state 的数据结构
+    # Access directly and trust the state payload structure.
     todos = values.get("todos")
     artifacts = values.get("artifacts")
     result: AgentStatePayload = {
@@ -212,11 +212,12 @@ async def save_partial_message(
         extra_metadata = {
             "error_type": error_type,
             "is_error": True,
-            "error_message": error_message or f"发生错误: {error_type}",
+            "error_message": error_message or f"Error occurred: {error_type}",
         }
         if full_msg:
             msg_dict = full_msg.model_dump() if hasattr(full_msg, "model_dump") else {}
-            content = full_msg.content if hasattr(full_msg, "content") else str(full_msg)
+            content = full_msg.content if hasattr(
+                full_msg, "content") else str(full_msg)
             extra_metadata = msg_dict | extra_metadata
         else:
             content = ""
@@ -270,7 +271,7 @@ async def save_messages_from_langgraph_state(
 
 
 def _extract_interrupt_info(state) -> Any | None:
-    """从 LangGraph state 中提取中断信息"""
+    """Extract interrupt info from LangGraph state."""
     if hasattr(state, "tasks") and state.tasks:
         for task in state.tasks:
             if hasattr(task, "interrupts") and task.interrupts:
@@ -284,7 +285,7 @@ def _extract_interrupt_info(state) -> Any | None:
 
 
 def _coerce_interrupt_payload(info: Any) -> dict:
-    """将 LangGraph interrupt 对象转换为 dict 结构。"""
+    """Convert a LangGraph interrupt object into a dict payload."""
     if isinstance(info, dict):
         return info
 
@@ -321,7 +322,7 @@ def _coerce_interrupt_payload(info: Any) -> dict:
 
 
 def _build_ask_user_question_payload(info: Any, thread_id: str) -> dict[str, Any]:
-    """将 interrupt 信息标准化为 ask_user_question_required 载荷。"""
+    """Normalize interrupt data into an ask_user_question_required payload."""
     payload = _coerce_interrupt_payload(info)
 
     questions = _normalize_interrupt_questions(payload.get("questions"))
@@ -344,14 +345,15 @@ def _build_ask_user_question_payload(info: Any, thread_id: str) -> dict[str, Any
         questions = [
             {
                 "question_id": str(uuid.uuid4()),
-                "question": "请选择一个选项",
+                "question": "Please select an option",
                 "options": [],
                 "multi_select": False,
                 "allow_other": True,
             }
         ]
 
-    source = str(payload.get("source") or payload.get("tool_name") or "interrupt")
+    source = str(payload.get("source") or payload.get(
+        "tool_name") or "interrupt")
 
     return {
         "questions": questions,
@@ -361,14 +363,14 @@ def _build_ask_user_question_payload(info: Any, thread_id: str) -> dict[str, Any
 
 
 def _ensure_full_msg(full_msg: AIMessage | None, accumulated_content: list[str]) -> AIMessage | None:
-    """如果 full_msg 为空且有累积内容，构建 AIMessage"""
+    """Build AIMessage from accumulated content when full_msg is missing."""
     if not full_msg and accumulated_content:
         return AIMessage(content="".join(accumulated_content))
     return full_msg
 
 
 def _extract_ai_message(messages: list[Any] | None) -> AIMessage | None:
-    """从消息列表中提取最后一条 AIMessage。"""
+    """Extract the last AIMessage from a message list."""
     if not isinstance(messages, list):
         return None
 
@@ -385,19 +387,19 @@ def _extract_ai_message(messages: list[Any] | None) -> AIMessage | None:
 
 
 async def get_agent_config_by_id(db, user: User, agent_config_id: int):
-    """按配置 ID 解析 AgentConfig 记录。"""
+    """Resolve an AgentConfig record by config ID."""
     department_id = user.department_id
 
     agent_config_repo = AgentConfigRepository(db)
     config_item = await agent_config_repo.get_by_id(config_id=int(agent_config_id))
     if config_item is None or config_item.department_id != department_id:
-        raise ValueError("配置不存在")
+        raise ValueError("configuredoes not exist")
 
     return config_item
 
 
 async def _resolve_agent_config(db, agent_id: str, user: User, agent_config_id):
-    """解析 agent_config，返回 agent_config"""
+    """parse agent_config，return agent_config"""
     department_id = user.department_id
 
     agent_config_repo = AgentConfigRepository(db)
@@ -409,7 +411,8 @@ async def _resolve_agent_config(db, agent_id: str, user: User, agent_config_id):
 
     if config_item is None:
         config_item = await agent_config_repo.get_or_create_default(
-            department_id=department_id, agent_id=agent_id, created_by=str(user.id)
+            department_id=department_id, agent_id=agent_id, created_by=str(
+                user.id)
         )
 
     return (config_item.config_json or {}).get("context", {})
@@ -431,7 +434,8 @@ async def check_and_handle_interrupts(
 
         interrupt_info = _extract_interrupt_info(state)
         if interrupt_info:
-            question_payload = _build_ask_user_question_payload(interrupt_info, thread_id)
+            question_payload = _build_ask_user_question_payload(
+                interrupt_info, thread_id)
             meta["interrupt"] = question_payload
             yield make_chunk(status="ask_user_question_required", meta=meta, **question_payload)
 
@@ -456,7 +460,8 @@ async def _ensure_thread_bound_agent_config(
             thread_id=thread_id,
         )
 
-    current_agent_config_id = (conversation.extra_metadata or {}).get("agent_config_id")
+    current_agent_config_id = (
+        conversation.extra_metadata or {}).get("agent_config_id")
     if current_agent_config_id != int(agent_config_id):
         await conv_repo.bind_agent_config(thread_id, agent_config_id)
 
@@ -471,14 +476,15 @@ async def agent_chat(
     current_user,
     db,
 ) -> dict:
-    """非流式对话，返回完整响应"""
+    """Non-streaming conversation endpoint that returns a full response."""
     start_time = asyncio.get_event_loop().time()
 
     if image_content:
         human_message = HumanMessage(
             content=[
                 {"type": "text", "text": query},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_content}"}},
+                {"type": "image_url", "image_url": {
+                    "url": f"data:image/jpeg;base64,{image_content}"}},
             ]
         )
         message_type = "multimodal_image"
@@ -490,7 +496,7 @@ async def agent_chat(
         return {
             "status": "error",
             "error_type": "content_guard_blocked",
-            "error_message": "输入内容包含敏感词",
+            "error_message": "Input contains sensitive content",
             "request_id": meta.get("request_id"),
         }
 
@@ -498,14 +504,15 @@ async def agent_chat(
         return {
             "status": "error",
             "error_type": "invalid_config",
-            "error_message": "当前用户未绑定部门",
+            "error_message": "Current user is not bound to a department",
             "request_id": meta.get("request_id"),
         }
 
     user_id = str(current_user.id)
     meta = dict(meta or {})
     if "request_id" not in meta or not meta.get("request_id"):
-        logger.warning("请求缺少 request_id，已自动生成一个新的 request_id")
+        logger.warning(
+            "Request missing request_id; generated a new request_id automatically")
         meta["request_id"] = str(uuid.uuid4())
 
     try:
@@ -533,11 +540,12 @@ async def agent_chat(
     try:
         agent = agent_manager.get_agent(agent_id)
     except Exception as e:
-        logger.error(f"Error getting agent {agent_id}: {e}, {traceback.format_exc()}")
+        logger.error(
+            f"Error getting agent {agent_id}: {e}, {traceback.format_exc()}")
         return {
             "status": "error",
             "error_type": "agent_error",
-            "error_message": f"智能体 {agent_id} 获取失败: {str(e)}",
+            "error_message": f"agent {agent_id} getfailed: {str(e)}",
             "request_id": meta.get("request_id"),
         }
 
@@ -546,7 +554,8 @@ async def agent_chat(
 
     if not thread_id:
         thread_id = str(uuid.uuid4())
-        logger.warning(f"No thread_id provided, generated new thread_id: {thread_id}")
+        logger.warning(
+            f"No thread_id provided, generated new thread_id: {thread_id}")
 
     input_context = agent_config | {"user_id": user_id, "thread_id": thread_id}
     langfuse_run = _build_langfuse_run_context(
@@ -582,7 +591,8 @@ async def agent_chat(
         except Exception as e:
             logger.error(f"Error saving user message: {e}")
 
-        langgraph_config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
+        langgraph_config = {"configurable": {
+            "thread_id": thread_id, "user_id": user_id}}
         invoke_result = await agent.invoke_messages(
             messages,
             input_context=input_context,
@@ -590,14 +600,16 @@ async def agent_chat(
             metadata=langfuse_run.metadata,
             tags=langfuse_run.tags,
         )
-        full_msg = _extract_ai_message(invoke_result.get("messages") if isinstance(invoke_result, dict) else None)
+        full_msg = _extract_ai_message(invoke_result.get(
+            "messages") if isinstance(invoke_result, dict) else None)
         trace_info = get_trace_info(langfuse_run)
 
         if full_msg is None:
             try:
                 graph = await agent.get_graph()
                 state = await graph.aget_state(langgraph_config)
-                full_msg = _extract_ai_message(getattr(state, "values", {}).get("messages", [])) if state else None
+                full_msg = _extract_ai_message(
+                    getattr(state, "values", {}).get("messages", [])) if state else None
             except Exception:
                 full_msg = None
 
@@ -613,7 +625,7 @@ async def agent_chat(
             )
             return {
                 "status": "interrupted",
-                "message": "检测到敏感内容，已中断输出",
+                "message": "Sensitive content detected; output interrupted",
                 "request_id": meta.get("request_id"),
                 "time_cost": asyncio.get_event_loop().time() - start_time,
             }
@@ -621,7 +633,8 @@ async def agent_chat(
         try:
             graph = await agent.get_graph()
             state = await graph.aget_state(langgraph_config)
-            agent_state = extract_agent_state(getattr(state, "values", {})) if state else {}
+            agent_state = extract_agent_state(
+                getattr(state, "values", {})) if state else {}
         except Exception:
             agent_state = {}
 
@@ -678,7 +691,8 @@ async def stream_agent_chat(
         human_message = HumanMessage(
             content=[
                 {"type": "text", "text": query},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_content}"}},
+                {"type": "image_url", "image_url": {
+                    "url": f"data:image/jpeg;base64,{image_content}"}},
             ]
         )
         message_type = "multimodal_image"
@@ -697,17 +711,23 @@ async def stream_agent_chat(
 
     if conf.enable_content_guard and await content_guard.check(query):
         yield make_chunk(
-            status="error", error_type="content_guard_blocked", error_message="输入内容包含敏感词", meta=meta
+            status="error", error_type="content_guard_blocked", error_message="Input contains sensitive content", meta=meta
         )
         return
 
     if not current_user.department_id:
-        yield make_chunk(status="error", error_type="invalid_config", error_message="当前用户未绑定部门", meta=meta)
+        yield make_chunk(
+            status="error",
+            error_type="invalid_config",
+            error_message="Current user is not bound to a department",
+            meta=meta,
+        )
         return
 
     meta = dict(meta or {})
     if "request_id" not in meta or not meta.get("request_id"):
-        logger.warning("请求缺少 request_id，已自动生成一个新的 request_id")
+        logger.warning(
+            "Request missing request_id; generated a new request_id automatically")
         meta["request_id"] = str(uuid.uuid4())
 
     user_id = str(current_user.id)
@@ -732,11 +752,12 @@ async def stream_agent_chat(
     try:
         agent = agent_manager.get_agent(agent_id)
     except Exception as e:
-        logger.error(f"Error getting agent {agent_id}: {e}, {traceback.format_exc()}")
+        logger.error(
+            f"Error getting agent {agent_id}: {e}, {traceback.format_exc()}")
         yield make_chunk(
             status="error",
             error_type="agent_error",
-            error_message=f"智能体 {agent_id} 获取失败: {str(e)}",
+            error_message=f"agent {agent_id} getfailed: {str(e)}",
             meta=meta,
         )
         return
@@ -746,7 +767,8 @@ async def stream_agent_chat(
 
     if not thread_id:
         thread_id = str(uuid.uuid4())
-        logger.warning(f"No thread_id provided, generated new thread_id: {thread_id}")
+        logger.warning(
+            f"No thread_id provided, generated new thread_id: {thread_id}")
 
     input_context = agent_config | {"user_id": user_id, "thread_id": thread_id}
     langfuse_run = _build_langfuse_run_context(
@@ -785,11 +807,12 @@ async def stream_agent_chat(
         except Exception as e:
             logger.error(f"Error saving user message: {e}")
 
-        # 先构建 langgraph_config
-        langgraph_config = {"configurable": {"thread_id": thread_id, "user_id": user_id}}
+        # Build langgraph_config first.
+        langgraph_config = {"configurable": {
+            "thread_id": thread_id, "user_id": user_id}}
 
-        # LangGraph 会自动从 checkpointer 恢复 state（包括 uploads）
-        # 无需手动加载或传递
+        # LangGraph automatically restores state from the checkpointer (including uploads).
+        # No manual loading or passing is required.
 
         full_msg = None
         accumulated_content = []
@@ -802,7 +825,8 @@ async def stream_agent_chat(
             tags=langfuse_run.tags,
         ):
             if mode == "values":
-                agent_state = extract_agent_state(payload if isinstance(payload, dict) else {})
+                agent_state = extract_agent_state(
+                    payload if isinstance(payload, dict) else {})
                 signature = _agent_state_signature(agent_state)
                 if signature and signature != last_agent_state_signature:
                     last_agent_state_signature = signature
@@ -824,8 +848,9 @@ async def stream_agent_chat(
                         "content_guard_blocked",
                         trace_info=trace_info,
                     )
-                    meta["time_cost"] = asyncio.get_event_loop().time() - start_time
-                    yield make_chunk(status="interrupted", message="检测到敏感内容，已中断输出", meta=meta)
+                    meta["time_cost"] = asyncio.get_event_loop().time() - \
+                        start_time
+                    yield make_chunk(status="interrupted", message="Sensitive content detected; output interrupted", meta=meta)
                     return
 
                 yield make_chunk(content=msg.content, msg=msg.model_dump(), metadata=metadata, status="loading")
@@ -846,7 +871,7 @@ async def stream_agent_chat(
                 trace_info=trace_info,
             )
             meta["time_cost"] = asyncio.get_event_loop().time() - start_time
-            yield make_chunk(status="interrupted", message="检测到敏感内容，已中断输出", meta=meta)
+            yield make_chunk(status="interrupted", message="Sensitive content detected; output interrupted", meta=meta)
             return
 
         async for chunk in check_and_handle_interrupts(agent, langgraph_config, make_chunk, meta, thread_id):
@@ -856,7 +881,8 @@ async def stream_agent_chat(
         try:
             graph = await agent.get_graph()
             state = await graph.aget_state(langgraph_config)
-            agent_state = extract_agent_state(getattr(state, "values", {})) if state else {}
+            agent_state = extract_agent_state(
+                getattr(state, "values", {})) if state else {}
         except Exception:
             agent_state = {}
 
@@ -865,7 +891,7 @@ async def stream_agent_chat(
             last_agent_state_signature = final_signature
             yield make_chunk(status="agent_state", agent_state=agent_state, meta=meta)
 
-        # 先存储数据库，再返回 finished，避免前端查询时数据未落库
+        # Store to database before returning finished, to avoid frontend reads before persistence.
         await save_messages_from_langgraph_state(
             agent_instance=agent,
             thread_id=thread_id,
@@ -889,7 +915,7 @@ async def stream_agent_chat(
                     new_conv_repo,
                     thread_id,
                     full_msg=full_msg,
-                    error_message="对话已中断" if not full_msg else None,
+                    error_message="Conversation interrupted" if not full_msg else None,
                     error_type="interrupted",
                     trace_info=trace_info,
                 )
@@ -902,10 +928,11 @@ async def stream_agent_chat(
         except Exception as exc:
             logger.error(f"Error during cleanup save: {exc}")
 
-        yield make_chunk(status="interrupted", message="对话已中断", meta=meta)
+        yield make_chunk(status="interrupted", message="Conversation interrupted", meta=meta)
 
     except Exception as e:
-        logger.error(f"Error streaming messages: {e}, {traceback.format_exc()}")
+        logger.error(
+            f"Error streaming messages: {e}, {traceback.format_exc()}")
 
         error_msg = f"Error streaming messages: {e}"
         error_type = "unexpected_error"
@@ -951,14 +978,16 @@ async def stream_agent_resume(
     try:
         agent = agent_manager.get_agent(agent_id)
     except Exception as e:
-        logger.error(f"Error getting agent {agent_id}: {e}, {traceback.format_exc()}")
+        logger.error(
+            f"Error getting agent {agent_id}: {e}, {traceback.format_exc()}")
         yield (
             f'{{"request_id": "{meta.get("request_id")}", "message": '
             f'"Error getting agent {agent_id}: {e}", "status": "error"}}\n'
         )
         return
 
-    init_msg = {"type": "system", "content": f"Resume with input: {resume_input}"}
+    init_msg = {"type": "system",
+                "content": f"Resume with input: {resume_input}"}
     yield make_resume_chunk(status="init", meta=meta, msg=init_msg)
 
     resume_command = Command(resume=resume_input)
@@ -1002,7 +1031,8 @@ async def stream_agent_resume(
     try:
         async for mode, payload in stream_source:
             if mode == "values":
-                agent_state = extract_agent_state(payload if isinstance(payload, dict) else {})
+                agent_state = extract_agent_state(
+                    payload if isinstance(payload, dict) else {})
                 signature = _agent_state_signature(agent_state)
                 if signature and signature != last_agent_state_signature:
                     last_agent_state_signature = signature
@@ -1019,7 +1049,8 @@ async def stream_agent_resume(
                 content=getattr(msg, "content", ""), msg=msg_dict, metadata=metadata, status="loading"
             )
 
-        langgraph_config = {"configurable": {"thread_id": thread_id, "user_id": str(current_user.id)}}
+        langgraph_config = {"configurable": {
+            "thread_id": thread_id, "user_id": str(current_user.id)}}
         async for chunk in check_and_handle_interrupts(agent, langgraph_config, make_resume_chunk, meta, thread_id):
             yield chunk
 
@@ -1027,7 +1058,8 @@ async def stream_agent_resume(
 
         try:
             state = await graph.aget_state(langgraph_config)
-            agent_state = extract_agent_state(getattr(state, "values", {})) if state else {}
+            agent_state = extract_agent_state(
+                getattr(state, "values", {})) if state else {}
         except Exception:
             agent_state = {}
 
@@ -1035,7 +1067,7 @@ async def stream_agent_resume(
         if final_signature and final_signature != last_agent_state_signature:
             yield make_resume_chunk(status="agent_state", agent_state=agent_state, meta=meta)
 
-        # 先存储数据库，再返回 finished，避免前端查询时数据未落库
+        # Store to database before returning finished, to avoid frontend reads before persistence.
         conv_repo = ConversationRepository(db)
         await save_messages_from_langgraph_state(
             agent_instance=agent,
@@ -1055,12 +1087,12 @@ async def stream_agent_resume(
             await save_partial_message(
                 new_conv_repo,
                 thread_id,
-                error_message="对话恢复已中断",
+                error_message="Conversation resume interrupted",
                 error_type="resume_interrupted",
                 trace_info=trace_info,
             )
 
-        yield make_resume_chunk(status="interrupted", message="对话恢复已中断", meta=meta)
+        yield make_resume_chunk(status="interrupted", message="Conversation resume interrupted", meta=meta)
 
     except Exception as e:
         logger.error(f"Error during resume: {e}, {traceback.format_exc()}")
@@ -1091,12 +1123,15 @@ async def get_agent_state_view(
     if not conversation or conversation.user_id != str(current_user_id) or conversation.status == "deleted":
         from fastapi import HTTPException
 
-        raise HTTPException(status_code=404, detail="对话线程不存在")
+        raise HTTPException(
+            status_code=404, detail="conversation thread does not exist")
 
     agent = agent_manager.get_agent(conversation.agent_id)
     graph = await agent.get_graph()
-    langgraph_config = {"configurable": {"user_id": str(current_user_id), "thread_id": thread_id}}
+    langgraph_config = {"configurable": {
+        "user_id": str(current_user_id), "thread_id": thread_id}}
     state = await graph.aget_state(langgraph_config)
-    agent_state = extract_agent_state(getattr(state, "values", {})) if state else {}
+    agent_state = extract_agent_state(
+        getattr(state, "values", {})) if state else {}
 
     return {"agent_state": agent_state}

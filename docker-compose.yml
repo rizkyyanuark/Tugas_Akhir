@@ -4,7 +4,7 @@ x-api-worker-env: &api-worker-env
   RUNNING_IN_DOCKER: "true"
   MODEL_DIR_IN_DOCKER: /models
   # DBs and other services
-  POSTGRES_URL: ${POSTGRES_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-yuxi_know}}
+  POSTGRES_URL: ${POSTGRES_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}}
   REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
   NEO4J_URI: ${NEO4J_URI:-bolt://graph:7687}
   NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
@@ -29,6 +29,32 @@ x-api-worker-env: &api-worker-env
   # Other environment variables
   NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,sandbox-provisioner,api.siliconflow.cn
   no_proxy: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,sandbox-provisioner,api.siliconflow.cn
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/airflow.Dockerfile
+  image: tugas-akhir-airflow:3.1.7
+  profiles: ["etl"]
+  networks:
+    - app-network
+  env_file:
+    - .env
+  environment:
+    AIRFLOW_ENV: dev
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-c8a2f0e9b7d4a1e6f3c5d8b2a9e7f4c1}
+    AIRFLOW__WEBSERVER__RBAC: "true"
+    DOCKER_NETWORK: ${SANDBOX_DOCKER_NETWORK:-tugas-akhir-network}
+    HOST_DATA_DIR: ${HOST_DATA_DIR:-./data}
+    # --- Variabel Baru untuk Airflow 3 Task Execution API ---
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-static-jwt-secret-for-dev-12345}
+    AIRFLOW__API__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.session,airflow.sdk.api.auth.backend.token
+    # --------------------------------------------------------
 
 services:
   api:
@@ -60,7 +86,12 @@ services:
     environment:
       <<: *api-worker-env
     # endregion api_envs
-    command: uv run --no-dev uvicorn server.main:app --host 0.0.0.0 --port 5050
+    command: >
+      sh -c "if [ \"$$BACKEND_RELOAD\" = \"true\" ]; then
+        uv run uvicorn server.main:app --host 0.0.0.0 --port 5050 --reload --reload-dir /app/server --reload-dir /app/package;
+      else
+        uv run uvicorn server.main:app --host 0.0.0.0 --port 5050;
+      fi"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5050/api/system/health || exit 1"]
@@ -105,7 +136,12 @@ services:
       - .env
     environment:
       <<: *api-worker-env
-    command: uv run --no-dev arq server.worker_main.WorkerSettings
+    command: >
+      sh -c "if [ \"$$BACKEND_RELOAD\" = \"true\" ]; then
+        uv run watchfiles \"arq server.worker_main.WorkerSettings\" /app/server /app/package;
+      else
+        uv run arq server.worker_main.WorkerSettings;
+      fi"
     healthcheck:
       disable: true
     restart: unless-stopped
@@ -162,7 +198,7 @@ services:
       - SKILLS_PVC=${SKILLS_PVC:-yuxi-skills}
     command: >
       sh -lc "python -c 'import docker' >/dev/null 2>&1 || pip install --no-cache-dir 'docker>=7.1.0';
-      uvicorn app:app --host 0.0.0.0 --port 8002"
+      uvicorn app:app --host 0.0.0.0 --port 8002 --reload"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
       interval: 10s
@@ -304,13 +340,13 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-yuxi_know}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
       - TZ=${TZ:-Asia/Shanghai}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-yuxi_know} || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres} || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -352,90 +388,58 @@ services:
       - .env
 
   airflow-init:
-    build:
-      context: .
-      dockerfile: docker/airflow.Dockerfile
-    image: tugas-akhir-airflow:3.1.7
+    <<: *airflow-common
     container_name: airflow-init
-    profiles: ["etl"]
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - app-network
-    env_file:
-      - .env
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    volumes:
+      - ./orchestration/airflow_variables_import.json:/opt/airflow/variables.json:ro
     command: >
       bash -c "
-      airflow db init &&
-      airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true
+      airflow db migrate &&
+      airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true &&
+      airflow variables import /opt/airflow/variables.json || true
       "
 
   airflow-webserver:
-    build:
-      context: .
-      dockerfile: docker/airflow.Dockerfile
-    image: tugas-akhir-airflow:3.1.7
+    <<: *airflow-common
     container_name: airflow-webserver
-    profiles: ["etl"]
     restart: unless-stopped
     depends_on:
       airflow-init:
         condition: service_completed_successfully
     ports:
       - "8080:8080"
-    networks:
-      - app-network
-    env_file:
-      - .env
-    environment:
-      - AIRFLOW_ENV=dev
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - DOCKER_NETWORK=${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
-      - HOST_DATA_DIR=${HOST_DATA_DIR:-/c/Users/rizky_11yf1be/Desktop/Tugas_Akhir/data}
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
-    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: api-server
 
   airflow-scheduler:
-    build:
-      context: .
-      dockerfile: docker/airflow.Dockerfile
-    image: tugas-akhir-airflow:3.1.7
+    <<: *airflow-common
     container_name: airflow-scheduler
-    profiles: ["etl"]
     restart: unless-stopped
     depends_on:
       airflow-init:
         condition: service_completed_successfully
-    networks:
-      - app-network
-    env_file:
-      - .env
-    environment:
-      - AIRFLOW_ENV=dev
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - DOCKER_NETWORK=${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
-      - HOST_DATA_DIR=${HOST_DATA_DIR:-/c/Users/rizky_11yf1be/Desktop/Tugas_Akhir/data}
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
       - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
 
+
 networks:
   app-network:
     driver: bridge
-    name: ${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
+    name: ${SANDBOX_DOCKER_NETWORK:-tugas-akhir-network}
 
 volumes:
   postgres-data:

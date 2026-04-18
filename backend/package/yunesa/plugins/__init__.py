@@ -1,4 +1,4 @@
-# 新的统一文档处理器接口
+# New unified document processor interface
 from yunesa.plugins.parser.base import (
     BaseDocumentProcessor,
     DocumentParserException,
@@ -12,5 +12,5 @@ __all__ = [
     "DocumentProcessorException",
     "DocumentParserException",
     "OCRException",
-    "DocumentProcessorFactory",  # 推荐使用
+    "DocumentProcessorFactory",  # Recommended
 ]

@@ -1,4 +1,4 @@
-"""Skills 管理路由"""
+"""Skills management routes."""
 
 from __future__ import annotations
 
@@ -35,37 +35,45 @@ skills = APIRouter(prefix="/system/skills", tags=["skills"])
 
 
 class SkillNodeCreateRequest(BaseModel):
-    path: str = Field(..., description="相对 skill 根目录的路径")
-    is_dir: bool = Field(False, description="是否创建目录")
-    content: str | None = Field("", description="文件内容（仅文件创建时生效）")
+    path: str = Field(...,
+                      description="Path relative to the skill root directory")
+    is_dir: bool = Field(False, description="Whether to create a directory")
+    content: str | None = Field(
+        "", description="File content (used only when creating a file)")
 
 
 class SkillFileUpdateRequest(BaseModel):
-    path: str = Field(..., description="相对 skill 根目录的路径")
-    content: str = Field(..., description="文件内容")
+    path: str = Field(...,
+                      description="Path relative to the skill root directory")
+    content: str = Field(..., description="File content")
 
 
 class SkillDependenciesUpdateRequest(BaseModel):
-    tool_dependencies: list[str] = Field(default_factory=list, description="依赖的内置工具列表")
-    mcp_dependencies: list[str] = Field(default_factory=list, description="依赖的 MCP 服务列表")
-    skill_dependencies: list[str] = Field(default_factory=list, description="依赖的其他 skill slug 列表")
+    tool_dependencies: list[str] = Field(
+        default_factory=list, description="Built-in tool dependency list")
+    mcp_dependencies: list[str] = Field(
+        default_factory=list, description="MCP service dependency list")
+    skill_dependencies: list[str] = Field(
+        default_factory=list, description="List of dependent skill slugs")
 
 
 class BuiltinSkillUpdateRequest(BaseModel):
-    force: bool = Field(False, description="是否强制覆盖本地已安装内容")
+    force: bool = Field(
+        False, description="Whether to force-overwrite local installed content")
 
 
 class RemoteSkillSourceRequest(BaseModel):
-    source: str = Field(..., description="skills 仓库来源，如 owner/repo 或 GitHub URL")
+    source: str = Field(...,
+                        description="Skills repository source, e.g. owner/repo or GitHub URL")
 
 
 class RemoteSkillInstallRequest(RemoteSkillSourceRequest):
-    skill: str = Field(..., description="需要安装的 skill 名称")
+    skill: str = Field(..., description="Skill name to install")
 
 
 def _raise_from_value_error(e: ValueError) -> None:
     message = str(e)
-    status_code = 404 if "不存在" in message else 400
+    status_code = 404 if "does not exist" in message else 400
     raise HTTPException(status_code=status_code, detail=message)
 
 
@@ -73,7 +81,8 @@ def _cleanup_export_file(path: str) -> None:
     try:
         Path(path).unlink(missing_ok=True)
     except Exception as e:
-        logger.warning(f"Failed to cleanup exported skill archive '{path}': {e}")
+        logger.warning(
+            f"Failed to cleanup exported skill archive '{path}': {e}")
 
 
 @skills.get("")
@@ -81,13 +90,13 @@ async def list_skills_route(
     _current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取技能列表（管理员可读）。"""
+    """Get skill list (admin readable)."""
     try:
         items = await list_skills(db)
         return {"success": True, "data": [item.to_dict() for item in items]}
     except Exception as e:
         logger.error(f"Failed to list skills: {e}")
-        raise HTTPException(status_code=500, detail="获取技能列表失败")
+        raise HTTPException(status_code=500, detail="Failed to get skill list")
 
 
 @skills.get("/dependency-options")
@@ -95,12 +104,13 @@ async def get_skill_dependency_options_route(
     _current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取 skill 依赖项可选列表（仅超级管理员）。"""
+    """Get dependency option list for skills (superadmin only)."""
     try:
         return {"success": True, "data": await get_skill_dependency_options(db)}
     except Exception as e:
         logger.error(f"Failed to get skill dependency options: {e}")
-        raise HTTPException(status_code=500, detail="获取 skill 依赖选项失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to get skill dependency options")
 
 
 @skills.get("/builtin")
@@ -135,7 +145,8 @@ async def list_builtin_skills_route(
         raise
     except Exception as e:
         logger.error(f"Failed to list builtin skills: {e}")
-        raise HTTPException(status_code=500, detail="获取内置 skill 列表失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to get built-in skill list")
 
 
 @skills.post("/builtin/{slug}/install")
@@ -153,7 +164,8 @@ async def install_builtin_skill_route(
         raise
     except Exception as e:
         logger.error(f"Failed to install builtin skill '{slug}': {e}")
-        raise HTTPException(status_code=500, detail="安装内置 skill 失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to install built-in skill")
 
 
 @skills.post("/builtin/{slug}/update")
@@ -182,7 +194,8 @@ async def update_builtin_skill_route(
         raise
     except Exception as e:
         logger.error(f"Failed to update builtin skill '{slug}': {e}")
-        raise HTTPException(status_code=500, detail="更新内置 skill 失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to update built-in skill")
 
 
 @skills.post("/import")
@@ -191,7 +204,7 @@ async def import_skill_route(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """导入技能包（支持 ZIP 或单个 SKILL.md，仅超级管理员）。"""
+    """Import a skill package (ZIP or single SKILL.md, superadmin only)."""
     try:
         file_bytes = await file.read()
         item = await import_skill_zip(
@@ -207,7 +220,7 @@ async def import_skill_route(
         raise
     except Exception as e:
         logger.error(f"Failed to import skill package: {e}")
-        raise HTTPException(status_code=500, detail="导入技能失败")
+        raise HTTPException(status_code=500, detail="Failed to import skill")
 
 
 @skills.post("/remote/list")
@@ -222,8 +235,10 @@ async def list_remote_skills_route(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to list remote skills from '{payload.source}': {e}")
-        raise HTTPException(status_code=500, detail="获取远程 skills 列表失败")
+        logger.error(
+            f"Failed to list remote skills from '{payload.source}': {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to get remote skill list")
 
 
 @skills.post("/remote/install")
@@ -248,7 +263,8 @@ async def install_remote_skill_route(
         logger.error(
             f"Failed to install remote skill '{payload.skill}' from '{payload.source}': {e}"
         )
-        raise HTTPException(status_code=500, detail="安装远程 skill 失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to install remote skill")
 
 
 @skills.get("/{slug}/tree")
@@ -257,7 +273,7 @@ async def get_skill_tree_route(
     _current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取技能目录树（仅超级管理员）。"""
+    """Get skill directory tree (superadmin only)."""
     try:
         tree = await get_skill_tree(db, slug)
         return {"success": True, "data": tree}
@@ -267,17 +283,19 @@ async def get_skill_tree_route(
         raise
     except Exception as e:
         logger.error(f"Failed to get skill tree '{slug}': {e}")
-        raise HTTPException(status_code=500, detail="获取技能目录树失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to get skill directory tree")
 
 
 @skills.get("/{slug}/file")
 async def get_skill_file_route(
     slug: str,
-    path: str = Query(..., description="相对 skill 根目录路径"),
+    path: str = Query(...,
+                      description="Path relative to the skill root directory"),
     _current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """读取技能文本文件（仅超级管理员）。"""
+    """Read skill text file (superadmin only)."""
     try:
         data = await read_skill_file(db, slug, path)
         return {"success": True, "data": data}
@@ -287,7 +305,8 @@ async def get_skill_file_route(
         raise
     except Exception as e:
         logger.error(f"Failed to read skill file '{slug}/{path}': {e}")
-        raise HTTPException(status_code=500, detail="读取技能文件失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to read skill file")
 
 
 @skills.post("/{slug}/file")
@@ -297,7 +316,7 @@ async def create_skill_file_route(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建技能文件或目录（仅超级管理员）。"""
+    """Create skill file or directory (superadmin only)."""
     try:
         await create_skill_node(
             db,
@@ -313,8 +332,10 @@ async def create_skill_file_route(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to create skill node '{slug}/{payload.path}': {e}")
-        raise HTTPException(status_code=500, detail="创建技能文件失败")
+        logger.error(
+            f"Failed to create skill node '{slug}/{payload.path}': {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to create skill file")
 
 
 @skills.put("/{slug}/file")
@@ -324,7 +345,7 @@ async def update_skill_file_route(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新技能文本文件（仅超级管理员）。"""
+    """Update skill text file (superadmin only)."""
     try:
         await update_skill_file(
             db,
@@ -339,8 +360,10 @@ async def update_skill_file_route(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update skill file '{slug}/{payload.path}': {e}")
-        raise HTTPException(status_code=500, detail="更新技能文件失败")
+        logger.error(
+            f"Failed to update skill file '{slug}/{payload.path}': {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to update skill file")
 
 
 @skills.put("/{slug}/dependencies")
@@ -350,7 +373,7 @@ async def update_skill_dependencies_route(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新 skill 依赖（仅超级管理员）。"""
+    """Update skill dependencies (superadmin only)."""
     try:
         item = await update_skill_dependencies(
             db,
@@ -367,17 +390,19 @@ async def update_skill_dependencies_route(
         raise
     except Exception as e:
         logger.error(f"Failed to update skill dependencies '{slug}': {e}")
-        raise HTTPException(status_code=500, detail="更新 skill 依赖失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to update skill dependencies")
 
 
 @skills.delete("/{slug}/file")
 async def delete_skill_file_route(
     slug: str,
-    path: str = Query(..., description="相对 skill 根目录路径"),
+    path: str = Query(...,
+                      description="Path relative to the skill root directory"),
     _current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除技能文件或目录（仅超级管理员）。"""
+    """Delete skill file or directory (superadmin only)."""
     try:
         await delete_skill_node(db, slug=slug, relative_path=path)
         return {"success": True}
@@ -387,7 +412,8 @@ async def delete_skill_file_route(
         raise
     except Exception as e:
         logger.error(f"Failed to delete skill file '{slug}/{path}': {e}")
-        raise HTTPException(status_code=500, detail="删除技能文件失败")
+        raise HTTPException(
+            status_code=500, detail="Failed to delete skill file")
 
 
 @skills.get("/{slug}/export")
@@ -397,7 +423,7 @@ async def export_skill_route(
     _current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """导出技能压缩包（仅超级管理员）。"""
+    """Export skill archive package (superadmin only)."""
     try:
         export_path, download_name = await export_skill_zip(db, slug)
         background_tasks.add_task(_cleanup_export_file, export_path)
@@ -412,7 +438,7 @@ async def export_skill_route(
         raise
     except Exception as e:
         logger.error(f"Failed to export skill '{slug}': {e}")
-        raise HTTPException(status_code=500, detail="导出技能失败")
+        raise HTTPException(status_code=500, detail="Failed to export skill")
 
 
 @skills.delete("/{slug}")
@@ -421,7 +447,7 @@ async def delete_skill_route(
     _current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除技能（目录 + 数据库记录，仅超级管理员）。"""
+    """Delete skill (directory + database record, superadmin only)."""
     try:
         await delete_skill(db, slug=slug)
         return {"success": True}
@@ -431,4 +457,4 @@ async def delete_skill_route(
         raise
     except Exception as e:
         logger.error(f"Failed to delete skill '{slug}': {e}")
-        raise HTTPException(status_code=500, detail="删除技能失败")
+        raise HTTPException(status_code=500, detail="Failed to delete skill")

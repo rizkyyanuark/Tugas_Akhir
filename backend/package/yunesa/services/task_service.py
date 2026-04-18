@@ -108,7 +108,8 @@ class Tasker:
                 return
             await self._load_state()
             for _ in range(self.worker_count):
-                worker = asyncio.create_task(self._worker_loop(), name="tasker-worker")
+                worker = asyncio.create_task(
+                    self._worker_loop(), name="tasker-worker")
                 self._workers.append(worker)
             self._started = True
             logger.info("Tasker started with {} workers", self.worker_count)
@@ -133,7 +134,8 @@ class Tasker:
         coroutine: TaskCoroutine,
     ) -> Task:
         task_id = uuid.uuid4().hex
-        task = Task(id=task_id, name=name, type=task_type, payload=payload or {})
+        task = Task(id=task_id, name=name,
+                    type=task_type, payload=payload or {})
         async with self._lock:
             self._tasks[task_id] = task
             await self._persist_task(task)
@@ -147,7 +149,8 @@ class Tasker:
 
         status_counter = Counter(task.status for task in all_tasks)
         type_counter = Counter(task.type for task in all_tasks)
-        all_tasks.sort(key=lambda item: item.created_at or utc_isoformat(), reverse=True)
+        all_tasks.sort(
+            key=lambda item: item.created_at or utc_isoformat(), reverse=True)
 
         tasks = all_tasks
         if status:
@@ -207,7 +210,7 @@ class Tasker:
                         await self._mark_cancelled(task_id, "Task was cancelled before execution")
                         continue
                     await self._update_task(
-                        task_id, status="running", progress=0.0, message="任务开始执行", started_at=utc_isoformat()
+                        task_id, status="running", progress=0.0, message="taskstartexecute", started_at=utc_isoformat()
                     )
                     context = TaskContext(self, task_id)
                     try:
@@ -219,19 +222,19 @@ class Tasker:
                             task_id,
                             status="success",
                             progress=100.0,
-                            message="任务已完成",
+                            message="task completed",
                             result=result,
                             completed_at=utc_isoformat(),
                         )
                     except asyncio.CancelledError:
-                        await self._mark_cancelled(task_id, "任务被取消")
+                        await self._mark_cancelled(task_id, "task cancelled")
                     except Exception as exc:  # noqa: BLE001
                         logger.exception("Task {} failed: {}", task_id, exc)
                         await self._update_task(
                             task_id,
                             status="failed",
                             progress=100.0,
-                            message="任务执行失败",
+                            message="taskexecutefailed",
                             error=str(exc),
                             completed_at=utc_isoformat(),
                         )
@@ -299,12 +302,12 @@ class Tasker:
             task = Task.from_dict(record.to_dict())
             if task.status == "running":
                 task.status = "failed"
-                task.message = "服务重启时任务中断"
+                task.message = "task interrupted during service restart"
                 task.updated_at = utc_isoformat()
                 updated.append(task)
             elif task.status not in TERMINAL_STATUSES:
                 task.status = "failed"
-                task.message = "服务重启时任务未继续执行"
+                task.message = "task did not resume after service restart"
                 task.updated_at = utc_isoformat()
                 updated.append(task)
             self._tasks[task.id] = task

@@ -1,11 +1,11 @@
-"""问题和选项规范化工具"""
+"""Question and option normalization utilities."""
 
 import uuid
 from typing import Any
 
 
 def normalize_options(raw_options: Any) -> list[dict[str, str]]:
-    """规范化选项列表"""
+    """Normalize option list."""
     if not isinstance(raw_options, list):
         return []
 
@@ -23,7 +23,7 @@ def normalize_options(raw_options: Any) -> list[dict[str, str]]:
 
 
 def normalize_questions(raw_questions: Any, default_question_id_prefix: str = "q") -> list[dict[str, Any]]:
-    """规范化问题列表"""
+    """Normalize question list."""
     if not isinstance(raw_questions, list):
         return []
 
@@ -36,7 +36,8 @@ def normalize_questions(raw_questions: Any, default_question_id_prefix: str = "q
         if not question:
             continue
 
-        question_id = str(item.get("question_id") or f"{default_question_id_prefix}-{idx + 1}").strip()
+        question_id = str(item.get("question_id")
+                          or f"{default_question_id_prefix}-{idx + 1}").strip()
         if not question_id:
             question_id = str(uuid.uuid4())
 
@@ -58,7 +59,7 @@ def normalize_questions(raw_questions: Any, default_question_id_prefix: str = "q
 
 
 def normalize_legacy_question(raw_question: Any) -> dict[str, Any] | None:
-    """规范化单个问题（兼容旧格式）"""
+    """Normalize a single legacy question payload."""
     if not raw_question:
         return None
 

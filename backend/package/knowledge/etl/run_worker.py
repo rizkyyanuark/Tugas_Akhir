@@ -219,13 +219,33 @@ def main():
     )
     args = parser.parse_args()
 
-    logger.info(f"🚀 ETL Worker starting task: {args.task} (test_mode={args.test_mode})")
+    import os
+    reload_enabled = os.environ.get("BACKEND_RELOAD", "").lower() == "true"
 
-    try:
-        _dispatch_task(args.task, args.test_mode)
-    except Exception as e:
-        logger.error(f"❌ Task '{args.task}' failed: {e}", exc_info=True)
-        sys.exit(1)
+    if reload_enabled:
+        try:
+            from watchfiles import run_process
+            import functools
+
+            logger.info(f"🔄 Hot-Reload enabled. Watching for changes... (Task: {args.task})")
+            
+            # Create a partial function that calls the dispatcher
+            # This is what watchfiles will restart on every change.
+            task_func = functools.partial(_dispatch_task, args.task, args.test_mode)
+            
+            # Watch the package directory (where the logic lives)
+            package_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            run_process(package_dir, target=task_func)
+            
+        except ImportError:
+            logger.warning("⚠️ watchfiles not found. Running task once without reload.")
+            _dispatch_task(args.task, args.test_mode)
+    else:
+        try:
+            _dispatch_task(args.task, args.test_mode)
+        except Exception as e:
+            logger.error(f"❌ Task '{args.task}' failed: {e}", exc_info=True)
+            sys.exit(1)
 
     logger.info(f"🏁 ETL Worker task '{args.task}' finished successfully.")
 

@@ -82,8 +82,13 @@ dependencies = [
     "unstructured>=0.17.2",
     "wcmatch>=8.0.0",
 ]
+[dependency-groups]
+dev = [
+    "watchfiles>=0.24.0",
+]
 
 [tool.setuptools]
+
 include-package-data = true
 
 [tool.setuptools.packages.find]

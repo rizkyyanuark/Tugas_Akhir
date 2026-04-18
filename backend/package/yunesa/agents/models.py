@@ -15,7 +15,7 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
     """
     provider, model = fully_specified_name.split("/", maxsplit=1)
 
-    assert provider != "custom", "[弃用] 自定义模型已移除，请在 yunesa/config/static/models.py 中配置"
+    assert provider != "custom", "[Deprecated] Custom models were removed; please configure them in yunesa/config/static/models.py"
 
     model_info = config.model_names.get(provider)
     if not model_info:
@@ -29,7 +29,8 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
 
     if provider in ["openai", "deepseek"]:
         model_spec = f"{provider}:{model}"
-        logger.debug(f"[offical] Loading model {model_spec} with kwargs {kwargs}")
+        logger.debug(
+            f"[offical] Loading model {model_spec} with kwargs {kwargs}")
         return init_chat_model(model_spec, **kwargs)
 
     elif provider in ["dashscope"]:
@@ -44,7 +45,8 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
         )
 
     else:
-        try:  # 其他模型，默认使用OpenAIBase, like openai, zhipuai
+        # Other providers default to OpenAI-compatible backend (e.g. openai, zhipuai)
+        try:
             from langchain_openai import ChatOpenAI
 
             return ChatOpenAI(
@@ -54,4 +56,5 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
                 stream_usage=True,
             )
         except Exception as e:
-            raise ValueError(f"Model provider {provider} load failed, {e} \n {traceback.format_exc()}")
+            raise ValueError(
+                f"Model provider {provider} load failed, {e} \n {traceback.format_exc()}")

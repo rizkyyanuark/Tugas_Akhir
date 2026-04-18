@@ -10,7 +10,7 @@ from yunesa.storage.postgres.models_knowledge import EvaluationBenchmark, Evalua
 
 class EvaluationRepository:
     async def get_all_benchmarks(self) -> list[EvaluationBenchmark]:
-        """获取所有评估基准"""
+        """Get all evaluation benchmarks."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(EvaluationBenchmark))
             return list(result.scalars().all())
@@ -24,7 +24,8 @@ class EvaluationRepository:
     async def get_benchmark(self, benchmark_id: str) -> EvaluationBenchmark | None:
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(
-                select(EvaluationBenchmark).where(EvaluationBenchmark.benchmark_id == benchmark_id)
+                select(EvaluationBenchmark).where(
+                    EvaluationBenchmark.benchmark_id == benchmark_id)
             )
             return result.scalar_one_or_none()
 
@@ -40,7 +41,8 @@ class EvaluationRepository:
     async def delete_benchmark(self, benchmark_id: str) -> None:
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(
-                select(EvaluationBenchmark).where(EvaluationBenchmark.benchmark_id == benchmark_id)
+                select(EvaluationBenchmark).where(
+                    EvaluationBenchmark.benchmark_id == benchmark_id)
             )
             record = result.scalar_one_or_none()
             if record is not None:
@@ -90,12 +92,14 @@ class EvaluationRepository:
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(
                 select(EvaluationResultDetail).where(
-                    (EvaluationResultDetail.task_id == task_id) & (EvaluationResultDetail.query_index == query_index)
+                    (EvaluationResultDetail.task_id == task_id) & (
+                        EvaluationResultDetail.query_index == query_index)
                 )
             )
             record = result.scalar_one_or_none()
             if record is None:
-                record = EvaluationResultDetail(task_id=task_id, query_index=query_index, **data)
+                record = EvaluationResultDetail(
+                    task_id=task_id, query_index=query_index, **data)
                 session.add(record)
                 return record
             for key, value in data.items():

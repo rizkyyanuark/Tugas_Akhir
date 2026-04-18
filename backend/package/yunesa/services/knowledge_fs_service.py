@@ -26,12 +26,14 @@ def get_kb_cache_root() -> Path:
 def normalize_knowledge_mount_name(name: str) -> str:
     normalized = _MULTISPACE.sub(" ", str(name or "").strip())
     if _INVALID_MOUNT_NAME_CHARS.search(normalized):
-        raise ValueError("知识库名称包含不能映射为目录名的非法字符")
+        raise ValueError(
+            "knowledge base name contains illegal characters for a directory name")
     normalized = normalized.strip(" .")
     if not normalized or normalized in {".", ".."}:
-        raise ValueError("知识库名称不能映射为有效目录名")
+        raise ValueError(
+            "knowledge base name cannot map to a valid directory name")
     if "/" in normalized or "\\" in normalized:
-        raise ValueError("知识库名称不能包含路径分隔符")
+        raise ValueError("knowledge base name cannot contain path separators")
     return normalized
 
 
@@ -59,7 +61,8 @@ def _normalize_selected_knowledges(selected: list[str] | None) -> list[str]:
 def _derive_parsed_filename(filename: str, file_id: str, used_names: set[str]) -> str:
     raw_name = (filename or file_id or "file").strip() or file_id or "file"
     suffix = Path(raw_name).suffix
-    stem = Path(raw_name).name[: -len(suffix)] if suffix else Path(raw_name).name
+    stem = Path(raw_name).name[: -len(suffix)
+                               ] if suffix else Path(raw_name).name
     candidate = f"{stem or file_id}.md"
     lowered = candidate.casefold()
     if lowered in used_names:
@@ -113,7 +116,8 @@ async def build_visible_knowledge_mounts(
         mount_name = normalize_knowledge_mount_name(db_name)
         conflict_db_id = used_mount_names.get(mount_name.casefold())
         if conflict_db_id and conflict_db_id != db_id:
-            raise ValueError(f"知识库名称映射冲突: '{db_name}' -> '{mount_name}'")
+            raise ValueError(
+                f"knowledge base name mapping conflict: '{db_name}' -> '{mount_name}'")
         used_mount_names[mount_name.casefold()] = db_id
 
         records = await file_repo.list_by_db_id(db_id)
@@ -133,11 +137,13 @@ async def build_visible_knowledge_mounts(
 def cache_minio_object(*, source_url: str, metadata: dict[str, Any] | None = None) -> Path:
     bucket_name, object_name = parse_minio_url(source_url)
     minio_client = get_minio_client()
-    stat = minio_client.client.stat_object(bucket_name=bucket_name, object_name=object_name)
+    stat = minio_client.client.stat_object(
+        bucket_name=bucket_name, object_name=object_name)
     etag = str(getattr(stat, "etag", "") or "")
     last_modified = getattr(stat, "last_modified", None)
     version_key = etag or (last_modified.isoformat() if last_modified else "")
-    cache_key = hashlib.sha256(f"{bucket_name}:{object_name}:{version_key}".encode()).hexdigest()
+    cache_key = hashlib.sha256(
+        f"{bucket_name}:{object_name}:{version_key}".encode()).hexdigest()
 
     suffix = Path(object_name).suffix
     objects_root = get_kb_cache_root() / "objects"
@@ -147,7 +153,8 @@ def cache_minio_object(*, source_url: str, metadata: dict[str, Any] | None = Non
 
     cached_path = objects_root / f"{cache_key}{suffix}"
     if not cached_path.exists():
-        payload = minio_client.download_file(bucket_name=bucket_name, object_name=object_name)
+        payload = minio_client.download_file(
+            bucket_name=bucket_name, object_name=object_name)
         with tempfile.NamedTemporaryFile(dir=objects_root, delete=False) as tmp:
             tmp.write(payload)
             tmp_path = Path(tmp.name)
@@ -164,6 +171,7 @@ def cache_minio_object(*, source_url: str, metadata: dict[str, Any] | None = Non
             "cached_path": str(cached_path),
             "metadata": metadata or {},
         }
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        manifest_path.write_text(json.dumps(
+            manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return cached_path

@@ -16,35 +16,36 @@ graph = APIRouter(prefix="/graph", tags=["graph"])
 
 
 # =============================================================================
-# === 统一图谱接口 (Unified Graph API) ===
+# === Unified Graph Interface (Unified Graph API) ===
 # =============================================================================
 
 
 async def _get_graph_adapter(db_id: str) -> GraphAdapter:
     """
-    根据数据库ID获取对应的图谱适配器
+    Get the corresponding graph adapter by database ID.
 
     Args:
-        db_id: 数据库ID
+        db_id: Database ID.
 
     Returns:
-        GraphAdapter: 对应的图谱适配器实例
+        GraphAdapter: Matching graph adapter instance.
     """
-    # 检查图数据库服务状态 (仅对 Upload 类型需要)
+    # Check graph database service status (required only for Upload type).
     if not graph_base.is_running():
-        # 先尝试检测图谱类型，如果是不需要 graph_base 的类型则允许
+        # First detect graph type; allow it if the type does not require graph_base.
         graph_type = await GraphAdapterFactory.detect_graph_type(db_id, knowledge_base)
         if graph_type == "upload":
-            raise HTTPException(status_code=503, detail="Graph database service is not running")
+            raise HTTPException(
+                status_code=503, detail="Graph database service is not running")
 
-    # 使用工厂方法自动创建适配器
+    # Auto-create adapter via factory method.
     return await GraphAdapterFactory.create_adapter_by_db_id(
         db_id=db_id, knowledge_base_manager=knowledge_base, graph_db_instance=graph_base
     )
 
 
 def _get_capabilities_from_metadata(metadata) -> dict:
-    """从 GraphMetadata 对象提取 capabilities 字典"""
+    """Extract capabilities dictionary from a GraphMetadata object."""
     return {
         "supports_embedding": metadata.supports_embedding,
         "supports_threshold": metadata.supports_threshold,
@@ -54,26 +55,28 @@ def _get_capabilities_from_metadata(metadata) -> dict:
 @graph.get("/list")
 async def get_graphs(current_user: User = Depends(get_admin_user)):
     """
-    获取所有可用的知识图谱列表
+    Get all available knowledge graphs.
 
     Returns:
-        包含所有图谱信息的列表 (包括 Neo4j 和 LightRAG)，以及每个类型的 capability 信息
+        A list containing all graph info (including Neo4j and LightRAG),
+        plus capability metadata for each type.
     """
     try:
         graphs = []
 
-        # 1. 获取默认 Neo4j 图谱信息 (Upload 类型)
+        # 1. Get default Neo4j graph info (Upload type).
         neo4j_info = graph_base.get_graph_info()
         if neo4j_info:
-            # 直接使用 Upload 适配器的默认 metadata
+            # Use default metadata from Upload adapter.
             from yunesa.knowledge.graphs.adapters.upload import UploadGraphAdapter
 
-            capabilities = _get_capabilities_from_metadata(UploadGraphAdapter._get_metadata(None))
+            capabilities = _get_capabilities_from_metadata(
+                UploadGraphAdapter._get_metadata(None))
 
             graphs.append(
                 {
                     "id": "neo4j",
-                    "name": "默认图谱",
+                    "name": "default graph",
                     "type": "upload",
                     "description": "Default graph database for uploaded documents",
                     "status": neo4j_info.get("status", "unknown"),
@@ -84,12 +87,13 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
                 }
             )
 
-        # 2. 获取 LightRAG 数据库信息
+        # 2. Get LightRAG database info.
         lightrag_dbs = await knowledge_base.get_lightrag_databases()
-        # 直接使用 LightRAG 适配器的默认 metadata
+        # Use default metadata from LightRAG adapter.
         from yunesa.knowledge.graphs.adapters.lightrag import LightRAGGraphAdapter
 
-        capabilities = _get_capabilities_from_metadata(LightRAGGraphAdapter._get_metadata(None))
+        capabilities = _get_capabilities_from_metadata(
+            LightRAGGraphAdapter._get_metadata(None))
 
         for db in lightrag_dbs:
             db_id = db.get("db_id")
@@ -112,32 +116,34 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
     except Exception as e:
         logger.error(f"Failed to list graphs: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Failed to list graphs: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list graphs: {str(e)}")
 
 
 @graph.get("/subgraph")
 async def get_subgraph(
-    db_id: str = Query(..., description="知识图谱ID"),
-    node_label: str = Query("*", description="节点标签或查询关键词"),
-    max_depth: int = Query(2, description="最大深度", ge=1, le=5),
-    max_nodes: int = Query(100, description="最大节点数", ge=1, le=1000),
+    db_id: str = Query(..., description="knowledge graphID"),
+    node_label: str = Query("*", description="Node label or query keyword"),
+    max_depth: int = Query(2, description="Maximum depth", ge=1, le=5),
+    max_nodes: int = Query(
+        100, description="Maximum node count", ge=1, le=1000),
     current_user: User = Depends(get_admin_user),
 ):
     """
-    统一的子图查询接口
+    Unified subgraph query endpoint.
 
     Args:
-        db_id: 图谱ID (LightRAG DB ID 或 "neo4j")
-        node_label: 查询关键词或标签
-        max_depth: 扩展深度
-        max_nodes: 返回最大节点数
+        db_id: Graph ID (LightRAG DB ID or "neo4j").
+        node_label: Query keyword or label.
+        max_depth: Traversal depth.
+        max_nodes: Maximum number of returned nodes.
     """
     try:
         logger.info(f"Querying subgraph - db_id: {db_id}, label: {node_label}")
 
         adapter = await _get_graph_adapter(db_id)
 
-        # 统一查询参数 - 适配器会根据自己的配置处理这些参数
+        # Unified query parameters; adapter handles its own processing logic.
         query_kwargs = {
             "keyword": node_label,
             "max_depth": max_depth,
@@ -156,45 +162,48 @@ async def get_subgraph(
     except Exception as e:
         logger.error(f"Failed to get subgraph: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Failed to get subgraph: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get subgraph: {str(e)}")
 
 
 @graph.get("/labels")
 async def get_graph_labels(
-    db_id: str = Query(..., description="知识图谱ID"), current_user: User = Depends(get_admin_user)
+    db_id: str = Query(..., description="knowledge graphID"), current_user: User = Depends(get_admin_user)
 ):
     """
-    获取图谱的所有标签
+    Get all labels for the graph.
     """
     try:
-        # 使用统一的适配器获取标签
+        # Use unified adapter label retrieval.
         adapter = await _get_graph_adapter(db_id)
         labels = await adapter.get_labels()
         return {"success": True, "data": {"labels": labels}}
 
     except Exception as e:
         logger.error(f"Failed to get labels: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get labels: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get labels: {str(e)}")
 
 
 @graph.get("/stats")
 async def get_graph_stats(
-    db_id: str = Query(..., description="知识图谱ID"), current_user: User = Depends(get_admin_user)
+    db_id: str = Query(..., description="knowledge graphID"), current_user: User = Depends(get_admin_user)
 ):
     """
-    获取图谱统计信息
+    Get graph statistics.
     """
     try:
-        # 使用适配器的统计信息 (适用于 kb_ 开头的数据库和 LightRAG 数据库)
+        # Use adapter statistics (for kb_* and LightRAG databases).
         if db_id.startswith("kb_") or knowledge_base.is_lightrag_database(db_id):
             adapter = await _get_graph_adapter(db_id)
             stats_data = await adapter.get_stats()
             return {"success": True, "data": stats_data}
         else:
-            # Neo4j stats (直接管理的图谱)
+            # Neo4j stats (directly managed graph).
             info = graph_base.get_graph_info(graph_name=db_id)
             if not info:
-                raise HTTPException(status_code=404, detail="Graph info not found")
+                raise HTTPException(
+                    status_code=404, detail="Graph info not found")
 
             return {
                 "success": True,
@@ -209,13 +218,14 @@ async def get_graph_stats(
 
     except Exception as e:
         logger.error(f"Failed to get stats: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get stats: {str(e)}")
 
 
 @graph.get("/neo4j/nodes")
 async def get_neo4j_nodes(
-    kgdb_name: str = Query(..., description="知识图谱数据库名称"),
-    num: int = Query(100, description="节点数量", ge=1, le=1000),
+    kgdb_name: str = Query(..., description="knowledge graphdatabasename"),
+    num: int = Query(100, description="nodecount", ge=1, le=1000),
     current_user: User = Depends(get_admin_user),
 ):
     """(Deprecated) Use /graph/subgraph instead"""
@@ -225,7 +235,7 @@ async def get_neo4j_nodes(
 
 @graph.get("/neo4j/node")
 async def get_neo4j_node(
-    entity_name: str = Query(..., description="实体名称"), current_user: User = Depends(get_admin_user)
+    entity_name: str = Query(..., description="entityname"), current_user: User = Depends(get_admin_user)
 ):
     """(Deprecated) Use /graph/subgraph instead"""
     # neo4j/node uses query_nodes(keyword=entity_name)
@@ -235,23 +245,26 @@ async def get_neo4j_node(
 
 @graph.get("/neo4j/info")
 async def get_neo4j_info(current_user: User = Depends(get_admin_user)):
-    """获取Neo4j图数据库信息"""
+    """Get Neo4j graph database information."""
     try:
         graph_info = graph_base.get_graph_info()
         if graph_info is None:
-            raise HTTPException(status_code=400, detail="图数据库获取出错")
+            raise HTTPException(
+                status_code=400, detail="Failed to get graph database info")
         return {"success": True, "data": graph_info}
     except Exception as e:
-        logger.error(f"获取图数据库信息失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取图数据库信息失败: {str(e)}")
+        logger.error(f"Failed to get graph database info: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get graph database info: {str(e)}")
 
 
 @graph.post("/neo4j/index-entities")
 async def index_neo4j_entities(data: dict = Body(default={}), current_user: User = Depends(get_admin_user)):
-    """为Neo4j图谱节点添加嵌入向量索引"""
+    """Add embedding vector indexes to Neo4j graph nodes."""
     try:
         if not graph_base.is_running():
-            raise HTTPException(status_code=400, detail="图数据库未启动")
+            raise HTTPException(
+                status_code=400, detail="Graph database is not started")
 
         kgdb_name = data.get("kgdb_name", "neo4j")
         count = await graph_base.add_embedding_to_nodes(kgdb_name=kgdb_name)
@@ -259,12 +272,13 @@ async def index_neo4j_entities(data: dict = Body(default={}), current_user: User
         return {
             "success": True,
             "status": "success",
-            "message": f"已成功为{count}个节点添加嵌入向量",
+            "message": f"Successfully added embedding vectors for {count} nodes",
             "indexed_count": count,
         }
     except Exception as e:
-        logger.error(f"索引节点失败: {e}")
-        raise HTTPException(status_code=500, detail=f"索引节点失败: {str(e)}")
+        logger.error(f"Failed to index nodes: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to index nodes: {str(e)}")
 
 
 @graph.post("/neo4j/add-entities")
@@ -275,20 +289,20 @@ async def add_neo4j_entities(
     batch_size: int | None = Body(None),
     current_user: User = Depends(get_admin_user),
 ):
-    """通过JSONL文件添加图谱实体到Neo4j（只接受 MinIO URL）"""
+    """Add graph entities to Neo4j from a JSONL file (MinIO URL only)."""
     try:
-        # 服务层会验证 URL 并从 MinIO 下载文件
+        # Service layer validates URL and downloads file from MinIO.
         await graph_base.jsonl_file_add_entity(file_path, kgdb_name, embed_model_name, batch_size)
-        return {"success": True, "message": "实体添加成功", "status": "success"}
+        return {"success": True, "message": "Entities added successfully", "status": "success"}
     except StorageError as e:
-        # MinIO 验证或下载错误
+        # MinIO validation or download error.
         raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
-        # 本地路径拒绝错误
+        # Local path rejected.
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"添加实体失败: {e}, {traceback.format_exc()}")
-        return {"success": False, "message": f"添加实体失败: {e}", "status": "failed"}
+        logger.error(f"Failed to add entities: {e}, {traceback.format_exc()}")
+        return {"success": False, "message": f"Failed to add entities: {e}", "status": "failed"}
 
 
 # =============================================================================
@@ -361,8 +375,10 @@ async def build_knowledge_graph(
             "task_id": task.id,
         }
     except Exception as e:
-        logger.error(f"Failed to enqueue KG build: {e}, {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Failed to enqueue KG build: {e}")
+        logger.error(
+            f"Failed to enqueue KG build: {e}, {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to enqueue KG build: {e}")
 
 
 @graph.get("/kg/status")

@@ -24,14 +24,14 @@ BUILTIN_SKILLS: list[BuiltinSkillSpec] = [
     BuiltinSkillSpec(
         slug="deep-reporter",
         source_dir=_SKILLS_ROOT / "deep-reporter",
-        description="指导生成科研报告、行业调研和其他需要深度分析的结构化长报告。",
+        description="指导generate科研report、row业调研和其他需要深度分析的结构化长report。",
         version="2026.03.28",
         tool_dependencies=["tavily_search"],
     ),
     BuiltinSkillSpec(
         slug="reporter",
         source_dir=_SKILLS_ROOT / "reporter",
-        description="生成 SQL 查询报表并生成可视化图表。",
+        description="generate SQL query报table并generate可视化图table。",
         version="2026.03.28",
         tool_dependencies=[t["name"] for t in get_tool_info(get_mysql_tools())],
         mcp_dependencies=("mcp-server-chart",),

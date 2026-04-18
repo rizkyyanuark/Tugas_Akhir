@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from yunesa.storage.postgres.models_business import AgentConfig
 from yunesa.utils.datetime_utils import utc_now_naive
 
-# 默认配置名称
-DEFAULT_CONFIG_NAME = "初始配置"
+# Default configuration name
+DEFAULT_CONFIG_NAME = "Initial Configuration"
 
 
 class AgentConfigRepository:
@@ -32,7 +32,7 @@ class AgentConfigRepository:
 
         now = utc_now_naive()
 
-        # 先清空该部门+智能体的所有默认配置
+        # Clear all default configs under the same department + agent first.
         await self.db.execute(
             update(AgentConfig)
             .where(
@@ -42,7 +42,7 @@ class AgentConfigRepository:
             .values(is_default=False, updated_at=now, updated_by=updated_by)
         )
 
-        # 再设置目标配置为默认
+        # Then set target config as default.
         config.is_default = True
         config.updated_at = now
         config.updated_by = updated_by
@@ -115,13 +115,13 @@ class AgentConfigRepository:
         desired_name: str,
         exclude_id: int | None = None,
     ) -> str:
-        candidate = desired_name.strip() or "未命名配置"
+        candidate = desired_name.strip() or "Untitled Configuration"
         if not await self._name_exists(
             department_id=department_id, agent_id=agent_id, name=candidate, exclude_id=exclude_id
         ):
             return candidate
 
-        base = f"{candidate}-副本"
+        base = f"{candidate}-Copy"
         if not await self._name_exists(
             department_id=department_id, agent_id=agent_id, name=base, exclude_id=exclude_id
         ):

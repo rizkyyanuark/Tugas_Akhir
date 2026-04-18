@@ -7,9 +7,9 @@ import httpx
 from yunesa.knowledge.utils.url_validator import is_url_parsing_enabled, validate_url
 from yunesa.utils import logger
 
-# 最大允许下载大小 (例如 10MB)
+# Maximum allowed download size (e.g. 10MB)
 MAX_DOWNLOAD_SIZE = 10 * 1024 * 1024
-# 允许的 Content-Type
+# Allowed content types
 ALLOWED_CONTENT_TYPES = ["text/html", "application/xhtml+xml"]
 
 
@@ -91,7 +91,8 @@ async def fetch_url_content(url: str, max_size: int = MAX_DOWNLOAD_SIZE) -> tupl
                         redirect_count += 1
                         location = response.headers.get("Location")
                         if not location:
-                            raise ValueError("Redirect response missing Location header")
+                            raise ValueError(
+                                "Redirect response missing Location header")
 
                         # Handle relative redirects
                         if location.startswith("/"):
@@ -110,27 +111,32 @@ async def fetch_url_content(url: str, max_size: int = MAX_DOWNLOAD_SIZE) -> tupl
                         # Validate the new URL
                         is_valid, error_msg = validate_url(current_url)
                         if not is_valid:
-                            raise ValueError(f"Redirected to invalid URL: {error_msg}")
+                            raise ValueError(
+                                f"Redirected to invalid URL: {error_msg}")
 
                         parsed_new = urlparse(current_url)
                         if await is_private_ip(parsed_new.hostname):
-                            raise ValueError("Redirected to private IP address")
+                            raise ValueError(
+                                "Redirected to private IP address")
 
                         continue  # Start new request
 
                     response.raise_for_status()
 
                     # Check Content-Type
-                    content_type = response.headers.get("Content-Type", "").lower()
+                    content_type = response.headers.get(
+                        "Content-Type", "").lower()
                     if not any(allowed in content_type for allowed in ALLOWED_CONTENT_TYPES):
-                        raise ValueError(f"Unsupported Content-Type: {content_type}. Only HTML is supported.")
+                        raise ValueError(
+                            f"Unsupported Content-Type: {content_type}. Only HTML is supported.")
 
                     # Download content with size limit
                     content = bytearray()
                     async for chunk in response.aiter_bytes():
                         content.extend(chunk)
                         if len(content) > max_size:
-                            raise ValueError(f"Content size exceeds limit of {max_size} bytes")
+                            raise ValueError(
+                                f"Content size exceeds limit of {max_size} bytes")
 
                     return bytes(content), current_url
 

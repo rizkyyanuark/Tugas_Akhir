@@ -6,10 +6,10 @@ from dataclasses import dataclass, field
 
 BULLET_PATTERN = [
     [
-        r"第[零一二三四五六七八九十百0-9]+(分?编|部分)",
+        r"第[零一二三四五六七八九十百0-9]+(分?编|partial)",
         r"第[零一二三四五六七八九十百0-9]+章",
         r"第[零一二三四五六七八九十百0-9]+节",
-        r"第[零一二三四五六七八九十百0-9]+条",
+        r"第[零一二三四五六七八九十百0-9]+",
         r"[\(（][零一二三四五六七八九十百]+[\)）]",
     ],
     [
@@ -47,10 +47,10 @@ MARKDOWN_BULLET_GROUP_INDEX = 4
 
 
 def count_tokens(text: str) -> int:
-    """近似 token 计数，避免引入额外依赖。"""
+    """Approximate token count to avoid adding extra dependencies."""
     if not text:
         return 0
-    # 英文单词 + 数字 + CJK 单字
+    # English words + numbers + single CJK characters
     parts = re.findall(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]", text)
     return max(1, len(parts)) if text.strip() else 0
 
@@ -81,7 +81,7 @@ def is_english(texts: str | list[str]) -> bool:
 def not_bullet(line: str) -> bool:
     patt = [
         r"0",
-        r"[0-9]+ +[0-9~个只-]",
+        r"[0-9]+ +[0-9~只-]",
         r"[0-9]+\.{2,}",
     ]
     return any(re.match(p, line) for p in patt)
@@ -95,17 +95,18 @@ def is_probable_heading_line(line: str) -> bool:
     if re.match(r"^#{1,6}\s+\S", text):
         return True
 
-    # 表格/HTML 残留通常不是标题。
+    # Table/HTML leftovers are usually not titles.
     if re.search(r"</?(table|tr|td|th|caption|tbody|thead)[^>]*>", text, flags=re.IGNORECASE):
         return False
 
-    # 超长行基本是正文或条款，不是章节标题。
+    # Very long rows are usually body content, not chapter titles.
     if len(text) > 96:
         return False
     if count_tokens(text) > 72:
         return False
 
-    # 标题前段通常不会出现明显句号/逗号；出现则大概率是正文。
+    # Early title text usually does not contain strong sentence punctuation.
+    # If it does, it is likely body content.
     if re.search(r"[，。；！？!?:：]", text[:24]):
         return False
 
@@ -141,7 +142,8 @@ def bullets_category(sections: list[str]) -> int:
     hits: list[float] = [0.0] * len(BULLET_PATTERN)
 
     def bullet_weight(group_idx: int, line: str) -> float:
-        # 对 markdown 标题候选增加权重，避免“正文里的 一、/（一）”压过真正的 # 标题层级。
+        # Increase weight for markdown heading candidates so inline bullets
+        # in body text do not override real # heading hierarchy.
         if group_idx != MARKDOWN_BULLET_GROUP_INDEX:
             return 1.0
 
@@ -187,8 +189,9 @@ def _get_text(section: str | tuple[str, str]) -> str:
 def remove_contents_table(sections: list[str] | list[tuple[str, str]], eng: bool = False) -> None:
     i = 0
     while i < len(sections):
-        line = re.sub(r"( |　|\u3000)+", "", _get_text(sections[i]).split("@@")[0], flags=re.IGNORECASE)
-        if not re.match(r"(contents|目录|目次|tableofcontents|致谢|acknowledge)$", line, flags=re.IGNORECASE):
+        line = re.sub(r"( |　|\u3000)+", "",
+                      _get_text(sections[i]).split("@@")[0], flags=re.IGNORECASE)
+        if not re.match(r"(contents|directory|目times|tableofcontents|致谢|acknowledge)$", line, flags=re.IGNORECASE):
             i += 1
             continue
 
@@ -196,12 +199,14 @@ def remove_contents_table(sections: list[str] | list[tuple[str, str]], eng: bool
         if i >= len(sections):
             break
 
-        prefix = _get_text(sections[i])[:3] if not eng else " ".join(_get_text(sections[i]).split()[:2])
+        prefix = _get_text(sections[i])[:3] if not eng else " ".join(
+            _get_text(sections[i]).split()[:2])
         while not prefix and i < len(sections):
             sections.pop(i)
             if i >= len(sections):
                 break
-            prefix = _get_text(sections[i])[:3] if not eng else " ".join(_get_text(sections[i]).split()[:2])
+            prefix = _get_text(sections[i])[:3] if not eng else " ".join(
+                _get_text(sections[i]).split()[:2])
 
         if i >= len(sections) or not prefix:
             break
@@ -244,7 +249,7 @@ def make_colon_as_title(sections: list[str] | list[tuple[str, str]]) -> list[str
 
 
 def not_title(text: str) -> bool:
-    if re.match(r"第[零一二三四五六七八九十百0-9]+条", text):
+    if re.match(r"第[零一二三四五六七八九十百0-9]+", text):
         return False
     if len(text.split()) > 12 or (" " not in text and len(text) >= 32):
         return True
@@ -292,11 +297,13 @@ def tree_merge(bull: int, sections: list[str] | list[tuple[str, str]], depth: in
         return []
 
     sorted_levels = sorted(level_set)
-    target_level = sorted_levels[depth - 1] if depth <= len(sorted_levels) else sorted_levels[-1]
+    target_level = sorted_levels[depth -
+                                 1] if depth <= len(sorted_levels) else sorted_levels[-1]
 
     max_body_level = len(BULLET_PATTERN[bull]) + 2
     if target_level == max_body_level:
-        target_level = sorted_levels[-2] if len(sorted_levels) > 1 else sorted_levels[0]
+        target_level = sorted_levels[-2] if len(
+            sorted_levels) > 1 else sorted_levels[0]
 
     root = Node(level=0, depth=target_level, texts=[])
     root.build_tree(lines)
@@ -429,7 +436,8 @@ def naive_merge(
 
     custom_delimiters = _extract_custom_delimiters(delimiter)
     if custom_delimiters:
-        pattern = "|".join(re.escape(t) for t in sorted(set(custom_delimiters), key=len, reverse=True))
+        pattern = "|".join(re.escape(t) for t in sorted(
+            set(custom_delimiters), key=len, reverse=True))
         chunks: list[str] = []
         for sec, pos in typed_sections:
             split_sec = re.split(rf"({pattern})", sec, flags=re.DOTALL)
@@ -445,7 +453,8 @@ def naive_merge(
         return chunks
 
     if chunk_token_num <= 0:
-        merged = "\n".join(sec for sec, _ in typed_sections if sec and sec.strip())
+        merged = "\n".join(
+            sec for sec, _ in typed_sections if sec and sec.strip())
         return [merged] if merged.strip() else []
 
     chunks = [""]

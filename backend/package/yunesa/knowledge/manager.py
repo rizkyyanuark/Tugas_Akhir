@@ -14,39 +14,39 @@ from yunesa.utils.datetime_utils import utc_isoformat
 
 class KnowledgeBaseManager:
     """
-    知识库管理器
+    knowledge basemanager
 
-    统一管理多种类型的知识库实例，直接通过 Repository 访问数据库，不维护冗余缓存。
+    managementtypeknowledge base， Repository database，cache。
     """
 
     def __init__(self, work_dir: str):
         """
-        初始化知识库管理器
+        initializeknowledge basemanager
 
         Args:
-            work_dir: 工作目录
+            work_dir: directory
         """
         self.work_dir = work_dir
         os.makedirs(work_dir, exist_ok=True)
 
-        # 知识库实例缓存 {kb_type: kb_instance}
+        # knowledge basecache {kb_type: kb_instance}
         self.kb_instances: dict[str, KnowledgeBase] = {}
 
-        # 元数据锁
+        # data
         self._metadata_lock = asyncio.Lock()
 
     async def initialize(self):
-        """异步初始化"""
-        # 初始化已存在的知识库实例
+        """initialize"""
+        # initializealready existsknowledge base
         self._initialize_existing_kbs()
         logger.info("KnowledgeBaseManager initialized")
 
     async def _load_all_metadata(self):
-        """异步加载所有元数据 - 保留兼容性的空方法，现在由 KB 实例自行加载"""
+        """loaddata - ， KB rowload"""
         pass
 
     def _initialize_existing_kbs(self):
-        """初始化已存在的知识库实例"""
+        """initializealready existsknowledge base"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         async def _async_init():
@@ -58,22 +58,22 @@ class KnowledgeBaseManager:
                 kb_type = row.kb_type or "lightrag"
                 kb_types_in_use.add(kb_type)
 
-            logger.info(f"[InitializeKB] 发现 {len(kb_types_in_use)} 种知识库类型: {kb_types_in_use}")
+            logger.info(f"[InitializeKB]  {len(kb_types_in_use)} knowledge basetype: {kb_types_in_use}")
 
-            # 为每种使用中的知识库类型创建实例并加载元数据
+            # knowledge basetypecreateloaddata
             for kb_type in kb_types_in_use:
                 try:
                     kb_instance = self._get_or_create_kb_instance(kb_type)
-                    # 让 KB 实例自行加载元数据
+                    #  KB rowloaddata
                     await kb_instance._load_metadata()
-                    logger.info(f"[InitializeKB] {kb_type} 实例已初始化")
+                    logger.info(f"[InitializeKB] {kb_type} initialize")
                 except Exception as e:
                     logger.error(f"Failed to initialize {kb_type} knowledge base: {e}")
                     import traceback
 
                     logger.error(traceback.format_exc())
 
-        # 在事件循环中运行异步初始化
+        # rowinitialize
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(_async_init())
@@ -82,18 +82,18 @@ class KnowledgeBaseManager:
 
     def _get_or_create_kb_instance(self, kb_type: str) -> KnowledgeBase:
         """
-        获取或创建知识库实例
+        getcreateknowledge base
 
         Args:
-            kb_type: 知识库类型
+            kb_type: knowledge basetype
 
         Returns:
-            知识库实例
+            knowledge base
         """
         if kb_type in self.kb_instances:
             return self.kb_instances[kb_type]
 
-        # 创建新的知识库实例
+        # createknowledge base
         kb_work_dir = os.path.join(self.work_dir, f"{kb_type}_data")
         kb_instance = KnowledgeBaseFactory.create(kb_type, kb_work_dir)
 
@@ -103,23 +103,23 @@ class KnowledgeBaseManager:
 
     async def move_file(self, db_id: str, file_id: str, new_parent_id: str | None) -> dict:
         """
-        移动文件/文件夹
+        movefile/folder
         """
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.move_file(db_id, file_id, new_parent_id)
 
     async def _get_kb_for_database(self, db_id: str) -> KnowledgeBase:
         """
-        根据数据库ID获取对应的知识库实例
+        databaseIDgetknowledge base
 
         Args:
-            db_id: 数据库ID
+            db_id: databaseID
 
         Returns:
-            知识库实例
+            knowledge base
 
         Raises:
-            KBNotFoundError: 数据库不存在或知识库类型不支持
+            KBNotFoundError: databasedoes not existknowledge basetypenot supported
         """
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
@@ -137,7 +137,7 @@ class KnowledgeBaseManager:
         return self._get_or_create_kb_instance(kb_type)
 
     def _get_kb_for_database_sync(self, db_id: str) -> KnowledgeBase:
-        """同步版本的 _get_kb_for_database，用于兼容同步调用"""
+        """version _get_kb_for_database，"""
         try:
             loop = asyncio.get_running_loop()
             return loop.run_until_complete(self._get_kb_for_database(db_id))
@@ -145,33 +145,33 @@ class KnowledgeBaseManager:
             return asyncio.run(self._get_kb_for_database(db_id))
 
     # =============================================================================
-    # 统一的外部接口 - 与原始 LightRagBasedKB 兼容
+    # interface -  LightRagBasedKB 
     # =============================================================================
 
     async def aget_kb(self, db_id: str) -> KnowledgeBase:
-        """异步获取知识库实例
+        """getknowledge base
 
         Args:
-            db_id: 数据库ID
+            db_id: databaseID
 
         Returns:
-            知识库实例
+            knowledge base
         """
         return await self._get_kb_for_database(db_id)
 
     def get_kb(self, db_id: str) -> KnowledgeBase:
-        """同步获取知识库实例（兼容性方法，用于同步上下文）
+        """getknowledge base（，）
 
         Args:
-            db_id: 数据库ID
+            db_id: databaseID
 
         Returns:
-            知识库实例
+            knowledge base
         """
         return self._get_kb_for_database_sync(db_id)
 
     async def get_databases(self) -> dict:
-        """获取所有数据库信息"""
+        """getdatabase"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         kb_repo = KnowledgeBaseRepository()
@@ -194,23 +194,23 @@ class KnowledgeBaseManager:
                 logger.warning(f"Skip database due to missing metadata: db_id={row.db_id}, kb_type={kb_type}")
                 continue
 
-            # 补充 share_config 和 additional_params
+            #  share_config  additional_params
             db_info["share_config"] = row.share_config or {"is_shared": True, "accessible_departments": []}
             db_info["additional_params"] = ensure_chunk_defaults_in_additional_params(row.additional_params)
             all_databases.append(db_info)
         return {"databases": all_databases}
 
     async def check_accessible(self, user: dict, db_id: str) -> bool:
-        """检查用户是否有权限访问数据库
+        """checkuserwhetherpermissiondatabase
 
         Args:
-            user: 用户信息字典
-            db_id: 数据库ID
+            user: user
+            db_id: databaseID
 
         Returns:
-            bool: 是否有权限
+            bool: whetherpermission
         """
-        # 超级管理员有权访问所有
+        # super admin
         if user.get("role") == "superadmin":
             return True
 
@@ -224,18 +224,18 @@ class KnowledgeBaseManager:
         share_config = kb.share_config or {}
         is_shared = share_config.get("is_shared", True)
 
-        # 如果是全员共享，则有权限
+        # ，permission
         if is_shared:
             return True
 
-        # 检查部门权限
+        # checkdepartmentpermission
         user_department_id = user.get("department_id")
         accessible_departments = share_config.get("accessible_departments", [])
 
         if user_department_id is None:
             return False
 
-        # 转换为整数进行比较（前端可能传递字符串，后端存储为整数）
+        # convertrow（character，storage）
         try:
             user_department_id = int(user_department_id)
             accessible_departments = [int(d) for d in accessible_departments]
@@ -245,10 +245,10 @@ class KnowledgeBaseManager:
         return user_department_id in accessible_departments
 
     async def get_databases_by_raw_id(self, user_id: int) -> dict:
-        """根据用户ID获取知识库列表（原始ID版本，兼容旧接口）"""
+        """userIDgetknowledge baselist（IDversion，interface）"""
         from yunesa.repositories.user_repository import UserRepository
 
-        # 通过数据库获取用户信息
+        # databasegetuser
         user_repo = UserRepository()
         user: User | None = await user_repo.get_by_id(id=int(user_id))
         if not user:
@@ -257,10 +257,10 @@ class KnowledgeBaseManager:
         return await self.get_databases_by_user(user)
 
     async def get_databases_by_user_id(self, user_id: str) -> dict:
-        """根据用户ID获取知识库列表（字符串ID版本）"""
+        """userIDgetknowledge baselist（characterIDversion）"""
         from yunesa.repositories.user_repository import UserRepository
 
-        # 通过数据库获取用户信息
+        # databasegetuser
         user_repo = UserRepository()
         user: User | None = await user_repo.get_by_user_id(user_id)
         if not user:
@@ -269,9 +269,9 @@ class KnowledgeBaseManager:
         return await self.get_databases_by_user(user)
 
     async def get_databases_by_user(self, user: User | dict) -> dict:
-        """根据用户权限获取知识库列表"""
+        """userpermissiongetknowledge baselist"""
 
-        # 构建用户信息字典（支持 User 对象或 dict）
+        # builduser（ User  dict）
         if isinstance(user, dict):
             user_info = user
         else:
@@ -286,7 +286,7 @@ class KnowledgeBaseManager:
 
         all_databases = (await self.get_databases()).get("databases", [])
 
-        # 超级管理员可以看到所有知识库
+        # super adminknowledge base
         if user_info.get("role") == "superadmin":
             return {"databases": all_databases}
 
@@ -303,11 +303,11 @@ class KnowledgeBaseManager:
         return {"databases": filtered_databases}
 
     async def database_name_exists(self, database_name: str) -> bool:
-        """检查知识库名称是否已存在"""
+        """checkknowledge basenamewhetheralready exists"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
         from yunesa.storage.postgres.manager import pg_manager
 
-        # 确保 pg_manager 已初始化
+        #  pg_manager initialize
         if not pg_manager._initialized:
             pg_manager.initialize()
 
@@ -333,28 +333,28 @@ class KnowledgeBaseManager:
         **kwargs,
     ) -> dict:
         """
-        创建数据库
+        createdatabase
 
         Args:
-            database_name: 数据库名称
-            description: 数据库描述
-            kb_type: 知识库类型，默认为lightrag
-            embed_info: 嵌入模型信息
-            share_config: 共享配置
-            **kwargs: 其他配置参数，包括chunk_size和chunk_overlap
+            database_name: databasename
+            description: databasedescription
+            kb_type: knowledge basetype，defaultlightrag
+            embed_info: embeddingmodel
+            share_config: configure
+            **kwargs: configureparameter，chunk_sizechunk_overlap
 
         Returns:
-            数据库信息字典
+            database
         """
         if not KnowledgeBaseFactory.is_type_supported(kb_type):
             available_types = list(KnowledgeBaseFactory.get_available_types().keys())
             raise ValueError(f"Unsupported knowledge base type: {kb_type}. Available types: {available_types}")
 
-        # 检查名称是否已存在
+        # checknamewhetheralready exists
         if await self.database_name_exists(database_name):
-            raise ValueError(f"知识库名称 '{database_name}' 已存在，请使用其他名称")
+            raise ValueError(f"knowledge basename '{database_name}' already exists，name")
 
-        # 默认共享配置
+        # defaultconfigure
         if share_config is None:
             share_config = {"is_shared": True, "accessible_departments": []}
 
@@ -387,21 +387,21 @@ class KnowledgeBaseManager:
         return db_info
 
     async def delete_database(self, db_id: str) -> dict:
-        """删除数据库"""
+        """deletedatabase"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         try:
             kb_instance = await self._get_kb_for_database(db_id)
             result = await kb_instance.delete_database(db_id)
 
-            # 删除数据库记录
+            # deletedatabase
             kb_repo = KnowledgeBaseRepository()
             await kb_repo.delete(db_id)
 
             return result
         except KBNotFoundError as e:
             logger.warning(f"Database {db_id} not found during deletion: {e}")
-            return {"message": "删除成功"}
+            return {"message": "deletesuccessful"}
 
     async def add_file_record(
         self, db_id: str, item: str, params: dict | None = None, operator_id: str | None = None
@@ -426,22 +426,22 @@ class KnowledgeBaseManager:
         await kb_instance.update_file_params(db_id, file_id, params, operator_id)
 
     async def aquery(self, query_text: str, db_id: str, **kwargs) -> str:
-        """异步查询知识库"""
+        """queryknowledge base"""
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.aquery(query_text, db_id, **kwargs)
 
     async def export_data(self, db_id: str, format: str = "zip", **kwargs) -> str:
-        """导出知识库数据"""
+        """exportknowledge basedata"""
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.export_data(db_id, format=format, **kwargs)
 
     def query(self, query_text: str, db_id: str, **kwargs) -> str:
-        """同步查询知识库（兼容性方法）"""
+        """queryknowledge base（）"""
         kb_instance = self._get_kb_for_database_sync(db_id)
         return kb_instance.query(query_text, db_id, **kwargs)
 
     async def get_database_info(self, db_id: str) -> dict | None:
-        """获取数据库详细信息"""
+        """getdatabase"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         kb_repo = KnowledgeBaseRepository()
@@ -460,10 +460,10 @@ class KnowledgeBaseManager:
                 "kb_type": kb.kb_type,
                 "files": {},
                 "row_count": 0,
-                "status": "已连接",
+                "status": "connect",
             }
 
-        # 添加数据库中的附加字段
+        # adddatabase
         db_info["additional_params"] = ensure_chunk_defaults_in_additional_params(kb.additional_params)
         db_info["share_config"] = kb.share_config or {"is_shared": True, "accessible_departments": []}
         db_info["mindmap"] = kb.mindmap
@@ -473,52 +473,52 @@ class KnowledgeBaseManager:
         return db_info
 
     async def delete_folder(self, db_id: str, folder_id: str) -> None:
-        """递归删除文件夹"""
+        """deletefolder"""
         kb_instance = await self._get_kb_for_database(db_id)
         await kb_instance.delete_folder(db_id, folder_id)
 
     async def delete_file(self, db_id: str, file_id: str) -> None:
-        """删除文件"""
+        """deletefile"""
         kb_instance = await self._get_kb_for_database(db_id)
         await kb_instance.delete_file(db_id, file_id)
 
     async def update_content(self, db_id: str, file_ids: list[str], params: dict | None = None) -> list[dict]:
-        """更新内容（重新分块）"""
+        """updatecontent（chunking）"""
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.update_content(db_id, file_ids, params or {})
 
     async def get_file_basic_info(self, db_id: str, file_id: str) -> dict:
-        """获取文件基本信息（仅元数据）"""
+        """getfile（data）"""
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.get_file_basic_info(db_id, file_id)
 
     async def get_file_content(self, db_id: str, file_id: str) -> dict:
-        """获取文件内容信息（chunks和lines）"""
+        """getfilecontent（chunkslines）"""
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.get_file_content(db_id, file_id)
 
     async def get_file_info(self, db_id: str, file_id: str) -> dict:
-        """获取文件完整信息（基本信息+内容信息）- 保持向后兼容"""
+        """getfile（+content）- """
         kb_instance = await self._get_kb_for_database(db_id)
         return await kb_instance.get_file_info(db_id, file_id)
 
     def get_db_upload_path(self, db_id: str | None = None) -> str:
-        """获取数据库上传路径"""
+        """getdatabaseuploadpath"""
         if db_id:
             try:
                 kb_instance = self._get_kb_for_database_sync(db_id)
                 return kb_instance.get_db_upload_path(db_id)
             except KBNotFoundError:
-                # 如果数据库不存在，创建通用上传路径
+                # databasedoes not exist，createuploadpath
                 pass
 
-        # 通用上传路径
+        # uploadpath
         general_uploads = os.path.join(self.work_dir, "uploads")
         os.makedirs(general_uploads, exist_ok=True)
         return general_uploads
 
     async def file_name_existed_in_db(self, db_id: str | None, file_name: str | None) -> bool:
-        """检查指定数据库中是否存在同名的文件"""
+        """checkdatabasewhetherfile"""
         if not db_id or not file_name:
             return False
         try:
@@ -537,20 +537,20 @@ class KnowledgeBaseManager:
         return False
 
     async def get_same_name_files(self, db_id: str, filename: str) -> list[dict]:
-        """获取同一知识库中同名文件列表
-        基于原始文件名直接比较
-        返回基础信息：文件名、大小、上传时间
+        """getknowledge basefilelist
+        file
+        return：file、size、uploadtime
 
         Args:
-            db_id: 数据库ID
-            filename: 要检测的文件名（原始文件名）
+            db_id: databaseID
+            filename: file（file）
 
         Returns:
-            同名文件列表，每项包含：
-            - filename: 文件名
-            - size: 文件大小
-            - created_at: 上传时间
-            - file_id: 文件ID（用于下载）
+            filelist，items：
+            - filename: file
+            - size: filesize
+            - created_at: uploadtime
+            - file_id: fileID（download）
         """
         if not db_id or not filename:
             return []
@@ -566,7 +566,7 @@ class KnowledgeBaseManager:
             if file_info.get("status") == "failed":
                 continue
 
-            # 直接比较文件名（现在就是原始文件名）
+            # file（file）
             current_filename = file_info.get("filename", "")
 
             if current_filename.lower() == filename.lower():
@@ -580,12 +580,12 @@ class KnowledgeBaseManager:
                     }
                 )
 
-        # 按上传时间降序排序
+        # uploadtimesort
         same_name_files.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return same_name_files
 
     async def file_existed_in_db(self, db_id: str | None, content_hash: str | None) -> bool:
-        """检查指定数据库中是否存在相同内容哈希的文件"""
+        """checkdatabasewhethercontenthashfile"""
         if not db_id or not content_hash:
             return False
 
@@ -613,18 +613,18 @@ class KnowledgeBaseManager:
         additional_params: dict | None = None,
         share_config: dict | None = None,
     ) -> dict:
-        """更新数据库"""
+        """updatedatabase"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         kb_repo = KnowledgeBaseRepository()
         kb = await kb_repo.get_by_id(db_id)
         if kb is None:
-            raise ValueError(f"数据库 {db_id} 不存在")
+            raise ValueError(f"database {db_id} does not exist")
 
         kb_instance = await self._get_kb_for_database(db_id)
         kb_instance.update_database(db_id, name, description, llm_info)
 
-        # 准备更新数据
+        # preparingupdatedata
         update_data: dict = {
             "name": name,
             "description": description,
@@ -643,16 +643,16 @@ class KnowledgeBaseManager:
         if share_config is not None:
             update_data["share_config"] = share_config
 
-        # 保存到数据库
+        # savedatabase
         await kb_repo.update(db_id, update_data)
 
         return await self.get_database_info(db_id)
 
     def get_retrievers(self) -> dict[str, dict]:
-        """获取所有检索器"""
+        """getretrieval"""
         all_retrievers = {}
 
-        # 收集所有知识库的检索器
+        # knowledge baseretrieval
         for kb_instance in self.kb_instances.values():
             retrievers = kb_instance.get_retrievers()
             all_retrievers.update(retrievers)
@@ -660,15 +660,15 @@ class KnowledgeBaseManager:
         return all_retrievers
 
     # =============================================================================
-    # 管理器特有的方法
+    # manager
     # =============================================================================
 
     def get_supported_kb_types(self) -> dict[str, dict]:
-        """获取支持的知识库类型"""
+        """getknowledge basetype"""
         return KnowledgeBaseFactory.get_available_types()
 
     def get_kb_instance_info(self) -> dict[str, dict]:
-        """获取知识库实例信息"""
+        """getknowledge base"""
         info = {}
         for kb_type, kb_instance in self.kb_instances.items():
             info[kb_type] = {
@@ -679,7 +679,7 @@ class KnowledgeBaseManager:
         return info
 
     async def get_statistics(self) -> dict:
-        """获取统计信息"""
+        """getstatistics"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
         from yunesa.repositories.knowledge_file_repository import KnowledgeFileRepository
 
@@ -688,14 +688,14 @@ class KnowledgeBaseManager:
 
         stats = {"total_databases": len(rows), "kb_types": {}, "total_files": 0}
 
-        # 按知识库类型统计
+        # knowledge basetypestatistics
         for row in rows:
             kb_type = row.kb_type or "lightrag"
             if kb_type not in stats["kb_types"]:
                 stats["kb_types"][kb_type] = 0
             stats["kb_types"][kb_type] += 1
 
-        # 统计文件总数
+        # statisticsfiletotal
         file_repo = KnowledgeFileRepository()
         files = await file_repo.get_all()
         stats["total_files"] = len(files)
@@ -703,21 +703,21 @@ class KnowledgeBaseManager:
         return stats
 
     # =============================================================================
-    # 兼容性方法 - 为了支持现有的 graph_router.py
+    #  -  graph_router.py
     # =============================================================================
 
     async def _get_lightrag_instance(self, db_id: str):
         """
-        获取 LightRAG 实例（兼容性方法）
+        get LightRAG （）
 
         Args:
-            db_id: 数据库ID
+            db_id: databaseID
 
         Returns:
-            LightRAG 实例，如果数据库不是 lightrag 类型则返回 None
+            LightRAG ，database lightrag typereturn None
 
         Raises:
-            ValueError: 如果数据库不存在或不是 lightrag 类型
+            ValueError: databasedoes not exist lightrag type
         """
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
@@ -743,13 +743,13 @@ class KnowledgeBaseManager:
 
     async def is_lightrag_database(self, db_id: str) -> bool:
         """
-        检查数据库是否是 LightRAG 类型
+        checkdatabasewhether LightRAG type
 
         Args:
-            db_id: 数据库ID
+            db_id: databaseID
 
         Returns:
-            是否是 LightRAG 类型的数据库
+            whether LightRAG typedatabase
         """
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
@@ -761,24 +761,24 @@ class KnowledgeBaseManager:
 
     async def get_lightrag_databases(self) -> list[dict]:
         """
-        获取所有 LightRAG 类型的数据库
+        get LightRAG typedatabase
 
         Returns:
-            LightRAG 数据库列表
+            LightRAG databaselist
         """
         all_databases = (await self.get_databases())["databases"]
         return [db for db in all_databases if db.get("kb_type", "lightrag") == "lightrag"]
 
     # =============================================================================
-    # 数据一致性检测方法
+    # data
     # =============================================================================
 
     async def detect_data_inconsistencies(self) -> dict:
         """
-        检测向量数据库中存在但在 metadata 中缺失的数据
+        vectordatabase metadata data
 
         Returns:
-            包含不一致信息的字典，按知识库类型分组
+            ，knowledge basetypegroup
         """
         inconsistencies = {
             "milvus": {"missing_collections": [], "missing_files": []},
@@ -786,9 +786,9 @@ class KnowledgeBaseManager:
             "total_missing_files": 0,
         }
 
-        logger.info("开始检测向量数据库与元数据的一致性...")
+        logger.info("startvectordatabasedata...")
 
-        # 检测 Milvus 数据不一致
+        #  Milvus data
         if "milvus" in self.kb_instances:
             try:
                 milvus_inconsistencies = await self._detect_milvus_inconsistencies()
@@ -796,15 +796,15 @@ class KnowledgeBaseManager:
                 inconsistencies["total_missing_collections"] += len(milvus_inconsistencies["missing_collections"])
                 inconsistencies["total_missing_files"] += len(milvus_inconsistencies["missing_files"])
             except Exception as e:
-                logger.error(f"检测 Milvus 数据不一致时出错: {e}")
+                logger.error(f" Milvus data: {e}")
 
-        # 输出检测结果到日志
+        # outputresultlog
         self._log_inconsistencies(inconsistencies)
 
         return inconsistencies
 
     async def _detect_milvus_inconsistencies(self) -> dict:
-        """检测 Milvus 中的数据不一致"""
+        """ Milvus data"""
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
         inconsistencies = {"missing_collections": [], "missing_files": []}
@@ -814,30 +814,30 @@ class KnowledgeBaseManager:
         try:
             from pymilvus import utility
 
-            # 获取 Milvus 中所有实际的集合
+            # get Milvus 
             actual_collection_names = set(utility.list_collections(using=milvus_kb.connection_alias))
 
-            # 从数据库获取所有已知的数据库ID
+            # databasegetdatabaseID
             kb_repo = KnowledgeBaseRepository()
             rows = await kb_repo.get_all()
             all_known_db_ids = {row.db_id for row in rows}
 
             lightrag_suffixes = ["_chunks", "_relationships", "_entities"]
 
-            # 找出存在于 Milvus 但不在 metadata 中的集合
+            #  Milvus  metadata 
             # missing_collections = actual_collection_names - metadata_collection_names
             for collection_name in actual_collection_names:
-                # 跳过一些系统集合
+                # system
                 if not collection_name.startswith("kb_"):
                     continue
 
-                # 检查集合是否属于已知数据库
+                # checkwhetherdatabase
                 is_known = False
 
-                # 1. 精确匹配 (Milvus 类型的知识库)
+                # 1.  (Milvus typeknowledge base)
                 if collection_name in all_known_db_ids:
                     is_known = True
-                # 2. 后缀匹配 (LightRAG 类型的知识库)
+                # 2.  (LightRAG typeknowledge base)
                 else:
                     for suffix in lightrag_suffixes:
                         if collection_name.endswith(suffix):
@@ -846,14 +846,14 @@ class KnowledgeBaseManager:
                                 is_known = True
                                 break
 
-                # 如果是已知集合，跳过
+                # ，
                 if is_known:
                     continue
 
-                # 如果是未知集合，记录下来
+                # ，
                 collection_info = {"collection_name": collection_name, "detected_at": utc_isoformat()}
 
-                # 尝试获取集合的基本信息
+                # get
                 try:
                     from pymilvus import Collection
 
@@ -861,19 +861,19 @@ class KnowledgeBaseManager:
                     collection_info["count"] = collection.num_entities
                     collection_info["description"] = collection.description
                 except Exception as e:
-                    logger.warning(f"无法获取集合 {collection_name} 的详细信息: {e}")
+                    logger.warning(f"get {collection_name} : {e}")
                     collection_info["count"] = "unknown"
 
                 inconsistencies["missing_collections"].append(collection_info)
                 logger.warning(
-                    f"发现 Milvus 中存在但 metadata 中缺失的集合: {collection_name} "
-                    f"(实体数: {collection_info['count']})"
+                    f" Milvus  metadata : {collection_name} "
+                    f"(entity: {collection_info['count']})"
                 )
 
-            # 获取 metadata 中记录的数据库ID（仅 Milvus 类型，用于检查文件一致性）
+            # get metadata databaseID（ Milvus type，checkfile）
             metadata_collection_names = set(milvus_kb.databases_meta.keys())
 
-            # 检查文件级别的不一致（针对已知的数据库）
+            # checkfile（database）
             for db_id in metadata_collection_names:
                 try:
                     if utility.has_collection(db_id, using=milvus_kb.connection_alias):
@@ -882,12 +882,12 @@ class KnowledgeBaseManager:
                         collection = Collection(name=db_id, using=milvus_kb.connection_alias)
                         actual_count = collection.num_entities
 
-                        # 获取 metadata 中记录的文件数量
+                        # get metadata filecount
                         metadata_files_count = sum(
                             1 for file_info in milvus_kb.files_meta.values() if file_info.get("database_id") == db_id
                         )
 
-                        # 如果向量数据库中有数据但 metadata 中没有文件记录，可能存在文件缺失
+                        # vectordatabasedata metadata file，file
                         if actual_count > 0 and metadata_files_count == 0:
                             inconsistencies["missing_files"].append(
                                 {
@@ -898,57 +898,57 @@ class KnowledgeBaseManager:
                                 }
                             )
                             logger.warning(
-                                f"发现数据库 {db_id} 在 Milvus 中有 {actual_count} 条向量数据，"
-                                "但 metadata 中没有文件记录"
+                                f"database {db_id}  Milvus  {actual_count} vectordata，"
+                                " metadata file"
                             )
 
                 except Exception as e:
-                    logger.debug(f"检查数据库 {db_id} 的文件一致性时出错: {e}")
+                    logger.debug(f"checkdatabase {db_id} file: {e}")
 
         except Exception as e:
-            logger.error(f"检测 Milvus 数据不一致时出错: {e}")
+            logger.error(f" Milvus data: {e}")
 
         return inconsistencies
 
     def _log_inconsistencies(self, inconsistencies: dict) -> None:
-        """将不一致检测结果输出到日志"""
+        """resultoutputlog"""
         total_missing_collections = inconsistencies["total_missing_collections"]
         total_missing_files = inconsistencies["total_missing_files"]
 
         if total_missing_collections == 0 and total_missing_files == 0:
-            logger.info("数据一致性检测完成，未发现不一致情况")
+            logger.info("datacompleted，")
             return
 
         logger.warning("=" * 80)
-        logger.warning("数据一致性检测完成，发现以下不一致情况：")
+        logger.warning("datacompleted，：")
         logger.warning("=" * 80)
 
-        # Milvus 不一致情况
+        # Milvus 
         milvus_missing = inconsistencies["milvus"]["missing_collections"]
         milvus_files_missing = inconsistencies["milvus"]["missing_files"]
         if milvus_missing or milvus_files_missing:
-            logger.warning("Milvus 不一致情况：")
-            logger.warning(f"  缺失集合数量: {len(milvus_missing)}")
+            logger.warning("Milvus ：")
+            logger.warning(f"  count: {len(milvus_missing)}")
             for collection_info in milvus_missing:
-                logger.warning(f"    - 集合: {collection_info['collection_name']}, 实体数: {collection_info['count']}")
-            logger.warning(f"  缺失文件记录数量: {len(milvus_files_missing)}")
+                logger.warning(f"    - : {collection_info['collection_name']}, entity: {collection_info['count']}")
+            logger.warning(f"  filecount: {len(milvus_files_missing)}")
             for file_info in milvus_files_missing:
                 logger.warning(
-                    f"    - 数据库: {file_info['database_id']}, 向量数: {file_info['vector_count']}, "
-                    f"元数据文件数: {file_info['metadata_files_count']}"
+                    f"    - database: {file_info['database_id']}, vector: {file_info['vector_count']}, "
+                    f"datafile: {file_info['metadata_files_count']}"
                 )
 
         logger.warning("=" * 80)
-        logger.warning(f"总计：缺失集合 {total_missing_collections} 个，缺失文件记录 {total_missing_files} 个")
-        logger.warning("建议：检查这些不一致的数据，必要时进行数据清理或元数据修复")
+        logger.warning(f"： {total_missing_collections} ，file {total_missing_files} ")
+        logger.warning("：checkdata，rowdataclean updata")
         logger.warning("=" * 80)
 
     async def manual_consistency_check(self) -> dict:
         """
-        手动触发数据一致性检测
+        data
 
         Returns:
-            检测结果字典
+            result
         """
-        logger.info("手动触发数据一致性检测...")
+        logger.info("data...")
         return await self.detect_data_inconsistencies()

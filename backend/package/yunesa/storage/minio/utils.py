@@ -1,18 +1,18 @@
 """
-MinIO 存储工具函数
-简化的存储操作辅助函数
+MinIO storage utility functions
+Simplified storage operation helpers
 """
 
 import os
 
 
 def get_file_size(file_path: str) -> int:
-    """获取文件大小"""
+    """Get file size."""
     return os.path.getsize(file_path)
 
 
 def generate_unique_filename(original_name: str) -> str:
-    """生成唯一的文件名"""
+    """Generate a unique filename."""
     import uuid
 
     name_parts = original_name.rsplit(".", 1)

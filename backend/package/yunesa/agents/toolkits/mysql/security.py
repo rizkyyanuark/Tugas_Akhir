@@ -2,12 +2,12 @@ import re
 
 
 class MySQLSecurityChecker:
-    """MySQL 安全检查器"""
+    """Security checker for MySQL queries."""
 
-    # 允许的SQL操作
+    # Allowed SQL operations
     ALLOWED_OPERATIONS = {"SELECT", "SHOW", "DESCRIBE", "EXPLAIN"}
 
-    # 危险的关键词
+    # Dangerous keywords
     DANGEROUS_KEYWORDS = {
         "DROP",
         "DELETE",
@@ -30,29 +30,29 @@ class MySQLSecurityChecker:
 
     @classmethod
     def validate_sql(cls, sql: str) -> bool:
-        """验证SQL语句的安全性"""
+        """Validate SQL statement safety."""
         if not sql:
             return False
 
-        # 移除SQL注释（-- 和 /* */）后再验证
+        # Remove SQL comments (-- and /* */) before validation.
         sql_clean = re.sub(r"--.*$", "", sql, flags=re.MULTILINE)
         sql_clean = re.sub(r"/\*.*?\*/", "", sql_clean)
         sql_upper = sql_clean.strip().upper()
 
-        # 检查是否是允许的操作
+        # Check whether the statement starts with an allowed operation.
         if not any(sql_upper.startswith(op) for op in cls.ALLOWED_OPERATIONS):
             return False
 
-        # 检查危险关键词 - 只检查语句开头的关键字，避免列名/表名误报
-        # 提取语句开头的第一个词
+        # Check dangerous keywords only at statement start to avoid false positives on column/table names.
+        # Extract first word at the beginning of the statement.
         first_word_match = re.match(r"^\s*(\w+)", sql_upper)
         first_word = first_word_match.group(1) if first_word_match else ""
 
-        # 只在开头检查危险关键词
+        # Check dangerous keywords only at the start.
         if first_word in cls.DANGEROUS_KEYWORDS:
             return False
 
-        # 检查SQL注入模式
+        # Check SQL injection patterns.
         sql_injection_patterns = [
             r"\bor\s+1\s*=\s*1\b",
             r"\bunion\s+select\b",
@@ -75,14 +75,14 @@ class MySQLSecurityChecker:
 
     @classmethod
     def validate_table_name(cls, table_name: str) -> bool:
-        """验证表名的安全性"""
+        """Validate table name safety."""
         if not table_name:
             return False
 
-        # 检查表名只包含字母、数字、下划线
+        # Ensure table names contain only letters, numbers, and underscores.
         return bool(re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table_name))
 
     @classmethod
     def validate_timeout(cls, timeout: int) -> bool:
-        """验证timeout参数"""
+        """Validate timeout parameter."""
         return isinstance(timeout, int) and 1 <= timeout <= 600

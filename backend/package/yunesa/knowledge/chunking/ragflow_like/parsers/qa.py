@@ -7,7 +7,7 @@ from typing import Any
 
 def _rm_prefix(text: str) -> str:
     return re.sub(
-        r"^(问题|答案|回答|user|assistant|Q|A|Question|Answer|问|答)[\t:： ]+",
+        r"^(question|答案|answer|user|assistant|Q|A|Question|Answer|问|答)[\t:： ]+",
         "",
         (text or "").strip(),
         flags=re.IGNORECASE,
@@ -15,8 +15,8 @@ def _rm_prefix(text: str) -> str:
 
 
 def _to_qa_chunk(question: str, answer: str, eng: bool = False) -> str:
-    qprefix = "Question: " if eng else "问题："
-    aprefix = "Answer: " if eng else "回答："
+    qprefix = "Question: " if eng else "question："
+    aprefix = "Answer: " if eng else "answer："
     return "\t".join([qprefix + _rm_prefix(question), aprefix + _rm_prefix(answer)])
 
 
@@ -172,15 +172,15 @@ def _extract_pairs_by_prefix(lines: list[str]) -> list[tuple[str, str]]:
     answer_lines: list[str] = []
 
     for line in lines:
-        if re.match(r"^(Q|Question|问|问题)\s*[:：]", line, flags=re.IGNORECASE):
+        if re.match(r"^(Q|Question|问|question)\s*[:：]", line, flags=re.IGNORECASE):
             if question:
                 pairs.append((question, "\n".join(answer_lines)))
-            question = re.sub(r"^(Q|Question|问|问题)\s*[:：]", "", line, flags=re.IGNORECASE).strip()
+            question = re.sub(r"^(Q|Question|问|question)\s*[:：]", "", line, flags=re.IGNORECASE).strip()
             answer_lines = []
             continue
 
-        if re.match(r"^(A|Answer|答|回答)\s*[:：]", line, flags=re.IGNORECASE):
-            answer_lines.append(re.sub(r"^(A|Answer|答|回答)\s*[:：]", "", line, flags=re.IGNORECASE).strip())
+        if re.match(r"^(A|Answer|答|answer)\s*[:：]", line, flags=re.IGNORECASE):
+            answer_lines.append(re.sub(r"^(A|Answer|答|answer)\s*[:：]", "", line, flags=re.IGNORECASE).strip())
             continue
 
         if question:
@@ -250,7 +250,7 @@ def chunk_markdown(filename: str, markdown_content: str, parser_config: dict[str
     pairs = _dedupe_pairs(pairs)
 
     if not pairs and lines:
-        # 最后兜底：把内容按 2 行一组构成问答
+        # 最后兜底：把content按 2 row一组构成问答
         for i in range(0, len(lines), 2):
             q = lines[i]
             a = lines[i + 1] if i + 1 < len(lines) else ""

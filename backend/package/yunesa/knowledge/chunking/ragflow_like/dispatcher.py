@@ -60,5 +60,5 @@ def chunk_markdown(
 def chunk_file(
     file_content: str, file_id: str, filename: str, processing_params: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    # 当前链路中入库前均已转换为 markdown，因此与 chunk_markdown 保持同实现。
+    # 当前链路中入库前均已convert为 markdown，因此与 chunk_markdown 保持同实现。
     return chunk_markdown(file_content, file_id, filename, processing_params)

@@ -1,4 +1,4 @@
-"""PostgreSQL 知识库模型 - KnowledgeBase、KnowledgeFile、评估相关表"""
+"""PostgreSQL Knowledge Base Models - KnowledgeBase, KnowledgeFile, and Evaluation Tables"""
 
 from sqlalchemy import (
     JSON,
@@ -21,7 +21,7 @@ JSON_VALUE = JSON().with_variant(JSONB, "postgresql")
 
 
 class KnowledgeBase(Base):
-    """知识库模型"""
+    """knowledge basemodel"""
 
     __tablename__ = "knowledge_bases"
     __table_args__ = (UniqueConstraint("db_id", name="uq_knowledge_bases_db_id"),)
@@ -43,7 +43,7 @@ class KnowledgeBase(Base):
 
 
 class KnowledgeFile(Base):
-    """知识文件模型"""
+    """knowledge filemodel"""
 
     __tablename__ = "knowledge_files"
     __table_args__ = (UniqueConstraint("file_id", name="uq_knowledge_files_file_id"),)
@@ -72,7 +72,7 @@ class KnowledgeFile(Base):
 
 
 class EvaluationBenchmark(Base):
-    """评估基准模型"""
+    """Evaluation Benchmark Model"""
 
     __tablename__ = "evaluation_benchmarks"
     __table_args__ = (UniqueConstraint("benchmark_id", name="uq_evaluation_benchmarks_benchmark_id"),)
@@ -92,7 +92,7 @@ class EvaluationBenchmark(Base):
 
 
 class EvaluationResult(Base):
-    """评估结果模型"""
+    """Evaluation Result Model"""
 
     __tablename__ = "evaluation_results"
     __table_args__ = (UniqueConstraint("task_id", name="uq_evaluation_results_task_id"),)
@@ -117,7 +117,7 @@ class EvaluationResult(Base):
 
 
 class EvaluationResultDetail(Base):
-    """评估结果详情模型"""
+    """Evaluation Result Detail Model"""
 
     __tablename__ = "evaluation_result_details"
     __table_args__ = (UniqueConstraint("task_id", "query_index", name="uq_evaluation_result_details_task_query"),)

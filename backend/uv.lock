@@ -5873,6 +5873,9 @@ requires-dist = [
     { name = "wcmatch", specifier = ">=8.0.0" },
 ]
 
+[package.metadata.requires-dev]
+dev = [{ name = "watchfiles", specifier = ">=0.24.0" }]
+
 [[package]]
 name = "yunesa-workspace"
 version = "0.6.0"

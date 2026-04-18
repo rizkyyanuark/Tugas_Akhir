@@ -1,4 +1,4 @@
-"""PostgreSQL 业务数据模型 - 用户、部门、对话等相关表"""
+"""PostgreSQL Business Data Models - User, Department, Conversation, and Related Tables"""
 
 from datetime import timedelta
 from typing import Any
@@ -27,7 +27,7 @@ LOGIN_LOCK_DURATION_SECONDS = 300
 
 
 class Department(Base):
-    """部门模型"""
+    """departmentmodel"""
 
     __tablename__ = "departments"
 
@@ -36,8 +36,9 @@ class Department(Base):
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=utc_now_naive)
 
-    # 关联关系
-    users = relationship("User", back_populates="department", cascade="all, delete-orphan")
+    # relationships
+    users = relationship("User", back_populates="department",
+                         cascade="all, delete-orphan")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,38 +50,48 @@ class Department(Base):
 
 
 class User(Base):
-    """用户模型"""
+    """usermodel"""
 
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String, nullable=False, unique=True, index=True)  # 显示名称
-    user_id = Column(String, nullable=False, unique=True, index=True)  # 登录ID
-    phone_number = Column(String, nullable=True, unique=True, index=True)  # 手机号
-    avatar = Column(String, nullable=True)  # 头像URL
+    username = Column(String, nullable=False, unique=True,
+                      index=True)  # display name
+    user_id = Column(String, nullable=False,
+                     unique=True, index=True)  # login ID
+    phone_number = Column(String, nullable=True,
+                          unique=True, index=True)  # phone number
+    avatar = Column(String, nullable=True)  # avatarURL
     password_hash = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="user")  # 角色: superadmin, admin, user
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)  # 部门ID
+    # role: superadmin, admin, user
+    role = Column(String, nullable=False, default="user")
+    department_id = Column(Integer, ForeignKey(
+        "departments.id"), nullable=True)  # departmentID
     created_at = Column(DateTime, default=utc_now_naive)
     last_login = Column(DateTime, nullable=True)
 
-    # 登录失败限制相关字段
-    login_failed_count = Column(Integer, nullable=False, default=0)  # 登录失败次数
-    last_failed_login = Column(DateTime, nullable=True)  # 最后一次登录失败时间
-    login_locked_until = Column(DateTime, nullable=True)  # 锁定到什么时候
+    # Login failure limit related fields
+    login_failed_count = Column(
+        Integer, nullable=False, default=0)  # login failure count
+    # last failed login time
+    last_failed_login = Column(DateTime, nullable=True)
+    login_locked_until = Column(DateTime, nullable=True)  # locked until
 
-    # 软删除相关字段
-    is_deleted = Column(Integer, nullable=False, default=0, index=True)  # 是否已删除：0=否，1=是
-    deleted_at = Column(DateTime, nullable=True)  # 删除时间
+    # Soft delete related fields
+    is_deleted = Column(Integer, nullable=False, default=0,
+                        index=True)  # whether deleted: 0=no, 1=yes
+    deleted_at = Column(DateTime, nullable=True)  # deletion time
 
-    # 关联操作日志
-    operation_logs = relationship("OperationLog", back_populates="user", cascade="all, delete-orphan")
+    # associated operation logs
+    operation_logs = relationship(
+        "OperationLog", back_populates="user", cascade="all, delete-orphan")
 
-    # 关联部门
+    # associated department
     department = relationship("Department", back_populates="users")
 
-    # 关联 API Keys
-    api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    # associated API keys
+    api_keys = relationship(
+        "APIKey", back_populates="user", cascade="all, delete-orphan")
 
     def to_dict(self, include_password: bool = False) -> dict[str, Any]:
         result = {
@@ -104,39 +115,42 @@ class User(Base):
         return result
 
     def is_login_locked(self) -> bool:
-        """检查用户是否处于登录锁定状态"""
+        """Check if user is in login lockout state"""
         if self.login_locked_until is None:
             return False
         return utc_now_naive() < self.login_locked_until
 
     def get_remaining_lock_time(self) -> int:
-        """获取剩余锁定时间（秒）"""
+        """Get remaining lockout time (seconds)"""
         if self.login_locked_until is None:
             return 0
-        remaining = int((self.login_locked_until - utc_now_naive()).total_seconds())
+        remaining = int((self.login_locked_until -
+                        utc_now_naive()).total_seconds())
         return max(0, remaining)
 
     def increment_failed_login(self):
-        """增加登录失败计数，并在达到阈值后锁定登录"""
+        """Increment login failure count and lock login after reaching threshold"""
         self.login_failed_count += 1
         self.last_failed_login = utc_now_naive()
         if self.login_failed_count >= MAX_LOGIN_FAILED_ATTEMPTS:
-            self.login_locked_until = self.last_failed_login + timedelta(seconds=LOGIN_LOCK_DURATION_SECONDS)
+            self.login_locked_until = self.last_failed_login + \
+                timedelta(seconds=LOGIN_LOCK_DURATION_SECONDS)
 
     def reset_failed_login(self):
-        """重置登录失败相关字段"""
+        """Reset login failure related fields"""
         self.login_failed_count = 0
         self.last_failed_login = None
         self.login_locked_until = None
 
 
 class AgentConfig(Base):
-    """智能体配置（按部门共享，多份可切换）"""
+    """Agent Configuration（Shared by department, multiple switchable）"""
 
     __tablename__ = "agent_configs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False, index=True)
+    department_id = Column(Integer, ForeignKey(
+        "departments.id"), nullable=False, index=True)
     agent_id = Column(String(64), nullable=False, index=True)
 
     name = Column(String(100), nullable=False)
@@ -152,10 +166,12 @@ class AgentConfig(Base):
     created_by = Column(String(64), nullable=True)
     updated_by = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=utc_now_naive)
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive)
 
     __table_args__ = (
-        UniqueConstraint("department_id", "agent_id", "name", name="uq_agent_configs_department_agent_name"),
+        UniqueConstraint("department_id", "agent_id", "name",
+                         name="uq_agent_configs_department_agent_name"),
         Index(
             "uq_agent_configs_department_agent_default",
             "department_id",
@@ -185,25 +201,36 @@ class AgentConfig(Base):
 
 
 class Skill(Base):
-    """Skill 元数据模型（内容存文件系统，索引存数据库）"""
+    """Skill Metadata Model（Content stored in filesystem, index stored in database）"""
 
     __tablename__ = "skills"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    slug = Column(String(128), nullable=False, unique=True, index=True, comment="技能唯一标识（目录名）")
-    name = Column(String(128), nullable=False, comment="技能名称（来自 SKILL.md frontmatter.name）")
-    description = Column(Text, nullable=False, comment="技能描述（来自 SKILL.md frontmatter.description）")
-    tool_dependencies = Column(JSON, nullable=False, default=list, comment="依赖的内置工具名列表")
-    mcp_dependencies = Column(JSON, nullable=False, default=list, comment="依赖的 MCP 服务名列表")
-    skill_dependencies = Column(JSON, nullable=False, default=list, comment="依赖的其他 skill slug 列表")
-    dir_path = Column(String(512), nullable=False, comment="技能目录路径（相对 save_dir）")
-    version = Column(String(64), nullable=True, comment="技能版本（内置 skill 使用语义化版本）")
-    is_builtin = Column(Boolean, nullable=False, default=False, comment="是否为内置 skill")
-    content_hash = Column(String(128), nullable=True, comment="技能目录内容哈希（内置 skill 安装时计算）")
+    slug = Column(String(128), nullable=False, unique=True, index=True,
+                  comment="Skill unique identifier (directory name)")
+    name = Column(String(128), nullable=False,
+                  comment="Skill name (from SKILL.md frontmatter.name)")
+    description = Column(
+        Text, nullable=False, comment="Skill description (from SKILL.md frontmatter.description)")
+    tool_dependencies = Column(
+        JSON, nullable=False, default=list, comment="List of dependent built-in tool names")
+    mcp_dependencies = Column(
+        JSON, nullable=False, default=list, comment="List of dependent MCP service names")
+    skill_dependencies = Column(
+        JSON, nullable=False, default=list, comment="List of dependent skill slugs")
+    dir_path = Column(String(512), nullable=False,
+                      comment="Skill directory path (relative to save_dir)")
+    version = Column(String(64), nullable=True,
+                     comment="Skill version (built-in skills use semantic versioning)")
+    is_builtin = Column(Boolean, nullable=False, default=False,
+                        comment="Whether it is a built-in skill")
+    content_hash = Column(String(128), nullable=True,
+                          comment="Skill directory content hash (calculated during built-in skill installation)")
     created_by = Column(String(64), nullable=True)
     updated_by = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=utc_now_naive)
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -226,23 +253,31 @@ class Skill(Base):
 
 
 class Conversation(Base):
-    """Conversation table - 对话表"""
+    """Conversation Table"""
 
     __tablename__ = "conversations"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, comment="Primary key")
-    thread_id = Column(String(64), unique=True, index=True, nullable=False, comment="Thread ID (UUID)")
+    id = Column(Integer, primary_key=True,
+                autoincrement=True, comment="Primary key")
+    thread_id = Column(String(64), unique=True, index=True,
+                       nullable=False, comment="Thread ID (UUID)")
     user_id = Column(String(64), index=True, nullable=False, comment="User ID")
-    agent_id = Column(String(64), index=True, nullable=False, comment="Agent ID")
+    agent_id = Column(String(64), index=True,
+                      nullable=False, comment="Agent ID")
     title = Column(String(255), nullable=True, comment="Conversation title")
-    status = Column(String(20), default="active", comment="Status: active/archived/deleted")
-    is_pinned = Column(Boolean, default=False, nullable=False, index=True, comment="Is pinned to top")
-    created_at = Column(DateTime, default=utc_now_naive, comment="Creation time")
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive, comment="Update time")
+    status = Column(String(20), default="active",
+                    comment="Status: active/archived/deleted")
+    is_pinned = Column(Boolean, default=False, nullable=False,
+                       index=True, comment="Is pinned to top")
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Creation time")
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive, comment="Update time")
     extra_metadata = Column(JSON, nullable=True, comment="Additional metadata")
 
     # Relationships
-    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    messages = relationship(
+        "Message", back_populates="conversation", cascade="all, delete-orphan")
     stats = relationship(
         "ConversationStats", back_populates="conversation", uselist=False, cascade="all, delete-orphan"
     )
@@ -264,26 +299,35 @@ class Conversation(Base):
 
 
 class Message(Base):
-    """Message table - 消息表"""
+    """Message Table"""
 
     __tablename__ = "messages"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, comment="Primary key")
+    id = Column(Integer, primary_key=True,
+                autoincrement=True, comment="Primary key")
     conversation_id = Column(
         Integer, ForeignKey("conversations.id"), nullable=False, index=True, comment="Conversation ID"
     )
-    role = Column(String(20), nullable=False, comment="Message role: user/assistant/system/tool")
+    role = Column(String(20), nullable=False,
+                  comment="Message role: user/assistant/system/tool")
     content = Column(Text, nullable=False, comment="Message content")
-    message_type = Column(String(30), default="text", comment="Message type: text/tool_call/tool_result")
-    created_at = Column(DateTime, default=utc_now_naive, comment="Creation time")
-    token_count = Column(Integer, nullable=True, comment="Token count (optional)")
-    extra_metadata = Column(JSON, nullable=True, comment="Additional metadata (complete message dump)")
-    image_content = Column(Text, nullable=True, comment="Base64 encoded image content for multimodal messages")
+    message_type = Column(String(30), default="text",
+                          comment="Message type: text/tool_call/tool_result")
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Creation time")
+    token_count = Column(Integer, nullable=True,
+                         comment="Token count (optional)")
+    extra_metadata = Column(
+        JSON, nullable=True, comment="Additional metadata (complete message dump)")
+    image_content = Column(
+        Text, nullable=True, comment="Base64 encoded image content for multimodal messages")
 
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")
-    tool_calls = relationship("ToolCall", back_populates="message", cascade="all, delete-orphan")
-    feedbacks = relationship("MessageFeedback", back_populates="message", cascade="all, delete-orphan")
+    tool_calls = relationship(
+        "ToolCall", back_populates="message", cascade="all, delete-orphan")
+    feedbacks = relationship(
+        "MessageFeedback", back_populates="message", cascade="all, delete-orphan")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -307,19 +351,25 @@ class Message(Base):
 
 
 class ToolCall(Base):
-    """ToolCall table - 工具调用表"""
+    """ToolCall Table"""
 
     __tablename__ = "tool_calls"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, comment="Primary key")
-    message_id = Column(Integer, ForeignKey("messages.id"), nullable=False, index=True, comment="Message ID")
-    langgraph_tool_call_id = Column(String(100), nullable=True, index=True, comment="LangGraph tool_call_id")
+    id = Column(Integer, primary_key=True,
+                autoincrement=True, comment="Primary key")
+    message_id = Column(Integer, ForeignKey("messages.id"),
+                        nullable=False, index=True, comment="Message ID")
+    langgraph_tool_call_id = Column(
+        String(100), nullable=True, index=True, comment="LangGraph tool_call_id")
     tool_name = Column(String(100), nullable=False, comment="Tool name")
     tool_input = Column(JSON, nullable=True, comment="Tool input parameters")
     tool_output = Column(Text, nullable=True, comment="Tool execution result")
-    status = Column(String(20), default="pending", comment="Status: pending/success/error")
-    error_message = Column(Text, nullable=True, comment="Error message if failed")
-    created_at = Column(DateTime, default=utc_now_naive, comment="Creation time")
+    status = Column(String(20), default="pending",
+                    comment="Status: pending/success/error")
+    error_message = Column(Text, nullable=True,
+                           comment="Error message if failed")
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Creation time")
 
     # Relationships
     message = relationship("Message", back_populates="tool_calls")
@@ -339,11 +389,12 @@ class ToolCall(Base):
 
 
 class ConversationStats(Base):
-    """ConversationStats table - 对话统计表"""
+    """ConversationStats Table"""
 
     __tablename__ = "conversation_stats"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, comment="Primary key")
+    id = Column(Integer, primary_key=True,
+                autoincrement=True, comment="Primary key")
     conversation_id = Column(
         Integer, ForeignKey("conversations.id"), unique=True, nullable=False, comment="Conversation ID"
     )
@@ -351,8 +402,10 @@ class ConversationStats(Base):
     total_tokens = Column(Integer, default=0, comment="Total tokens used")
     model_used = Column(String(100), nullable=True, comment="Model used")
     user_feedback = Column(JSON, nullable=True, comment="User feedback")
-    created_at = Column(DateTime, default=utc_now_naive, comment="Creation time")
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive, comment="Update time")
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Creation time")
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive, comment="Update time")
 
     # Relationships
     conversation = relationship("Conversation", back_populates="stats")
@@ -371,7 +424,7 @@ class ConversationStats(Base):
 
 
 class OperationLog(Base):
-    """操作日志模型"""
+    """Operation Log Model"""
 
     __tablename__ = "operation_logs"
 
@@ -382,7 +435,7 @@ class OperationLog(Base):
     ip_address = Column(String, nullable=True)
     timestamp = Column(DateTime, default=utc_now_naive)
 
-    # 关联用户
+    # associated user
     user = relationship("User", back_populates="operation_logs")
 
     def to_dict(self) -> dict[str, Any]:
@@ -397,18 +450,23 @@ class OperationLog(Base):
 
 
 class MessageFeedback(Base):
-    """Message feedback table - 消息反馈表"""
+    """Message Feedback Table"""
 
     __tablename__ = "message_feedbacks"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, comment="Primary key")
+    id = Column(Integer, primary_key=True,
+                autoincrement=True, comment="Primary key")
     message_id = Column(
         Integer, ForeignKey("messages.id"), nullable=False, index=True, comment="Message ID being rated"
     )
-    user_id = Column(String(64), nullable=False, index=True, comment="User ID who provided feedback")
-    rating = Column(String(10), nullable=False, comment="Feedback rating: like or dislike")
-    reason = Column(Text, nullable=True, comment="Optional reason for dislike feedback")
-    created_at = Column(DateTime, default=utc_now_naive, comment="Feedback creation time")
+    user_id = Column(String(64), nullable=False, index=True,
+                     comment="User ID who provided feedback")
+    rating = Column(String(10), nullable=False,
+                    comment="Feedback rating: like or dislike")
+    reason = Column(Text, nullable=True,
+                    comment="Optional reason for dislike feedback")
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Feedback creation time")
 
     # Relationships
     message = relationship("Message", back_populates="feedbacks")
@@ -425,39 +483,50 @@ class MessageFeedback(Base):
 
 
 class MCPServer(Base):
-    """MCP 服务器配置模型"""
+    """MCP Server Configuration Model"""
 
     __tablename__ = "mcp_servers"
 
-    # 核心字段 - name 作为主键
-    name = Column(String(100), primary_key=True, comment="服务器名称（唯一标识）")
-    description = Column(String(500), nullable=True, comment="描述")
+    # Core field - name as primary key
+    name = Column(String(100), primary_key=True,
+                  comment="server name (unique identifier)")
+    description = Column(String(500), nullable=True, comment="description")
 
-    # 连接配置
-    transport = Column(String(20), nullable=False, comment="传输类型：sse/streamable_http/stdio")
-    url = Column(String(500), nullable=True, comment="服务器 URL（sse/streamable_http）")
-    command = Column(String(500), nullable=True, comment="命令（stdio）")
-    args = Column(JSON, nullable=True, comment="命令参数数组（stdio）")
-    env = Column(JSON, nullable=True, comment="环境变量（stdio）")
-    headers = Column(JSON, nullable=True, comment="HTTP 请求头")
-    timeout = Column(Integer, nullable=True, comment="HTTP 超时时间（秒）")
-    sse_read_timeout = Column(Integer, nullable=True, comment="SSE 读取超时（秒）")
+    # Connection configuration
+    transport = Column(String(20), nullable=False,
+                       comment="Transport type: sse/streamable_http/stdio")
+    url = Column(String(500), nullable=True,
+                 comment="Server URL (sse/streamable_http)")
+    command = Column(String(500), nullable=True, comment="Command (stdio)")
+    args = Column(JSON, nullable=True,
+                  comment="Command argument array (stdio)")
+    env = Column(JSON, nullable=True, comment="Environment variables (stdio)")
+    headers = Column(JSON, nullable=True, comment="HTTP request headers")
+    timeout = Column(Integer, nullable=True, comment="HTTP timeout (seconds)")
+    sse_read_timeout = Column(Integer, nullable=True,
+                              comment="SSE read timeout (seconds)")
 
-    # UI 增强字段
-    tags = Column(JSON, nullable=True, comment="标签数组")
-    icon = Column(String(50), nullable=True, comment="图标（emoji）")
+    # UI enhancement fields
+    tags = Column(JSON, nullable=True, comment="Tag array")
+    icon = Column(String(50), nullable=True, comment="Icon (emoji)")
 
-    # 状态字段
-    enabled = Column(Integer, nullable=False, default=1, comment="是否启用：1=是，0=否")
-    disabled_tools = Column(JSON, nullable=True, comment="禁用的工具名称列表")
+    # Status fields
+    enabled = Column(Integer, nullable=False, default=1,
+                     comment="Enabled flag: 1=yes, 0=no")
+    disabled_tools = Column(JSON, nullable=True,
+                            comment="List of disabled tool names")
 
-    # 用户追踪
-    created_by = Column(String(100), nullable=False, comment="创建人用户名")
-    updated_by = Column(String(100), nullable=False, comment="修改人用户名")
+    # User audit fields
+    created_by = Column(String(100), nullable=False,
+                        comment="Creator username")
+    updated_by = Column(String(100), nullable=False,
+                        comment="Last modifier username")
 
-    # 时间戳
-    created_at = Column(DateTime, default=utc_now_naive, comment="创建时间")
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive, comment="更新时间")
+    # Timestamps
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Creation time")
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive, comment="Update time")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -482,7 +551,7 @@ class MCPServer(Base):
         }
 
     def to_mcp_config(self) -> dict[str, Any]:
-        """转换为 MCP 配置格式（用于加载到 MCP_SERVERS 缓存）"""
+        """Convert to MCP config format (used for loading into MCP_SERVERS cache)."""
         import json
 
         config = {"transport": self.transport}
@@ -490,7 +559,7 @@ class MCPServer(Base):
             config["url"] = self.url
         if self.command:
             config["command"] = self.command
-        # args 只用于 stdio 传输类型，必须是列表
+        # args is only used for stdio transport and must be a list
         if self.transport == "stdio" and self.args:
             if isinstance(self.args, list):
                 config["args"] = self.args
@@ -507,7 +576,7 @@ class MCPServer(Base):
                     config["env"] = json.loads(self.env)
                 except json.JSONDecodeError:
                     pass
-        # headers 只用于 sse/streamable_http 传输类型
+        # headers is only used for sse/streamable_http transport
         if self.transport in ("sse", "streamable_http") and self.headers:
             if isinstance(self.headers, dict):
                 config["headers"] = self.headers
@@ -539,7 +608,8 @@ class TaskRecord(Base):
     error = Column(Text, nullable=True)
     cancel_requested = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=utc_now_naive, index=True)
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
@@ -569,23 +639,28 @@ class TaskRecord(Base):
 
 
 class SubAgent(Base):
-    """SubAgent 模型 - 用于动态配置子智能体"""
+    """SubAgent model - used for dynamic subagent configuration."""
 
     __tablename__ = "subagents"
 
-    name = Column(String(128), primary_key=True, comment="唯一标识")
-    description = Column(Text, nullable=False, comment="描述")
-    system_prompt = Column(Text, nullable=False, comment="系统提示词")
-    tools = Column(JSON, nullable=False, default=list, comment="工具名称列表")
-    model = Column(String(128), nullable=True, comment="可选的模型覆盖")
-    enabled = Column(Boolean, nullable=False, default=True, comment="是否启用")
+    name = Column(String(128), primary_key=True, comment="unique identifier")
+    description = Column(Text, nullable=False, comment="description")
+    system_prompt = Column(Text, nullable=False, comment="System prompt")
+    tools = Column(JSON, nullable=False, default=list,
+                   comment="Tool name list")
+    model = Column(String(128), nullable=True,
+                   comment="Optional model override")
+    enabled = Column(Boolean, nullable=False, default=True,
+                     comment="Whether enabled")
 
-    is_builtin = Column(Boolean, nullable=False, default=False, comment="是否内置")
+    is_builtin = Column(Boolean, nullable=False,
+                        default=False, comment="Whether built-in")
 
     created_by = Column(String(100), nullable=True)
     updated_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=utc_now_naive)
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -603,7 +678,7 @@ class SubAgent(Base):
         }
 
     def to_subagent_spec(self) -> dict[str, Any]:
-        """转换为 SubAgentMiddleware 需要的 spec 格式"""
+        """Convert to the spec format required by SubAgentMiddleware."""
         spec = {
             "name": self.name,
             "description": self.description,
@@ -616,7 +691,7 @@ class SubAgent(Base):
 
 
 class APIKey(Base):
-    """API Key 模型"""
+    """API Key model"""
 
     __tablename__ = "api_keys"
 
@@ -625,8 +700,10 @@ class APIKey(Base):
     key_prefix = Column(String(16), nullable=False)
     name = Column(String(100), nullable=False)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id"), nullable=True, index=True)
+    department_id = Column(Integer, ForeignKey(
+        "departments.id"), nullable=True, index=True)
 
     expires_at = Column(DateTime, nullable=True)
     is_enabled = Column(Boolean, nullable=False, default=True)
@@ -635,7 +712,7 @@ class APIKey(Base):
     created_by = Column(String(64), nullable=False)
     created_at = Column(DateTime, default=utc_now_naive)
 
-    # 关联
+    # associated
     user = relationship("User", back_populates="api_keys")
     department = relationship("Department")
 
@@ -654,7 +731,7 @@ class APIKey(Base):
         }
 
     def is_valid(self) -> bool:
-        """检查 Key 是否有效"""
+        """check Key whethervalid"""
         if not self.is_enabled:
             return False
         if self.expires_at and utc_now_naive() > self.expires_at:
@@ -663,13 +740,15 @@ class APIKey(Base):
 
 
 class AgentRun(Base):
-    """AgentRun table - 运行任务表"""
+    """AgentRun table - run task records."""
 
     __tablename__ = "agent_runs"
 
     id = Column(String(64), primary_key=True, comment="Run ID (UUID)")
-    thread_id = Column(String(64), index=True, nullable=False, comment="Thread ID")
-    agent_id = Column(String(64), index=True, nullable=False, comment="Agent ID")
+    thread_id = Column(String(64), index=True,
+                       nullable=False, comment="Thread ID")
+    agent_id = Column(String(64), index=True,
+                      nullable=False, comment="Agent ID")
     user_id = Column(String(64), index=True, nullable=False, comment="User ID")
     status = Column(
         String(32),
@@ -678,14 +757,18 @@ class AgentRun(Base):
         default="pending",
         comment="Run status: pending/running/completed/failed/cancel_requested/cancelled/interrupted",
     )
-    request_id = Column(String(64), unique=True, index=True, nullable=False, comment="Idempotency request ID")
-    input_payload = Column(JSON, nullable=False, default=dict, comment="Original input payload")
+    request_id = Column(String(64), unique=True, index=True,
+                        nullable=False, comment="Idempotency request ID")
+    input_payload = Column(JSON, nullable=False,
+                           default=dict, comment="Original input payload")
     error_type = Column(String(64), nullable=True, comment="Error type")
     error_message = Column(Text, nullable=True, comment="Error message")
     started_at = Column(DateTime, nullable=True, comment="Start time")
     finished_at = Column(DateTime, nullable=True, comment="Finish time")
-    created_at = Column(DateTime, default=utc_now_naive, comment="Creation time")
-    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive, comment="Update time")
+    created_at = Column(DateTime, default=utc_now_naive,
+                        comment="Creation time")
+    updated_at = Column(DateTime, default=utc_now_naive,
+                        onupdate=utc_now_naive, comment="Update time")
 
     def to_dict(self) -> dict[str, Any]:
         return {

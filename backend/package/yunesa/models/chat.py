@@ -10,7 +10,7 @@ from yunesa.utils import logger
 
 def split_model_spec(model_spec, sep="/"):
     """
-    将 provider/model 形式的字符串拆分为 (provider, model)
+    Split a provider/model string into (provider, model).
     """
     if not model_spec or not isinstance(model_spec, str):
         return "", ""
@@ -101,14 +101,15 @@ class GeneralResponse:
 
 
 def select_model(model_provider=None, model_name=None, model_spec=None):
-    """根据模型提供者选择模型"""
+    """Select model by provider."""
     if model_spec:
         spec_provider, spec_model_name = split_model_spec(model_spec)
         model_provider = model_provider or spec_provider
         model_name = model_name or spec_model_name
 
     if model_provider is None or not model_name:
-        default_provider, default_model = split_model_spec(getattr(config, "default_model", ""))
+        default_provider, default_model = split_model_spec(
+            getattr(config, "default_model", ""))
         model_provider = model_provider or default_provider
         model_name = model_name or default_model
 
@@ -121,14 +122,15 @@ def select_model(model_provider=None, model_name=None, model_spec=None):
     model_name = model_name or model_info.default
 
     if not model_name:
-        raise ValueError(f"Model name not specified for provider {model_provider}")
+        raise ValueError(
+            f"Model name not specified for provider {model_provider}")
 
     logger.info(f"Selecting model from `{model_provider}` with `{model_name}`")
 
     if model_provider == "openai":
         return OpenModel(model_name)
 
-    # 其他模型，默认使用OpenAIBase
+    # Other providers default to OpenAIBase.
     try:
         model = OpenAIBase(
             api_key=os.environ.get(model_info.env, model_info.env),
@@ -137,63 +139,66 @@ def select_model(model_provider=None, model_name=None, model_spec=None):
         )
         return model
     except Exception as e:
-        raise ValueError(f"Model provider {model_provider} load failed, {e} \n {traceback.format_exc()}")
+        raise ValueError(
+            f"Model provider {model_provider} load failed, {e} \n {traceback.format_exc()}")
 
 
 async def test_chat_model_status(provider: str, model_name: str) -> dict:
     """
-    测试指定聊天模型的状态
+    Test status of a specific chat model.
 
     Args:
-        provider: 模型提供商
-        model_name: 模型名称
+        provider: Model provider.
+        model_name: Model name.
 
     Returns:
-        dict: 包含状态信息的字典
+        dict: Dictionary containing status information.
     """
     try:
-        # 加载模型
+        # Load model
         logger.debug(f"Selecting chat model {provider}/{model_name}")
         model = select_model(provider, model_name)
 
-        # 使用简单的测试消息
+        # Use a simple test message
         test_messages = [{"role": "user", "content": "Say 1"}]
 
-        # 发送测试请求
+        # Send test request
         response = await model.call(test_messages, stream=False)
         logger.debug(f"Test chat model status response: {response}")
 
-        # 检查响应是否有效
+        # Validate response
         if response and response.content:
-            return {"provider": provider, "model_name": model_name, "status": "available", "message": "连接正常"}
+            return {"provider": provider, "model_name": model_name, "status": "available", "message": "connection ok"}
         else:
-            return {"provider": provider, "model_name": model_name, "status": "unavailable", "message": "响应无效"}
+            return {"provider": provider, "model_name": model_name, "status": "unavailable", "message": "invalid response"}
 
     except Exception as e:
-        logger.error(f"测试聊天模型状态失败 {provider}/{model_name}: {e}")
+        logger.error(
+            f"Failed to test chat model status {provider}/{model_name}: {e}")
         return {"provider": provider, "model_name": model_name, "status": "error", "message": str(e)}
 
 
 async def test_all_chat_models_status() -> dict:
     """
-    测试所有支持的聊天模型状态
+    Test status of all supported chat models.
 
     Returns:
-        dict: 包含所有模型状态的字典
+        dict: Dictionary containing status of all models.
     """
     from yunesa import config
 
     results = {}
 
-    # 获取所有可用的模型
+    # Get all available models
     for provider, provider_info in config.model_names.items():
-        # 处理普通模型
+        # Process regular models
         for model_name in provider_info.models:
             model_id = f"{provider}/{model_name}"
             status = await test_chat_model_status(provider, model_name)
             results[model_id] = status
 
-    available_count = len([m for m in results.values() if m["status"] == "available"])
+    available_count = len(
+        [m for m in results.values() if m["status"] == "available"])
 
     return {"models": results, "total": len(results), "available": available_count}
 

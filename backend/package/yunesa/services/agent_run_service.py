@@ -27,8 +27,10 @@ from yunesa.utils.datetime_utils import utc_now_naive
 from yunesa.utils.logging_config import logger
 
 SSE_HEARTBEAT_SECONDS = int(os.getenv("RUN_SSE_HEARTBEAT_SECONDS", "15"))
-SSE_MAX_CONNECTION_MINUTES = int(os.getenv("RUN_SSE_MAX_CONNECTION_MINUTES", "30"))
-SSE_POLL_INTERVAL_SECONDS = float(os.getenv("RUN_SSE_POLL_INTERVAL_SECONDS", "1.0"))
+SSE_MAX_CONNECTION_MINUTES = int(
+    os.getenv("RUN_SSE_MAX_CONNECTION_MINUTES", "30"))
+SSE_POLL_INTERVAL_SECONDS = float(
+    os.getenv("RUN_SSE_POLL_INTERVAL_SECONDS", "1.0"))
 
 
 def _build_run_response(run) -> dict:
@@ -61,28 +63,32 @@ async def create_agent_run_view(
     db: AsyncSession,
 ) -> dict:
     if not query:
-        raise HTTPException(status_code=422, detail="query 不能为空")
+        raise HTTPException(status_code=422, detail="query cannot be empty")
 
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
 
     config_repo = AgentConfigRepository(db)
     config_item = await config_repo.get_by_id(config_id=int(agent_config_id))
     if config_item is None:
-        raise HTTPException(status_code=404, detail="配置不存在")
+        raise HTTPException(status_code=404, detail="configuredoes not exist")
 
     agent_id = config_item.agent_id
     if not agent_manager.get_agent(agent_id):
-        raise HTTPException(status_code=404, detail=f"智能体 {agent_id} 不存在")
+        raise HTTPException(
+            status_code=404, detail=f"agent {agent_id} does not exist")
 
     conv_repo = ConversationRepository(db)
     conversation = await conv_repo.get_conversation_by_thread_id(thread_id)
     if not conversation or conversation.user_id != str(current_user_id) or conversation.status == "deleted":
-        raise HTTPException(status_code=404, detail="对话线程不存在")
+        raise HTTPException(
+            status_code=404, detail="conversation thread does not exist")
     if (conversation.extra_metadata or {}).get("agent_config_id") != int(agent_config_id):
         conversation = await conv_repo.bind_agent_config(thread_id, agent_config_id)
         if not conversation:
-            raise HTTPException(status_code=404, detail="对话线程不存在")
+            raise HTTPException(
+                status_code=404, detail="conversation thread does not exist")
 
     request_id = str((meta or {}).get("request_id") or uuid.uuid4())
     config = {
@@ -94,7 +100,7 @@ async def create_agent_run_view(
     if existing and existing.user_id == str(current_user_id):
         return _build_run_response(existing)
     if existing and existing.user_id != str(current_user_id):
-        raise HTTPException(status_code=409, detail="request_id 冲突")
+        raise HTTPException(status_code=409, detail="request_id conflict")
 
     run_id = str(uuid.uuid4())
     input_payload = {
@@ -122,7 +128,7 @@ async def create_agent_run_view(
         existing = await run_repo.get_run_by_request_id(request_id)
         if existing and existing.user_id == str(current_user_id):
             return _build_run_response(existing)
-        raise HTTPException(status_code=409, detail="request_id 冲突")
+        raise HTTPException(status_code=409, detail="request_id conflict")
 
     queue = await get_arq_pool()
     await queue.enqueue_job("process_agent_run", run.id, _job_id=f"run:{run.id}")
@@ -134,7 +140,7 @@ async def get_agent_run_view(*, run_id: str, current_user_id: str, db: AsyncSess
     repo = AgentRunRepository(db)
     run = await repo.get_run_for_user(run_id, str(current_user_id))
     if not run:
-        raise HTTPException(status_code=404, detail="运行任务不存在")
+        raise HTTPException(status_code=404, detail="run task does not exist")
     return {"run": run.to_dict()}
 
 
@@ -142,7 +148,7 @@ async def cancel_agent_run_view(*, run_id: str, current_user_id: str, db: AsyncS
     repo = AgentRunRepository(db)
     run = await repo.get_run_for_user(run_id, str(current_user_id))
     if not run:
-        raise HTTPException(status_code=404, detail="运行任务不存在")
+        raise HTTPException(status_code=404, detail="run task does not exist")
 
     run = await repo.request_cancel(run_id)
     await publish_cancel_signal(run_id)
@@ -167,7 +173,7 @@ async def stream_agent_run_events(
                     repo = AgentRunRepository(db)
                     run = await repo.get_run_for_user(run_id, str(current_user_id))
                     if not run:
-                        yield _format_sse({"run_id": run_id, "message": "运行任务不存在"}, event="error")
+                        yield _format_sse({"run_id": run_id, "message": "run task does not exist"}, event="error")
                         yield _format_sse({"run_id": run_id, "last_seq": last_seq}, event="close")
                         return
             except asyncio.CancelledError:
@@ -177,7 +183,7 @@ async def stream_agent_run_events(
                 yield _format_sse(
                     {
                         "run_id": run_id,
-                        "message": "运行事件流暂时不可用，请重连",
+                        "message": "run event stream is temporarily unavailable, please reconnect",
                         "reason": "db_error",
                     },
                     event="error",
@@ -192,7 +198,7 @@ async def stream_agent_run_events(
                 yield _format_sse(
                     {
                         "run_id": run_id,
-                        "message": "运行事件流暂时不可用，请重连",
+                        "message": "run event stream is temporarily unavailable, please reconnect",
                         "reason": "redis_error",
                     },
                     event="error",
@@ -221,7 +227,8 @@ async def stream_agent_run_events(
                     terminal_seq = await get_last_run_stream_seq(run_id)
 
                 yield _format_sse(
-                    {"run_id": run_id, "status": run.status, "last_seq": terminal_seq},
+                    {"run_id": run_id, "status": run.status,
+                        "last_seq": terminal_seq},
                     event="close",
                 )
                 return

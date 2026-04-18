@@ -10,7 +10,7 @@ from yunesa.utils import logger
 
 @dataclass
 class GraphQueryConfig:
-    """图谱查询配置 (Graph Query Configuration)"""
+    """graphqueryconfigure (Graph Query Configuration)"""
 
     keyword: str = ""
     kb_id: str | None = None
@@ -31,7 +31,7 @@ class GraphQueryConfig:
 
 @dataclass
 class GraphMetadata:
-    """图谱元数据 (Graph Metadata)"""
+    """Graph metadata."""
 
     graph_type: str
     id_field: str = "id"
@@ -41,7 +41,7 @@ class GraphMetadata:
 
 
 class GraphAdapter(ABC):
-    """图谱适配器基类 (Base Graph Adapter)"""
+    """Base graph adapter."""
 
     def __init__(self, config: dict[str, Any] = None):
         self.config = config or {}
@@ -49,44 +49,46 @@ class GraphAdapter(ABC):
 
     @abstractmethod
     def _get_metadata(self) -> GraphMetadata:
-        """获取图谱元数据"""
+        """Get graph metadata."""
         pass
 
     @abstractmethod
     async def query_nodes(self, keyword: str, **kwargs) -> dict[str, Any]:
-        """查询节点 (Query nodes)"""
+        """querynode (Query nodes)"""
         pass
 
     @abstractmethod
     def normalize_node(self, raw_node: Any) -> dict[str, Any]:
-        """标准化节点格式 (Normalize node format)"""
+        """Normalize node format."""
         pass
 
     @abstractmethod
     def normalize_edge(self, raw_edge: Any) -> dict[str, Any]:
-        """标准化边格式 (Normalize edge format)"""
+        """Normalize edge format."""
         pass
 
     @abstractmethod
     async def get_labels(self) -> list[str]:
-        """获取所有标签 (Get all labels)"""
+        """Get all labels."""
         pass
 
     async def get_stats(self, **kwargs) -> dict[str, Any]:
-        """获取统计信息 (Get statistics)"""
+        """Get statistics."""
         return {}
 
     def _create_query_config(self, **kwargs) -> GraphQueryConfig:
-        """创建查询配置"""
-        # 优先使用适配器的默认配置
+        """Create query configuration."""
+        # Prefer adapter defaults first.
         config_dict = self.config.copy()
         config_dict.update(kwargs)
 
         return GraphQueryConfig(
             keyword=config_dict.get("keyword", ""),
             kb_id=config_dict.get("kb_id") or self.config.get("kb_id"),
-            kgdb_name=config_dict.get("kgdb_name") or self.config.get("kgdb_name", "neo4j"),
-            max_nodes=config_dict.get("max_nodes", config_dict.get("limit", 50)),
+            kgdb_name=config_dict.get(
+                "kgdb_name") or self.config.get("kgdb_name", "neo4j"),
+            max_nodes=config_dict.get(
+                "max_nodes", config_dict.get("limit", 50)),
             max_depth=config_dict.get("max_depth", 2),
             hops=config_dict.get("hops", 2),
             threshold=config_dict.get("threshold", 0.9),
@@ -148,8 +150,8 @@ class GraphAdapter(ABC):
 
 class Neo4jConnectionManager:
     """
-    Neo4j 连接管理器
-    专注于数据库连接管理，不包含业务逻辑
+    Neo4j connection manager.
+    Focuses on database connection management without business logic.
     """
 
     def __init__(self):
@@ -161,7 +163,7 @@ class Neo4jConnectionManager:
         self._connect()
 
     def _connect(self):
-        """建立 Neo4j 连接"""
+        """Establish Neo4j connection."""
         if self.driver and self._is_connected():
             return
 
@@ -171,7 +173,7 @@ class Neo4jConnectionManager:
 
         try:
             self.driver = GD.driver(uri, auth=(username, password))
-            # 测试连接
+            # Test connection
             with self.driver.session() as session:
                 session.run("RETURN 1")
             self.status = "open"
@@ -181,7 +183,7 @@ class Neo4jConnectionManager:
             raise
 
     def _is_connected(self) -> bool:
-        """检查连接是否有效"""
+        """Check whether connection is valid."""
         if not self.driver:
             return False
         try:
@@ -192,11 +194,11 @@ class Neo4jConnectionManager:
             return False
 
     def is_running(self):
-        """检查图数据库是否正在运行"""
+        """Check if graph database is running"""
         return self.status == "open" or self.status == "processing"
 
     def close(self):
-        """关闭数据库连接"""
+        """Close database connection"""
         if self.driver:
             self.driver.close()
             self.driver = None
@@ -205,8 +207,8 @@ class Neo4jConnectionManager:
 
 class BaseNeo4jAdapter:
     """
-    Neo4j 公共操作类，提供基础的数据库连接和查询方法
-    专注于图谱本身的管理，与 upload 解耦
+    Common Neo4j operations class that provides basic database connection and query methods.
+    Focuses on graph management itself and is decoupled from upload logic.
     """
 
     def __init__(self):
@@ -214,37 +216,37 @@ class BaseNeo4jAdapter:
 
     @property
     def driver(self):
-        """获取数据库驱动（向后兼容）"""
+        """Get database driver (backward compatible)."""
         return self.connection.driver
 
     def _is_connected(self) -> bool:
-        """检查连接是否有效"""
+        """Check whether connection is valid."""
         return self.connection._is_connected()
 
     def _process_record_props(self, record: dict) -> dict:
         """
-        处理记录中的属性：扁平化 properties 并移除 embedding
+        Process record properties: flatten `properties` and remove embedding.
         """
         if record is None:
             return None
 
-        # 复制一份以避免修改原字典
+        # Copy to avoid modifying the original dictionary.
         data = dict(record)
         props = data.pop("properties", {}) or {}
 
-        # 移除 embedding (节省传输带宽)
+        # Remove embedding to reduce transfer bandwidth.
         if "embedding" in props:
             del props["embedding"]
 
-        # 合并属性（优先保留原字典中的 id, name, type 等核心字段）
+        # Merge properties (prioritize core fields in original dict such as id, name, and type).
         return {**props, **data}
 
     def _get_sample_nodes_with_connections(self, num: int = 50, label_filter: str = None) -> dict[str, list]:
         """
-        获取连通的节点子图，优先返回连通的节点
+        Get a connected node subgraph, prioritizing connected nodes in return results.
         Args:
-            num: 返回的节点数量
-            label_filter: 节点标签过滤器 (例如: "kb_123")
+            num: Number of nodes to return.
+            label_filter: Node label filter (e.g. "kb_123").
         """
         if not self._is_connected():
             raise Exception("Neo4j connection is not available")
@@ -252,38 +254,38 @@ class BaseNeo4jAdapter:
         label_clause = f":{label_filter}" if label_filter else ""
 
         def query(tx, num):
-            # 连通子图查询
+            # Connected subgraph query
             query_str = f"""
-                // 获取高度数节点作为种子节点
+                // Get high-degree nodes as seed nodes
                 MATCH (seed{label_clause})
                 WITH seed, COUNT{{(seed)-[]->()}} + COUNT{{(seed)<-[]-()}} as degree
                 WHERE degree > 0
                 ORDER BY degree DESC
                 LIMIT 5
 
-                // 为每个种子节点收集更多邻居节点
+                // Collect more neighbor nodes for each seed node
                 UNWIND seed as s
                 MATCH (s)-[*1..1]-(neighbor{label_clause})
                 WITH s, neighbor, COUNT{{(s)-[]->()}} + COUNT{{(s)<-[]-()}} as s_degree
                 WITH s, s_degree, collect(DISTINCT neighbor) as neighbors
                 WITH s, s_degree, neighbors[0..toInteger($num * 0.15)] as limited_neighbors
 
-                // 从邻居节点扩展到二跳节点
+                // Extend from neighbor nodes to second-hop nodes
                 UNWIND limited_neighbors as neighbor
                 OPTIONAL MATCH (neighbor)-[*1..1]-(second_hop{label_clause})
                 WHERE second_hop <> s
                 WITH s, limited_neighbors, neighbor, collect(DISTINCT second_hop)[0..5] as second_hops
 
-                // 收集所有连通节点
+                // Collect all connected nodes
                 WITH collect(DISTINCT s) as seeds,
                     collect(DISTINCT neighbor) as first_hop_nodes,
                     reduce(acc = [], x IN collect(second_hops) | acc + x) as second_hop_nodes
                 WITH seeds + first_hop_nodes + second_hop_nodes as connected_nodes
 
-                // 确保不会超过请求的节点数量
+                // Ensure node count does not exceed requested size
                 WITH connected_nodes[0..$num] as final_nodes
 
-                // 获取这些节点之间的关系，避免双向边
+                // Get relationships among these nodes and avoid duplicate bidirectional edges
                 UNWIND final_nodes as n
                 OPTIONAL MATCH (n)-[rel]-(m)
                 WHERE m IN final_nodes AND elementId(n) < elementId(m)
@@ -325,7 +327,7 @@ class BaseNeo4jAdapter:
                         if r_edge:
                             formatted_results["edges"].append(r_edge)
 
-                # 如果节点数不足，补充更多节点
+                # If node count is insufficient, supplement with more nodes.
                 if len(formatted_results["nodes"]) < num:
                     remaining_count = num - len(formatted_results["nodes"])
                     supplement_query = f"""
@@ -334,7 +336,8 @@ class BaseNeo4jAdapter:
                     RETURN {{id: elementId(n), name: n.name, properties: properties(n)}} AS node
                     LIMIT $count
                     """
-                    supplement_results = tx.run(supplement_query, existing_ids=list(node_ids), count=remaining_count)
+                    supplement_results = tx.run(
+                        supplement_query, existing_ids=list(node_ids), count=remaining_count)
                     for item in supplement_results:
                         node = self._process_record_props(item["node"])
                         if node:
@@ -343,8 +346,9 @@ class BaseNeo4jAdapter:
                 return formatted_results
 
             except Exception as e:
-                logger.warning(f"Connected subgraph query failed, using fallback: {e}")
-                # 简单的备选查询
+                logger.warning(
+                    f"Connected subgraph query failed, using fallback: {e}")
+                # Simple fallback query
                 fallback_query = f"""
                 MATCH (n{label_clause})-[r]-(m{label_clause})
                 WHERE elementId(n) < elementId(m)
@@ -385,9 +389,9 @@ class BaseNeo4jAdapter:
 
     def _get_graph_stats(self, label_filter: str = None) -> dict[str, Any]:
         """
-        获取图统计信息
+        Get graph statistics.
         Args:
-            label_filter: 节点标签过滤器 (例如: "kb_123")
+            label_filter: Node label filter (e.g. "kb_123").
         """
         if not self._is_connected():
             return {"total_nodes": 0, "total_edges": 0, "entity_types": []}
@@ -395,15 +399,15 @@ class BaseNeo4jAdapter:
         label_clause = f":{label_filter}" if label_filter else ""
 
         def query(tx):
-            # 统计节点
+            # Count nodes
             node_query = f"MATCH (n{label_clause}) RETURN count(n) as node_count"
             node_count = tx.run(node_query).single()["node_count"]
 
-            # 统计边
+            # Count edges
             edge_query = f"MATCH (n{label_clause})-[r]-(m{label_clause}) RETURN count(r) as edge_count"
             edge_count = tx.run(edge_query).single()["edge_count"]
 
-            # 统计标签分布 (排除系统标签)
+            # Label distribution stats (exclude system labels)
             label_dist_query = f"""
             MATCH (n{label_clause})
             UNWIND labels(n) as label
@@ -413,7 +417,8 @@ class BaseNeo4jAdapter:
             ORDER BY count DESC
             """
             label_stats = tx.run(label_dist_query)
-            entity_types = [{"type": record["label"], "count": record["count"]} for record in label_stats]
+            entity_types = [{"type": record["label"],
+                             "count": record["count"]} for record in label_stats]
 
             return {
                 "total_nodes": node_count,
@@ -430,19 +435,21 @@ class BaseNeo4jAdapter:
 
     def _get_all_labels(self, exclude_system_labels: bool = True) -> list[str]:
         """
-        获取所有标签
+        Get all labels.
         Args:
-            exclude_system_labels: 是否排除系统标签 (kb_ 开头)
+            exclude_system_labels: Whether to exclude system labels (starting with kb_).
         """
         if not self._is_connected():
             return []
 
         def query(tx):
-            result = tx.run("CALL db.labels() YIELD label RETURN collect(label) AS labels")
+            result = tx.run(
+                "CALL db.labels() YIELD label RETURN collect(label) AS labels")
             labels = result.single()["labels"]
 
             if exclude_system_labels:
-                labels = [label for label in labels if not label.startswith("kb_")]
+                labels = [
+                    label for label in labels if not label.startswith("kb_")]
 
             return labels
 
@@ -454,5 +461,5 @@ class BaseNeo4jAdapter:
             return []
 
     def close(self):
-        """关闭数据库连接"""
+        """Close database connection"""
         self.connection.close()

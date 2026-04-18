@@ -1,22 +1,22 @@
 """
-MinIO 存储模块
-简化的对象存储功能
+MinIO storage module
+Simplified object storage features
 """
 
-# 导出核心功能
+# Export core functionality
 from .client import MinIOClient, StorageError, UploadResult, aupload_file_to_minio, get_minio_client
 from .utils import generate_unique_filename, get_file_size
 
-# 为了向后兼容，导出常用的函数
+# Export common functions for backward compatibility
 __all__ = [
-    # 核心功能
+    # Core functionality
     "MinIOClient",
     "get_minio_client",
     "aupload_file_to_minio",
-    # 异常类
+    # Exception classes
     "StorageError",
     "UploadResult",
-    # 工具函数
+    # Utility functions
     "get_file_size",
     "generate_unique_filename",
 ]

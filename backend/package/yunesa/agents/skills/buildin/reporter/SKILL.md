@@ -1,28 +1,28 @@
 ---
 name: reporter
-description: "生成 SQL 查询报表并生成可视化图表。当用户需要查询数据库并以报表形式展示结果时使用此技能，包括：统计销售数据、分析用户行为、生成业务报表、查询业务指标等。"
+description: "generate SQL query报table并generate可视化图table。当user需要querydatabase并以报table形式展示result时使用此skill，包括：statistics销售data、分析userrow为、generate业务报table、query业务指标等。"
 ---
 
-# SQL 报表技能
+# SQL 报tableskill
 
-根据用户的指令，使用数据库工具和图表绘制工具，构建 SQL 查询报告。
+根据user的指令，使用databasetool和图table绘制tool，build SQL queryreport。
 
-## 操作流程
+## operationworkflow
 
-1. 理解用户的指令，明确报表的需求和目标
-2. 使用 MySQL 工具生成正确的 SQL 查询
-3. 执行查询并获取结果
-4. 使用 Charts MCP 生成图表
-5. 将图表以 markdown 图片格式嵌入报表
+1. 理解user的指令，明确报table的需求和目标
+2. 使用 MySQL toolgenerate正确的 SQL query
+3. Execute query并getresult
+4. 使用 Charts MCP generate图table
+5. 将图table以 markdown 图片formatembedding报table
 
 ## 关键约束
 
-- 生成的 SQL 查询必须正确且高效，避免全表扫描
-- 图表生成工具的返回结果不会默认渲染，必须在最终报表中以 `![描述](图片URL)` 格式嵌入
-- 只返回报表相关的结论，不要返回原始 SQL 查询语句
+- generate的 SQL query必须正确且高效，避免全table扫描
+- 图tablegeneratetool的returnresult不会default渲染，必须在最终报table中以 `![description](图片URL)` formatembedding
+- 只return报tablerelated的结论，不要return原始 SQL query语句
 
-## 允许的工具
+## 允许的tool
 
-- MySQL 工具：执行 SQL 查询
-- Charts MCP：生成可视化图表
-- 网络检索工具：必要时补充背景信息
+- MySQL tool：execute SQL query
+- Charts MCP：generate可视化图table
+- 网络retrievaltool：必要时补充背景信息

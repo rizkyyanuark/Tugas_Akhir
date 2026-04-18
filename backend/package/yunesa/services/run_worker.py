@@ -194,7 +194,8 @@ async def process_agent_run(ctx, run_id: str):
         return
 
     if run.status in TERMINAL_RUN_STATUSES:
-        logger.info(f"Run already terminal, skip: {run_id}, status={run.status}")
+        logger.info(
+            f"Run already terminal, skip: {run_id}, status={run.status}")
         return
 
     payload = run.input_payload or {}
@@ -262,8 +263,10 @@ async def process_agent_run(ctx, run_id: str):
                         await mark_run_terminal(
                             run_id,
                             "failed",
-                            error_type=chunk.get("error_type") or "stream_error",
-                            error_message=chunk.get("error_message") or chunk.get("message"),
+                            error_type=chunk.get(
+                                "error_type") or "stream_error",
+                            error_message=chunk.get(
+                                "error_message") or chunk.get("message"),
                         )
                         terminal_set = True
                     elif status == "interrupted":
@@ -276,18 +279,20 @@ async def process_agent_run(ctx, run_id: str):
                         )
                         terminal_set = True
                     elif status == "ask_user_question_required":
-                        questions = chunk.get("questions") if isinstance(chunk, dict) else None
+                        questions = chunk.get("questions") if isinstance(
+                            chunk, dict) else None
                         first_question = ""
                         if isinstance(questions, list) and questions:
                             first = questions[0]
                             if isinstance(first, dict):
-                                first_question = str(first.get("question") or "").strip()
+                                first_question = str(
+                                    first.get("question") or "").strip()
 
                         await mark_run_terminal(
                             run_id,
                             "interrupted",
                             error_type="ask_user_question_required",
-                            error_message=first_question or "需要用户回答问题",
+                            error_message=first_question or "User input is required to answer the question",
                         )
                         terminal_set = True
 
@@ -304,15 +309,17 @@ async def process_agent_run(ctx, run_id: str):
         await append_run_event(
             run_id,
             "interrupted",
-            {"chunk": {"status": "interrupted", "message": "对话已取消", "request_id": request_id}},
+            {"chunk": {"status": "interrupted",
+                       "message": "conversationcancelled", "request_id": request_id}},
         )
-        await mark_run_terminal(run_id, "cancelled", error_type="cancelled", error_message="对话已取消")
+        await mark_run_terminal(run_id, "cancelled", error_type="cancelled", error_message="conversationcancelled")
         logger.info(f"Run cancelled: {run_id}")
     except Exception as e:
         await writer.flush()
         if _is_retryable_exception(e):
             job_try = _job_try(ctx)
-            logger.warning(f"Run retryable failure {run_id} (try={job_try}): {e}")
+            logger.warning(
+                f"Run retryable failure {run_id} (try={job_try}): {e}")
             await append_run_event(
                 run_id,
                 "error",
@@ -334,7 +341,8 @@ async def process_agent_run(ctx, run_id: str):
                     error_type="retryable_worker_error",
                     error_message=str(e),
                 )
-                logger.error(f"Run failed after retries exhausted {run_id}: {e}")
+                logger.error(
+                    f"Run failed after retries exhausted {run_id}: {e}")
                 return
 
             if isinstance(e, RetryableRunError):

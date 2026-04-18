@@ -114,7 +114,7 @@ class KnowledgeBase(ABC):
 
         self._normalize_metadata_state()
         self._metadata_loaded = True
-        logger.info(f"{self.kb_type}: 加载了 {len(self.databases_meta)} 个数据库的元数据")
+        logger.info(f"{self.kb_type}: load了 {len(self.databases_meta)} database的元data")
 
     def _ensure_metadata_loaded(self):
         """Ensure metadata is loaded (lazy loading)"""
@@ -182,7 +182,7 @@ class KnowledgeBase(ABC):
     @abstractmethod
     async def _initialize_kb_instance(self, instance: Any) -> None:
         """
-        初始化Underlying knowledge base instance
+        initializeUnderlying knowledge base instance
 
         Args:
             instance: Underlying knowledge base instance
@@ -584,12 +584,12 @@ class KnowledgeBase(ABC):
                 "options": [
                     {
                         "key": "param_name",
-                        "label": "参数名称",
+                        "label": "parametername",
                         "type": "select|number|boolean",
                         "default": default_value,
-                        "options": [...],  # 对于 select 类型
-                        "description": "参数描述",
-                        "min": 1,  # 对于 number 类型
+                        "options": [...],  # 对于 select type
+                        "description": "parameterdescription",
+                        "min": 1,  # 对于 number type
                         "max": 100,
                         "step": 0.1
                     },
@@ -798,7 +798,7 @@ class KnowledgeBase(ABC):
             intermediate_states = {
                 FileStatus.PARSING: FileStatus.ERROR_PARSING,
                 FileStatus.INDEXING: FileStatus.ERROR_INDEXING,
-                "processing": "failed",  # 兼容旧状态
+                "processing": "failed",  # 兼容旧status
             }
 
             # Check all intermediate state files under this database
@@ -807,7 +807,7 @@ class KnowledgeBase(ABC):
                     current_status = file_info.get("status")
 
                     if current_status in intermediate_states:
-                        # 检查文件是否真的在处理队列中
+                        # checkfilewhether真的在process队column中
                         if not self._is_file_in_processing_queue(file_id):
                             error_status = intermediate_states[current_status]
                             logger.warning(
@@ -952,7 +952,7 @@ class KnowledgeBase(ABC):
         Get database upload path
 
         Args:
-            db_id: Database ID，可选
+            db_id: Database ID，optional
 
         Returns:
             Upload path
@@ -974,7 +974,7 @@ class KnowledgeBase(ABC):
             db_id: Database ID
             name: New name
             description: New description
-            llm_info: LLM configuration information（可选，仅用于 LightRAG 类型知识库）
+            llm_info: LLM configuration information（optional，仅用于 LightRAG typeknowledge base）
 
         Returns:
             Updated database information

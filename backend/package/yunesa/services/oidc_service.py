@@ -1,6 +1,6 @@
-"""OIDC 服务模块。
+"""OIDC service module.
 
-统一封装 OIDC 配置、工具能力和认证业务处理逻辑
+Provides unified OIDC configuration, helper utilities, and authentication workflow logic.
 """
 
 import hashlib
@@ -25,36 +25,48 @@ from yunesa.utils.logging_config import logger
 from server.utils.auth_utils import AuthUtils
 from server.utils.common_utils import log_operation
 
-# 前端 OIDC 回调路由路径（与 web/src/router/index.js 中的路由保持一致）
+# Frontend OIDC callback route path (must match web/src/router/index.js).
 FRONTEND_CALLBACK_PATH = "/auth/oidc/callback"
-# 登录页路径
+# Login page path.
 FRONTEND_LOGIN_PATH = "/login"
 
 
 class OIDCConfig(BaseModel):
-    """OIDC 配置模型"""
+    """OIDC configuration model."""
 
-    enabled: bool = Field(default=False, description="是否启用 OIDC 认证")
-    issuer_url: str = Field(default="", description="OIDC Provider 的 issuer URL")
+    enabled: bool = Field(
+        default=False, description="whetherenabled OIDC authentication")
+    issuer_url: str = Field(default="", description="OIDC Provider issuer URL")
     client_id: str = Field(default="", description="OIDC Client ID")
     client_secret: str = Field(default="", description="OIDC Client Secret")
-    redirect_uri: str = Field(default="", description="OIDC 回调 URL")
-    authorization_endpoint: str = Field(default="", description="授权端点 URL")
-    token_endpoint: str = Field(default="", description="Token 端点 URL")
-    userinfo_endpoint: str = Field(default="", description="UserInfo 端点 URL")
-    end_session_endpoint: str = Field(default="", description="登出端点 URL")
-    provider_name: str = Field(default="OIDC登录", description="认证源名称，显示在登录按钮上的文字")
-    scopes: str = Field(default="openid profile email", description="请求的 scope")
-    auto_create_user: bool = Field(default=True, description="是否自动创建用户")
-    default_role: str = Field(default="user", description="OIDC 用户的默认角色")
-    default_department: str = Field(default="OIDC用户", description="OIDC 用户的默认部门")
-    username_claim: str = Field(default="preferred_username", description="用户名映射字段")
-    email_claim: str = Field(default="email", description="邮箱映射字段")
-    name_claim: str = Field(default="name", description="姓名映射字段")
+    redirect_uri: str = Field(default="", description="OIDC callback URL")
+    authorization_endpoint: str = Field(
+        default="", description="Authorization endpoint URL")
+    token_endpoint: str = Field(default="", description="Token endpoint URL")
+    userinfo_endpoint: str = Field(
+        default="", description="UserInfo endpoint URL")
+    end_session_endpoint: str = Field(
+        default="", description="Logout endpoint URL")
+    provider_name: str = Field(
+        default="OIDClogin", description="Authentication source name shown on login button")
+    scopes: str = Field(default="openid profile email",
+                        description="Requested scopes")
+    auto_create_user: bool = Field(
+        default=True, description="Whether to auto-create user")
+    default_role: str = Field(
+        default="user", description="Default role for OIDC users")
+    default_department: str = Field(
+        default="OIDCuser", description="Default department for OIDC users")
+    username_claim: str = Field(
+        default="preferred_username", description="Username mapping claim")
+    email_claim: str = Field(
+        default="email", description="Email mapping claim")
+    name_claim: str = Field(
+        default="name", description="Display name mapping claim")
 
     @classmethod
     def from_env(cls) -> "OIDCConfig":
-        """从环境变量加载配置"""
+        """Load configuration from environment variables."""
 
         def _env(name: str, default: str = "") -> str:
             return os.environ.get(name, default).strip()
@@ -66,7 +78,7 @@ class OIDCConfig(BaseModel):
 
         return cls(
             enabled=enabled,
-            provider_name=_env("OIDC_PROVIDER_NAME", "OIDC登录"),
+            provider_name=_env("OIDC_PROVIDER_NAME", "OIDClogin"),
             issuer_url=_env("OIDC_ISSUER_URL"),
             client_id=_env("OIDC_CLIENT_ID"),
             client_secret=_env("OIDC_CLIENT_SECRET"),
@@ -76,26 +88,27 @@ class OIDCConfig(BaseModel):
             userinfo_endpoint=_env("OIDC_USERINFO_ENDPOINT"),
             end_session_endpoint=_env("OIDC_END_SESSION_ENDPOINT"),
             scopes=_env("OIDC_SCOPES", "openid profile email"),
-            auto_create_user=os.environ.get("OIDC_AUTO_CREATE_USER", "true").lower() == "true",
+            auto_create_user=os.environ.get(
+                "OIDC_AUTO_CREATE_USER", "true").lower() == "true",
             default_role=_env("OIDC_DEFAULT_ROLE", "user"),
-            default_department=_env("OIDC_DEFAULT_DEPARTMENT", "OIDC用户"),
+            default_department=_env("OIDC_DEFAULT_DEPARTMENT", "OIDCuser"),
             username_claim=_env("OIDC_USERNAME_CLAIM", "preferred_username"),
             email_claim=_env("OIDC_EMAIL_CLAIM", "email"),
             name_claim=_env("OIDC_NAME_CLAIM", "name"),
         )
 
     def is_configured(self) -> bool:
-        """检查登录链接生成所需配置是否完整"""
+        """Check whether config is sufficient to generate a login URL."""
         if not self.enabled:
             return False
-        # 生成登录链接只要求 client_id + (issuer_url 或 authorization_endpoint)
+        # Login URL generation requires client_id + (issuer_url or authorization_endpoint).
         return bool(self.client_id and (self.issuer_url or self.authorization_endpoint))
 
     def is_token_exchange_configured(self) -> bool:
-        """检查授权码换 token 所需配置是否完整"""
+        """Check whether config is sufficient for auth-code token exchange."""
         if not self.enabled:
             return False
-        # 回调换 token 需要 client_id + client_secret + (issuer_url 或 token_endpoint)
+        # Callback token exchange requires client_id + client_secret + (issuer_url or token_endpoint).
         return bool(self.client_id and self.client_secret and (self.issuer_url or self.token_endpoint))
 
 
@@ -103,7 +116,7 @@ oidc_config = OIDCConfig.from_env()
 
 
 class OIDCProviderMetadata:
-    """OIDC Provider 元数据"""
+    """OIDC provider metadata."""
 
     def __init__(self):
         self.authorization_endpoint: str | None = None
@@ -114,7 +127,7 @@ class OIDCProviderMetadata:
         self._loaded = False
 
     async def load(self, issuer_url: str) -> bool:
-        """从 discovery 端点加载元数据"""
+        """Load metadata from the discovery endpoint."""
         if self._loaded:
             return True
 
@@ -125,15 +138,17 @@ class OIDCProviderMetadata:
                 response.raise_for_status()
                 metadata = response.json()
 
-            self.authorization_endpoint = metadata.get("authorization_endpoint")
+            self.authorization_endpoint = metadata.get(
+                "authorization_endpoint")
             self.token_endpoint = metadata.get("token_endpoint")
             self.userinfo_endpoint = metadata.get("userinfo_endpoint")
             self.end_session_endpoint = metadata.get("end_session_endpoint")
 
-            # 登录 URL 生成至少需要 authorization_endpoint。
+            # Login URL generation requires authorization_endpoint.
             if not self.authorization_endpoint:
-                self.last_error = "discovery 响应缺少 authorization_endpoint"
-                logger.error(f"Failed to load OIDC discovery: {self.last_error}, url={discovery_url}")
+                self.last_error = "discovery response missing authorization_endpoint"
+                logger.error(
+                    f"Failed to load OIDC discovery: {self.last_error}, url={discovery_url}")
                 return False
 
             self._loaded = True
@@ -143,12 +158,13 @@ class OIDCProviderMetadata:
 
         except Exception as e:
             self.last_error = f"{type(e).__name__}: {repr(e)}"
-            logger.error(f"Failed to load OIDC discovery: {self.last_error}, url={discovery_url}")
+            logger.error(
+                f"Failed to load OIDC discovery: {self.last_error}, url={discovery_url}")
             return False
 
 
 class OIDCUtils:
-    """OIDC 工具类"""
+    """OIDC utility class."""
 
     _metadata: OIDCProviderMetadata | None = None
     _state_store: dict[str, dict[str, Any]] = {}
@@ -160,22 +176,24 @@ class OIDCUtils:
     @classmethod
     def _cleanup_expired_state(cls) -> None:
         now = time.time()
-        expired = [k for k, v in cls._state_store.items() if v["expires_at"] <= now]
+        expired = [k for k, v in cls._state_store.items()
+                   if v["expires_at"] <= now]
         for key in expired:
             cls._state_store.pop(key, None)
 
     @classmethod
     def _cleanup_expired_login_code(cls) -> None:
         now = time.time()
-        expired = [k for k, v in cls._login_code_store.items() if v["expires_at"] <= now]
+        expired = [k for k, v in cls._login_code_store.items()
+                   if v["expires_at"] <= now]
         for key in expired:
             cls._login_code_store.pop(key, None)
 
     @classmethod
     async def get_metadata(cls) -> OIDCProviderMetadata | None:
-        """获取 OIDC Provider 元数据"""
+        """Get OIDC provider metadata."""
         if not oidc_config.enabled or not oidc_config.is_configured():
-            cls._last_metadata_error = "OIDC 未启用或基础配置不完整"
+            cls._last_metadata_error = "OIDC is not enabled or basic configuration is incomplete"
             return None
 
         if cls._metadata is None:
@@ -191,11 +209,11 @@ class OIDCUtils:
             else:
                 success = await cls._metadata.load(oidc_config.issuer_url)
                 if not success:
-                    cls._last_metadata_error = cls._metadata.last_error or "OIDC discovery 加载失败"
+                    cls._last_metadata_error = cls._metadata.last_error or "OIDC discovery loadfailed"
                     return None
 
         if not cls._metadata.authorization_endpoint:
-            cls._last_metadata_error = "OIDC 授权端点不可用"
+            cls._last_metadata_error = "OIDC authorization endpoint unavailable"
             return None
 
         cls._last_metadata_error = None
@@ -204,12 +222,12 @@ class OIDCUtils:
 
     @classmethod
     def get_last_metadata_error(cls) -> str | None:
-        """获取最近一次 OIDC 元数据加载错误"""
+        """Get the most recent OIDC metadata load error."""
         return cls._last_metadata_error
 
     @classmethod
     def generate_state(cls, redirect_path: str = "/") -> str:
-        """生成 state 参数并存储"""
+        """Generate and store a state parameter."""
         cls._cleanup_expired_state()
         state = secrets.token_urlsafe(32)
         cls._state_store[state] = {
@@ -220,7 +238,7 @@ class OIDCUtils:
 
     @classmethod
     def verify_state(cls, state: str) -> dict[str, Any] | None:
-        """验证 state 参数"""
+        """verify state parameter"""
         state_data = cls._state_store.pop(state, None)
         if not state_data:
             return None
@@ -230,7 +248,7 @@ class OIDCUtils:
 
     @classmethod
     def generate_login_code(cls, payload: dict[str, Any]) -> str:
-        """生成一次性短期登录 code"""
+        """Generate a short-lived one-time login code."""
         cls._cleanup_expired_login_code()
         code = secrets.token_urlsafe(32)
         cls._login_code_store[code] = {
@@ -241,7 +259,7 @@ class OIDCUtils:
 
     @classmethod
     def consume_login_code(cls, code: str) -> dict[str, Any] | None:
-        """消费一次性短期登录 code"""
+        """Consume a short-lived one-time login code."""
         data = cls._login_code_store.pop(code, None)
         if not data:
             return None
@@ -251,12 +269,12 @@ class OIDCUtils:
 
     @classmethod
     def generate_nonce(cls) -> str:
-        """生成 nonce 参数"""
+        """generate nonce parameter"""
         return secrets.token_urlsafe(32)
 
     @classmethod
     async def build_authorization_url(cls, redirect_path: str = "/") -> str | None:
-        """构建授权 URL"""
+        """buildauthorization URL"""
         metadata = await cls.get_metadata()
         if not metadata or not metadata.authorization_endpoint:
             return None
@@ -282,7 +300,7 @@ class OIDCUtils:
 
     @classmethod
     async def exchange_code_for_token(cls, code: str) -> dict[str, Any] | None:
-        """用授权码交换令牌"""
+        """Exchange authorization code for token."""
         metadata = await cls.get_metadata()
         if not metadata or not metadata.token_endpoint:
             return None
@@ -314,7 +332,7 @@ class OIDCUtils:
 
     @classmethod
     async def get_userinfo(cls, access_token: str) -> dict[str, Any] | None:
-        """获取用户信息"""
+        """Get user info."""
         metadata = await cls.get_metadata()
         if not metadata or not metadata.userinfo_endpoint:
             return None
@@ -335,7 +353,7 @@ class OIDCUtils:
 
     @classmethod
     async def build_logout_url(cls, id_token: str | None = None) -> str | None:
-        """构建登出 URL"""
+        """Build logout URL."""
         metadata = await cls.get_metadata()
         if not metadata or not metadata.end_session_endpoint:
             return None
@@ -353,7 +371,7 @@ class OIDCUtils:
 
     @classmethod
     def extract_user_info(cls, userinfo: dict[str, Any]) -> dict[str, Any]:
-        """从 userinfo 中提取用户信息"""
+        """Extract normalized user info from userinfo payload."""
         sub = userinfo.get("sub", "")
 
         username = userinfo.get(oidc_config.username_claim, "")
@@ -384,7 +402,7 @@ class OIDCUtils:
 
 
 async def get_or_create_oidc_department(db) -> Department | None:
-    """获取或创建 OIDC 用户的默认部门"""
+    """Get or create the default department for OIDC users."""
     dept_name = oidc_config.default_department
 
     result = await db.execute(select(Department).filter(Department.name == dept_name))
@@ -393,7 +411,7 @@ async def get_or_create_oidc_department(db) -> Department | None:
     if not dept:
         dept = Department(
             name=dept_name,
-            description=f"{dept_name}部门",
+            description=f"{dept_name}department",
         )
         db.add(dept)
         try:
@@ -409,7 +427,7 @@ async def get_or_create_oidc_department(db) -> Department | None:
 
 
 async def find_user_by_oidc_sub(db, sub: str) -> User | None:
-    """通过 OIDC sub 查找用户"""
+    """Find active user by OIDC sub."""
     oidc_user_id = f"oidc:{sub}"
 
     result = await db.execute(select(User).filter(User.user_id == oidc_user_id, User.is_deleted == 0))
@@ -418,19 +436,21 @@ async def find_user_by_oidc_sub(db, sub: str) -> User | None:
         return user
 
     legacy_result = await db.execute(
-        select(User).filter(User.user_id.like(f"{oidc_user_id}:%"), User.is_deleted == 0).order_by(User.id.asc())
+        select(User).filter(User.user_id.like(
+            f"{oidc_user_id}:%"), User.is_deleted == 0).order_by(User.id.asc())
     )
     legacy_users = list(legacy_result.scalars().all())
     if legacy_users:
         if len(legacy_users) > 1:
-            logger.warning(f"Multiple legacy OIDC users matched for sub={sub}, use earliest id={legacy_users[0].id}")
+            logger.warning(
+                f"Multiple legacy OIDC users matched for sub={sub}, use earliest id={legacy_users[0].id}")
         return legacy_users[0]
 
     return None
 
 
 async def find_deleted_oidc_user_by_sub(db, sub: str) -> User | None:
-    """查找已注销的 OIDC 账户（标准与历史后缀）"""
+    """Find deleted OIDC account by sub (standard and legacy suffixes)."""
     oidc_user_id = f"oidc:{sub}"
 
     result = await db.execute(select(User).filter(User.user_id == oidc_user_id, User.is_deleted == 1))
@@ -439,13 +459,14 @@ async def find_deleted_oidc_user_by_sub(db, sub: str) -> User | None:
         return deleted_user
 
     legacy_result = await db.execute(
-        select(User).filter(User.user_id.like(f"{oidc_user_id}:%"), User.is_deleted == 1).order_by(User.id.asc())
+        select(User).filter(User.user_id.like(
+            f"{oidc_user_id}:%"), User.is_deleted == 1).order_by(User.id.asc())
     )
     return legacy_result.scalar_one_or_none()
 
 
 async def build_unique_oidc_username(db, preferred_username: str, sub: str) -> str:
-    """为 OIDC 用户生成不冲突的用户名"""
+    """Generate a unique username for an OIDC user."""
     base_username = preferred_username.strip() if preferred_username else ""
     if not base_username:
         base_username = f"oidc_{sub[:8]}"
@@ -468,12 +489,12 @@ async def build_unique_oidc_username(db, preferred_username: str, sub: str) -> s
 
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail="无法生成可用用户名，请联系管理员",
+        detail="Unable to generate an available username, please contact admin",
     )
 
 
 async def create_oidc_user(db, user_info: dict, department_id: int | None = None) -> User:
-    """创建 OIDC 用户"""
+    """create OIDC user"""
     user_repo = UserRepository()
 
     sub = user_info["sub"]
@@ -509,12 +530,12 @@ async def create_oidc_user(db, user_info: dict, department_id: int | None = None
 
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail="创建 OIDC 用户失败，请重试",
+        detail="Failed to create OIDC user, please retry",
     )
 
 
 async def restore_deleted_oidc_user(db, deleted_user: User, user_info: dict) -> User:
-    """恢复已注销的 OIDC 用户并返回可登录用户"""
+    """Restore deleted OIDC user and return a login-ready user."""
     preferred_username = user_info["name"] or user_info["username"]
 
     deleted_user.is_deleted = 0
@@ -523,7 +544,7 @@ async def restore_deleted_oidc_user(db, deleted_user: User, user_info: dict) -> 
     deleted_user.phone_number = None
     deleted_user.avatar = None
 
-    if deleted_user.username.startswith("已注销用户-"):
+    if "logoutuser-" in deleted_user.username:
         deleted_user.username = await build_unique_oidc_username(db, preferred_username, user_info["sub"])
 
     if deleted_user.password_hash == "DELETED":
@@ -532,30 +553,31 @@ async def restore_deleted_oidc_user(db, deleted_user: User, user_info: dict) -> 
 
     await db.commit()
     await db.refresh(deleted_user)
-    logger.info(f"Restored deleted OIDC user: {deleted_user.username} ({deleted_user.user_id})")
+    logger.info(
+        f"Restored deleted OIDC user: {deleted_user.username} ({deleted_user.user_id})")
     return deleted_user
 
 
 async def update_oidc_user_login(db, user: User) -> None:
-    """更新 OIDC 用户登录时间"""
+    """update OIDC userlogintime"""
     user.last_login = utc_now_naive()
     await db.commit()
 
 
 def _redirect_to_callback(exchange_code: str) -> RedirectResponse:
-    """成功后重定向到前端 OIDC 回调页面，仅携带一次性 code"""
+    """Redirect to frontend OIDC callback page with one-time code on success."""
     url = f"{FRONTEND_CALLBACK_PATH}?{urlencode({'code': exchange_code})}"
     return RedirectResponse(url=url, status_code=302)
 
 
 def _redirect_to_login_with_error(error_message: str) -> RedirectResponse:
-    """失败时重定向到登录页并携带错误信息"""
+    """Redirect to login page with error details on failure."""
     url = f"{FRONTEND_LOGIN_PATH}?{urlencode({'oidc_error': error_message})}"
     return RedirectResponse(url=url, status_code=302)
 
 
 async def get_oidc_config_handler():
-    """获取 OIDC 配置（供前端使用）"""
+    """Get OIDC configuration for frontend usage."""
     if not oidc_config.enabled or not oidc_config.is_configured():
         return {"enabled": False}
 
@@ -564,31 +586,31 @@ async def get_oidc_config_handler():
 
 
 async def oidc_callback_handler(code: str, state: str, db, request: Request | None = None):
-    """处理 OIDC 回调 - 重定向到前端 Vue 路由"""
+    """Process OIDC callback and redirect to frontend Vue route."""
 
     if not oidc_config.is_token_exchange_configured():
-        return _redirect_to_login_with_error("OIDC 配置不完整，请联系管理员")
+        return _redirect_to_login_with_error("OIDC configuration is incomplete, please contact admin")
 
     if not OIDCUtils.verify_state(state):
-        return _redirect_to_login_with_error("登录会话已过期，请返回登录页重试")
+        return _redirect_to_login_with_error("Login session expired, please return to login page and retry")
 
     token_response = await OIDCUtils.exchange_code_for_token(code)
     if not token_response:
-        return _redirect_to_login_with_error("无法获取访问令牌，请返回登录页重试")
+        return _redirect_to_login_with_error("Unable to get access token, please return to login page and retry")
 
     access_token = token_response.get("access_token")
     if not access_token:
-        return _redirect_to_login_with_error("无法获取访问令牌，请返回登录页重试")
+        return _redirect_to_login_with_error("Unable to get access token, please return to login page and retry")
 
     userinfo = await OIDCUtils.get_userinfo(access_token)
     if not userinfo:
-        return _redirect_to_login_with_error("无法获取用户信息，请返回登录页重试")
+        return _redirect_to_login_with_error("Unable to get user info, please return to login page and retry")
 
     extracted_info = OIDCUtils.extract_user_info(userinfo)
     sub = extracted_info["sub"]
 
     if not sub:
-        return _redirect_to_login_with_error("无法获取用户标识，请返回登录页重试")
+        return _redirect_to_login_with_error("Unable to get user identifier, please return to login page and retry")
 
     user = await find_user_by_oidc_sub(db, sub)
 
@@ -599,21 +621,22 @@ async def oidc_callback_handler(code: str, state: str, db, request: Request | No
         deleted_user = await find_deleted_oidc_user_by_sub(db, sub)
         if deleted_user:
             user = await restore_deleted_oidc_user(db, deleted_user, extracted_info)
-            logger.info(f"OIDC deleted user restored and logged in: {user.username}")
+            logger.info(
+                f"OIDC deleted user restored and logged in: {user.username}")
         else:
             dept = await get_or_create_oidc_department(db)
             department_id = dept.id if dept else None
             user = await create_oidc_user(db, extracted_info, department_id)
     else:
-        return _redirect_to_login_with_error("用户未注册，请联系管理员开通账号")
+        return _redirect_to_login_with_error("User is not registered, please contact admin")
 
     if user.is_deleted:
-        return _redirect_to_login_with_error("该账户已注销")
+        return _redirect_to_login_with_error("This account has been logged out")
 
     token_data = {"sub": str(user.id)}
     jwt_token = AuthUtils.create_access_token(token_data)
 
-    await log_operation(db, user.id, "OIDC 登录", request=request)
+    await log_operation(db, user.id, "OIDC login", request=request)
 
     department_name = None
     if user.department_id:
@@ -638,22 +661,22 @@ async def oidc_callback_handler(code: str, state: str, db, request: Request | No
 
 
 async def oidc_exchange_code_handler(code: str) -> dict:
-    """用一次性 code 交换登录响应数据"""
+    """Exchange one-time code for login response data."""
     token_data = OIDCUtils.consume_login_code(code)
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="登录 code 无效或已过期，请重新登录",
+            detail="Login code is invalid or expired, please login again",
         )
     return token_data
 
 
 async def oidc_login_url_handler(redirect_path: str = "/"):
-    """获取 OIDC 登录 URL"""
+    """get OIDC login URL"""
     if not oidc_config.enabled or not oidc_config.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OIDC 登录暂不可用，请联系管理员",
+            detail="OIDC login is temporarily unavailable, please contact admin",
         )
 
     login_url = await OIDCUtils.build_authorization_url(redirect_path)
@@ -662,11 +685,11 @@ async def oidc_login_url_handler(redirect_path: str = "/"):
         if metadata_error:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"生成登录链接失败：{metadata_error}",
+                detail=f"Failed to generate login URL: {metadata_error}",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="生成登录链接失败，请稍后重试或联系管理员",
+            detail="Failed to generate login URL, please retry later or contact admin",
         )
 
     return {"login_url": login_url}

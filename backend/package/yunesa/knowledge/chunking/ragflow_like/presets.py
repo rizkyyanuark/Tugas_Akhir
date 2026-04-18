@@ -18,10 +18,10 @@ CHUNK_PRESET_IDS = {
 }
 
 CHUNK_PRESET_DESCRIPTIONS: dict[str, str] = {
-    CHUNK_PRESET_GENERAL: "通用分块：按分隔符和长度切分，适合大多数普通文档。",
-    CHUNK_PRESET_QA: "问答分块：优先抽取问题-回答结构，适合 FAQ、题库、问答手册。",
-    CHUNK_PRESET_BOOK: "书籍分块：强化章节标题识别并做层级合并，适合教材、手册、长章节文档。",
-    CHUNK_PRESET_LAWS: "法规分块：按法条层级组织与合并，适合法律法规、制度规范类文本。",
+    CHUNK_PRESET_GENERAL: "General chunking: split by delimiters and length, suitable for most common documents.",
+    CHUNK_PRESET_QA: "Q&A chunking: prioritize extracting question-answer structures, suitable for FAQs, question banks, and Q&A manuals.",
+    CHUNK_PRESET_BOOK: "Book chunking: strengthens chapter title detection and hierarchical merge, suitable for textbooks, manuals, and long chapter documents.",
+    CHUNK_PRESET_LAWS: "Legal chunking: organize and merge by legal hierarchy, suitable for laws, regulations, and policy documents.",
 }
 
 CHUNK_ENGINE_VERSION = "ragflow_like_v1"
@@ -125,7 +125,8 @@ def _legacy_params_to_parser_config(params: dict[str, Any] | None) -> dict[str, 
     if chunk_size and chunk_size > 0:
         parser_config["chunk_token_num"] = chunk_size
     if chunk_size and chunk_size > 0 and chunk_overlap is not None:
-        overlap_percent = round(max(0, min(chunk_overlap, chunk_size - 1)) * 100 / chunk_size)
+        overlap_percent = round(
+            max(0, min(chunk_overlap, chunk_size - 1)) * 100 / chunk_size)
         parser_config["overlapped_percent"] = max(0, min(overlap_percent, 99))
 
     if isinstance(params.get("qa_separator"), str) and params.get("qa_separator"):
@@ -140,19 +141,23 @@ def _legacy_params_to_parser_config(params: dict[str, Any] | None) -> dict[str, 
             parser_config["chunk_token_num"] = normalized_chunk_token_num
 
     if "overlapped_percent" in params:
-        normalized_overlapped_percent = _safe_int(params.get("overlapped_percent"))
+        normalized_overlapped_percent = _safe_int(
+            params.get("overlapped_percent"))
         if normalized_overlapped_percent is not None:
-            parser_config["overlapped_percent"] = max(0, min(normalized_overlapped_percent, 99))
+            parser_config["overlapped_percent"] = max(
+                0, min(normalized_overlapped_percent, 99))
 
     return parser_config
 
 
 def ensure_chunk_defaults_in_additional_params(additional_params: dict[str, Any] | None) -> dict[str, Any]:
     params = dict(additional_params or {})
-    params["chunk_preset_id"] = normalize_chunk_preset_id(params.get("chunk_preset_id"))
+    params["chunk_preset_id"] = normalize_chunk_preset_id(
+        params.get("chunk_preset_id"))
 
     if "chunk_parser_config" in params and not isinstance(params.get("chunk_parser_config"), dict):
-        logger.warning("Invalid chunk_parser_config in additional_params, fallback to empty dict")
+        logger.warning(
+            "Invalid chunk_parser_config in additional_params, fallback to empty dict")
         params["chunk_parser_config"] = {}
 
     return params
@@ -163,12 +168,14 @@ def resolve_chunk_processing_params(
     file_processing_params: dict[str, Any] | None,
     request_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    kb_additional = ensure_chunk_defaults_in_additional_params(kb_additional_params)
+    kb_additional = ensure_chunk_defaults_in_additional_params(
+        kb_additional_params)
     file_params = dict(file_processing_params or {})
     request = dict(request_params or {})
 
     preset_id = normalize_chunk_preset_id(
-        request.get("chunk_preset_id") or file_params.get("chunk_preset_id") or kb_additional.get("chunk_preset_id")
+        request.get("chunk_preset_id") or file_params.get(
+            "chunk_preset_id") or kb_additional.get("chunk_preset_id")
     )
 
     parser_config = get_default_chunk_parser_config(preset_id)
@@ -188,7 +195,8 @@ def resolve_chunk_processing_params(
     merged_legacy = {}
     merged_legacy.update(file_params)
     merged_legacy.update(request)
-    parser_config = deep_merge(parser_config, _legacy_params_to_parser_config(merged_legacy))
+    parser_config = deep_merge(
+        parser_config, _legacy_params_to_parser_config(merged_legacy))
 
     # Build processing params snapshot (keep existing + request overrides for non-chunk fields)
     snapshot: dict[str, Any] = {}
@@ -205,7 +213,8 @@ def resolve_chunk_processing_params(
     if "chunk_overlap" not in snapshot and isinstance(parser_config.get("overlapped_percent"), int):
         token_num = parser_config.get("chunk_token_num")
         if isinstance(token_num, int) and token_num > 0:
-            snapshot["chunk_overlap"] = int(token_num * parser_config["overlapped_percent"] / 100)
+            snapshot["chunk_overlap"] = int(
+                token_num * parser_config["overlapped_percent"] / 100)
 
     if "qa_separator" not in snapshot and isinstance(parser_config.get("delimiter"), str):
         snapshot["qa_separator"] = parser_config["delimiter"]

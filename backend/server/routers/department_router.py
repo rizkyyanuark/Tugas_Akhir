@@ -1,6 +1,6 @@
 """
-部门管理路由
-提供部门的增删改查接口，仅超级管理员可访问
+Department management routes.
+Provides department CRUD endpoints, accessible only to superadmin users.
 """
 
 import re
@@ -18,42 +18,42 @@ from server.utils.auth_utils import AuthUtils
 from server.utils.common_utils import log_operation
 from server.utils.user_utils import is_valid_phone_number
 
-# 创建路由器
+# Create router.
 department = APIRouter(prefix="/departments", tags=["department"])
 
 
 # =============================================================================
-# === 请求和响应模型 ===
+# === Request and Response Models ===
 # =============================================================================
 
 
 class DepartmentCreate(BaseModel):
-    """创建部门请求"""
+    """Create department request."""
 
     name: str
     description: str | None = None
-    # 必需的管理员信息
+    # Required admin info.
     admin_user_id: str
     admin_password: str
     admin_phone: str | None = None
 
 
 class DepartmentCreateWithoutAdmin(BaseModel):
-    """创建部门请求（无管理员，用于兼容）"""
+    """Create department request (without admin, for compatibility)."""
 
     name: str
     description: str | None = None
 
 
 class DepartmentUpdate(BaseModel):
-    """更新部门请求"""
+    """Update department request."""
 
     name: str | None = None
     description: str | None = None
 
 
 class DepartmentResponse(BaseModel):
-    """部门响应"""
+    """Department response."""
 
     id: int
     name: str
@@ -63,13 +63,13 @@ class DepartmentResponse(BaseModel):
 
 
 # =============================================================================
-# === 部门管理路由 ===
+# === Department Management Routes ===
 # =============================================================================
 
 
 @department.get("", response_model=list[DepartmentResponse])
 async def get_departments(current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
-    """获取所有部门列表（管理员可访问）"""
+    """Get all departments (admin accessible)."""
     dept_repo = DepartmentRepository()
     return await dept_repo.list_with_user_count()
 
@@ -78,16 +78,18 @@ async def get_departments(current_user: User = Depends(get_admin_user), db: Asyn
 async def get_department(
     department_id: int, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)
 ):
-    """获取指定部门详情"""
+    """Get details of the specified department."""
     result = await db.execute(select(Department).filter(Department.id == department_id))
     department = result.scalar_one_or_none()
 
     if not department:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="部门不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Department does not exist")
 
-    # 获取部门下用户数量
+    # Get user count under this department.
     user_count_result = await db.execute(
-        select(func.count(User.id)).filter(User.department_id == department_id, User.is_deleted == 0)
+        select(func.count(User.id)).filter(
+            User.department_id == department_id, User.is_deleted == 0)
     )
     user_count = user_count_result.scalar()
 
@@ -101,47 +103,49 @@ async def create_department(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建新部门，同时创建该部门的管理员"""
+    """Create a new department and its admin account."""
     dept_repo = DepartmentRepository()
     user_repo = UserRepository()
 
-    # 检查部门名称是否已存在
+    # Check whether department name already exists.
     if await dept_repo.exists_by_name(department_data.name):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="部门名称已存在")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Department name already exists")
 
-    # 验证管理员 user_id 格式
+    # Verify admin user_id format.
     admin_user_id = department_data.admin_user_id
     if not re.match(r"^[a-zA-Z0-9_]+$", admin_user_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID只能包含字母、数字和下划线",
+            detail="User ID can only contain letters, numbers, and underscores",
         )
 
     if len(admin_user_id) < 3 or len(admin_user_id) > 20:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID长度必须在3-20个字符之间",
+            detail="User ID length must be between 3 and 20 characters",
         )
 
-    # 检查 user_id 是否已存在
+    # Check whether user_id already exists.
     if await user_repo.exists_by_user_id(admin_user_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID已存在",
+            detail="User ID already exists",
         )
 
-    # 检查手机号是否已存在（如果提供了）
+    # Check whether phone number already exists (if provided).
     admin_phone = department_data.admin_phone
     if admin_phone:
         if not is_valid_phone_number(admin_phone):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号格式不正确")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Phone number format is invalid")
         if await user_repo.exists_by_phone(admin_phone):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="手机号已存在",
+                detail="Phone number already exists",
             )
 
-    # 创建部门
+    # Create department.
     new_department = await dept_repo.create(
         {
             "name": department_data.name,
@@ -149,7 +153,7 @@ async def create_department(
         }
     )
 
-    # 创建管理员用户
+    # Create admin user.
     hashed_password = AuthUtils.hash_password(department_data.admin_password)
     await user_repo.create(
         {
@@ -162,9 +166,13 @@ async def create_department(
         }
     )
 
-    # 记录操作
+    # Record operation.
     await log_operation(
-        db, current_user.id, "创建部门", f"创建部门: {department_data.name}，并创建管理员: {admin_user_id}", request
+        db,
+        current_user.id,
+        "createdepartment",
+        f"Create department: {department_data.name}, and create admin: {admin_user_id}",
+        request,
     )
 
     return {**new_department.to_dict(), "user_count": 1}
@@ -178,19 +186,21 @@ async def update_department(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新部门信息"""
+    """Update department information."""
     result = await db.execute(select(Department).filter(Department.id == department_id))
     department = result.scalar_one_or_none()
 
     if not department:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="部门不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Department does not exist")
 
-    # 如果要修改名称，检查新名称是否已存在
+    # If modifying name, check whether the new name already exists.
     if department_data.name and department_data.name != department.name:
         result = await db.execute(select(Department).filter(Department.name == department_data.name))
         existing = result.scalar_one_or_none()
         if existing:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="部门名称已存在")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Department name already exists")
         department.name = department_data.name
 
     if department_data.description is not None:
@@ -199,12 +209,13 @@ async def update_department(
     await db.commit()
     await db.refresh(department)
 
-    # 记录操作
-    await log_operation(db, current_user.id, "更新部门", f"更新部门: {department.name}", request)
+    # Record operation.
+    await log_operation(db, current_user.id, "updatedepartment", f"Update department: {department.name}", request)
 
-    # 获取部门下用户数量
+    # Get user count under this department.
     user_count_result = await db.execute(
-        select(func.count(User.id)).filter(User.department_id == department_id, User.is_deleted == 0)
+        select(func.count(User.id)).filter(
+            User.department_id == department_id, User.is_deleted == 0)
     )
     user_count = user_count_result.scalar()
 
@@ -218,16 +229,18 @@ async def delete_department(
     current_user: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除部门"""
-    # 检查部门是否存在
+    """Delete a department."""
+    # Check whether department exists.
     result = await db.execute(select(Department).filter(Department.id == department_id))
     department = result.scalar_one_or_none()
 
     if not department:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="部门不存在")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Department does not exist")
 
-    if department.id == 1:  # 默认部门的ID为1
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="默认部门不允许删除")
+    if department.id == 1:  # Default department ID is 1.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Default department cannot be deleted")
 
     department_name = department.name
     result = await db.execute(select(User).filter(User.department_id == department_id))
@@ -235,18 +248,18 @@ async def delete_department(
 
     if department_users:
         for user in department_users:
-            user.department_id = 1  # 将用户迁移到默认部门
+            user.department_id = 1  # Migrate users to the default department.
 
     await db.execute(sqlalchemy_delete(AgentConfig).where(AgentConfig.department_id == department_id))
     await db.execute(sqlalchemy_delete(APIKey).where(APIKey.department_id == department_id))
     await db.delete(department)
     await db.commit()
 
-    # 记录操作
+    # Record operation.
     if department_users:
-        detail = f"删除部门: {department_name}，迁移 {len(department_users)} 个用户到默认部门"
+        detail = f"Delete department: {department_name}, migrated {len(department_users)} users to default department"
     else:
-        detail = f"删除部门: {department_name}"
-    await log_operation(db, current_user.id, "删除部门", detail, request)
+        detail = f"Delete department: {department_name}"
+    await log_operation(db, current_user.id, "deletedepartment", detail, request)
 
-    return {"success": True, "message": "部门已删除"}
+    return {"success": True, "message": "Department deleted"}

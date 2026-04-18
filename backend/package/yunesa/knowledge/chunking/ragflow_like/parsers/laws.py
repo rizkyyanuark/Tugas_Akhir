@@ -5,7 +5,7 @@ from typing import Any
 
 from yunesa.knowledge.chunking.ragflow_like import nlp
 
-_ARTICLE_PATTERN = re.compile(r"^(第[零一二三四五六七八九十百千万0-9]+条)[\s　:：]*(.*)$")
+_ARTICLE_PATTERN = re.compile(r"^(第[零一二三四五六七八九十百千万0-9]+)[\s　:：]*(.*)$")
 
 
 def _unescape_delimiter(delimiter: str) -> str:
@@ -114,8 +114,8 @@ def _ensure_chunk_token_limit(
     chunks: list[str], chunk_token_num: int, delimiter: str, overlapped_percent: int
 ) -> list[str]:
     """
-    对输出 chunk 做 token 上限保护：
-    1) 先尝试按行用 naive_merge 再切一次；
+    对output chunk 做 token 上限保护：
+    1) 先尝试按row用 naive_merge 再切一times；
     2) 仍超长时才硬切，避免 embeddings 413。
     """
     max_tokens = int(chunk_token_num or 0)
@@ -168,10 +168,10 @@ def _ensure_chunk_token_limit(
 
 def chunk_markdown(filename: str, markdown_content: str, parser_config: dict[str, Any] | None = None) -> list[str]:
     """
-    法规分块主流程（简化版）：
-    - docx 优先尝试标题树；
-    - 其余格式先做法规文本归一化，再按章/节/条树形切分（depth=3）；
-    - 最后统一执行超长保护。
+    法规chunking主workflow（简化版）：
+    - docx 优先尝试title树；
+    - 其余format先做法规文本归一化，再按章/节/树形切分（depth=3）；
+    - 最后统一execute超长保护。
     """
     parser_config = parser_config or {}
 

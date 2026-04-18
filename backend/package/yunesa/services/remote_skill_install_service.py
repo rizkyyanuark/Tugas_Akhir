@@ -22,16 +22,16 @@ CLI_TIMEOUT_SECONDS = 300
 def _normalize_source(source: str) -> str:
     value = str(source or "").strip()
     if not value:
-        raise ValueError("source 不能为空")
+        raise ValueError("source cannot be empty")
     if any(ch in value for ch in ("\n", "\r", "\x00")):
-        raise ValueError("source 包含非法字符")
+        raise ValueError("source contains invalid characters")
     return value
 
 
 def _normalize_skill_name(skill: str) -> str:
     value = str(skill or "").strip()
     if not is_valid_skill_slug(value):
-        raise ValueError("skill 名称不合法")
+        raise ValueError("skill nameinvalid")
     return value
 
 
@@ -109,7 +109,7 @@ async def _run_skills_cli(
     except TimeoutError:
         process.kill()
         await process.communicate()
-        raise ValueError("skills CLI 执行超时") from None
+        raise ValueError("skills CLI executetimeout") from None
 
     output = (stdout or b"").decode("utf-8", errors="replace")
     error_output = (stderr or b"").decode("utf-8", errors="replace")
@@ -117,7 +117,7 @@ async def _run_skills_cli(
     if process.returncode != 0:
         cleaned_lines = _clean_cli_output(combined)
         error_msg = "\n".join(line for line in cleaned_lines if line)[:500]
-        raise ValueError(error_msg or "skills CLI 执行失败")
+        raise ValueError(error_msg or "skills CLI executefailed")
     return combined
 
 
@@ -145,7 +145,7 @@ async def list_remote_skills(source: str) -> list[dict[str, str]]:
 
     skills = _parse_available_skills(output)
     if not skills:
-        raise ValueError("未发现可安装的 skills")
+        raise ValueError("No installable skills found")
     return skills
 
 
@@ -170,7 +170,7 @@ async def install_remote_skill(
         )
         available_names = {item["name"] for item in available_skills}
         if normalized_skill not in available_names:
-            raise ValueError(f"远程仓库中不存在 skill: {normalized_skill}")
+            raise ValueError(f"Skill does not exist in remote repository: {normalized_skill}")
 
         await _run_skills_cli(
             [
@@ -200,7 +200,7 @@ async def install_remote_skill(
                     installed_dir = candidate
                     break
         if installed_dir is None:
-            raise ValueError("skills CLI 未生成预期的技能目录")
+            raise ValueError("skills CLI did not generate the expected skill directory")
 
         return await import_skill_dir(
             db,

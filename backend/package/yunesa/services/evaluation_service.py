@@ -16,14 +16,14 @@ from yunesa.utils.evaluation_metrics import EvaluationMetricsCalculator
 
 
 class EvaluationService:
-    """RAG评估服务"""
+    """RAGevaluationservice"""
 
     def __init__(self):
         self.eval_repo = EvaluationRepository()
         self.kb_repo = KnowledgeBaseRepository()
 
     async def _get_benchmark_dir(self, db_id: str) -> str:
-        """获取评估基准目录"""
+        """getevaluationbenchmarkdirectory"""
         kb_instance = await knowledge_base.aget_kb(db_id)
         base_dir = os.path.join(kb_instance.work_dir, db_id)
         path = os.path.join(base_dir, "benchmarks")
@@ -31,51 +31,54 @@ class EvaluationService:
         return path
 
     async def _get_result_dir(self, db_id: str) -> str:
-        """获取评估结果目录"""
+        """getevaluationresultdirectory"""
         kb_instance = await knowledge_base.aget_kb(db_id)
         base_dir = os.path.join(kb_instance.work_dir, db_id)
         path = os.path.join(base_dir, "results")
         os.makedirs(path, exist_ok=True)
         return path
 
-    # 已移除基准回退逻辑，统一使用集中元数据
+    # Benchmark fallback logic has been removed; use centralized metadata only.
 
-    # 已移除结果回退逻辑，统一通过 db_id 定位
+    # Result fallback logic has been removed; locate records via db_id only.
 
     async def upload_benchmark(
         self, db_id: str, file_content: bytes, filename: str, name: str, description: str, created_by: str
     ) -> dict[str, Any]:
-        """上传评估基准文件"""
+        """uploadevaluationbenchmarkfile"""
         try:
             content_str = file_content.decode("utf-8")
             questions = []
             has_gold_chunks = False
             has_gold_answers = False
 
-            # 解析 JSONL
+            # parse JSONL
             for line_num, line in enumerate(content_str.strip().split("\n"), 1):
                 if not line.strip():
                     continue
                 try:
                     item = json.loads(line)
                     if "query" not in item:
-                        raise ValueError(f"第{line_num}行缺少必需的'query'字段")
+                        raise ValueError(
+                            f"Line {line_num} is missing required field 'query'")
                     if item.get("gold_chunk_ids"):
                         has_gold_chunks = True
                     if item.get("gold_answer"):
                         has_gold_answers = True
                     questions.append(item)
                 except json.JSONDecodeError as e:
-                    raise ValueError(f"第{line_num}行JSON格式错误: {str(e)}")
+                    raise ValueError(
+                        f"Line {line_num} has JSON format error: {str(e)}")
 
             if not questions:
-                raise ValueError("文件中没有有效的问题数据")
+                raise ValueError("No valid question data found in file")
 
             benchmark_id = f"benchmark_{uuid.uuid4().hex[:8]}"
             benchmark_dir = await self._get_benchmark_dir(db_id)
 
-            # 保存数据文件 (.jsonl)
-            data_file_path = os.path.join(benchmark_dir, f"{benchmark_id}.jsonl")
+            # savedatafile (.jsonl)
+            data_file_path = os.path.join(
+                benchmark_dir, f"{benchmark_id}.jsonl")
             with open(data_file_path, "w", encoding="utf-8") as f:
                 f.write(content_str)
 
@@ -109,11 +112,11 @@ class EvaluationService:
             return meta
 
         except Exception as e:
-            logger.error(f"上传评估基准失败: {e}")
+            logger.error(f"uploadevaluationbenchmarkfailed: {e}")
             raise
 
     async def get_benchmarks(self, db_id: str) -> list[dict[str, Any]]:
-        """获取知识库的评估基准列表"""
+        """Get evaluation benchmark list for a knowledge base."""
         try:
             rows = await self.eval_repo.list_benchmarks(db_id)
             return [
@@ -135,11 +138,11 @@ class EvaluationService:
             ]
 
         except Exception as e:
-            logger.error(f"获取评估基准列表失败: {e}")
+            logger.error(f"getevaluationbenchmarklistfailed: {e}")
             raise
 
     async def get_benchmark_detail(self, benchmark_id: str) -> dict[str, Any]:
-        """获取评估基准详情 (包含问题列表)"""
+        """Get evaluation benchmark details (including question list)."""
         try:
             row = await self.eval_repo.get_benchmark(benchmark_id)
             if row is None:
@@ -167,13 +170,13 @@ class EvaluationService:
             }
 
         except Exception as e:
-            logger.error(f"获取评估基准详情失败: {e}")
+            logger.error(f"getevaluationbenchmarkdetailsfailed: {e}")
             raise
 
     async def get_benchmark_detail_by_db(
         self, db_id: str, benchmark_id: str, page: int = 1, page_size: int = 10
     ) -> dict[str, Any]:
-        """根据 db_id 获取评估基准详情（支持分页）"""
+        """Get evaluation benchmark details by db_id (with pagination)."""
         try:
             row = await self.eval_repo.get_benchmark(benchmark_id)
             if row is None or row.db_id != db_id:
@@ -183,26 +186,26 @@ class EvaluationService:
             questions = []
 
             if data_file_path and os.path.exists(data_file_path):
-                # 计算分页范围
+                # Calculate pagination range.
                 start_index = (page - 1) * page_size
                 end_index = start_index + page_size
 
-                # 读取指定范围的问题
+                # Read questions within the requested range.
                 with open(data_file_path, encoding="utf-8") as f:
                     current_index = 0
                     for line in f:
                         if not line.strip():
                             continue
 
-                        # 只处理指定范围内的问题
+                        # Process only questions in the requested window.
                         if current_index >= start_index and current_index < end_index:
                             questions.append(json.loads(line))
                         elif current_index >= end_index:
-                            break  # 已经读取到足够的问题，停止读取
+                            break  # Enough questions have been read; stop.
 
                         current_index += 1
 
-            # 计算分页信息
+            # Build pagination metadata.
             total_pages = (total_questions + page_size - 1) // page_size
 
             return {
@@ -229,11 +232,11 @@ class EvaluationService:
                 },
             }
         except Exception as e:
-            logger.error(f"获取评估基准详情失败: {e}")
+            logger.error(f"getevaluationbenchmarkdetailsfailed: {e}")
             raise
 
     async def get_benchmark_download_info(self, benchmark_id: str) -> dict[str, str]:
-        """获取评估基准下载信息"""
+        """Get evaluation benchmark download metadata."""
         row = await self.eval_repo.get_benchmark(benchmark_id)
         if row is None:
             raise ValueError("Benchmark not found")
@@ -256,7 +259,7 @@ class EvaluationService:
         return {"file_path": data_file_path, "filename": filename_base}
 
     async def delete_benchmark(self, benchmark_id: str) -> None:
-        """删除评估基准"""
+        """deleteevaluationbenchmark"""
         try:
             row = await self.eval_repo.get_benchmark(benchmark_id)
             if row is None:
@@ -264,15 +267,15 @@ class EvaluationService:
             if row.data_file_path and os.path.exists(row.data_file_path):
                 os.remove(row.data_file_path)
             await self.eval_repo.delete_benchmark(benchmark_id)
-            logger.info(f"成功删除评估基准: {benchmark_id}")
+            logger.info(f"successfuldeleteevaluationbenchmark: {benchmark_id}")
             return
 
         except Exception as e:
-            logger.error(f"删除评估基准失败: {e}")
+            logger.error(f"deleteevaluationbenchmarkfailed: {e}")
             raise
 
     async def delete_evaluation_result(self, task_id: str, db_id: str) -> None:
-        """删除评估结果"""
+        """deleteevaluationresult"""
         if not task_id:
             raise ValueError("task_id is required")
         await self.delete_evaluation_result_by_db(db_id, task_id)
@@ -280,29 +283,31 @@ class EvaluationService:
     async def generate_benchmark(self, db_id: str, params: dict[str, Any], created_by: str) -> dict[str, Any]:
         task_id = f"gen_benchmark_{uuid.uuid4().hex[:8]}"
         await tasker.enqueue(
-            name="生成评估基准",
+            name="generateevaluationbenchmark",
             task_type="benchmark_generation",
-            payload={"task_id": task_id, "db_id": db_id, "created_by": created_by, **params},
+            payload={"task_id": task_id, "db_id": db_id,
+                     "created_by": created_by, **params},
             coroutine=self._generate_benchmark_task,
         )
-        return {"task_id": task_id, "message": "基准生成任务已提交"}
+        return {"task_id": task_id, "message": "Benchmark generation task submitted"}
 
     async def _generate_benchmark_task(self, context: TaskContext):
         import math
         import random
 
-        await context.set_progress(0, "初始化")
+        await context.set_progress(0, "initialize")
 
         task = context._tasker._tasks.get(context.task_id)
         payload = task.payload if task else {}
 
         db_id = payload.get("db_id")
-        name = payload.get("name", "自动生成评估基准")
+        name = payload.get("name", "Auto-generated evaluation benchmark")
         description = payload.get("description", "")
         count = int(payload.get("count", 10))
         neighbors_count = int(payload.get("neighbors_count", 0))
         embedding_model_id = payload.get("embedding_model_id")
-        llm_model_spec = payload.get("llm_model_spec") or (payload.get("llm_config") or {}).get("model_spec")
+        llm_model_spec = payload.get("llm_model_spec") or (
+            payload.get("llm_config") or {}).get("model_spec")
 
         if neighbors_count < 0:
             neighbors_count = 0
@@ -311,13 +316,13 @@ class EvaluationService:
 
         kb_instance = await knowledge_base.aget_kb(db_id)
         if not kb_instance:
-            await context.set_message("知识库不存在")
+            await context.set_message("knowledge basedoes not exist")
             raise ValueError("Knowledge Base not found")
         if kb_instance.kb_type == "lightrag":
-            await context.set_message("暂不支持该类型知识库生成评估基准")
+            await context.set_message("This knowledge base type is not yet supported for benchmark generation")
             raise ValueError("Unsupported KB type for benchmark generation")
 
-        await context.set_progress(5, "加载chunks")
+        await context.set_progress(5, "loadchunks")
 
         all_chunks = []
         for fid, finfo in kb_instance.files_meta.items():
@@ -339,17 +344,18 @@ class EvaluationService:
                 continue
 
         if not all_chunks:
-            await context.set_message("知识库为空或未解析到chunks")
+            await context.set_message("Knowledge base is empty or no chunks were parsed")
             raise ValueError("No chunks found in knowledge base")
 
         contents = [c["content"] for c in all_chunks]
 
-        await context.set_progress(15, "向量化")
+        await context.set_progress(15, "Vectorizing")
 
         db_meta = kb_instance.databases_meta.get(db_id, {})
         embed_info = db_meta.get("embed_info", {})
         if not embedding_model_id:
-            embedding_model_id = embed_info.get("name") or embed_info.get("model") or ""
+            embedding_model_id = embed_info.get(
+                "name") or embed_info.get("model") or ""
         if not embedding_model_id:
             raise ValueError("Embedding model not specified")
 
@@ -364,7 +370,8 @@ class EvaluationService:
         # This is inefficient for large KBs (O(N) embedding calls).
         # Optimization: Reuse existing embeddings from Vector DB if embedding_model_id matches the KB's embedding model.
         embeddings = await embed_model.abatch_encode(contents, batch_size=batch_size)
-        norms = [math.sqrt(sum(x * x for x in vec)) or 1.0 for vec in embeddings]
+        norms = [math.sqrt(sum(x * x for x in vec))
+                 or 1.0 for vec in embeddings]
 
         def cosine(a, b, na, nb):
             s = 0.0
@@ -381,7 +388,7 @@ class EvaluationService:
         generated = 0
         attempts = 0
 
-        await context.set_progress(0, "准备生成样本")
+        await context.set_progress(0, "Preparing generated samples")
 
         with open(data_file_path, "w", encoding="utf-8") as f:
             # Allow more attempts to generate enough questions
@@ -402,17 +409,21 @@ class EvaluationService:
                 top_js = [j for j, _ in sims[:neighbors_count]]
 
                 ctx_items = []
-                ctx_items.append((all_chunks[i0]["id"], all_chunks[i0]["content"]))
+                ctx_items.append(
+                    (all_chunks[i0]["id"], all_chunks[i0]["content"]))
                 for j in top_js:
-                    ctx_items.append((all_chunks[j]["id"], all_chunks[j]["content"]))
+                    ctx_items.append(
+                        (all_chunks[j]["id"], all_chunks[j]["content"]))
                 allowed_ids = {cid for cid, _ in ctx_items}
-                context_text = "\n\n".join([f"片段ID={cid}\n{content}" for cid, content in ctx_items])
+                context_text = "\n\n".join(
+                    [f"Chunk ID={cid}\n{content}" for cid, content in ctx_items])
 
                 prompt = (
-                    "你将基于以下上下文生成一个可由上下文准确回答的问题与标准答案。"
-                    "仅返回一个JSON对象，不要包含其他文字。"
-                    "键为 query、gold_answer、gold_chunk_ids。gold_chunk_ids 必须是上述上下文片段的ID子集。\n\n"
-                    "上下文：\n" + context_text + "\n"
+                    "Generate one question and one reference answer that can be answered accurately from the"
+                    " context below. Return only one JSON object with no extra text."
+                    " Use keys query, gold_answer, and gold_chunk_ids."
+                    " gold_chunk_ids must be a subset of the provided context chunk IDs.\n\n"
+                    "Context:\n" + context_text + "\n"
                 )
 
                 try:
@@ -426,20 +437,23 @@ class EvaluationService:
                     a = obj.get("gold_answer")
                     gids = obj.get("gold_chunk_ids")
                     if not q or not a or not isinstance(gids, list):
-                        logger.warning(f"Generated JSON missing fields or invalid format: {obj}")
+                        logger.warning(
+                            f"Generated JSON missing fields or invalid format: {obj}")
                         continue
 
                     gids = [str(x) for x in gids if str(x) in allowed_ids]
                     if not gids:
-                        logger.warning("Generated gold_chunk_ids not found in allowed context")
+                        logger.warning(
+                            "Generated gold_chunk_ids not found in allowed context")
                         continue
 
                     line = {"query": q, "gold_chunk_ids": gids, "gold_answer": a}
                     f.write(json.dumps(line, ensure_ascii=False) + "\n")
                     generated += 1
-                    await context.set_progress(0 + int(99 * generated / max(count, 1)), f"已生成 {generated}/{count}")
+                    await context.set_progress(0 + int(99 * generated / max(count, 1)), f"Generated {generated}/{count}")
                 except Exception as e:
-                    logger.warning(f"Benchmark generation failed for one item: {e}")
+                    logger.warning(
+                        f"Benchmark generation failed for one item: {e}")
                     continue
 
         await self.eval_repo.create_benchmark(
@@ -456,12 +470,12 @@ class EvaluationService:
             }
         )
 
-        await context.set_progress(100, "完成")
+        await context.set_progress(100, "completed")
 
     async def run_evaluation(
         self, db_id: str, benchmark_id: str, model_config: dict[str, Any] = None, created_by: str = "system"
     ) -> str:
-        """运行RAG评估"""
+        """Run RAG evaluation."""
         try:
             task_id = f"eval_{uuid.uuid4().hex[:8]}"
 
@@ -469,18 +483,21 @@ class EvaluationService:
             if benchmark_row is None or benchmark_row.db_id != db_id:
                 raise ValueError("Benchmark not found")
 
-            # 从知识库元数据中获取检索配置
+            # Get retrieval configuration from knowledge base metadata.
             retrieval_config = {}
             try:
                 kb_row = await self.kb_repo.get_by_id(db_id)
                 query_params = (kb_row.query_params if kb_row else None) or {}
-                retrieval_config = query_params.get("options", {}) if isinstance(query_params, dict) else {}
-                logger.info(f"从知识库 {db_id} 加载检索配置: {list(retrieval_config.keys())}")
+                retrieval_config = query_params.get(
+                    "options", {}) if isinstance(query_params, dict) else {}
+                logger.info(
+                    f"Loaded retrieval config from knowledge base {db_id}: {list(retrieval_config.keys())}")
             except Exception as e:
-                logger.error(f"获取知识库检索配置失败: {e}")
-                # 使用空配置作为默认值
+                logger.error(
+                    f"Failed to get retrieval config from knowledge base: {e}")
+                # Use empty config as default.
 
-            # 合并前端传递的模型配置
+            # Merge model config passed from frontend.
             if model_config:
                 retrieval_config.update(model_config)
 
@@ -502,7 +519,7 @@ class EvaluationService:
             )
 
             await tasker.enqueue(
-                name=f"RAG评估({benchmark_row.name})",
+                name=f"RAGevaluation({benchmark_row.name})",
                 task_type="rag_evaluation",
                 payload={
                     "task_id": task_id,
@@ -517,11 +534,11 @@ class EvaluationService:
             return task_id
 
         except Exception as e:
-            logger.error(f"启动评估失败: {e}")
+            logger.error(f"startevaluationfailed: {e}")
             raise
 
     async def _run_evaluation_task(self, context: TaskContext):
-        """运行评估任务"""
+        """Run evaluation task."""
         try:
             task = context._tasker._tasks.get(context.task_id)
             if not task:
@@ -533,8 +550,8 @@ class EvaluationService:
             benchmark_id = payload["benchmark_id"]
             retrieval_config = payload["retrieval_config"]
 
-            # 加载基准数据
-            await context.set_progress(5, "加载基准数据")
+            # loadbenchmarkdata
+            await context.set_progress(5, "loadbenchmarkdata")
             benchmark_row = await self.eval_repo.get_benchmark(benchmark_id)
             if benchmark_row is None or benchmark_row.db_id != db_id:
                 raise ValueError("Benchmark not found")
@@ -548,22 +565,25 @@ class EvaluationService:
                     if line.strip():
                         benchmark_data.append(json.loads(line))
 
-            # 开始评估
+            # startevaluation
             kb_instance = await knowledge_base.aget_kb(db_id)
             if not kb_instance:
                 raise ValueError(f"Knowledge Base {db_id} not found")
 
             if kb_instance.kb_type == "lightrag":
-                raise ValueError("暂不支持对 LightRAG 类型的知识库进行 RAG 评估")
+                raise ValueError(
+                    "RAG evaluation is not yet supported for LightRAG knowledge bases")
 
-            # 初始化 Judge LLM
+            # initialize Judge LLM
             judge_llm = None
             if benchmark_row.has_gold_answers:
-                # 优先使用配置中的 judge_llm，否则回退到 answer_llm，或者默认
-                judge_model_spec = retrieval_config.get("judge_llm") or retrieval_config.get("answer_llm")
+                # Prefer judge_llm in config, otherwise fall back to answer_llm.
+                judge_model_spec = retrieval_config.get(
+                    "judge_llm") or retrieval_config.get("answer_llm")
                 if judge_model_spec:
                     try:
-                        logger.debug(f"Initializing Judge LLM: {judge_model_spec}")
+                        logger.debug(
+                            f"Initializing Judge LLM: {judge_model_spec}")
                         judge_llm = select_model(model_spec=judge_model_spec)
                     except Exception as e:
                         logger.error(f"Failed to load judge LLM: {e}")
@@ -590,58 +610,64 @@ class EvaluationService:
                     await self.eval_repo.update_result(task_id, payload)
 
             for i, question_data in enumerate(benchmark_data):
-                # 检查任务是否被取消
+                # Check whether the task was cancelled.
                 await context.raise_if_cancelled()
                 progress = 10 + (i / total_questions) * 80
-                await context.set_progress(progress, f"评估 {i + 1}/{total_questions}")
+                await context.set_progress(progress, f"evaluation {i + 1}/{total_questions}")
 
-                # 执行查询
+                # Execute query
                 query_result = await kb_instance.aquery(question_data["query"], db_id, **retrieval_config)
 
-                # 处理结果
+                # processresult
                 if isinstance(query_result, dict):
                     generated_answer = query_result.get("answer", "")
                     retrieved_chunks = query_result.get("retrieved_chunks", [])
                 else:
-                    retrieved_chunks = query_result if isinstance(query_result, list) else []
+                    retrieved_chunks = query_result if isinstance(
+                        query_result, list) else []
                     generated_answer = ""
 
-                # 如果没有生成的答案，但有检索结果且配置了 LLM，则生成答案
+                # If no answer is generated but retrieval results exist and an LLM is configured, generate an answer.
                 if not generated_answer and retrieved_chunks and retrieval_config.get("answer_llm"):
-                    logger.debug(f"使用 LLM {retrieval_config.get('answer_llm')} 生成答案...")
+                    logger.debug(
+                        f"Generating answer with LLM {retrieval_config.get('answer_llm')}...")
                     try:
-                        # 从配置中获取 LLM
+                        # Get LLM from configuration.
                         model_spec = retrieval_config["answer_llm"]
                         llm = select_model(model_spec=model_spec)
 
-                        # 构建上下文
+                        # Build context text.
                         context_docs = []
-                        for idx, chunk in enumerate(retrieved_chunks[:5]):  # 使用前5个最相关的文档
+                        # Use top 5 most related documents.
+                        for idx, chunk in enumerate(retrieved_chunks[:5]):
                             content = chunk.get("content", "")
                             if content:
-                                context_docs.append(f"文档 {idx + 1}:\n{content}")
+                                context_docs.append(
+                                    f"document {idx + 1}:\n{content}")
 
                         context_text = "\\n\\n".join(context_docs)
 
-                        # 构建提示词
+                        # Build generation prompt.
                         prompt = (
-                            f"基于以下上下文信息，请回答用户的问题。\n\n"
-                            f"上下文信息：{context_text}\n\n"
-                            f"用户问题：{question_data['query']}\n\n"
-                            "请根据上下文信息准确回答问题。\n\n"
-                            "如果上下文中缺少相关信息，请回答“信息不足，无法回答”。\n\n"
+                            f"Answer the user question using the context below.\n\n"
+                            f"Context: {context_text}\n\n"
+                            f"User question: {question_data['query']}\n\n"
+                            "Provide an accurate answer based on the context.\n\n"
+                            "If the context lacks relevant information, answer: 'Insufficient information to answer'.\n\n"
                         )
 
-                        # 生成答案
+                        # Generate answer.
                         response = await llm.call(prompt, stream=False)
                         generated_answer = response.content if response else ""
-                        logger.debug(f"LLM 生成的答案长度: {len(generated_answer) if generated_answer else 0}")
+                        logger.debug(
+                            f"Length of LLM generated answer: {len(generated_answer) if generated_answer else 0}")
 
                     except Exception as e:
-                        logger.error(f"LLM 生成答案失败: {e}")
+                        logger.error(
+                            f"Failed to generate answer with LLM: {e}")
                         generated_answer = ""
 
-                # 计算指标
+                # Calculate metrics.
                 current_metrics = {}
                 retrieval_scores = {}
                 answer_scores = {}
@@ -655,7 +681,7 @@ class EvaluationService:
 
                 if benchmark_row.has_gold_answers and question_data.get("gold_answer"):
                     if judge_llm:
-                        # 评判过程包含 LLM 调用
+                        # Evaluation includes LLM calls.
                         answer_scores = await EvaluationMetricsCalculator.calculate_answer_metrics(
                             query=question_data["query"],
                             generated_answer=generated_answer,
@@ -665,7 +691,8 @@ class EvaluationService:
                         current_metrics.update(answer_scores)
                         all_answer_metrics.append(answer_scores)
                     else:
-                        logger.warning("需要计算答案指标但未配置 Judge LLM")
+                        logger.warning(
+                            "Answer metrics are required but Judge LLM is not configured")
 
                 await self.eval_repo.upsert_result_detail(
                     task_id=task_id,
@@ -680,7 +707,7 @@ class EvaluationService:
                     },
                 )
 
-                # 计算当前累计指标
+                # Calculate current aggregate metrics.
                 current_overall_metrics = {}
                 if all_retrieval_metrics:
                     keys = all_retrieval_metrics[0].keys()
@@ -690,9 +717,10 @@ class EvaluationService:
                         )
                 if all_answer_metrics:
                     scores = [m.get("score", 0) for m in all_answer_metrics]
-                    current_overall_metrics["answer_correctness"] = sum(scores) / len(scores) if scores else 0.0
+                    current_overall_metrics["answer_correctness"] = sum(
+                        scores) / len(scores) if scores else 0.0
 
-                # 更新 Tasker 的 result 以便实时获取当前指标
+                # Update Tasker result so current metrics can be retrieved in real time.
                 await context.set_result(
                     {
                         "current_metrics": current_overall_metrics,
@@ -701,26 +729,28 @@ class EvaluationService:
                     }
                 )
 
-                # 定期更新文件 (每5个或最后一个)
+                # Periodically update persistence (every 5 items or on final item).
                 if (i + 1) % 5 == 0 or (i + 1) == total_questions:
                     await update_result_db(completed=i + 1)
 
-            # 最终计算
-            await context.set_progress(95, "计算最终指标")
+            # Final metric calculation.
+            await context.set_progress(95, "Calculating final metrics")
 
-            # 汇总指标
+            # Aggregate metrics.
             overall_metrics = {}
 
-            # 检索指标平均值
+            # Average retrieval metrics.
             if all_retrieval_metrics:
                 keys = all_retrieval_metrics[0].keys()
                 for k in keys:
-                    overall_metrics[k] = sum(m.get(k, 0) for m in all_retrieval_metrics) / len(all_retrieval_metrics)
+                    overall_metrics[k] = sum(
+                        m.get(k, 0) for m in all_retrieval_metrics) / len(all_retrieval_metrics)
 
-            # 答案指标平均值
+            # Average answer metrics.
             if all_answer_metrics:
                 scores = [m.get("score", 0) for m in all_answer_metrics]
-                overall_metrics["answer_correctness"] = sum(scores) / len(scores) if scores else 0.0
+                overall_metrics["answer_correctness"] = sum(
+                    scores) / len(scores) if scores else 0.0
 
             overall_score = EvaluationMetricsCalculator.calculate_overall_score(
                 all_retrieval_metrics, all_answer_metrics
@@ -733,7 +763,7 @@ class EvaluationService:
                 metrics=overall_metrics,
                 final_score=overall_score,
             )
-            await context.set_progress(100, "完成")
+            await context.set_progress(100, "completed")
 
         except Exception as e:
             logger.error(f"Task failed: {e}")
@@ -741,7 +771,8 @@ class EvaluationService:
                 if "payload" in locals():
                     await self.eval_repo.update_result(
                         payload["task_id"],
-                        {"status": "failed", "metrics": {"error": str(e)}, "completed_at": datetime.utcnow()},
+                        {"status": "failed", "metrics": {"error": str(
+                            e)}, "completed_at": datetime.utcnow()},
                     )
             except Exception as exc:
                 logger.error(f"Error updating result record: {exc}")
@@ -750,13 +781,13 @@ class EvaluationService:
             raise
 
     async def get_evaluation_results(self, task_id: str, db_id: str) -> dict[str, Any]:
-        """获取评估结果"""
+        """getevaluationresult"""
         if not task_id:
             raise ValueError("task_id is required")
         return await self.get_evaluation_results_by_db(db_id, task_id)
 
     async def get_evaluation_history(self, db_id: str) -> list[dict[str, Any]]:
-        """获取知识库的评估历史记录"""
+        """Get evaluation history for a knowledge base."""
         try:
             rows = await self.eval_repo.list_results(db_id)
             return [
@@ -776,9 +807,9 @@ class EvaluationService:
             ]
 
         except Exception as e:
-            logger.error(f"获取评估历史失败: {e}")
+            logger.error(f"Failed to get evaluation history: {e}")
             raise
-        # 索引与回退逻辑已移除，统一通过 db_id 定位
+        # Index and fallback logic removed; use db_id for lookup only.
 
     async def get_evaluation_results_by_db(
         self, db_id: str, task_id: str, page: int = 1, page_size: int = 20, error_only: bool = False
@@ -812,7 +843,8 @@ class EvaluationService:
                     filtered_results.append(item)
                     continue
                 metrics = item.get("metrics", {})
-                has_low_recall = any(metrics.get(k, 1.0) < 0.3 for k in metrics if k.startswith("recall@"))
+                has_low_recall = any(metrics.get(
+                    k, 1.0) < 0.3 for k in metrics if k.startswith("recall@"))
                 if has_low_recall:
                     filtered_results.append(item)
             all_results = filtered_results
@@ -848,5 +880,5 @@ class EvaluationService:
         if row is None or row.db_id != db_id:
             raise ValueError("Result not found")
         await self.eval_repo.delete_result(task_id)
-        logger.info(f"成功删除评估结果: {task_id}")
+        logger.info(f"successfuldeleteevaluationresult: {task_id}")
         return

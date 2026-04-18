@@ -1,10 +1,10 @@
 """
-思维导图路由模块
+Mindmap route module.
 
-提供思维导图相关的API接口，包括：
-- 获取知识库文件列表
-- AI生成思维导图
-- 保存和加载思维导图配置
+Provides APIs related to mindmaps, including:
+- Get knowledge base file lists
+- AI-generated mindmaps
+- Save and load mindmap configuration
 """
 
 import json
@@ -23,84 +23,85 @@ mindmap = APIRouter(prefix="/mindmap", tags=["mindmap"])
 
 
 # =============================================================================
-# === 获取知识库文件列表 ===
+# === Get Knowledge Base File List ===
 # =============================================================================
-MINDMAP_SYSTEM_PROMPT = """你是一个专业的知识整理助手。
+MINDMAP_SYSTEM_PROMPT = """You are a professional knowledge organization assistant.
 
-你的任务是分析用户提供的文件列表，生成一个层次分明的思维导图结构。
+Your task is to analyze the user-provided file list and generate a mindmap with a clear hierarchy.
 
-**核心规则：每个文件名只能出现一次！不允许重复！**
+**Core rule: each filename can appear only once. No duplicates allowed.**
 
-要求：
-1. 思维导图要有清晰的层级结构（2-4层）
-2. 根节点是知识库名称
-3. 第一层是主要分类（如：技术文档、规章制度、数据资源等）
-4. 第二层是子分类
-5. **叶子节点必须是具体的文件名称**
-6. **每个文件名在整个思维导图中只能出现一次，不得重复！**
-7. 如果一个文件可能属于多个分类，只选择最合适的一个分类放置
-8. 使用合适的emoji图标增强可读性
-9. 返回JSON格式，遵循以下结构：
+Requirements:
+1. The mindmap should have a clear hierarchy (2-4 levels).
+2. The root node should be the knowledge base name.
+3. The first level should be major categories (e.g., technical documents, policies, data resources).
+4. The second level should be subcategories.
+5. **Leaf nodes must be specific filenames.**
+6. **Each filename can appear only once in the whole mindmap.**
+7. If a file can belong to multiple categories, place it in the single best category.
+8. Use suitable emoji icons to improve readability.
+9. Return JSON format following this structure:
 
 ```json
 {
-  "content": "知识库名称",
+  "content": "knowledge basename",
   "children": [
     {
-      "content": "🎯 主分类1",
+            "content": "🎯 Main Category 1",
       "children": [
         {
-          "content": "子分类1.1",
+                    "content": "Subcategory 1.1",
           "children": [
-            {"content": "文件名1.txt", "children": []},
-            {"content": "文件名2.pdf", "children": []}
+                        {"content": "filename1.txt", "children": []},
+                        {"content": "filename2.pdf", "children": []}
           ]
         }
       ]
     },
     {
-      "content": "💻 主分类2",
+            "content": "💻 Main Category 2",
       "children": [
-        {"content": "文件名3.docx", "children": []},
-        {"content": "文件名4.md", "children": []}
+                {"content": "filename3.docx", "children": []},
+                {"content": "filename4.md", "children": []}
       ]
     }
   ]
 }
 ```
 
-**重要约束：**
-- 每个文件名在整个JSON中只能出现一次
-- 不要按多个维度分类导致文件重复
-- 选择最主要、最合适的分类维度
-- 每个叶子节点的children必须是空数组[]
-- 分类名称要简洁明了
-- 使用emoji增强视觉效果
+**Important constraints:**
+- Each filename may appear only once in the JSON.
+- Do not classify by multiple dimensions in a way that duplicates files.
+- Choose the most important and appropriate classification dimension.
+- Each leaf node must have an empty children array: [].
+- Category names should be concise and clear.
+- Use emojis to improve visual clarity.
 """
 
 
 @mindmap.get("/databases/{db_id}/files")
 async def get_database_files(db_id: str, current_user: User = Depends(get_admin_user)):
     """
-    获取指定知识库的所有文件列表
+    Get all files from a specified knowledge base.
 
     Args:
-        db_id: 知识库ID
+        db_id: Knowledge base ID.
 
     Returns:
-        文件列表信息
+        File list information.
     """
     try:
-        # 获取知识库详细信息
+        # Get detailed knowledge base info.
         db_info = await knowledge_base.get_database_info(db_id)
 
         if not db_info:
-            raise HTTPException(status_code=404, detail=f"知识库 {db_id} 不存在")
+            raise HTTPException(
+                status_code=404, detail=f"knowledge base {db_id} does not exist")
 
-        # 提取文件信息
+        # Extract file info.
         files = db_info.get("files", {})
 
-        # 转换为列表格式
+        # Convert to list format.
         file_list = []
         for file_id, file_info in files.items():
             file_list.append(
@@ -124,57 +125,63 @@ async def get_database_files(db_id: str, current_user: User = Depends(get_admin_
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"获取知识库文件列表失败: {e}, {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")
+        logger.error(
+            f"Failed to get knowledge base file list: {e}, {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get file list: {str(e)}")
 
 
 # =============================================================================
-# === AI生成思维导图 ===
+# === AI Generate Mindmap ===
 # =============================================================================
 
 
 @mindmap.post("/generate")
 async def generate_mindmap(
-    db_id: str = Body(..., description="知识库ID"),
-    file_ids: list[str] = Body(default=[], description="选择的文件ID列表"),
-    user_prompt: str = Body(default="", description="用户自定义提示词"),
+    db_id: str = Body(..., description="knowledge baseID"),
+    file_ids: list[str] = Body(
+        default=[], description="Selected file ID list"),
+    user_prompt: str = Body(default="", description="User custom prompt"),
     current_user: User = Depends(get_admin_user),
 ):
     """
-    使用AI分析知识库文件，生成思维导图结构
+    Use AI to analyze knowledge base files and generate a mindmap structure.
 
     Args:
-        db_id: 知识库ID
-        file_ids: 选择的文件ID列表（为空则使用所有文件）
-        user_prompt: 用户自定义提示词
+        db_id: Knowledge base ID.
+        file_ids: Selected file ID list (uses all files if empty).
+        user_prompt: User custom prompt.
 
     Returns:
-        Markmap格式的思维导图数据
+        Mindmap data in Markmap-compatible format.
     """
     try:
-        # 获取知识库信息
+        # Get knowledge base info.
         db_info = await knowledge_base.get_database_info(db_id)
 
         if not db_info:
-            raise HTTPException(status_code=404, detail=f"知识库 {db_id} 不存在")
+            raise HTTPException(
+                status_code=404, detail=f"knowledge base {db_id} does not exist")
 
-        db_name = db_info.get("name", "知识库")
+        db_name = db_info.get("name", "knowledge base")
         all_files = db_info.get("files", {})
 
-        # 如果没有指定文件，则使用所有文件
+        # If no specific files are provided, use all files.
         if not file_ids:
             file_ids = list(all_files.keys())
 
         if not file_ids:
-            raise HTTPException(status_code=400, detail="知识库中没有文件")
+            raise HTTPException(
+                status_code=400, detail="No files found in knowledge base")
 
-        # 限制文件数量不超过100个，如果超过则选择前100个
+        # Limit file count to 20; if exceeded, keep the first 20.
         if len(file_ids) > 20:
             original_count = len(file_ids)
             file_ids = file_ids[:20]
-            logger.info(f"文件数量超过限制，已从{original_count}个文件中选择前20个文件生成思维导图")
+            logger.info(
+                f"File count exceeded limit, selected first 20 from {original_count} files")
 
-        # 收集文件信息
+        # Collect file info.
         files_info = []
         for file_id in file_ids:
             if file_id in all_files:
@@ -187,43 +194,48 @@ async def generate_mindmap(
                 )
 
         if not files_info:
-            raise HTTPException(status_code=400, detail="选择的文件不存在")
+            raise HTTPException(
+                status_code=400, detail="Selected files do not exist")
 
-        # 构建AI提示词
+        # Build AI prompt.
         system_prompt = MINDMAP_SYSTEM_PROMPT
 
-        # 构建用户消息
-        files_text = "\n".join([f"- {f['filename']} ({f['type']})" for f in files_info])
+        # Build user message.
+        files_text = "\n".join(
+            [f"- {f['filename']} ({f['type']})" for f in files_info])
 
-        user_message = textwrap.dedent(f"""请为知识库"{db_name}"生成思维导图结构。
+        user_message = textwrap.dedent(f"""Please generate a mindmap structure for knowledge base "{db_name}".
 
-            文件列表（共{len(files_info)}个文件）：
+            File list (total {len(files_info)} files):
             {files_text}
 
-            {f"用户补充说明：{user_prompt}" if user_prompt else ""}
+            {f"User additional notes: {user_prompt}" if user_prompt else ""}
 
-            **重要提醒：**
-            1. 这个知识库共有{len(files_info)}个文件
-            2. 每个文件名只能在思维导图中出现一次
-            3. 不要让同一个文件出现在多个分类下
-            4. 为每个文件选择最合适的唯一分类
+            **Important reminders:**
+            1. This knowledge base contains {len(files_info)} files.
+            2. Each filename may appear only once in the mindmap.
+            3. Do not place the same file under multiple categories.
+            4. Choose the most suitable unique category for each file.
 
-            请生成合理的思维导图结构。""")
+            Please generate a reasonable mindmap structure.""")
 
-        # 调用AI生成
-        logger.info(f"开始生成思维导图，知识库: {db_name}, 文件数量: {len(files_info)}")
+        # Call AI to generate.
+        logger.info(
+            f"Start generating mindmap, knowledge base: {db_name}, file count: {len(files_info)}")
 
-        # 选择模型并调用
+        # Select model and call.
         model = select_model()
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
+        messages = [{"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}]
         response = await model.call(messages, stream=False)
 
-        # 解析AI返回的JSON
+        # Parse AI-returned JSON.
         try:
-            # 提取JSON内容
-            content = response.content if hasattr(response, "content") else str(response)
+            # Extract JSON content.
+            content = response.content if hasattr(
+                response, "content") else str(response)
 
-            # 尝试从markdown代码块中提取JSON
+            # Try extracting JSON from markdown code blocks.
             if "```json" in content:
                 json_start = content.find("```json") + 7
                 json_end = content.find("```", json_start)
@@ -235,21 +247,21 @@ async def generate_mindmap(
 
             mindmap_data = json.loads(content)
 
-            # 验证结构
+            # Validate structure.
             if not isinstance(mindmap_data, dict) or "content" not in mindmap_data:
-                raise ValueError("思维导图结构不正确")
+                raise ValueError("Invalid mindmap structure")
 
-            logger.info("思维导图生成成功")
+            logger.info("Mindmap generated successfully")
 
-            # 保存思维导图到知识库元数据
+            # Save mindmap to knowledge base metadata.
             try:
                 from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
 
                 await KnowledgeBaseRepository().update(db_id, {"mindmap": mindmap_data})
-                logger.info(f"思维导图已保存到知识库: {db_id}")
+                logger.info(f"Mindmap saved to knowledge base: {db_id}")
             except Exception as save_error:
-                logger.error(f"保存思维导图失败: {save_error}")
-                # 不影响返回结果，只记录错误
+                logger.error(f"Failed to save mindmap: {save_error}")
+                # Do not affect return result; only log the error.
 
             return {
                 "message": "success",
@@ -262,33 +274,38 @@ async def generate_mindmap(
             }
 
         except json.JSONDecodeError as e:
-            logger.error(f"AI返回的JSON解析失败: {e}, 原始内容: {content}")
-            raise HTTPException(status_code=500, detail=f"AI返回格式错误: {str(e)}")
+            logger.error(
+                f"Failed to parse AI-returned JSON: {e}, raw content: {content}")
+            raise HTTPException(
+                status_code=500, detail=f"AI return format error: {str(e)}")
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"生成思维导图失败: {e}, {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"生成思维导图失败: {str(e)}")
+        logger.error(
+            f"Failed to generate mindmap: {e}, {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate mindmap: {str(e)}")
 
 
 # =============================================================================
-# === 获取所有知识库概览（用于选择） ===
+# === Get All Knowledge Base Overviews (for selection) ===
 # =============================================================================
 
 
 @mindmap.get("/databases")
 async def get_databases_overview(current_user: User = Depends(get_admin_user)):
     """
-    获取所有知识库的概览信息，用于思维导图界面选择（根据用户权限过滤）
+    Get overview info for all knowledge bases for mindmap selection
+    (filtered by user permission).
 
     Returns:
-        知识库列表
+        Knowledge base list.
     """
     try:
         databases = await knowledge_base.get_databases_by_user_id(current_user.user_id)
 
-        # databases["databases"] 是一个列表，每个元素已经包含了基本信息
+        # databases["databases"] is a list; each element already includes basic info.
         db_list_raw = databases.get("databases", [])
 
         db_list = []
@@ -297,9 +314,10 @@ async def get_databases_overview(current_user: User = Depends(get_admin_user)):
             if not db_id:
                 continue
 
-            # 获取详细信息以获取文件数量
+            # Get detailed info to obtain file count.
             detail_info = await knowledge_base.get_database_info(db_id)
-            file_count = len(detail_info.get("files", {})) if detail_info else 0
+            file_count = len(detail_info.get("files", {})
+                             ) if detail_info else 0
 
             db_list.append(
                 {
@@ -318,25 +336,27 @@ async def get_databases_overview(current_user: User = Depends(get_admin_user)):
         }
 
     except Exception as e:
-        logger.error(f"获取知识库列表失败: {e}, {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取知识库列表失败: {str(e)}")
+        logger.error(
+            f"Failed to get knowledge base list: {e}, {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get knowledge base list: {str(e)}")
 
 
 # =============================================================================
-# === 知识库关联的思维导图管理 ===
+# === Knowledge Base Associated Mindmap Management ===
 # =============================================================================
 
 
 @mindmap.get("/database/{db_id}")
 async def get_database_mindmap(db_id: str, current_user: User = Depends(get_admin_user)):
     """
-    获取知识库关联的思维导图
+    Get the mindmap associated with a knowledge base.
 
     Args:
-        db_id: 知识库ID
+        db_id: Knowledge base ID.
 
     Returns:
-        思维导图数据
+        Mindmap data.
     """
     try:
         from yunesa.repositories.knowledge_base_repository import KnowledgeBaseRepository
@@ -345,7 +365,8 @@ async def get_database_mindmap(db_id: str, current_user: User = Depends(get_admi
         kb = await kb_repo.get_by_id(db_id)
 
         if kb is None:
-            raise HTTPException(status_code=404, detail=f"知识库 {db_id} 不存在")
+            raise HTTPException(
+                status_code=404, detail=f"knowledge base {db_id} does not exist")
 
         return {
             "message": "success",
@@ -357,5 +378,7 @@ async def get_database_mindmap(db_id: str, current_user: User = Depends(get_admi
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"获取知识库思维导图失败: {e}, {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取思维导图失败: {str(e)}")
+        logger.error(
+            f"Failed to get knowledge base mindmap: {e}, {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get mindmap: {str(e)}")

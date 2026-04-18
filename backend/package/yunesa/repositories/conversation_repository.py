@@ -1,6 +1,4 @@
-"""
-对话域持久化 Repository（Async）
-"""
+"""Conversation domain persistence repository (Async)."""
 
 import uuid as uuid_lib
 
@@ -65,7 +63,8 @@ class ConversationRepository:
         await self.db.commit()
         await self.db.refresh(conversation)
 
-        logger.info(f"Created conversation: {conversation.thread_id} for user {user_id}")
+        logger.info(
+            f"Created conversation: {conversation.thread_id} for user {user_id}")
         return conversation
 
     async def get_conversation_by_thread_id(self, thread_id: str) -> Conversation | None:
@@ -98,7 +97,8 @@ class ConversationRepository:
             return None
 
         metadata = self._ensure_metadata(conversation)
-        metadata["agent_config_id"] = self._normalize_agent_config_id(agent_config_id)
+        metadata["agent_config_id"] = self._normalize_agent_config_id(
+            agent_config_id)
         await self._save_metadata(conversation, metadata)
         return conversation
 
@@ -144,7 +144,8 @@ class ConversationRepository:
     ) -> Message | None:
         conversation = await self.get_conversation_by_thread_id(thread_id)
         if not conversation:
-            logger.warning(f"Conversation not found for thread_id: {thread_id}")
+            logger.warning(
+                f"Conversation not found for thread_id: {thread_id}")
             return None
 
         return await self.add_message(
@@ -214,7 +215,8 @@ class ConversationRepository:
     ) -> list[Message]:
         conversation = await self.get_conversation_by_thread_id(thread_id)
         if not conversation:
-            logger.warning(f"Conversation not found for thread_id: {thread_id}")
+            logger.warning(
+                f"Conversation not found for thread_id: {thread_id}")
             return []
 
         return await self.get_messages(conversation.id, limit, offset)
@@ -327,7 +329,8 @@ class ConversationRepository:
 
     async def get_stats(self, conversation_id: int) -> ConversationStats | None:
         result = await self.db.execute(
-            select(ConversationStats).where(ConversationStats.conversation_id == conversation_id)
+            select(ConversationStats).where(
+                ConversationStats.conversation_id == conversation_id)
         )
         return result.scalar_one_or_none()
 
@@ -373,7 +376,8 @@ class ConversationRepository:
     ) -> ToolCall | None:
         tool_call = await self.get_tool_call_by_langgraph_id(langgraph_tool_call_id)
         if not tool_call:
-            logger.warning(f"Tool call not found for langgraph_tool_call_id: {langgraph_tool_call_id}")
+            logger.warning(
+                f"Tool call not found for langgraph_tool_call_id: {langgraph_tool_call_id}")
             return None
 
         tool_call.tool_output = tool_output
@@ -417,7 +421,8 @@ class ConversationRepository:
 
         metadata = self._ensure_metadata(conversation)
         attachments = metadata.get("attachments", [])
-        attachments = [item for item in attachments if item.get("file_id") != attachment_info.get("file_id")]
+        attachments = [item for item in attachments if item.get(
+            "file_id") != attachment_info.get("file_id")]
         attachments.append(attachment_info)
         metadata["attachments"] = attachments
         await self._save_metadata(conversation, metadata)
@@ -453,7 +458,8 @@ class ConversationRepository:
 
         metadata = self._ensure_metadata(conversation)
         attachments = metadata.get("attachments", [])
-        new_attachments = [item for item in attachments if item.get("file_id") != file_id]
+        new_attachments = [
+            item for item in attachments if item.get("file_id") != file_id]
 
         if len(new_attachments) == len(attachments):
             return False
