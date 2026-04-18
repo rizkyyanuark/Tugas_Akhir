@@ -10,7 +10,7 @@
   >
     <div v-if="chunk" class="detail-meta">
       <span v-if="typeof chunk.score === 'number'" class="score"
-        >相似度 {{ (chunk.score * 100).toFixed(1) }}%</span
+        >Similarity {{ (chunk.score * 100).toFixed(1) }}%</span
       >
       <span v-if="chunk.metadata?.chunk_id" class="meta-item"
         >chunk_id: {{ chunk.metadata.chunk_id }}</span
@@ -24,7 +24,7 @@
       previewTheme="github"
       class="chunk-markdown-content flat-md-preview"
     />
-    <div v-else class="empty-text">暂无内容</div>
+    <div v-else class="empty-text">No content available</div>
   </a-modal>
 </template>
 
@@ -45,7 +45,7 @@ const props = defineProps({
   },
   titlePrefix: {
     type: String,
-    default: '文档片段详情'
+    default: 'Document Chunk Details'
   }
 })
 

@@ -360,7 +360,7 @@ const saveProfile = async () => {
 // Phone number validation
 const validatePhoneNumber = (phone) => {
   if (!phone) return true // Empty phone number is allowed
-  const phoneRegex = /^1[3-9]\d{9}$/
+  const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{7,10}$/
   return phoneRegex.test(phone)
 }
 

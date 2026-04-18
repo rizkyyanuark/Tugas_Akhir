@@ -25,7 +25,7 @@ defineProps({
 
 const emit = defineEmits(['remove'])
 
-// 移除图片
+// Remove image
 const handleRemove = () => {
   emit('remove')
 }

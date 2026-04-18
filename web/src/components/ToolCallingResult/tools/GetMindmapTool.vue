@@ -4,7 +4,7 @@
       <div class="sep-header">
         <span class="note">{{ operationLabel }}</span>
         <span class="separator" v-if="kbName">|</span>
-        <span class="description" v-if="kbName">知识库: {{ kbName }}</span>
+        <span class="description" v-if="kbName">Knowledge Base: {{ kbName }}</span>
       </div>
     </template>
     <template #result="{ resultContent }">
@@ -37,7 +37,7 @@ const args = computed(() => {
   }
 })
 
-const toolName = computed(() => props.toolCall.name || props.toolCall.function?.name || '思维导图')
+const toolName = computed(() => props.toolCall.name || props.toolCall.function?.name || 'Mind Map')
 
 const operationLabel = computed(() => toolName.value)
 

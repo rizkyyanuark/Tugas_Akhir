@@ -315,8 +315,8 @@ const validatePhoneNumber = (phone) => {
     return true // phone number is optional
   }
 
-  // Mainland China phone number format validation
-  const phoneRegex = /^1[3-9]\d{9}$/
+  // Indonesian mobile phone format validation
+  const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{7,10}$/
   return phoneRegex.test(phone)
 }
 
@@ -339,7 +339,8 @@ watch(
     userManagement.form.phoneError = ''
 
     if (newPhone && !validatePhoneNumber(newPhone)) {
-      userManagement.form.phoneError = 'Please enter a valid phone number format'
+      userManagement.form.phoneError =
+        'Please enter a valid Indonesian phone number (e.g. 089..., 628..., or +628...)'
     }
   }
 )
@@ -422,7 +423,9 @@ const handleUserFormSubmit = async () => {
 
     // Validate phone number
     if (userManagement.form.phoneNumber && !validatePhoneNumber(userManagement.form.phoneNumber)) {
-      notification.error({ message: 'Please enter a valid phone number format' })
+      notification.error({
+        message: 'Please enter a valid Indonesian phone number (e.g. 089..., 628..., or +628...)'
+      })
       return
     }
 

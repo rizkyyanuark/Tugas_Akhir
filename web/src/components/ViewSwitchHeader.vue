@@ -56,7 +56,7 @@ defineProps({
   },
   ariaLabel: {
     type: String,
-    default: '视图切换'
+    default: 'View switch'
   }
 })
 
