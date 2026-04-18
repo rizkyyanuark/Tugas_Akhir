@@ -1,4 +1,4 @@
-"""MCP 服务器数据访问层 - Repository"""
+"""MCP server data access layer - Repository."""
 
 from typing import Any
 
@@ -9,35 +9,35 @@ from yunesa.storage.postgres.models_business import MCPServer
 
 
 class MCPServerRepository:
-    """MCP 服务器数据访问层"""
+    """MCP server data access layer."""
 
     async def get_by_name(self, name: str) -> MCPServer | None:
-        """根据名称获取 MCP 服务器"""
+        """Get MCP server by name."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer).where(MCPServer.name == name))
             return result.scalar_one_or_none()
 
     async def list(self) -> list[MCPServer]:
-        """获取所有 MCP 服务器"""
+        """Get all MCP servers."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer))
             return list(result.scalars().all())
 
     async def list_enabled(self) -> list[MCPServer]:
-        """获取所有启用的 MCP 服务器"""
+        """Get all enabled MCP servers."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer).where(MCPServer.enabled == 1))
             return list(result.scalars().all())
 
     async def create(self, data: dict[str, Any]) -> MCPServer:
-        """创建 MCP 服务器"""
+        """Create MCP server."""
         async with pg_manager.get_async_session_context() as session:
             server = MCPServer(**data)
             session.add(server)
         return server
 
     async def update(self, name: str, data: dict[str, Any]) -> MCPServer | None:
-        """更新 MCP 服务器"""
+        """Update MCP server."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer).where(MCPServer.name == name))
             server = result.scalar_one_or_none()
@@ -49,7 +49,7 @@ class MCPServerRepository:
         return server
 
     async def delete(self, name: str) -> bool:
-        """删除 MCP 服务器"""
+        """Delete MCP server."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer).where(MCPServer.name == name))
             server = result.scalar_one_or_none()
@@ -59,7 +59,7 @@ class MCPServerRepository:
         return True
 
     async def upsert(self, data: dict[str, Any]) -> MCPServer:
-        """插入或更新 MCP 服务器"""
+        """Insert or update MCP server."""
         name = data.get("name")
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer).where(MCPServer.name == name))
@@ -75,7 +75,7 @@ class MCPServerRepository:
         return server
 
     async def exists_by_name(self, name: str) -> bool:
-        """检查 MCP 服务器是否存在"""
+        """Check whether MCP server exists by name."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(MCPServer.id).where(MCPServer.name == name))
             return result.scalar_one_or_none() is not None

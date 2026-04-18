@@ -1,34 +1,34 @@
 class MySQLToolError(Exception):
-    """MySQL 工具基础异常"""
+    """Base exception for MySQL tools."""
 
     pass
 
 
 class MySQLConnectionError(MySQLToolError):
-    """MySQL 连接异常"""
+    """MySQL connection exception."""
 
     pass
 
 
 class MySQLQueryError(MySQLToolError):
-    """MySQL 查询异常"""
+    """MySQL query exception."""
 
     pass
 
 
 class MySQLSecurityError(MySQLToolError):
-    """MySQL 安全异常"""
+    """MySQL security exception."""
 
     pass
 
 
 class MySQLTimeoutError(MySQLToolError):
-    """MySQL 超时异常"""
+    """MySQL timeout exception."""
 
     pass
 
 
 class MySQLResultTooLargeError(MySQLToolError):
-    """MySQL 结果过大异常"""
+    """MySQL result too large exception."""
 
     pass

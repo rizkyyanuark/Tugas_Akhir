@@ -1,4 +1,4 @@
-"""API Key 管理路由"""
+"""API Key management routes."""
 
 import hashlib
 import secrets
@@ -17,12 +17,12 @@ apikey_router = APIRouter(prefix="/apikey", tags=["apikey"])
 
 
 def generate_api_key() -> tuple[str, str, str]:
-    """生成新的 API Key
+    """Generate a new API key.
 
     Returns: (full_key, key_hash, key_prefix)
-    - full_key: 完整密钥，仅在创建时返回一次
-    - key_hash: 存储到数据库的哈希值
-    - key_prefix: 保存前缀用于显示
+    - full_key: Full secret key, returned only once at creation time.
+    - key_hash: Hash value stored in the database.
+    - key_prefix: Prefix used for display.
     """
     random_part = secrets.token_hex(24)
     full_key = f"yxkey_{random_part}"
@@ -69,15 +69,15 @@ async def list_api_keys(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """列出当前用户的 API Keys"""
-    # 普通用户只能看到自己的 API Keys
+    """List API keys visible to the current user."""
+    # Regular users can only view their own API keys.
     if current_user.role == "superadmin":
-        # superadmin 可以看到所有
+        # Superadmin can view all API keys.
         result = await db.execute(select(APIKey).order_by(APIKey.created_at.desc()).offset(skip).limit(limit))
         api_keys = result.scalars().all()
         total_result = await db.execute(select(func.count(APIKey.id)))
     else:
-        # 普通用户只看自己的
+        # Regular users can only view their own API keys.
         result = await db.execute(
             select(APIKey)
             .filter(APIKey.user_id == current_user.id)
@@ -87,7 +87,8 @@ async def list_api_keys(
         )
         api_keys = result.scalars().all()
         total_result = await db.execute(
-            select(func.count(APIKey.id)).filter(APIKey.user_id == current_user.id)
+            select(func.count(APIKey.id)).filter(
+                APIKey.user_id == current_user.id)
         )
     total = total_result.scalar()
 
@@ -103,32 +104,34 @@ async def create_api_key(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建新 API Key（secret 仅在此处返回一次）"""
-    # 生成 Key
+    """Create a new API key (secret is returned only once here)."""
+    # Generate key.
     full_key, key_hash, key_prefix = generate_api_key()
 
-    # 普通用户只能为自己创建 API Key，不能指定其他用户
+    # Regular users can only create API keys for themselves.
     if data.user_id and data.user_id != current_user.id and current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="无权为其他用户创建 API Key")
+        raise HTTPException(
+            status_code=403, detail="No permission to create API keys for other users")
 
-    # 验证关联用户
+    # Verify associated user.
     if data.user_id:
         result = await db.execute(select(User).filter(User.id == data.user_id))
         user = result.scalar_one_or_none()
         if not user or user.is_deleted:
-            raise HTTPException(status_code=404, detail="关联的用户不存在")
+            raise HTTPException(
+                status_code=404, detail="Associated user does not exist")
     else:
-        # 自动绑定为当前登录用户
+        # Auto-bind to current logged-in user.
         data.user_id = current_user.id
 
-    # 解析过期时间（转换为 naive datetime 以匹配数据库字段）
+    # Parse expiration time (convert to naive datetime to match DB field type).
     expires_at = None
     if data.expires_at:
         aware_dt = coerce_any_to_utc_datetime(data.expires_at)
         if aware_dt:
             expires_at = aware_dt.replace(tzinfo=None)
 
-    # 创建记录
+    # Create record.
     api_key = APIKey(
         key_hash=key_hash,
         key_prefix=key_prefix,
@@ -155,16 +158,17 @@ async def get_api_key(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取单个 API Key（只能操作自己的 Key）"""
+    """Get a single API key (only own key unless superadmin)."""
     result = await db.execute(select(APIKey).filter(APIKey.id == api_key_id))
     api_key = result.scalar_one_or_none()
 
     if not api_key:
-        raise HTTPException(status_code=404, detail="API Key 不存在")
+        raise HTTPException(status_code=404, detail="API Key does not exist")
 
-    # 检查权限：只能操作自己的 Key，或者 superadmin 可以操作所有
+    # Permission check: own key only, unless superadmin.
     if api_key.user_id != current_user.id and current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="无权操作此 API Key")
+        raise HTTPException(
+            status_code=403, detail="No permission to operate on this API key")
 
     return {"api_key": api_key.to_dict()}
 
@@ -176,23 +180,25 @@ async def update_api_key(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新 API Key（只能操作自己的 Key）"""
+    """Update an API key (only own key unless superadmin)."""
     result = await db.execute(select(APIKey).filter(APIKey.id == api_key_id))
     api_key = result.scalar_one_or_none()
 
     if not api_key:
-        raise HTTPException(status_code=404, detail="API Key 不存在")
+        raise HTTPException(status_code=404, detail="API Key does not exist")
 
-    # 检查权限：只能操作自己的 Key，或者 superadmin 可以操作所有
+    # Permission check: own key only, unless superadmin.
     if api_key.user_id != current_user.id and current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="无权操作此 API Key")
+        raise HTTPException(
+            status_code=403, detail="No permission to operate on this API key")
 
     if data.name is not None:
         api_key.name = data.name
 
     if data.expires_at is not None:
         aware_dt = coerce_any_to_utc_datetime(data.expires_at)
-        api_key.expires_at = aware_dt.replace(tzinfo=None) if aware_dt else None
+        api_key.expires_at = aware_dt.replace(
+            tzinfo=None) if aware_dt else None
 
     if data.is_enabled is not None:
         api_key.is_enabled = data.is_enabled
@@ -209,16 +215,17 @@ async def delete_api_key(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除 API Key（只能操作自己的 Key）"""
+    """Delete an API key (only own key unless superadmin)."""
     result = await db.execute(select(APIKey).filter(APIKey.id == api_key_id))
     api_key = result.scalar_one_or_none()
 
     if not api_key:
-        raise HTTPException(status_code=404, detail="API Key 不存在")
+        raise HTTPException(status_code=404, detail="API Key does not exist")
 
-    # 检查权限：只能操作自己的 Key，或者 superadmin 可以操作所有
+    # Permission check: own key only, unless superadmin.
     if api_key.user_id != current_user.id and current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="无权操作此 API Key")
+        raise HTTPException(
+            status_code=403, detail="No permission to operate on this API key")
 
     await db.delete(api_key)
     await db.commit()
@@ -232,18 +239,19 @@ async def regenerate_api_key(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """重新生成 API Key 密钥（secret 仅在此处返回一次，只能操作自己的 Key）"""
+    """Regenerate API key secret (returned only once here, own key unless superadmin)."""
     result = await db.execute(select(APIKey).filter(APIKey.id == api_key_id))
     api_key = result.scalar_one_or_none()
 
     if not api_key:
-        raise HTTPException(status_code=404, detail="API Key 不存在")
+        raise HTTPException(status_code=404, detail="API Key does not exist")
 
-    # 检查权限：只能操作自己的 Key，或者 superadmin 可以操作所有
+    # Permission check: own key only, unless superadmin.
     if api_key.user_id != current_user.id and current_user.role != "superadmin":
-        raise HTTPException(status_code=403, detail="无权操作此 API Key")
+        raise HTTPException(
+            status_code=403, detail="No permission to operate on this API key")
 
-    # 生成新密钥
+    # Generate new secret.
     full_key, key_hash, key_prefix = generate_api_key()
 
     api_key.key_hash = key_hash

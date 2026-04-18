@@ -4,38 +4,38 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ToolExtraMetadata:
-    """附加元数据（用装饰器注册）"""
+    """Extra metadata registered via decorator."""
 
-    category: str = ""  # 分类: buildin, mysql, subagents, debug
+    category: str = ""  # Category: buildin, mysql, subagents, debug
     tags: list[str] = field(default_factory=list)
-    display_name: str = ""  # 显示名称（给人看的名字）
+    display_name: str = ""  # Human-friendly display name
     icon: str = ""
-    config_guide: str = ""  # 配置说明（给人看的使用前配置提示）
+    config_guide: str = ""  # Setup guide shown before tool usage
 
 
-# 全局注册表: tool_name -> ToolExtraMetadata
+# Global registry: tool_name -> ToolExtraMetadata
 _extra_registry: dict[str, ToolExtraMetadata] = {}
 
-# 全局工具实例列表（由 @tool 装饰器自动收集）
+# Global tool instance list (automatically collected by @tool decorator)
 _all_tool_instances: list = []
 
 
 def get_extra_metadata(tool_name: str) -> ToolExtraMetadata | None:
-    """获取工具附加元数据"""
+    """Get extra metadata for a tool."""
     return _extra_registry.get(tool_name)
 
 
 def get_all_extra_metadata() -> dict[str, ToolExtraMetadata]:
-    """获取所有附加元数据"""
+    """Get all extra metadata entries."""
     return _extra_registry.copy()
 
 
 def get_all_tool_instances() -> list:
-    """获取所有工具实例（由 @tool 装饰器自动收集）"""
+    """Get all tool instances collected by the @tool decorator."""
     return _all_tool_instances
 
 
-# 基于 langchain.tool 的拓展装饰器
+# Extended decorator based on langchain.tool
 def tool(
     category: str = "",
     tags: list[str] = None,
@@ -47,18 +47,18 @@ def tool(
     args_schema: type | None = None,
     return_direct: bool = False,
 ):
-    """基于 langchain.tool 的拓展装饰器，同时注册元数据
+    """Extended decorator based on langchain.tool that also registers metadata.
 
-    使用方式:
-    @tool(category="buildin", tags=["计算"], display_name="计算器")
+    Usage:
+    @tool(category="buildin", tags=["calculate"], display_name="Calculator")
     def calculator(a: float, b: float, operation: str) -> float:
         ...
 
-    或者保留原有的 name_or_callable 和 description:
+    Or keep the original name_or_callable and description:
     @tool(
         category="buildin",
-        display_name="查询知识图谱",
-        name_or_callable="查询知识图谱",
+        display_name="queryknowledge graph",
+        name_or_callable="queryknowledge graph",
         description=KG_QUERY_DESCRIPTION,
     )
     def query_knowledge_graph(query: str) -> str:
@@ -66,7 +66,7 @@ def tool(
     """
     from langchain.tools import tool as langchain_tool
 
-    # 先应用 langchain tool 装饰器
+    # First apply the langchain tool decorator.
     langchain_decorator = langchain_tool(
         name_or_callable=name_or_callable,
         description=description,
@@ -75,10 +75,10 @@ def tool(
     )
 
     def decorator(func: Callable) -> Callable:
-        # 应用 langchain 装饰器
+        # Apply langchain decorator.
         tool_obj = langchain_decorator(func)
 
-        # 注册附加元数据
+        # Register extra metadata.
         tool_name = tool_obj.name
         _extra_registry[tool_name] = ToolExtraMetadata(
             category=category,
@@ -88,7 +88,7 @@ def tool(
             config_guide=config_guide,
         )
 
-        # 自动收集工具实例
+        # Automatically collect tool instance.
         _all_tool_instances.append(tool_obj)
 
         return tool_obj

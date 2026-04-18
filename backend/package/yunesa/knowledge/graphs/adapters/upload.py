@@ -9,28 +9,28 @@ if TYPE_CHECKING:
 
 
 class UploadGraphAdapter(GraphAdapter):
-    """Upload图谱适配器 (Upload Graph Adapter)"""
+    """Uploadgraphadapter (Upload Graph Adapter)"""
 
     def __init__(self, graph_db_instance=None, config: dict[str, Any] = None):
         super().__init__(config)
 
-        # 延迟导入以避免循环导入
+        # Delayed import to avoid circular imports.
         from yunesa.knowledge.graphs.upload_graph_service import UploadGraphService
 
-        # 初始化业务逻辑服务
+        # Initialize business-logic service.
         if graph_db_instance and hasattr(graph_db_instance, "_service"):
-            # 如果传入的是新的包装类 GraphDatabase
+            # If a wrapped GraphDatabase instance is passed in.
             self.service = graph_db_instance._service
         else:
             self.service = graph_db_instance if graph_db_instance else UploadGraphService()
             if not self.service.is_running():
                 self.service.start()
 
-        # 初始化查询适配器（使用纯查询操作）
+        # Initialize query adapter (pure query operations).
         self._db = BaseNeo4jAdapter()
 
     def _get_metadata(self) -> GraphMetadata:
-        """获取 Upload 图谱元数据"""
+        """Get Upload graph metadata."""
         return GraphMetadata(
             graph_type="upload",
             id_field="id",
@@ -42,16 +42,16 @@ class UploadGraphAdapter(GraphAdapter):
     async def query_nodes(self, keyword: str, **kwargs) -> dict[str, Any]:
         params = self._normalize_query_params(keyword, kwargs)
 
-        # 如果关键词是 "*" 或者为空，则执行采样查询
+        # If keyword is "*" or empty, run sampling query.
         if not params["keyword"] or params["keyword"] == "*":
-            # 使用 BaseNeo4jAdapter 的连通子图查询
+            # Use BaseNeo4jAdapter connected subgraph query.
             num = kwargs.get("max_nodes", 100)
             raw_results = self._db._get_sample_nodes_with_connections(
                 num=num,
                 label_filter="Upload",
             )
         else:
-            # 否则执行关键词搜索（使用 service 的查询功能）
+            # Otherwise execute keyword search via service query method.
             raw_results = self.service.query_node(
                 keyword=params["keyword"],
                 threshold=params.get("threshold", 0.9),
@@ -96,7 +96,7 @@ class UploadGraphAdapter(GraphAdapter):
         )
 
     async def get_labels(self) -> list[str]:
-        """获取所有标签 - 使用 UploadGraphService"""
+        """Get all labels using UploadGraphService."""
         kgdb_name = self.config.get("kgdb_name", "neo4j")
         info = self.service.get_graph_info(graph_name=kgdb_name)
         return info.get("labels", []) if info else []

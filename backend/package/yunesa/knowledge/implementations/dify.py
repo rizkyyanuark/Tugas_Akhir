@@ -8,7 +8,7 @@ from yunesa.utils import logger
 
 
 class DifyKB(KnowledgeBase):
-    """基于 Dify Dataset Retrieve API 的只读检索知识库实现"""
+    """Read-only retrieval knowledge base implementation based on Dify Dataset Retrieve API."""
 
     def __init__(self, work_dir: str, **kwargs):
         del kwargs
@@ -26,7 +26,7 @@ class DifyKB(KnowledgeBase):
 
     @staticmethod
     def _readonly_error() -> ValueError:
-        return ValueError("Dify 知识库为只读检索类型，不支持该操作")
+        return ValueError("Dify knowledge base is a read-only retrieval type; this operation is not supported")
 
     async def add_file_record(
         self, db_id: str, item: str, params: dict | None = None, operator_id: str | None = None
@@ -90,7 +90,8 @@ class DifyKB(KnowledgeBase):
 
         top_k = int(merged.get("final_top_k", 10))
         top_k = max(top_k, 1)
-        score_threshold_enabled = bool(merged.get("score_threshold_enabled", False))
+        score_threshold_enabled = bool(
+            merged.get("score_threshold_enabled", False))
         score_threshold = float(merged.get("similarity_threshold", 0.0))
 
         payload: dict[str, Any] = {
@@ -98,7 +99,7 @@ class DifyKB(KnowledgeBase):
             "retrieval_model": {
                 "search_method": search_method,
                 "top_k": top_k,
-                # 某些 Dify 部署版本会直接读取该字段，缺失时抛 KeyError
+                # Some Dify deployment versions read this field directly; missing it may raise KeyError.
                 "reranking_enable": False,
                 "score_threshold_enabled": score_threshold_enabled,
             },
@@ -112,22 +113,26 @@ class DifyKB(KnowledgeBase):
         try:
             response_json = await self._request_dify(client_payload=payload, request_url=request_url, headers=headers)
         except Exception as e:  # noqa: BLE001
-            logger.error(f"Dify query failed for db_id={db_id}: {e}, {traceback.format_exc()}")
-            # 一些 Dify 部署版本对 retrieval_model 兼容性较差，失败时降级为仅 query 请求重试一次
+            logger.error(
+                f"Dify query failed for db_id={db_id}: {e}, {traceback.format_exc()}")
+            # Some Dify deployment versions have poor compatibility with retrieval_model.
+            # On failure, fall back to retry once with query-only payload.
             try:
                 response_json = await self._request_dify(
                     client_payload={"query": query_text},
                     request_url=request_url,
                     headers=headers,
                 )
-                logger.warning(f"Dify query fallback to query-only succeeded for db_id={db_id}")
+                logger.warning(
+                    f"Dify query fallback to query-only succeeded for db_id={db_id}")
             except Exception as fallback_error:  # noqa: BLE001
                 logger.error(
                     f"Dify query fallback failed for db_id={db_id}: {fallback_error}, {traceback.format_exc()}"
                 )
                 return []
 
-        records = response_json.get("records", []) if isinstance(response_json, dict) else []
+        records = response_json.get("records", []) if isinstance(
+            response_json, dict) else []
         if not isinstance(records, list):
             return []
 
@@ -180,41 +185,44 @@ class DifyKB(KnowledgeBase):
         options = [
             {
                 "key": "search_mode",
-                "label": "检索模式",
+                "label": "Retrieval Mode",
                 "type": "select",
                 "default": "vector",
                 "options": [
-                    {"value": "vector", "label": "向量检索", "description": "映射为 semantic_search"},
-                    {"value": "keyword", "label": "关键词检索", "description": "映射为 keyword_search"},
-                    {"value": "hybrid", "label": "混合检索", "description": "映射为 hybrid_search"},
+                    {"value": "vector", "label": "Vector Retrieval",
+                        "description": "Mapped to semantic_search"},
+                    {"value": "keyword", "label": "Keyword Retrieval",
+                        "description": "Mapped to keyword_search"},
+                    {"value": "hybrid", "label": "Hybrid Retrieval",
+                        "description": "Mapped to hybrid_search"},
                 ],
-                "description": "Dify 检索方法映射",
+                "description": "Dify retrieval method mapping",
             },
             {
                 "key": "final_top_k",
-                "label": "最终返回 Chunk 数",
+                "label": "Final Returned Chunk Count",
                 "type": "number",
                 "default": 10,
                 "min": 1,
                 "max": 100,
-                "description": "映射为 Dify retrieval_model.top_k",
+                "description": "Mapped to Dify retrieval_model.top_k",
             },
             {
                 "key": "score_threshold_enabled",
-                "label": "启用分数阈值",
+                "label": "Enable Score Threshold",
                 "type": "boolean",
                 "default": False,
-                "description": "映射为 Dify retrieval_model.score_threshold_enabled",
+                "description": "Mapped to Dify retrieval_model.score_threshold_enabled",
             },
             {
                 "key": "similarity_threshold",
-                "label": "分数阈值（0-1）",
+                "label": "Score Threshold (0-1)",
                 "type": "number",
                 "default": 0.0,
                 "min": 0.0,
                 "max": 1.0,
                 "step": 0.1,
-                "description": "映射为 Dify retrieval_model.score_threshold",
+                "description": "Mapped to Dify retrieval_model.score_threshold",
             },
         ]
         return {"type": "dify", "options": options}

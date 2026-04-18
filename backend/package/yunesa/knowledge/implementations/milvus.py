@@ -35,58 +35,58 @@ CONTENT_ANALYZER_PARAMS = {"type": "chinese"}
 
 
 class MilvusKB(KnowledgeBase):
-    """基于 Milvus 的生产级向量库"""
+    """ Milvus vector"""
 
     def __init__(self, work_dir: str, **kwargs):
         """
-        初始化 Milvus 知识库
+        initialize Milvus knowledge base
 
         Args:
-            work_dir: 工作目录
-            **kwargs: 其他配置参数
+            work_dir: directory
+            **kwargs: configureparameter
         """
         super().__init__(work_dir)
 
         if not MILVUS_AVAILABLE:
             raise ImportError("pymilvus is not installed. Please install it with: pip install pymilvus")
 
-        # Milvus 配置
+        # Milvus configure
         # self.milvus_host = kwargs.get('milvus_host', os.getenv('MILVUS_HOST', 'localhost'))
         # self.milvus_port = kwargs.get('milvus_port', int(os.getenv('MILVUS_PORT', '19530')))
         self.milvus_token = kwargs.get("milvus_token", os.getenv("MILVUS_TOKEN") or "")
         self.milvus_uri = kwargs.get("milvus_uri", os.getenv("MILVUS_URI") or "http://localhost:19530")
         self.milvus_db = kwargs.get("milvus_db") or "yuxi_know"
 
-        # 连接名称
+        # connectname
         self.connection_alias = f"milvus_{hashstr(work_dir, 6)}"
 
-        # 存储集合映射 {db_id: Collection}
+        # storage {db_id: Collection}
         self.collections: dict[str, Any] = {}
 
-        # 分块配置
+        # chunkingconfigure
         self.chunk_size = kwargs.get("chunk_size", 1000)
         self.chunk_overlap = kwargs.get("chunk_overlap", 200)
 
-        # 元数据锁
+        # data
         self._metadata_lock = asyncio.Lock()
 
-        # 初始化连接
+        # initializeconnect
         self._init_connection()
 
         logger.info("MilvusKB initialized")
 
     @property
     def kb_type(self) -> str:
-        """知识库类型标识"""
+        """knowledge basetype"""
         return "milvus"
 
     def _init_connection(self):
-        """初始化 Milvus 连接"""
+        """initialize Milvus connect"""
         try:
-            # 连接到 Milvus
+            # connect Milvus
             connections.connect(alias=self.connection_alias, uri=self.milvus_uri, token=self.milvus_token)
 
-            # 创建数据库（如果不存在）
+            # createdatabase（does not exist）
             try:
                 if self.milvus_db not in db.list_database():
                     db.create_database(self.milvus_db)
@@ -101,13 +101,13 @@ class MilvusKB(KnowledgeBase):
             raise
 
     async def _create_kb_instance(self, db_id: str, kb_config: dict) -> Any:
-        """创建 Milvus 集合"""
+        """create Milvus """
         logger.info(f"Creating Milvus collection for {db_id}")
 
         if not (metadata := self.databases_meta.get(db_id)):
             raise ValueError(f"Database {db_id} not found")
 
-        # 获取嵌入模型信息
+        # getembeddingmodel
         if not (embed_info := metadata.get("embed_info")):
             logger.error(f"Embedding info not found for database {db_id}, using default model")
             embed_info = config.embed_model_names[config.embed_model]
@@ -115,11 +115,11 @@ class MilvusKB(KnowledgeBase):
         collection_name = db_id
 
         try:
-            # 检查集合是否存在
+            # checkwhether
             if utility.has_collection(collection_name, using=self.connection_alias):
                 collection = Collection(name=collection_name, using=self.connection_alias)
 
-                # 检查嵌入模型是否匹配
+                # checkembeddingmodelwhether
                 description = collection.description
                 expected_model = embed_info["name"] if embed_info else "default"
 
@@ -151,11 +151,11 @@ class MilvusKB(KnowledgeBase):
             raise
 
     def _create_new_collection(self, collection_name: str, embed_info: Any, db_id: str) -> Collection:
-        """创建新的 Milvus 集合"""
+        """create Milvus """
         embedding_dim = embed_info.get("dimension", 1024)
         model_name = embed_info.get("name", "default")
 
-        # 定义集合Schema
+        # Schema
         fields = [
             FieldSchema(name="id", dtype=DataType.VARCHAR, max_length=100, is_primary=True),
             FieldSchema(
@@ -185,10 +185,10 @@ class MilvusKB(KnowledgeBase):
             functions=[bm25_function],
         )
 
-        # 创建集合
+        # create
         collection = Collection(name=collection_name, schema=schema, using=self.connection_alias)
 
-        # 创建索引
+        # createindex
         index_params = {"metric_type": "COSINE", "index_type": "IVF_FLAT", "params": {"nlist": 1024}}
         collection.create_index("embedding", index_params)
         sparse_index_params = {
@@ -203,7 +203,7 @@ class MilvusKB(KnowledgeBase):
         return collection
 
     def _collection_supports_bm25(self, collection: Collection) -> bool:
-        """检查集合是否具备 Milvus 内置 BM25 所需的 schema。"""
+        """checkwhether Milvus  BM25  schema。"""
         fields = {field.name: field for field in collection.schema.fields}
         content_field = fields.get("content")
         sparse_field = fields.get(CONTENT_SPARSE_FIELD)
@@ -224,7 +224,7 @@ class MilvusKB(KnowledgeBase):
         return False
 
     async def _initialize_kb_instance(self, instance: Any) -> None:
-        """初始化 Milvus 集合（加载到内存）"""
+        """initialize Milvus （load）"""
         try:
             instance.load()
             logger.info("Milvus collection loaded into memory")
@@ -232,14 +232,14 @@ class MilvusKB(KnowledgeBase):
             logger.warning(f"Failed to load collection into memory: {e}")
 
     def _get_async_embedding(self, embed_info: dict):
-        """获取 embedding 函数"""
-        # 检查是否有 model_id 字段，优先使用 select_embedding_model
+        """get embedding """
+        # checkwhether model_id ， select_embedding_model
         if embed_info and "model_id" in embed_info:
             from yunesa.models.embed import select_embedding_model
 
             return select_embedding_model(embed_info["model_id"])
 
-        # 使用原有的逻辑（兼容模式））
+        # （））
         config_dict = get_embedding_config(embed_info)
         return OtherEmbedding(
             model=config_dict.get("model"),
@@ -248,19 +248,19 @@ class MilvusKB(KnowledgeBase):
         )
 
     def _get_async_embedding_function(self, embed_info: dict):
-        """获取 embedding 函数"""
+        """get embedding """
         embedding_model = self._get_async_embedding(embed_info)
         batch_size = int(getattr(embedding_model, "batch_size", 40) or 40)
         return partial(embedding_model.abatch_encode, batch_size=batch_size)
 
     def _get_embedding_function(self, embed_info: dict):
-        """获取 embedding 函数"""
+        """get embedding """
         embedding_model = self._get_async_embedding(embed_info)
         batch_size = int(getattr(embedding_model, "batch_size", 40) or 40)
         return partial(embedding_model.batch_encode, batch_size=batch_size)
 
     async def _get_milvus_collection(self, db_id: str):
-        """获取或创建 Milvus 集合"""
+        """getcreate Milvus """
         if db_id in self.collections:
             return self.collections[db_id]
 
@@ -268,7 +268,7 @@ class MilvusKB(KnowledgeBase):
             return None
 
         try:
-            # 创建集合
+            # create
             collection = await self._create_kb_instance(db_id, {})
             await self._initialize_kb_instance(collection)
 
@@ -281,7 +281,7 @@ class MilvusKB(KnowledgeBase):
             return None
 
     def _split_text_into_chunks(self, text: str, file_id: str, filename: str, params: dict) -> list[dict]:
-        """将文本分割成块"""
+        """split"""
         return chunk_markdown(text, file_id, filename, params)
 
     async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
@@ -418,7 +418,7 @@ class MilvusKB(KnowledgeBase):
             self._remove_from_processing_queue(file_id)
 
     async def update_content(self, db_id: str, file_ids: list[str], params: dict | None = None) -> list[dict]:
-        """更新内容 - 根据file_ids重新解析文件并更新向量库"""
+        """updatecontent - file_idsparsefileupdatevector"""
         if db_id not in self.databases_meta:
             raise ValueError(f"Database {db_id} not found")
 
@@ -429,13 +429,13 @@ class MilvusKB(KnowledgeBase):
         embed_info = self.databases_meta[db_id].get("embed_info", {})
         embedding_function = self._get_async_embedding_function(embed_info)
 
-        # 处理默认参数
+        # processdefaultparameter
         if params is None:
             params = {}
         processed_items_info = []
 
         for file_id in file_ids:
-            # 从元数据中获取文件信息
+            # datagetfile
             async with self._metadata_lock:
                 if file_id not in self.files_meta:
                     logger.warning(f"File {file_id} not found in metadata, skipping")
@@ -449,11 +449,11 @@ class MilvusKB(KnowledgeBase):
                     logger.warning(f"File path not found for {file_id}, skipping")
                     continue
 
-            # 添加到处理队列
+            # addprocesscolumn
             self._add_to_processing_queue(file_id)
 
             try:
-                # 更新状态为处理中
+                # updatestatusprocess
                 async with self._metadata_lock:
                     resolved_params = resolve_chunk_processing_params(
                         kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
@@ -464,15 +464,15 @@ class MilvusKB(KnowledgeBase):
                     self.files_meta[file_id]["status"] = "processing"
                     await self._persist_file(file_id)
 
-                # 重新解析文件为 markdown
+                # parsefile markdown
                 params["image_bucket"] = "public"
                 params["image_prefix"] = f"{db_id}/kb-images"
                 markdown_content = await Parser.aparse(source=file_path, params=params)
 
-                # 先删除现有的 Milvus 数据（仅删除chunks，保留元数据）
+                # delete Milvus data（deletechunks，data）
                 await self.delete_file_chunks_only(db_id, file_id)
 
-                # 重新生成 chunks
+                # generate chunks
                 chunks = self._split_text_into_chunks(markdown_content, file_id, filename, resolved_params)
                 logger.info(f"Split {filename} into {len(chunks)} chunks")
 
@@ -497,30 +497,30 @@ class MilvusKB(KnowledgeBase):
 
                 logger.info(f"Updated file {file_path} in Milvus. Done.")
 
-                # 更新元数据状态
+                # updatedatastatus
                 async with self._metadata_lock:
                     self.files_meta[file_id]["status"] = "done"
                     await self._persist_file(file_id)
 
-                # 从处理队列中移除
+                # processcolumnremove
                 self._remove_from_processing_queue(file_id)
 
-                # 返回更新后的文件信息
+                # returnupdatefile
                 updated_file_meta = file_meta.copy()
                 updated_file_meta["status"] = "done"
                 updated_file_meta["file_id"] = file_id
                 processed_items_info.append(updated_file_meta)
 
             except Exception as e:
-                logger.error(f"更新file {file_path} 失败: {e}, {traceback.format_exc()}")
+                logger.error(f"updatefile {file_path} failed: {e}, {traceback.format_exc()}")
                 async with self._metadata_lock:
                     self.files_meta[file_id]["status"] = "failed"
                     await self._persist_file(file_id)
 
-                # 从处理队列中移除
+                # processcolumnremove
                 self._remove_from_processing_queue(file_id)
 
-                # 返回失败的文件信息
+                # returnfailedfile
                 failed_file_meta = file_meta.copy()
                 failed_file_meta["status"] = "failed"
                 failed_file_meta["file_id"] = file_id
@@ -535,10 +535,10 @@ class MilvusKB(KnowledgeBase):
         include_distances: bool,
         score_field: str | None = None,
     ) -> dict:
-        """将 Milvus Hit 转成知识库统一返回的 Chunk 结构。"""
+        """ Milvus Hit knowledge basereturn Chunk 。"""
         entity = hit.entity
         metadata = {
-            "source": entity.get("source", "未知来源"),
+            "source": entity.get("source", ""),
             "chunk_id": entity.get("chunk_id"),
             "file_id": entity.get("file_id"),
             "chunk_index": entity.get("chunk_index"),
@@ -551,18 +551,18 @@ class MilvusKB(KnowledgeBase):
         return chunk
 
     async def aquery(self, query_text: str, db_id: str, agent_call: bool = False, **kwargs) -> list[dict]:
-        """异步查询知识库"""
+        """queryknowledge base"""
         collection = await self._get_milvus_collection(db_id)
         if not collection:
             raise ValueError(f"Database {db_id} not found")
 
         query_params = self._get_query_params(db_id)
-        # 合并查询参数：kwargs（临时参数）优先级高于 query_params（持久化参数）
-        # 这样允许用户在单次查询中临时覆盖持久化配置
+        # mergequeryparameter：kwargs（parameter）priority query_params（parameter）
+        # usertimesqueryconfigure
         merged_kwargs = {**query_params, **kwargs}
 
         try:
-            # 查询参数（从 merged_kwargs 读取）
+            # queryparameter（ merged_kwargs read）
             logger.debug(f"Query params: {merged_kwargs}")
             final_top_k = int(merged_kwargs.get("final_top_k", 10))
             final_top_k = max(final_top_k, 1)
@@ -580,7 +580,7 @@ class MilvusKB(KnowledgeBase):
             else:
                 recall_top_k = final_top_k
 
-            # 构建过滤表达式（文件名）
+            # buildfiltertable（file）
             file_expr = None
             if file_name := merged_kwargs.get("file_name"):
                 safe_file_name = file_name.replace('"', '\\"')
@@ -695,7 +695,7 @@ class MilvusKB(KnowledgeBase):
             if not use_reranker:
                 return retrieved_chunks[:final_top_k]
 
-            # 使用重排序模型
+            # rerankermodel
             reranker_model = merged_kwargs.get("reranker_model")
             if not reranker_model:
                 raise ValueError(
@@ -726,7 +726,7 @@ class MilvusKB(KnowledgeBase):
             except Exception as exc:  # noqa: BLE001
                 logger.error(f"Reranking failed: {exc}, falling back to vector scores")
 
-            # 统一返回结果
+            # returnresult
             return retrieved_chunks[:final_top_k]
 
         except Exception as e:
@@ -734,11 +734,11 @@ class MilvusKB(KnowledgeBase):
             return []
 
     async def delete_file_chunks_only(self, db_id: str, file_id: str) -> None:
-        """仅删除文件的chunks数据，保留元数据（用于更新操作）"""
+        """deletefilechunksdata，data（updateoperation）"""
         collection = await self._get_milvus_collection(db_id)
 
         if collection:
-            # 先查询文件是否存在，避免不必要的删除操作
+            # queryfilewhether，deleteoperation
             try:
                 expr = f'file_id == "{file_id}"'
                 results = collection.query(expr=expr, output_fields=["id"], limit=1)
@@ -746,7 +746,7 @@ class MilvusKB(KnowledgeBase):
                 if not results:
                     logger.info(f"File {file_id} not found in Milvus, skipping delete operation")
                 else:
-                    # 只有在文件确实存在时才执行删除
+                    # fileexecutedelete
                     def _delete_from_milvus():
                         try:
                             collection.delete(expr)
@@ -757,14 +757,14 @@ class MilvusKB(KnowledgeBase):
                     await asyncio.to_thread(_delete_from_milvus)
             except Exception as e:
                 logger.error(f"Error checking file existence in Milvus: {e}")
-        # 注意：这里不删除 files_meta[file_id]，保留元数据用于后续操作
+        # ：delete files_meta[file_id]，dataoperation
 
     async def delete_file(self, db_id: str, file_id: str) -> None:
-        """删除文件（包括元数据）"""
-        # 先删除 Milvus 中的 chunks 数据
+        """deletefile（data）"""
+        # delete Milvus  chunks data
         await self.delete_file_chunks_only(db_id, file_id)
 
-        # 使用锁确保元数据操作的原子性
+        # dataoperation
         async with self._metadata_lock:
             if file_id in self.files_meta:
                 del self.files_meta[file_id]
@@ -773,31 +773,31 @@ class MilvusKB(KnowledgeBase):
                 await KnowledgeFileRepository().delete(file_id)
 
     async def get_file_basic_info(self, db_id: str, file_id: str) -> dict:
-        """获取文件基本信息（仅元数据）"""
+        """getfile（data）"""
         if file_id not in self.files_meta:
             raise Exception(f"File not found: {file_id}")
 
         return {"meta": self.files_meta[file_id]}
 
     async def get_file_content(self, db_id: str, file_id: str) -> dict:
-        """获取文件内容信息（chunks和lines）"""
+        """getfilecontent（chunkslines）"""
         if file_id not in self.files_meta:
             raise Exception(f"File not found: {file_id}")
 
-        # 使用 Milvus 获取chunks
+        #  Milvus getchunks
         content_info = {"lines": []}
         collection = await self._get_milvus_collection(db_id)
         if collection:
             try:
-                # 查询文档的所有chunks
+                # querydocumentchunks
                 expr = f'file_id == "{file_id}"'
                 results = collection.query(
                     expr=expr,
                     output_fields=["content", "chunk_id", "chunk_index"],
-                    limit=10000,  # 假设单个文件不会超过10000个chunks
+                    limit=10000,  # file10000chunks
                 )
 
-                # 构建chunks数据
+                # buildchunksdata
                 doc_chunks = []
                 for result in results:
                     chunk_data = {
@@ -807,7 +807,7 @@ class MilvusKB(KnowledgeBase):
                     }
                     doc_chunks.append(chunk_data)
 
-                # 按 chunk_order_index 排序
+                #  chunk_order_index sort
                 doc_chunks.sort(key=lambda x: x.get("chunk_order_index", 0))
                 content_info["lines"] = doc_chunks
 
@@ -827,18 +827,18 @@ class MilvusKB(KnowledgeBase):
         return content_info
 
     async def get_file_info(self, db_id: str, file_id: str) -> dict:
-        """获取文件完整信息（基本信息+内容信息）- 保持向后兼容"""
+        """getfile（+content）- """
         if file_id not in self.files_meta:
             raise Exception(f"File not found: {file_id}")
 
-        # 合并基本信息和内容信息
+        # mergecontent
         basic_info = await self.get_file_basic_info(db_id, file_id)
         content_info = await self.get_file_content(db_id, file_id)
 
         return {**basic_info, **content_info}
 
     def delete_database(self, db_id: str) -> dict:
-        """删除数据库，同时清除Milvus中的集合"""
+        """deletedatabase，Milvus"""
         # Drop Milvus collection
         try:
             if utility.has_collection(db_id, using=self.connection_alias):
@@ -853,131 +853,131 @@ class MilvusKB(KnowledgeBase):
         return super().delete_database(db_id)
 
     def get_query_params_config(self, db_id: str, **kwargs) -> dict:
-        """获取 Milvus 知识库的查询参数配置"""
-        # 构建 Milvus 特定参数（不再从 reranker_config 读取）
+        """get Milvus knowledge basequeryparameterconfigure"""
+        # build Milvus parameter（ reranker_config read）
         options = [
             {
                 "key": "search_mode",
-                "label": "检索模式",
+                "label": "retrieval",
                 "type": "select",
                 "default": "vector",
                 "options": [
-                    {"value": "vector", "label": "向量检索", "description": "仅使用向量相似度检索"},
-                    {"value": "keyword", "label": "BM25 全文检索", "description": "仅使用 Milvus BM25 检索"},
-                    {"value": "hybrid", "label": "混合检索", "description": "Milvus 向量检索与 BM25 融合检索"},
+                    {"value": "vector", "label": "vectorretrieval", "description": "vectorretrieval"},
+                    {"value": "keyword", "label": "BM25 retrieval", "description": " Milvus BM25 retrieval"},
+                    {"value": "hybrid", "label": "retrieval", "description": "Milvus vectorretrieval BM25 retrieval"},
                 ],
-                "description": "选择检索模式",
+                "description": "retrieval",
             },
             {
                 "key": "final_top_k",
-                "label": "最终返回 Chunk 数",
+                "label": "return Chunk ",
                 "type": "number",
                 "default": 10,
                 "min": 1,
                 "max": 100,
-                "description": "重排序后返回给前端的文档数量",
+                "description": "rerankerreturndocumentcount",
             },
             {
                 "key": "similarity_threshold",
-                "label": "相似度阈值（0-1）",
+                "label": "threshold（0-1）",
                 "type": "number",
                 "default": 0.0,
                 "min": 0.0,
                 "max": 1.0,
                 "step": 0.1,
-                "description": "过滤相似度低于此值的结果",
+                "description": "filterresult",
             },
             {
                 "key": "bm25_top_k",
-                "label": "BM25 召回数量",
+                "label": "BM25 count",
                 "type": "number",
                 "default": 50,
                 "min": 1,
                 "max": 200,
-                "description": "BM25 全文检索和混合检索中的 BM25 候选数量",
+                "description": "BM25 retrievalretrieval BM25 count",
             },
             {
                 "key": "vector_weight",
-                "label": "向量检索权重",
+                "label": "vectorretrieval",
                 "type": "number",
                 "default": 0.7,
                 "min": 0.0,
                 "max": 1.0,
                 "step": 0.1,
-                "description": "混合检索中向量召回结果的融合权重",
+                "description": "retrievalvectorresult",
             },
             {
                 "key": "bm25_weight",
-                "label": "BM25 权重",
+                "label": "BM25 ",
                 "type": "number",
                 "default": 0.3,
                 "min": 0.0,
                 "max": 1.0,
                 "step": 0.1,
-                "description": "混合检索中 BM25 召回结果的融合权重",
+                "description": "retrieval BM25 result",
             },
             {
                 "key": "bm25_drop_ratio_search",
-                "label": "BM25 稀疏项丢弃比例",
+                "label": "BM25 items",
                 "type": "number",
                 "default": 0.0,
                 "min": 0.0,
                 "max": 1.0,
                 "step": 0.1,
-                "description": "BM25 检索时丢弃低分稀疏项的比例，数值越大检索越快但可能降低召回",
+                "description": "BM25 retrievalitems，retrieval",
             },
             {
                 "key": "include_distances",
-                "label": "显示相似度",
+                "label": "",
                 "type": "boolean",
                 "default": True,
-                "description": "在结果中显示相似度分数",
+                "description": "result",
             },
             {
                 "key": "metric_type",
-                "label": "距离度量类型",
+                "label": "type",
                 "type": "select",
                 "default": "COSINE",
                 "options": [
-                    {"value": "COSINE", "label": "余弦相似度", "description": "适合文本语义相似度"},
-                    {"value": "L2", "label": "欧几里得距离", "description": "适合数值型数据"},
-                    {"value": "IP", "label": "内积", "description": "适合标准化向量"},
+                    {"value": "COSINE", "label": "", "description": ""},
+                    {"value": "L2", "label": "", "description": "data"},
+                    {"value": "IP", "label": "", "description": "vector"},
                 ],
-                "description": "向量相似度计算方法",
+                "description": "vectorcalculate",
             },
             {
                 "key": "use_reranker",
-                "label": "启用重排序",
+                "label": "enabledreranker",
                 "type": "boolean",
                 "default": False,
-                "description": "是否使用精排模型对检索结果进行重排序",
+                "description": "whethermodelretrievalresultrowreranker",
             },
             {
                 "key": "reranker_model",
-                "label": "重排序模型",
+                "label": "rerankermodel",
                 "type": "select",
                 "default": "",
                 "options": [
                     {"label": info.name, "value": model_id}
                     for model_id, info in kwargs.get("reranker_names", {}).items()
                 ],
-                "description": "选择用于本次查询的重排序模型",
+                "description": "timesqueryrerankermodel",
             },
             {
                 "key": "recall_top_k",
-                "label": "召回数量",
+                "label": "count",
                 "type": "number",
                 "default": 50,
                 "min": 10,
                 "max": 200,
-                "description": "向量检索或混合检索保留的候选数量（启用重排序时有效）",
+                "description": "vectorretrievalretrievalcount（enabledrerankervalid）",
             },
         ]
 
         return {"type": "milvus", "options": options}
 
     def __del__(self):
-        """清理连接"""
+        """clean upconnect"""
         try:
             if hasattr(self, "connection_alias"):
                 connections.disconnect(self.connection_alias)

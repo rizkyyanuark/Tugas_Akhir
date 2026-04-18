@@ -1,7 +1,7 @@
 """
-文档处理器工厂
+Document processor factory.
 
-提供统一的文档处理器创建和管理接口
+Provides a unified interface for creating and managing document processors.
 """
 
 import asyncio
@@ -11,14 +11,14 @@ from typing import Any
 from yunesa.plugins.parser.base import BaseDocumentProcessor
 from yunesa.utils import logger
 
-# 处理器实例缓存
+# Processor instance cache
 _PROCESSOR_CACHE: dict[str, BaseDocumentProcessor] = {}
 
 
 class DocumentProcessorFactory:
-    """文档处理器工厂"""
+    """Document processor factory."""
 
-    # 处理器类型映射: processor_type -> (module_path, class_name)
+    # Processor type mapping: processor_type -> (module_path, class_name)
     PROCESSOR_TYPES = {
         "rapid_ocr": ("yunesa.plugins.parser.rapid_ocr", "RapidOCRParser"),
         "mineru_ocr": ("yunesa.plugins.parser.mineru", "MinerUParser"),
@@ -32,7 +32,8 @@ class DocumentProcessorFactory:
         if not kwargs:
             return processor_type
 
-        kwargs_repr = "|".join(f"{key}={kwargs[key]!r}" for key in sorted(kwargs))
+        kwargs_repr = "|".join(
+            f"{key}={kwargs[key]!r}" for key in sorted(kwargs))
         return f"{processor_type}|{kwargs_repr}"
 
     @classmethod
@@ -45,50 +46,51 @@ class DocumentProcessorFactory:
     @classmethod
     def get_processor(cls, processor_type: str, **kwargs) -> BaseDocumentProcessor:
         """
-        获取文档处理器实例 (单例模式)
+        Get a document processor instance (singleton style).
 
         Args:
-            processor_type: 处理器类型
-                - "rapid_ocr": RapidOCR 本地 OCR
-                - "mineru_ocr": MinerU HTTP API 文档解析
-                - "mineru_official": MinerU 官方云服务 API 文档解析
-                - "pp_structure_v3_ocr": PP-Structure-V3 版面解析
+            processor_type: Processor type
+                - "rapid_ocr": RapidOCR local OCR
+                - "mineru_ocr": MinerU HTTP API document parsing
+                - "mineru_official": MinerU official cloud API document parsing
+                - "pp_structure_v3_ocr": PP-Structure-V3 layout parsing
                 - "deepseek_ocr": DeepSeek-OCR SiliconFlow API
-            **kwargs: 处理器初始化参数
+            **kwargs: Processor initialization parameters
 
         Returns:
-            BaseDocumentProcessor: 处理器实例
+            BaseDocumentProcessor: Processor instance
 
         Raises:
-            ValueError: 不支持的处理器类型
+            ValueError: Unsupported processor type
         """
         if processor_type not in cls.PROCESSOR_TYPES:
-            raise ValueError(f"不支持的处理器类型: {processor_type}. 支持的类型: {list(cls.PROCESSOR_TYPES.keys())}")
+            raise ValueError(
+                f"Unsupported processor type: {processor_type}. Supported types: {list(cls.PROCESSOR_TYPES.keys())}")
 
-        # 使用缓存避免重复创建
+        # Use cache to avoid duplicate creation
         cache_key = cls._build_cache_key(processor_type, kwargs)
         if cache_key not in _PROCESSOR_CACHE:
             processor_class = cls._load_processor_class(processor_type)
             _PROCESSOR_CACHE[cache_key] = processor_class(**kwargs)
-            logger.debug(f"创建文档处理器: {processor_type}")
+            logger.debug(f"Created document processor: {processor_type}")
 
         return _PROCESSOR_CACHE[cache_key]
 
     @classmethod
     def process_file(cls, processor_type: str, file_path: str, params: dict | None = None) -> str:
         """
-        使用指定处理器处理文件 (便捷方法)
+        Process file with specified processor (convenience method).
 
         Args:
-            processor_type: 处理器类型
-            file_path: 文件路径
-            params: 处理参数
+            processor_type: Processor type
+            file_path: File path
+            params: Processing parameters
 
         Returns:
-            str: 提取的文本
+            str: Extracted text
 
         Raises:
-            DocumentProcessorException: 处理失败
+            DocumentProcessorException: Processing failed
         """
         processor = cls.get_processor(processor_type)
         return processor.process_file(file_path, params)
@@ -96,13 +98,13 @@ class DocumentProcessorFactory:
     @classmethod
     def check_health(cls, processor_type: str) -> dict[str, Any]:
         """
-        检查指定处理器的健康状态
+        Check health status of specified processor.
 
         Args:
-            processor_type: 处理器类型
+            processor_type: Processor type
 
         Returns:
-            dict: 健康状态信息
+            dict: Health status information
         """
         try:
             processor = cls.get_processor(processor_type)
@@ -110,17 +112,17 @@ class DocumentProcessorFactory:
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"健康检查失败: {str(e)}",
+                "message": f"Health check failed: {str(e)}",
                 "details": {"error": str(e)},
             }
 
     @classmethod
     def check_all_health(cls) -> dict[str, dict[str, Any]]:
         """
-        检查所有处理器的健康状态
+        Check health status of all processors.
 
         Returns:
-            dict: 各处理器的健康状态
+            dict: Health status for each processor
         """
         health_status = {}
         for processor_type in cls.PROCESSOR_TYPES:
@@ -137,11 +139,11 @@ class DocumentProcessorFactory:
 
     @classmethod
     def get_available_processors(cls) -> list[str]:
-        """返回所有可用的处理器类型"""
+        """Return all available processor types."""
         return list(cls.PROCESSOR_TYPES.keys())
 
     @classmethod
     def clear_cache(cls):
-        """清除处理器缓存"""
+        """Clear processor cache."""
         _PROCESSOR_CACHE.clear()
-        logger.debug("文档处理器缓存已清除")
+        logger.debug("Document processor cache cleared")

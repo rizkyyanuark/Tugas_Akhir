@@ -14,30 +14,30 @@ from yunesa.utils.logging_config import logger
 system = APIRouter(prefix="/system", tags=["system"])
 
 # =============================================================================
-# === 健康检查分组 ===
+# === Health Check Group ===
 # =============================================================================
 
 
 @system.get("/health")
 async def health_check():
-    """系统健康检查接口（公开接口）"""
-    return {"status": "ok", "message": "服务正常运行", "version": get_version()}
+    """System health check endpoint (public endpoint)."""
+    return {"status": "ok", "message": "Service is running", "version": get_version()}
 
 
 # =============================================================================
-# === 配置管理分组 ===
+# === configuremanagementgroup ===
 # =============================================================================
 
 
 @system.get("/config")
 async def get_config(current_user: User = Depends(get_admin_user)):
-    """获取系统配置"""
+    """Get system configuration."""
     return config.dump_config()
 
 
 @system.post("/config")
 async def update_config_single(key=Body(...), value=Body(...), current_user: User = Depends(get_admin_user)) -> dict:
-    """更新单个配置项"""
+    """Update a single configuration item."""
     config[key] = value
     config.save()
     return config.dump_config()
@@ -45,7 +45,7 @@ async def update_config_single(key=Body(...), value=Body(...), current_user: Use
 
 @system.post("/config/update")
 async def update_config_batch(items: dict = Body(...), current_user: User = Depends(get_admin_user)) -> dict:
-    """批量更新配置项"""
+    """Batch update configuration items."""
     config.update(items)
     config.save()
     return config.dump_config()
@@ -53,32 +53,34 @@ async def update_config_batch(items: dict = Body(...), current_user: User = Depe
 
 @system.get("/logs")
 async def get_system_logs(levels: str | None = None, current_user: User = Depends(get_admin_user)):
-    """获取系统日志
+    """Get system logs.
 
     Args:
-        levels: 可选的日志级别过滤，多个级别用逗号分隔，如 "INFO,ERROR,DEBUG,WARNING"
+        levels: Optional log level filter. Multiple levels can be comma-separated,
+            e.g. "INFO,ERROR,DEBUG,WARNING".
     """
     try:
         from yunesa.utils.logging_config import LOG_FILE
 
-        # 解析日志级别过滤条件
+        # Parse log level filter.
         level_filter = None
         if levels:
-            level_filter = set(level.strip().upper() for level in levels.split(",") if level.strip())
+            level_filter = set(level.strip().upper()
+                               for level in levels.split(",") if level.strip())
 
         async with aiofiles.open(LOG_FILE) as f:
-            # 读取最后1000行
+            # Read the last 1000 lines.
             lines = []
             async for line in f:
                 filtered_line = line.rstrip("\n\r")
-                # 如果指定了日志级别过滤，则按级别过滤
+                # If a level filter is specified, filter by level.
                 if level_filter:
-                    # 日志格式: 2025-03-10 08:26:37,269 - INFO - module - message
-                    # 提取日志级别
+                    # Log format: 2025-03-10 08:26:37,269 - INFO - module - message
+                    # Extract log level.
                     parts = filtered_line.split(" - ")
                     if len(parts) >= 2 and parts[1].strip() in level_filter:
                         lines.append(filtered_line + "\n")
-                    # 继续读取以保持行数统计准确
+                    # Keep reading to preserve line count behavior.
                     if len(lines) > 1000:
                         lines.pop(0)
                 else:
@@ -89,28 +91,32 @@ async def get_system_logs(levels: str | None = None, current_user: User = Depend
         log = "".join(lines)
         return {"log": log, "message": "success", "log_file": LOG_FILE}
     except Exception as e:
-        logger.error(f"获取系统日志失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取系统日志失败: {str(e)}")
+        logger.error(f"Failed to get system logs: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get system logs: {str(e)}")
 
 
 # =============================================================================
-# === 信息管理分组 ===
+# === Information Management Group ===
 # =============================================================================
 
 
 async def load_info_config():
-    """加载信息配置文件"""
+    """Load information config file."""
     try:
-        # 配置文件路径
-        brand_file_path = os.environ.get("TA_BRAND_FILE_PATH", "package/yunesa/config/static/info.local.yaml")
+        # Config file path.
+        brand_file_path = os.environ.get(
+            "TA_BRAND_FILE_PATH", "package/yunesa/config/static/info.local.yaml")
         config_path = Path(brand_file_path)
 
-        # 检查文件是否存在
+        # Check whether the file exists.
         if not config_path.exists():
-            logger.debug(f"The config file {config_path} does not exist, using default config")
-            config_path = Path("package/yunesa/config/static/info.template.yaml")
+            logger.debug(
+                f"The config file {config_path} does not exist, using default config")
+            config_path = Path(
+                "package/yunesa/config/static/info.template.yaml")
 
-        # 异步读取配置文件
+        # Read config file asynchronously.
         async with aiofiles.open(config_path, encoding="utf-8") as file:
             content = await file.read()
             config = yaml.safe_load(content)
@@ -124,44 +130,46 @@ async def load_info_config():
 
 @system.get("/info")
 async def get_info_config():
-    """获取系统信息配置（公开接口，无需认证）"""
+    """Get system info configuration (public endpoint, no authentication required)."""
     try:
         config = await load_info_config()
         return {"success": True, "data": config}
     except Exception as e:
-        logger.error(f"获取信息配置失败: {e}")
-        raise HTTPException(status_code=500, detail="获取信息配置失败")
+        logger.error(f"Failed to get info configuration: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to get info configuration")
 
 
 @system.post("/info/reload")
 async def reload_info_config(current_user: User = Depends(get_admin_user)):
-    """重新加载信息配置"""
+    """Reload info configuration."""
     try:
         config = await load_info_config()
-        return {"success": True, "message": "配置重新加载成功", "data": config}
+        return {"success": True, "message": "Configuration reloaded successfully", "data": config}
     except Exception as e:
-        logger.error(f"重新加载信息配置失败: {e}")
-        raise HTTPException(status_code=500, detail="重新加载信息配置失败")
+        logger.error(f"Failed to reload info configuration: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to reload info configuration")
 
 
 # =============================================================================
-# === OCR服务分组 ===
+# === OCRservicegroup ===
 # =============================================================================
 
 
 @system.get("/ocr/health")
 async def check_ocr_services_health(current_user: User = Depends(get_admin_user)):
     """
-    检查所有OCR服务的健康状态
-    返回各个OCR服务的可用性信息
+    Check health status of all OCR services.
+    Returns availability information for each OCR service.
     """
     from yunesa.plugins.parser.factory import DocumentProcessorFactory
 
     try:
-        # 使用统一的健康检查接口
+        # Use unified health check interface.
         health_status = await DocumentProcessorFactory.check_all_health_async()
 
-        # 转换为旧格式以保持API兼容性
+        # Convert to legacy format for API compatibility.
         formatted_status = {}
         for service_name, health_info in health_status.items():
             formatted_status[service_name] = {
@@ -170,66 +178,71 @@ async def check_ocr_services_health(current_user: User = Depends(get_admin_user)
                 "details": health_info.get("details", {}),
             }
 
-        # 计算整体健康状态
+        # Calculate overall health status.
         overall_status = (
-            "healthy" if any(svc["status"] == "healthy" for svc in formatted_status.values()) else "unhealthy"
+            "healthy" if any(
+                svc["status"] == "healthy" for svc in formatted_status.values()) else "unhealthy"
         )
 
         return {
             "overall_status": overall_status,
             "services": formatted_status,
-            "message": "OCR服务健康检查完成",
+            "message": "OCR service health check completed",
         }
 
     except Exception as e:
-        logger.error(f"OCR健康检查失败: {str(e)}")
+        logger.error(f"OCR health check failed: {str(e)}")
         return {
             "overall_status": "error",
             "services": {},
-            "message": f"OCR健康检查失败: {str(e)}",
+            "message": f"OCR health check failed: {str(e)}",
         }
 
 
 # =============================================================================
-# === 聊天模型状态检查分组 ===
+# === Chat Model Status Check Group ===
 # =============================================================================
 
 
 @system.get("/chat-models/status")
 async def get_chat_model_status(provider: str, model_name: str, current_user: User = Depends(get_admin_user)):
-    """获取指定聊天模型的状态"""
+    """Get status of a specific chat model."""
     logger.debug(f"Checking chat model status: {provider}/{model_name}")
     try:
         status = await test_chat_model_status(provider, model_name)
         return {"status": status, "message": "success"}
     except Exception as e:
-        logger.error(f"获取聊天模型状态失败 {provider}/{model_name}: {e}")
+        logger.error(
+            f"Failed to get chat model status {provider}/{model_name}: {e}")
         return {
-            "message": f"获取聊天模型状态失败: {e}",
+            "message": f"Failed to get chat model status: {e}",
             "status": {"provider": provider, "model_name": model_name, "status": "error", "message": str(e)},
         }
 
 
 @system.get("/chat-models/all/status")
 async def get_all_chat_models_status(current_user: User = Depends(get_admin_user)):
-    """获取所有聊天模型的状态"""
+    """Get status of all chat models."""
     logger.debug("Checking all chat models status")
     try:
         status = await test_all_chat_models_status()
         return {"status": status, "message": "success"}
     except Exception as e:
-        logger.error(f"获取所有聊天模型状态失败: {e}")
-        return {"message": f"获取所有聊天模型状态失败: {e}", "status": {"models": {}, "total": 0, "available": 0}}
+        logger.error(f"Failed to get all chat model statuses: {e}")
+        return {
+            "message": f"Failed to get all chat model statuses: {e}",
+            "status": {"models": {}, "total": 0, "available": 0},
+        }
 
 
 # =============================================================================
-# === 自定义供应商管理分组 ===
+# === Custom Provider Management Group ===
 # =============================================================================
 
 
 @system.get("/custom-providers")
 async def get_custom_providers(current_user: User = Depends(get_admin_user)):
-    """获取所有自定义供应商"""
+    """Get all custom providers."""
     try:
         custom_providers = config.get_custom_providers()
         return {
@@ -237,83 +250,93 @@ async def get_custom_providers(current_user: User = Depends(get_admin_user)):
             "message": "success",
         }
     except Exception as e:
-        logger.error(f"获取自定义供应商失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取自定义供应商失败: {str(e)}")
+        logger.error(f"Failed to get custom providers: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get custom providers: {str(e)}")
 
 
 @system.post("/custom-providers")
 async def add_custom_provider(
-    provider_id: str = Body(..., description="供应商ID"),
-    provider_data: dict = Body(..., description="供应商配置数据"),
+    provider_id: str = Body(..., description="Provider ID"),
+    provider_data: dict = Body(..., description="Provider configuration data"),
     current_user: User = Depends(get_admin_user),
 ):
-    """添加自定义供应商"""
+    """Add a custom provider."""
     try:
         success = config.add_custom_provider(provider_id, provider_data)
         if success:
-            return {"message": f"自定义供应商 {provider_id} 添加成功"}
+            return {"message": f"Custom provider {provider_id} added successfully"}
         else:
-            raise HTTPException(status_code=400, detail=f"供应商ID {provider_id} 已存在，请使用其他ID")
+            raise HTTPException(
+                status_code=400, detail=f"Provider ID {provider_id} already exists, use another ID")
     except Exception as e:
-        logger.error(f"添加自定义供应商失败 {provider_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"添加自定义供应商失败: {str(e)}")
+        logger.error(f"Failed to add custom provider {provider_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to add custom provider: {str(e)}")
 
 
 @system.put("/custom-providers/{provider_id}")
 async def update_custom_provider(
     provider_id: str,
-    provider_data: dict = Body(..., description="供应商配置数据"),
+    provider_data: dict = Body(..., description="Provider configuration data"),
     current_user: User = Depends(get_admin_user),
 ):
-    """更新自定义供应商"""
+    """Update a custom provider."""
     try:
         success = config.update_custom_provider(provider_id, provider_data)
         if success:
-            return {"message": f"自定义供应商 {provider_id} 更新成功"}
+            return {"message": f"Custom provider {provider_id} updated successfully"}
         else:
-            raise HTTPException(status_code=404, detail=f"自定义供应商 {provider_id} 不存在或更新失败")
+            raise HTTPException(
+                status_code=404, detail=f"Custom provider {provider_id} does not exist or update failed")
     except Exception as e:
-        logger.error(f"更新自定义供应商失败 {provider_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"更新自定义供应商失败: {str(e)}")
+        logger.error(f"Failed to update custom provider {provider_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update custom provider: {str(e)}")
 
 
 @system.delete("/custom-providers/{provider_id}")
 async def delete_custom_provider(provider_id: str, current_user: User = Depends(get_admin_user)):
-    """删除自定义供应商"""
+    """Delete a custom provider."""
     try:
         success = config.delete_custom_provider(provider_id)
         if success:
-            return {"message": f"自定义供应商 {provider_id} 删除成功"}
+            return {"message": f"Custom provider {provider_id} deleted successfully"}
         else:
-            raise HTTPException(status_code=404, detail=f"自定义供应商 {provider_id} 不存在或删除失败")
+            raise HTTPException(
+                status_code=404, detail=f"Custom provider {provider_id} does not exist or delete failed")
     except Exception as e:
-        logger.error(f"删除自定义供应商失败 {provider_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"删除自定义供应商失败: {str(e)}")
+        logger.error(f"Failed to delete custom provider {provider_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete custom provider: {str(e)}")
 
 
 @system.post("/custom-providers/{provider_id}/test")
 async def test_custom_provider(
-    provider_id: str, request: dict = Body(..., description="测试请求"), current_user: User = Depends(get_admin_user)
+    provider_id: str, request: dict = Body(..., description="testrequest"), current_user: User = Depends(get_admin_user)
 ):
-    """测试自定义供应商连接"""
+    """Test custom provider connectivity."""
     try:
-        # 从请求中获取model_name
+        # Get model_name from request.
         model_name = request.get("model_name")
         if not model_name:
-            raise HTTPException(status_code=400, detail="缺少model_name参数")
+            raise HTTPException(
+                status_code=400, detail="Missing model_name parameter")
 
-        # 检查供应商是否存在
+        # Check whether provider exists.
         if provider_id not in config.model_names:
-            raise HTTPException(status_code=404, detail=f"供应商 {provider_id} 不存在")
+            raise HTTPException(
+                status_code=404, detail=f"Provider {provider_id} does not exist")
 
-        # 测试模型状态
+        # Test model status.
         status = await test_chat_model_status(provider_id, model_name)
-        return {"status": status, "message": "测试完成"}
+        return {"status": status, "message": "Test completed"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"测试自定义供应商失败 {provider_id}/{model_name}: {e}")
+        logger.error(
+            f"Failed to test custom provider {provider_id}/{model_name}: {e}")
         return {
-            "message": f"测试自定义供应商失败: {e}",
+            "message": f"Failed to test custom provider: {e}",
             "status": {"provider": provider_id, "model_name": model_name, "status": "error", "message": str(e)},
         }

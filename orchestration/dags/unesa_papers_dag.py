@@ -25,46 +25,41 @@ import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.models import Variable
 from airflow.providers.ssh.operators.ssh import SSHOperator
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.bash import BashOperator
 
 AIRFLOW_ENV = os.environ.get("AIRFLOW_ENV", "production")
 
 # --- Constants --------------------------------------------------
 
-ETL_WORKER_IMAGE = "rizyyk/unesa-etl:v3"
-DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "unesa_etl_network")
-HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "/home/shared/vols/etl/unesa_research_data")
+ETL_WORKER_IMAGE = os.environ.get("ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:latest")
+DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "tugas-akhir-network")
+HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "./data")
 
 
 def _get_docker_bash_cmd(command: str) -> str:
-    """
-    Constructs a full 'docker run' command string for the SSHOperator.
-    Maps all necessary environment variables, network, and volumes.
-    """
+    # Using Jinja templates {{ var.value.VAR_NAME }} for Airflow compatibility
     return f"""
-        docker pull {ETL_WORKER_IMAGE} && \
-        docker run --rm \
-        --network {DOCKER_NETWORK} \
-        --shm-size 2g \
-        -v {HOST_DATA_DIR}:/app/data \
-        -e SUPABASE_URL="{Variable.get('SUPABASE_URL_SECRET', '')}" \
-        -e SUPABASE_KEY="{Variable.get('SUPABASE_KEY_SECRET', '')}" \
-        -e ELSEVIER_EMAIL="{Variable.get('SCIVAL_EMAIL_SECRET', '')}" \
-        -e ELSEVIER_PASSWORD="{Variable.get('SCIVAL_PASS_SECRET', '')}" \
-        -e SCIVAL_EMAIL="{Variable.get('SCIVAL_EMAIL_SECRET', '')}" \
-        -e SCIVAL_PASS="{Variable.get('SCIVAL_PASS_SECRET', '')}" \
-        -e SERPAPI_KEY="{Variable.get('SERPAPI_KEY_SECRET', '')}" \
-        -e BRIGHT_DATA_HOST="{Variable.get('BRIGHT_DATA_HOST', 'brd.superproxy.io:33335')}" \
-        -e BD_USER_UNLOCKER="{Variable.get('BD_USER_UNLOCKER_SECRET', '')}" \
-        -e BD_PASS_UNLOCKER="{Variable.get('BD_PASS_UNLOCKER_SECRET', '')}" \
-        -e BD_USER_SERP="{Variable.get('BD_USER_SERP_SECRET', '')}" \
-        -e BD_PASS_SERP="{Variable.get('BD_PASS_SERP_SECRET', '')}" \
-        -e GROQ_API_KEY="{Variable.get('GROQ_API_KEY_SECRET', '')}" \
-        -e NOTIFICATION_EMAIL="{Variable.get('NOTIFICATION_EMAIL_SECRET', '')}" \
-        {ETL_WORKER_IMAGE} {command}
-    """
+docker run --rm \
+--network {DOCKER_NETWORK} \
+--shm-size 2g \
+-v {HOST_DATA_DIR}:/app/data \
+-e SUPABASE_URL="{{{{ var.value.SUPABASE_URL_SECRET }}}}" \
+-e SUPABASE_KEY="{{{{ var.value.SUPABASE_KEY_SECRET }}}}" \
+-e ELSEVIER_EMAIL="{{{{ var.value.SCIVAL_EMAIL_SECRET }}}}" \
+-e ELSEVIER_PASSWORD="{{{{ var.value.SCIVAL_PASS_SECRET }}}}" \
+-e SCIVAL_EMAIL="{{{{ var.value.SCIVAL_EMAIL_SECRET }}}}" \
+-e SCIVAL_PASS="{{{{ var.value.SCIVAL_PASS_SECRET }}}}" \
+-e SERPAPI_KEY="{{{{ var.value.SERPAPI_KEY_SECRET }}}}" \
+-e BRIGHT_DATA_HOST="{{{{ var.value.BRIGHT_DATA_HOST }}}}" \
+-e BD_USER_UNLOCKER="{{{{ var.value.BD_USER_UNLOCKER_SECRET }}}}" \
+-e BD_PASS_UNLOCKER="{{{{ var.value.BD_PASS_UNLOCKER_SECRET }}}}" \
+-e BD_USER_SERP="{{{{ var.value.BD_USER_SERP_SECRET }}}}" \
+-e BD_PASS_SERP="{{{{ var.value.BD_PASS_SERP_SECRET }}}}" \
+-e GROQ_API_KEY="{{{{ var.value.GROQ_API_KEY_SECRET }}}}" \
+-e NOTIFICATION_EMAIL="{{{{ var.value.NOTIFICATION_EMAIL_SECRET }}}}" \
+{ETL_WORKER_IMAGE} {command}
+""".strip()
 
 
 # --- DAG Configuration ------------------------------------------

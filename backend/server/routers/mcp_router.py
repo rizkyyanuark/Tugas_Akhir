@@ -1,4 +1,4 @@
-"""MCP 服务器管理路由"""
+"""MCP server management routes."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -28,36 +28,42 @@ mcp = APIRouter(prefix="/system/mcp-servers", tags=["mcp"])
 
 
 class CreateMcpServerRequest(BaseModel):
-    name: str = Field(..., description="服务器名称")
-    transport: str = Field(..., description="传输类型：sse/streamable_http/stdio")
-    url: str | None = Field(None, description="服务器 URL（sse/streamable_http）")
-    command: str | None = Field(None, description="命令（stdio）")
-    args: list | None = Field(None, description="命令参数数组（stdio）")
-    env: dict | None = Field(None, description="环境变量（stdio）")
-    description: str | None = Field(None, description="描述")
-    headers: dict | None = Field(None, description="HTTP 请求头")
-    timeout: int | None = Field(None, description="HTTP 超时时间（秒）")
-    sse_read_timeout: int | None = Field(None, description="SSE 读取超时（秒）")
-    tags: list | None = Field(None, description="标签数组")
-    icon: str | None = Field(None, description="图标（emoji）")
+    name: str = Field(..., description="servername")
+    transport: str = Field(...,
+                           description="Transport type: sse/streamable_http/stdio")
+    url: str | None = Field(
+        None, description="Server URL (sse/streamable_http)")
+    command: str | None = Field(None, description="Command (stdio)")
+    args: list | None = Field(
+        None, description="Command argument array (stdio)")
+    env: dict | None = Field(None, description="Environment variables (stdio)")
+    description: str | None = Field(None, description="description")
+    headers: dict | None = Field(None, description="HTTP request headers")
+    timeout: int | None = Field(None, description="HTTP timeout (seconds)")
+    sse_read_timeout: int | None = Field(
+        None, description="SSE read timeout (seconds)")
+    tags: list | None = Field(None, description="Tag array")
+    icon: str | None = Field(None, description="Icon (emoji)")
 
 
 class UpdateMcpServerRequest(BaseModel):
-    transport: str | None = Field(None, description="传输类型")
-    url: str | None = Field(None, description="服务器 URL")
-    command: str | None = Field(None, description="命令（stdio）")
-    args: list | None = Field(None, description="命令参数数组（stdio）")
-    env: dict | None = Field(None, description="环境变量（stdio）")
-    description: str | None = Field(None, description="描述")
-    headers: dict | None = Field(None, description="HTTP 请求头")
-    timeout: int | None = Field(None, description="HTTP 超时时间（秒）")
-    sse_read_timeout: int | None = Field(None, description="SSE 读取超时（秒）")
-    tags: list | None = Field(None, description="标签数组")
-    icon: str | None = Field(None, description="图标（emoji）")
+    transport: str | None = Field(None, description="Transport type")
+    url: str | None = Field(None, description="server URL")
+    command: str | None = Field(None, description="Command (stdio)")
+    args: list | None = Field(
+        None, description="Command argument array (stdio)")
+    env: dict | None = Field(None, description="Environment variables (stdio)")
+    description: str | None = Field(None, description="description")
+    headers: dict | None = Field(None, description="HTTP request headers")
+    timeout: int | None = Field(None, description="HTTP timeout (seconds)")
+    sse_read_timeout: int | None = Field(
+        None, description="SSE read timeout (seconds)")
+    tags: list | None = Field(None, description="Tag array")
+    icon: str | None = Field(None, description="Icon (emoji)")
 
 
 class UpdateMcpServerStatusRequest(BaseModel):
-    enabled: bool = Field(..., description="是否启用")
+    enabled: bool = Field(..., description="Whether enabled")
 
 
 # =============================================================================
@@ -69,12 +75,13 @@ async def get_server_or_404(db: AsyncSession, name: str):
     """Helper to get server or raise 404."""
     server = await get_mcp_server(db, name)
     if not server:
-        raise HTTPException(status_code=404, detail=f"服务器 '{name}' 不存在")
+        raise HTTPException(
+            status_code=404, detail=f"server '{name}' does not exist")
     return server
 
 
 # =============================================================================
-# === MCP 服务器 CRUD ===
+# === MCP server CRUD ===
 # =============================================================================
 
 
@@ -83,7 +90,7 @@ async def get_mcp_servers(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取所有 MCP 服务器配置"""
+    """Get all MCP server configurations."""
     try:
         servers = await get_all_mcp_servers(db)
         return {"success": True, "data": [s.to_dict() for s in servers]}
@@ -98,17 +105,20 @@ async def create_mcp_server_route(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建新的 MCP 服务器"""
-    # 校验传输类型
+    """Create a new MCP server."""
+    # Validate transport type.
     valid_transports = ("sse", "streamable_http", "stdio")
     if request.transport not in valid_transports:
-        raise HTTPException(status_code=400, detail=f"传输类型必须是 {', '.join(valid_transports)} 之一")
+        raise HTTPException(
+            status_code=400, detail=f"Transport type must be one of: {', '.join(valid_transports)}")
 
-    # 根据传输类型校验必填字段
+    # Validate required fields by transport type.
     if request.transport in ("sse", "streamable_http") and not request.url:
-        raise HTTPException(status_code=400, detail=f"传输类型为 {request.transport} 时，url 必填")
+        raise HTTPException(
+            status_code=400, detail=f"URL is required when transport type is {request.transport}")
     if request.transport == "stdio" and not request.command:
-        raise HTTPException(status_code=400, detail="传输类型为 stdio 时，command 必填")
+        raise HTTPException(
+            status_code=400, detail="Command is required when transport type is stdio")
 
     try:
         server = await create_mcp_server(
@@ -141,7 +151,7 @@ async def get_mcp_server_route(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取单个 MCP 服务器配置"""
+    """Get a single MCP server configuration."""
     try:
         server = await get_server_or_404(db, name)
         return {"success": True, "data": server.to_dict()}
@@ -159,14 +169,16 @@ async def update_mcp_server_route(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新 MCP 服务器配置"""
-    # 校验传输类型
+    """Update MCP server configuration."""
+    # Validate transport type.
     valid_transports = ("sse", "streamable_http", "stdio")
     if request.transport is not None and request.transport not in valid_transports:
-        raise HTTPException(status_code=400, detail=f"传输类型必须是 {', '.join(valid_transports)} 之一")
+        raise HTTPException(
+            status_code=400, detail=f"Transport type must be one of: {', '.join(valid_transports)}")
 
     try:
-        fields_set = getattr(request, "model_fields_set", getattr(request, "__fields_set__", set()))
+        fields_set = getattr(request, "model_fields_set",
+                             getattr(request, "__fields_set__", set()))
         update_kwargs = {}
         if "env" in fields_set:
             update_kwargs["env"] = request.env
@@ -201,17 +213,19 @@ async def delete_mcp_server_route(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除 MCP 服务器"""
+    """delete MCP server"""
     try:
-        # 检查是否为系统内置服务器
+        # Check whether this is a built-in system server.
         server = await get_mcp_server(db, name)
         if server and server.created_by == "system":
-            raise HTTPException(status_code=403, detail="系统内置的 MCP 服务器无法删除")
+            raise HTTPException(
+                status_code=403, detail="Built-in system MCP servers cannot be deleted")
 
         deleted = await delete_mcp_server(db, name)
         if not deleted:
-            raise HTTPException(status_code=404, detail=f"服务器 '{name}' 不存在")
-        return {"success": True, "message": f"服务器 '{name}' 已删除"}
+            raise HTTPException(
+                status_code=404, detail=f"server '{name}' does not exist")
+        return {"success": True, "message": f"server '{name}' deleted"}
     except HTTPException:
         raise
     except Exception as e:
@@ -220,7 +234,7 @@ async def delete_mcp_server_route(
 
 
 # =============================================================================
-# === MCP 服务器操作 ===
+# === MCP serveroperation ===
 # =============================================================================
 
 
@@ -230,7 +244,7 @@ async def test_mcp_server(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """测试 MCP 服务器连接"""
+    """Test MCP server connectivity."""
     try:
         await get_server_or_404(db, name)
 
@@ -238,11 +252,12 @@ async def test_mcp_server(
             tools = await get_all_mcp_tools(name)
             return {
                 "success": True,
-                "message": f"连接成功，共发现 {len(tools)} 个工具",
+                "message": f"Connection successful, found {len(tools)} tools",
                 "tool_count": len(tools),
             }
         except Exception as test_error:
-            raise HTTPException(status_code=500, detail=f"连接失败: {str(test_error)}")
+            raise HTTPException(
+                status_code=500, detail=f"connection failed: {str(test_error)}")
     except HTTPException:
         raise
     except Exception as e:
@@ -257,14 +272,14 @@ async def update_mcp_server_status_route(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新 MCP 服务器启用状态"""
+    """Update MCP server enabled status."""
     try:
         is_enabled, server = await set_server_enabled(db, name, request.enabled, current_user.username)
         return {
             "success": True,
             "enabled": is_enabled,
             "data": server.to_dict(),
-            "message": f"MCP '{name}' 已{'添加' if is_enabled else '移除'}",
+            "message": f"MCP '{name}' {'enabled' if is_enabled else 'disabled'}",
         }
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
@@ -274,7 +289,7 @@ async def update_mcp_server_status_route(
 
 
 # =============================================================================
-# === MCP 工具管理 ===
+# === MCP toolmanagement ===
 # =============================================================================
 
 
@@ -284,19 +299,20 @@ async def get_mcp_server_tools(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取 MCP 服务器的工具列表"""
+    """Get MCP server tool list."""
     try:
         server = await get_server_or_404(db, name)
         disabled_tools = server.disabled_tools or []
 
         try:
-            # 获取所有工具（不过滤 disabled_tools）
+            # Get all tools (do not filter disabled tools).
             tools = await get_all_mcp_tools(name)
             tool_list = []
 
             for tool in tools:
                 original_name = tool.name
-                unique_id = tool.metadata.get("id") if tool.metadata else original_name
+                unique_id = tool.metadata.get(
+                    "id") if tool.metadata else original_name
 
                 tool_info = {
                     "name": original_name,
@@ -304,9 +320,10 @@ async def get_mcp_server_tools(
                     "description": getattr(tool, "description", ""),
                     "enabled": original_name not in disabled_tools,
                 }
-                # 提取参数信息
+                # Extract parameter metadata.
                 if hasattr(tool, "args_schema") and tool.args_schema:
-                    schema = tool.args_schema.schema() if hasattr(tool.args_schema, "schema") else {}
+                    schema = tool.args_schema.schema() if hasattr(
+                        tool.args_schema, "schema") else {}
                     tool_info["parameters"] = schema.get("properties", {})
                     tool_info["required"] = schema.get("required", [])
                 else:
@@ -320,8 +337,10 @@ async def get_mcp_server_tools(
                 "total": len(tool_list),
             }
         except Exception as tool_error:
-            logger.error(f"Failed to get tools from MCP server '{name}': {tool_error}")
-            raise HTTPException(status_code=500, detail=f"获取工具失败: {str(tool_error)}")
+            logger.error(
+                f"Failed to get tools from MCP server '{name}': {tool_error}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to get tools: {str(tool_error)}")
     except HTTPException:
         raise
     except Exception as e:
@@ -335,24 +354,25 @@ async def refresh_mcp_server_tools(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """刷新 MCP 服务器的工具列表（清除缓存重新获取）"""
+    """Refresh MCP server tool list (clear cache and fetch again)."""
     try:
         await get_server_or_404(db, name)
 
         try:
-            # 获取所有工具（不过滤 disabled_tools）
+            # Get all tools (do not filter disabled tools).
             tools = await get_all_mcp_tools(name)
 
-            # 获取统计信息
+            # Get tool statistics.
             stats = get_mcp_tools_stats(name)
-            enabled_count = stats.get("enabled", len(tools)) if stats else len(tools)
+            enabled_count = stats.get(
+                "enabled", len(tools)) if stats else len(tools)
             disabled_count = stats.get("disabled", 0) if stats else 0
 
-            message = "工具列表已刷新"
+            message = "Tool list refreshed"
             if disabled_count > 0:
-                message += f"，{enabled_count} 个已启用，{disabled_count} 个已禁用"
+                message += f", {enabled_count} enabled, {disabled_count} disabled"
             else:
-                message += f"，共发现 {enabled_count} 个工具"
+                message += f", found {enabled_count} tools"
 
             return {
                 "success": True,
@@ -362,7 +382,8 @@ async def refresh_mcp_server_tools(
                 "disabled_count": disabled_count,
             }
         except Exception as tool_error:
-            raise HTTPException(status_code=500, detail=f"刷新失败: {str(tool_error)}")
+            raise HTTPException(
+                status_code=500, detail=f"Refresh failed: {str(tool_error)}")
     except HTTPException:
         raise
     except Exception as e:
@@ -377,14 +398,14 @@ async def toggle_mcp_server_tool_route(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """切换单个工具的启用状态"""
+    """Toggle enabled status of a single tool."""
     try:
         enabled, server = await toggle_tool_enabled(db, name, tool_name, current_user.username)
         return {
             "success": True,
             "tool_name": tool_name,
             "enabled": enabled,
-            "message": f"工具 '{tool_name}' 已{'启用' if enabled else '禁用'}",
+            "message": f"Tool '{tool_name}' {'enabled' if enabled else 'disabled'}",
         }
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))

@@ -24,6 +24,9 @@ ARG CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints
 
 RUN uv pip install --system --no-cache \
     "apache-airflow-providers-docker" \
+    "apache-airflow-providers-fab" \
+    "apache-airflow-providers-ssh" \
+    "apache-airflow-providers-standard" \
     "requests" \
     "psycopg2-binary" \
     --constraint "${CONSTRAINT_URL}"

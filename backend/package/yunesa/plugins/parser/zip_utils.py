@@ -24,12 +24,12 @@ async def process_zip_file(
     image_prefix: str = DEFAULT_IMAGE_PREFIX,
 ) -> dict:
     """
-    处理ZIP文件，提取markdown内容和图片
+    Process ZIP file and extract markdown content and images.
 
     Args:
-        zip_path: ZIP文件路径
-        image_bucket: 图片上传的目标 bucket
-        image_prefix: 图片上传对象前缀
+        zip_path: ZIP file path.
+        image_bucket: Target bucket for image uploads.
+        image_prefix: Object prefix for uploaded images.
 
     Returns:
         dict: {
@@ -41,15 +41,17 @@ async def process_zip_file(
     with zipfile.ZipFile(zip_path, "r") as zf:
         for name in zf.namelist():
             if name.startswith("/") or name.startswith("\\"):
-                raise ValueError(f"ZIP 包含不安全路径: {name}")
+                raise ValueError(f"ZIP contains unsafe path: {name}")
             if ".." in Path(name).parts:
-                raise ValueError(f"ZIP 路径包含上级引用: {name}")
+                raise ValueError(
+                    f"ZIP path contains parent-directory reference: {name}")
 
         md_files = [n for n in zf.namelist() if n.lower().endswith(".md")]
         if not md_files:
-            raise ValueError("压缩包中未找到 .md 文件")
+            raise ValueError("No .md file found in archive")
 
-        md_file = next((n for n in md_files if Path(n).name == "full.md"), md_files[0])
+        md_file = next((n for n in md_files if Path(
+            n).name == "full.md"), md_files[0])
 
         with zf.open(md_file) as f:
             markdown_content = f.read().decode("utf-8")
@@ -65,7 +67,8 @@ async def process_zip_file(
                 image_bucket=image_bucket,
                 image_prefix=normalized_prefix,
             )
-            markdown_content = replace_image_links(markdown_content, images_info)
+            markdown_content = replace_image_links(
+                markdown_content, images_info)
 
     content_hash = hashlib.sha256(markdown_content.encode("utf-8")).hexdigest()
 
@@ -81,7 +84,7 @@ def process_zip_file_sync(
     image_bucket: str = DEFAULT_IMAGE_BUCKET,
     image_prefix: str = DEFAULT_IMAGE_PREFIX,
 ) -> dict:
-    """同步调用 ZIP 处理，供同步解析器使用。"""
+    """Synchronously run ZIP processing for sync parser usage."""
     try:
         asyncio.get_running_loop()
     except RuntimeError:
@@ -93,7 +96,8 @@ def process_zip_file_sync(
     def runner() -> None:
         nonlocal result, error
         try:
-            result = asyncio.run(process_zip_file(zip_path, image_bucket=image_bucket, image_prefix=image_prefix))
+            result = asyncio.run(process_zip_file(
+                zip_path, image_bucket=image_bucket, image_prefix=image_prefix))
         except Exception as exc:  # pragma: no cover - pass through outer raise
             error = exc
 
@@ -107,18 +111,19 @@ def process_zip_file_sync(
         raise error
 
     if result is None:
-        raise RuntimeError("ZIP 处理失败: 未返回结果")
+        raise RuntimeError("ZIP processing failed: no result returned")
 
     return result
 
 
 def find_images_directory(zip_file: zipfile.ZipFile, md_file_path: str) -> str | None:
-    """查找images目录"""
+    """Find images directory in archive."""
     md_parent = Path(md_file_path).parent
 
     candidates = []
     if str(md_parent) != ".":
-        candidates.extend([str(md_parent / "images"), str(md_parent.parent / "images")])
+        candidates.extend([str(md_parent / "images"),
+                          str(md_parent.parent / "images")])
     candidates.append("images")
 
     for cand in candidates:
@@ -135,11 +140,12 @@ async def process_images(
     image_bucket: str,
     image_prefix: str,
 ) -> list[dict]:
-    """处理图片：上传到MinIO并返回信息"""
+    """Process images: upload to MinIO and return metadata."""
     supported_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 
     images = []
-    image_names = [n for n in zip_file.namelist() if n.startswith(images_dir + "/")]
+    image_names = [n for n in zip_file.namelist(
+    ) if n.startswith(images_dir + "/")]
     normalized_prefix = _normalize_object_prefix(image_prefix)
 
     minio_client = get_minio_client()
@@ -170,17 +176,18 @@ async def process_images(
             }
             images.append(img_info)
 
-            logger.debug(f"图片上传成功: {Path(img_name).name} -> {result.url}")
+            logger.debug(
+                f"Image upload successful: {Path(img_name).name} -> {result.url}")
 
         except Exception as e:
-            logger.error(f"上传图片失败 {Path(img_name).name}: {e}")
+            logger.error(f"Image upload failed {Path(img_name).name}: {e}")
             continue
 
     return images
 
 
 def replace_image_links(markdown_content: str, images: list[dict]) -> str:
-    """替换markdown中的图片链接为MinIO URL"""
+    """Replace image links in markdown with MinIO URLs."""
     if not images:
         return markdown_content
 

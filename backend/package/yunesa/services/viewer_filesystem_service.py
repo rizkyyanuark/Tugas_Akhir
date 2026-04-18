@@ -69,7 +69,8 @@ _TEXT_EXTENSIONS = frozenset(
         ".weather",
     }
 )
-_IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg"})
+_IMAGE_EXTENSIONS = frozenset(
+    {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg"})
 _BINARY_SIGNATURES = (
     b"\x7fELF",
     b"MZ",
@@ -110,12 +111,12 @@ def _detect_preview_type(path: str, raw_content: bytes) -> tuple[str, bool, str 
         return "text", True, None
 
     if b"\x00" in head:
-        return "unsupported", False, "当前文件是二进制文件，暂不支持预览"
+        return "unsupported", False, "Current file is binary and preview is not supported yet"
 
     if any(head.startswith(signature) for signature in _BINARY_SIGNATURES):
         if head.startswith(b"RIFF") and b"WEBP" in head[:16]:
             return "image", True, None
-        return "unsupported", False, "当前文件格式暂不支持预览"
+        return "unsupported", False, "Current file format is not supported for preview yet"
 
     if mime_type:
         if mime_type.startswith("text/"):
@@ -123,7 +124,7 @@ def _detect_preview_type(path: str, raw_content: bytes) -> tuple[str, bool, str 
         if mime_type in {"application/json", "application/xml", "application/javascript"}:
             return "text", True, None
         if mime_type.startswith("application/"):
-            return "unsupported", False, "当前文件格式暂不支持预览"
+            return "unsupported", False, "Current file format is not supported for preview yet"
 
     if not raw_content:
         return "text", True, None
@@ -132,7 +133,7 @@ def _detect_preview_type(path: str, raw_content: bytes) -> tuple[str, bool, str 
         raw_content.decode("utf-8")
         return "text", True, None
     except UnicodeDecodeError:
-        return "unsupported", False, "当前文件不是可读文本，暂不支持预览"
+        return "unsupported", False, "Current file is not readable text and preview is not supported yet"
 
 
 def _normalize_path(path: str | None) -> str:
@@ -154,9 +155,10 @@ def _resolve_local_user_data_path(thread_id: str, user_id: str, path: str) -> Pa
     try:
         actual_path = resolve_virtual_path(thread_id, path, user_id=user_id)
     except ValueError as exc:
-        # 真实路径越过允许根目录时，按权限拒绝处理，而不是当作普通参数错误。
+        # When actual path escapes allowed roots, reject as permission denied instead of parameter error.
         if "path traversal" in str(exc):
-            raise HTTPException(status_code=403, detail="Access denied") from exc
+            raise HTTPException(
+                status_code=403, detail="Access denied") from exc
         raise
     resolved_path = actual_path.resolve()
     allowed_roots = (
@@ -185,10 +187,10 @@ def _is_kbs_path(path: str) -> bool:
 
 
 def _is_in_home_gem(path: str) -> bool:
-    """检查路径是否在 /home/gem/ 下但不在虚拟挂载点内"""
+    """Check whether path is under /home/gem/ but outside virtual mount points."""
     if not path.startswith("/home/gem/"):
         return False
-    # 排除虚拟挂载点
+    # Exclude virtual mount points.
     if path.startswith(f"{USER_DATA_PATH}/") or path == USER_DATA_PATH:
         return False
     if path.startswith(f"{SKILLS_PATH}/") or path == SKILLS_PATH:
@@ -201,13 +203,13 @@ def _is_in_home_gem(path: str) -> bool:
 def _strip_skills_prefix(path: str) -> str:
     if path == SKILLS_PATH:
         return "/"
-    return path[len(SKILLS_PATH) :] or "/"
+    return path[len(SKILLS_PATH):] or "/"
 
 
 def _strip_kbs_prefix(path: str) -> str:
     if path == KBS_PATH:
         return "/"
-    return path[len(KBS_PATH) :] or "/"
+    return path[len(KBS_PATH):] or "/"
 
 
 def _remap_prefixed_entry(entry: dict, prefix: str) -> dict:
@@ -261,7 +263,8 @@ def _sort_entries(entries: list[dict]) -> list[dict]:
 def _entry_for_local_path(thread_id: str, user_id: str, path: Path) -> dict:
     stat = path.stat()
     is_dir = path.is_dir()
-    display_path = virtual_path_for_thread_file(thread_id, path, user_id=user_id)
+    display_path = virtual_path_for_thread_file(
+        thread_id, path, user_id=user_id)
     if is_dir and not display_path.endswith("/"):
         display_path = f"{display_path}/"
     return {
@@ -284,31 +287,39 @@ def _list_local_entries(thread_id: str, user_id: str, actual_path) -> list[dict]
 def _validate_child_name(name: str, *, field_name: str) -> str:
     clean_name = str(name or "").strip()
     if not clean_name:
-        raise HTTPException(status_code=422, detail=f"{field_name} 不能为空")
+        raise HTTPException(
+            status_code=422, detail=f"{field_name} cannot be empty")
     if clean_name in {".", ".."} or "/" in clean_name or "\\" in clean_name:
-        raise HTTPException(status_code=422, detail=f"{field_name} 不能包含路径分隔符")
+        raise HTTPException(
+            status_code=422, detail=f"{field_name} cannot contain path separators")
     if PurePosixPath(clean_name).name != clean_name:
-        raise HTTPException(status_code=422, detail=f"{field_name} 不能包含路径分隔符")
+        raise HTTPException(
+            status_code=422, detail=f"{field_name} cannot contain path separators")
     return clean_name
 
 
 def _resolve_workspace_parent_dir(thread_id: str, user_id: str, parent_path: str) -> Path:
     normalized_parent = _normalize_path(parent_path)
     if not _is_workspace_path(normalized_parent):
-        raise HTTPException(status_code=400, detail="当前路径不支持写入")
+        raise HTTPException(
+            status_code=400, detail="Current path does not support write operations")
 
     ensure_thread_dirs(thread_id, user_id)
     try:
-        actual_parent = _resolve_local_user_data_path(thread_id, user_id, normalized_parent)
+        actual_parent = _resolve_local_user_data_path(
+            thread_id, user_id, normalized_parent)
     except ValueError as exc:
-        # workspace 写入边界按真实路径校验，软链接逃逸应表现为权限拒绝。
+        # Validate workspace write boundaries using resolved path; symlink escape should be denied by permission.
         if "path traversal" in str(exc):
-            raise HTTPException(status_code=403, detail="Access denied") from exc
+            raise HTTPException(
+                status_code=403, detail="Access denied") from exc
         raise
     if not actual_parent.exists():
-        raise HTTPException(status_code=404, detail="目标目录不存在")
+        raise HTTPException(
+            status_code=404, detail="Target directory does not exist")
     if not actual_parent.is_dir():
-        raise HTTPException(status_code=400, detail="目标路径不是目录")
+        raise HTTPException(
+            status_code=400, detail="Target path is not a directory")
     return actual_parent
 
 
@@ -318,16 +329,20 @@ def _resolve_new_workspace_child(thread_id: str, user_id: str, parent_path: Path
     if not _is_path_within(target_path.resolve(strict=False), workspace_root):
         raise HTTPException(status_code=403, detail="Access denied")
     if target_path.exists():
-        raise HTTPException(status_code=400, detail="同名文件或文件夹已存在")
+        raise HTTPException(
+            status_code=400, detail="A file or folder with the same name already exists")
     return target_path
 
 
 def _list_user_data_root_entries(thread_id: str, user_id: str) -> list[dict]:
     """Expose thread-root files while keeping the user workspace entry visible."""
-    entries = _list_local_entries(thread_id, user_id, sandbox_user_data_dir(thread_id))
-    visible_paths = {str(entry.get("path") or "").rstrip("/") for entry in entries}
+    entries = _list_local_entries(
+        thread_id, user_id, sandbox_user_data_dir(thread_id))
+    visible_paths = {str(entry.get("path") or "").rstrip("/")
+                     for entry in entries}
     workspace_dir = sandbox_workspace_dir(thread_id, user_id)
-    workspace_virtual_path = virtual_path_for_thread_file(thread_id, workspace_dir, user_id=user_id).rstrip("/")
+    workspace_virtual_path = virtual_path_for_thread_file(
+        thread_id, workspace_dir, user_id=user_id).rstrip("/")
     if workspace_virtual_path not in visible_paths:
         # workspace is stored outside the per-thread root, so add it explicitly when needed.
         stat = workspace_dir.stat()
@@ -359,8 +374,10 @@ async def _resolve_viewer_state(
         agent_config_id=agent_config_id,
     )
     visible_kbs = await resolve_visible_knowledge_bases_for_context(runtime_context)
-    selected_skills = normalize_selected_skills(getattr(runtime_context, "skills", None) or [])
-    skills_backend = SelectedSkillsReadonlyBackend(selected_slugs=selected_skills)
+    selected_skills = normalize_selected_skills(
+        getattr(runtime_context, "skills", None) or [])
+    skills_backend = SelectedSkillsReadonlyBackend(
+        selected_slugs=selected_skills)
     kb_backend = KnowledgeBaseReadonlyBackend(visible_kbs=visible_kbs)
     return sandbox_backend, skills_backend, kb_backend, selected_skills
 
@@ -375,7 +392,8 @@ async def list_viewer_filesystem_tree(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
 
     normalized_path = _normalize_path(path)
     sandbox_backend, skills_backend, kb_backend, selected_skills = await _resolve_viewer_state(
@@ -387,16 +405,19 @@ async def list_viewer_filesystem_tree(
     )
 
     if normalized_path == "/":
-        # 根目录只显示 viewer 暴露的虚拟命名空间，避免为只读树视图触发 sandbox 冷启动。
+        # At root, only show viewer-exposed virtual namespaces to avoid sandbox cold start for readonly tree view.
         entries = []
 
         entries.append(
-            {"path": f"{USER_DATA_PATH}/", "name": "user-data", "is_dir": True, "size": 0, "modified_at": ""}
+            {"path": f"{USER_DATA_PATH}/", "name": "user-data",
+                "is_dir": True, "size": 0, "modified_at": ""}
         )
         if selected_skills:
-            entries.append({"path": f"{SKILLS_PATH}/", "name": "skills", "is_dir": True, "size": 0, "modified_at": ""})
+            entries.append({"path": f"{SKILLS_PATH}/", "name": "skills",
+                           "is_dir": True, "size": 0, "modified_at": ""})
         if kb_backend.has_entries():
-            entries.append({"path": f"{KBS_PATH}/", "name": "kbs", "is_dir": True, "size": 0, "modified_at": ""})
+            entries.append({"path": f"{KBS_PATH}/", "name": "kbs",
+                           "is_dir": True, "size": 0, "modified_at": ""})
 
         return {"entries": _sort_entries(entries)}
 
@@ -407,28 +428,33 @@ async def list_viewer_filesystem_tree(
             if normalized_path == USER_DATA_PATH:
                 entries = await asyncio.to_thread(_list_user_data_root_entries, thread_id, user_id)
                 return {"entries": _sort_entries(entries)}
-            actual_path = _resolve_local_user_data_path(thread_id, user_id, normalized_path)
+            actual_path = _resolve_local_user_data_path(
+                thread_id, user_id, normalized_path)
             if not actual_path.exists():
                 return {"entries": []}
             if not actual_path.is_dir():
-                raise HTTPException(status_code=400, detail="当前路径不是目录")
+                raise HTTPException(
+                    status_code=400, detail="Current path is not a directory")
             entries = await asyncio.to_thread(_list_local_entries, thread_id, user_id, actual_path)
             return {"entries": _sort_entries(entries)}
 
         if _is_skills_path(normalized_path):
             entries = await asyncio.to_thread(skills_backend.ls_info, _strip_skills_prefix(normalized_path))
-            remapped = [_remap_prefixed_entry(entry, SKILLS_PATH) for entry in entries]
+            remapped = [_remap_prefixed_entry(
+                entry, SKILLS_PATH) for entry in entries]
             return {"entries": _sort_entries(remapped)}
         if _is_kbs_path(normalized_path):
             entries = await asyncio.to_thread(kb_backend.ls_info, _strip_kbs_prefix(normalized_path))
-            remapped = [_remap_prefixed_entry(entry, KBS_PATH) for entry in entries]
+            remapped = [_remap_prefixed_entry(
+                entry, KBS_PATH) for entry in entries]
             return {"entries": _sort_entries(remapped)}
     except PermissionError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
-    raise HTTPException(status_code=400, detail=f"Access denied: '{normalized_path}' is outside viewer namespace")
+    raise HTTPException(
+        status_code=400, detail=f"Access denied: '{normalized_path}' is outside viewer namespace")
 
 
 async def read_viewer_file_content(
@@ -441,7 +467,8 @@ async def read_viewer_file_content(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
     normalized_path = _normalize_path(path)
 
     sandbox_backend, skills_backend, kb_backend, _selected_skills = await _resolve_viewer_state(
@@ -454,13 +481,17 @@ async def read_viewer_file_content(
 
     try:
         if _is_user_data_path(normalized_path):
-            actual_path = _resolve_local_user_data_path(thread_id, str(current_user.id), normalized_path)
+            actual_path = _resolve_local_user_data_path(
+                thread_id, str(current_user.id), normalized_path)
             if not actual_path.exists():
-                raise HTTPException(status_code=404, detail="文件不存在")
+                raise HTTPException(
+                    status_code=404, detail="filedoes not exist")
             if not actual_path.is_file():
-                raise HTTPException(status_code=400, detail="当前路径是目录")
+                raise HTTPException(
+                    status_code=400, detail="Current path is a directory")
             raw_content = await asyncio.to_thread(actual_path.read_bytes)
-            preview_type, supported, message = _detect_preview_type(normalized_path, raw_content)
+            preview_type, supported, message = _detect_preview_type(
+                normalized_path, raw_content)
             if preview_type in {"image", "pdf"} or not supported:
                 return {
                     "content": None,
@@ -479,7 +510,7 @@ async def read_viewer_file_content(
         elif _is_kbs_path(normalized_path):
             responses = await asyncio.to_thread(kb_backend.download_files, [_strip_kbs_prefix(normalized_path)])
         elif _is_in_home_gem(normalized_path):
-            # /home/gem/ 下的其他文件（如 workspace 目录）
+            # Other files under /home/gem/ (such as workspace directory)
             responses = await asyncio.to_thread(sandbox_backend.download_files, [normalized_path])
         else:
             raise HTTPException(
@@ -493,14 +524,16 @@ async def read_viewer_file_content(
 
     response = responses[0] if responses else None
     if response is None or response.error == "file_not_found":
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise HTTPException(status_code=404, detail="filedoes not exist")
     if response.error == "is_directory":
-        raise HTTPException(status_code=400, detail="当前路径是目录")
+        raise HTTPException(
+            status_code=400, detail="Current path is a directory")
     if response.error:
         raise HTTPException(status_code=400, detail=str(response.error))
 
     raw_content = response.content or b""
-    preview_type, supported, message = _detect_preview_type(normalized_path, raw_content)
+    preview_type, supported, message = _detect_preview_type(
+        normalized_path, raw_content)
 
     if preview_type in {"image", "pdf"}:
         return {
@@ -547,14 +580,18 @@ async def download_viewer_file(
 
     try:
         if _is_user_data_path(normalized_path):
-            actual_path = _resolve_local_user_data_path(thread_id, str(current_user.id), normalized_path)
+            actual_path = _resolve_local_user_data_path(
+                thread_id, str(current_user.id), normalized_path)
             if not actual_path.exists():
-                raise HTTPException(status_code=404, detail="文件不存在")
+                raise HTTPException(
+                    status_code=404, detail="filedoes not exist")
             if not actual_path.is_file():
-                raise HTTPException(status_code=400, detail="当前路径是目录")
+                raise HTTPException(
+                    status_code=400, detail="Current path is a directory")
 
             file_name = actual_path.name or "download"
-            media_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+            media_type = mimetypes.guess_type(
+                file_name)[0] or "application/octet-stream"
             headers = {
                 "Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name)}",
             }
@@ -565,7 +602,7 @@ async def download_viewer_file(
         elif _is_kbs_path(normalized_path):
             responses = await asyncio.to_thread(kb_backend.download_files, [_strip_kbs_prefix(normalized_path)])
         elif _is_in_home_gem(normalized_path):
-            # /home/gem/ 下的其他文件（如 workspace 目录）
+            # Other files under /home/gem/ (such as workspace directory)
             responses = await asyncio.to_thread(sandbox_backend.download_files, [normalized_path])
         else:
             raise HTTPException(
@@ -579,14 +616,16 @@ async def download_viewer_file(
 
     response = responses[0] if responses else None
     if response is None or response.error == "file_not_found":
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise HTTPException(status_code=404, detail="filedoes not exist")
     if response.error == "is_directory":
-        raise HTTPException(status_code=400, detail="当前路径是目录")
+        raise HTTPException(
+            status_code=400, detail="Current path is a directory")
     if response.error:
         raise HTTPException(status_code=400, detail=str(response.error))
 
     file_name = PurePosixPath(normalized_path).name or "download"
-    media_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+    media_type = mimetypes.guess_type(
+        file_name)[0] or "application/octet-stream"
     stream = io.BytesIO(response.content or b"")
     headers = {
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name)}",
@@ -604,7 +643,8 @@ async def delete_viewer_file(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
 
     normalized_path = _normalize_path(path)
     await _resolve_viewer_state(
@@ -616,14 +656,17 @@ async def delete_viewer_file(
     )
 
     if not _is_user_data_path(normalized_path):
-        raise HTTPException(status_code=400, detail="当前路径不支持删除")
+        raise HTTPException(
+            status_code=400, detail="Current path does not support delete operations")
     if normalized_path in _PROTECTED_USER_DATA_ROOTS:
-        raise HTTPException(status_code=400, detail="当前目录不允许删除")
+        raise HTTPException(
+            status_code=400, detail="Current directory is protected and cannot be deleted")
 
     try:
-        actual_path = _resolve_local_user_data_path(thread_id, str(current_user.id), normalized_path)
+        actual_path = _resolve_local_user_data_path(
+            thread_id, str(current_user.id), normalized_path)
         if not actual_path.exists():
-            raise HTTPException(status_code=404, detail="文件不存在")
+            raise HTTPException(status_code=404, detail="filedoes not exist")
         if actual_path.is_dir():
             await asyncio.to_thread(shutil.rmtree, actual_path)
         else:
@@ -647,7 +690,8 @@ async def create_viewer_directory(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
 
     await _resolve_viewer_state(
         thread_id=thread_id,
@@ -658,14 +702,17 @@ async def create_viewer_directory(
     )
 
     user_id = str(current_user.id)
-    directory_name = _validate_child_name(name, field_name="文件夹名")
+    directory_name = _validate_child_name(name, field_name="folder name")
 
     try:
-        actual_parent = _resolve_workspace_parent_dir(thread_id, user_id, parent_path)
-        target_path = _resolve_new_workspace_child(thread_id, user_id, actual_parent, directory_name)
+        actual_parent = _resolve_workspace_parent_dir(
+            thread_id, user_id, parent_path)
+        target_path = _resolve_new_workspace_child(
+            thread_id, user_id, actual_parent, directory_name)
         await asyncio.to_thread(target_path.mkdir)
     except FileExistsError as e:
-        raise HTTPException(status_code=400, detail="同名文件或文件夹已存在") from e
+        raise HTTPException(
+            status_code=400, detail="A file or folder with the same name already exists") from e
     except PermissionError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except ValueError as e:
@@ -685,7 +732,8 @@ async def upload_viewer_file(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
 
     await _resolve_viewer_state(
         thread_id=thread_id,
@@ -696,27 +744,31 @@ async def upload_viewer_file(
     )
 
     user_id = str(current_user.id)
-    file_name = _validate_child_name(Path(file.filename or "").name, field_name="文件名")
+    file_name = _validate_child_name(
+        Path(file.filename or "").name, field_name="file name")
     target_path: Path | None = None
     created_file = False
     upload_completed = False
 
     try:
-        actual_parent = _resolve_workspace_parent_dir(thread_id, user_id, parent_path)
-        target_path = _resolve_new_workspace_child(thread_id, user_id, actual_parent, file_name)
+        actual_parent = _resolve_workspace_parent_dir(
+            thread_id, user_id, parent_path)
+        target_path = _resolve_new_workspace_child(
+            thread_id, user_id, actual_parent, file_name)
         async with aiofiles.open(target_path, "xb") as buffer:
             created_file = True
             while chunk := await file.read(1024 * 1024):
                 await buffer.write(chunk)
         upload_completed = True
     except FileExistsError as e:
-        raise HTTPException(status_code=400, detail="同名文件或文件夹已存在") from e
+        raise HTTPException(
+            status_code=400, detail="A file or folder with the same name already exists") from e
     except PermissionError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     finally:
-        # 上传来自用户输入，传输中断时清理本次创建的半成品文件。
+        # Upload data comes from user input; clean up partially created file on interrupted transfer.
         if created_file and not upload_completed and target_path and target_path.exists():
             with contextlib.suppress(OSError):
                 await asyncio.to_thread(target_path.unlink)

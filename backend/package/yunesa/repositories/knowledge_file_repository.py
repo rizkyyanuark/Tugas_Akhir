@@ -10,7 +10,7 @@ from yunesa.storage.postgres.models_knowledge import KnowledgeFile
 
 class KnowledgeFileRepository:
     async def get_all(self) -> list[KnowledgeFile]:
-        """获取所有文件记录"""
+        """Get all file records."""
         async with pg_manager.get_async_session_context() as session:
             result = await session.execute(select(KnowledgeFile))
             return list(result.scalars().all())

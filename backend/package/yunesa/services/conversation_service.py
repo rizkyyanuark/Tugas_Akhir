@@ -19,7 +19,8 @@ from yunesa.utils.paths import VIRTUAL_PATH_UPLOADS
 
 ATTACHMENT_ALLOWED_EXTENSIONS: tuple[str, ...] = ()
 MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
-MAX_ATTACHMENT_MARKDOWN_CHARS = 32_000  # TODO: 转 MARKDOWN的时候，不应该裁剪
+# TODO: avoid truncating during markdown conversion.
+MAX_ATTACHMENT_MARKDOWN_CHARS = 32_000
 
 
 @dataclass(slots=True)
@@ -52,7 +53,8 @@ async def _write_upload_to_disk(upload: UploadFile, dest: Path) -> int:
                 break
             written += len(chunk)
             if written > MAX_ATTACHMENT_SIZE_BYTES:
-                raise ValueError("附件过大，当前仅支持 5 MB 以内的文件")
+                raise ValueError(
+                    "Attachment is too large; only files up to 5 MB are supported")
             await buffer.write(chunk)
 
     return written
@@ -63,21 +65,25 @@ def _truncate_markdown(markdown: str) -> tuple[str, bool]:
         return markdown, False
 
     truncated_content = markdown[: MAX_ATTACHMENT_MARKDOWN_CHARS - 100].rstrip()
-    truncated_content = f"{truncated_content}\n\n[内容已截断，超出 {MAX_ATTACHMENT_MARKDOWN_CHARS} 字符限制]"
+    truncated_content = (
+        f"{truncated_content}\n\n"
+        f"[Content truncated: exceeds {MAX_ATTACHMENT_MARKDOWN_CHARS} character limit]"
+    )
     return truncated_content, True
 
 
 async def _convert_upload_to_markdown(upload: UploadFile) -> ConversionResult:
     """Persist an UploadFile temporarily, convert it to markdown, and clean up."""
     if not upload.filename:
-        raise ValueError("无法识别的文件名")
+        raise ValueError("Unrecognized filename")
 
     file_name = Path(upload.filename).name
     suffix = Path(file_name).suffix.lower()
 
     if ATTACHMENT_ALLOWED_EXTENSIONS and suffix not in ATTACHMENT_ALLOWED_EXTENSIONS:
         allowed = ", ".join(ATTACHMENT_ALLOWED_EXTENSIONS)
-        raise ValueError(f"不支持的文件类型: {suffix or '未知'}，当前仅支持 {allowed}")
+        raise ValueError(
+            f"Unsupported file type: {suffix or 'unknown'}; only {allowed} is supported")
 
     temp_dir = _ensure_workdir()
     temp_path = temp_dir / f"{uuid.uuid4().hex}{suffix}"
@@ -102,7 +108,8 @@ async def _convert_upload_to_markdown(upload: UploadFile) -> ConversionResult:
 async def require_user_conversation(conv_repo: ConversationRepository, thread_id: str, user_id: str):
     conversation = await conv_repo.get_conversation_by_thread_id(thread_id)
     if not conversation or conversation.user_id != str(user_id) or conversation.status == "deleted":
-        raise HTTPException(status_code=404, detail="对话线程不存在")
+        raise HTTPException(
+            status_code=404, detail="conversation thread does not exist")
     return conversation
 
 
@@ -112,25 +119,26 @@ def _make_upload_virtual_path(file_name: str) -> str:
 
 
 def _make_attachment_path(file_name: str) -> str:
-    """生成附件在沙盒用户目录中的统一路径。"""
-    # 提取不带扩展名的部分
+    """Generate a normalized attachment path in the sandbox user directory."""
+    # Extract filename stem without extension.
     base_name = file_name
     for ext in [".docx", ".txt", ".html", ".htm", ".pdf", ".md"]:
         if file_name.lower().endswith(ext):
             base_name = file_name[: -len(ext)]
             break
 
-    # 替换路径分隔符
+    # Replace path separators.
     safe_name = base_name.replace("/", "_").replace("\\", "_")
     return f"{safe_name}.md"
 
 
 def _build_attachment_storage_path(*, user_id: str, thread_id: str, file_name: str) -> tuple[str, Path]:
-    """返回附件虚拟路径和宿主机落盘路径。"""
+    """Return virtual attachment path and host storage path."""
     relative_name = _make_attachment_path(file_name)
     virtual_path = f"{VIRTUAL_PATH_UPLOADS}/attachments/{relative_name}"
 
-    host_dir = Path(app_config.save_dir) / "threads" / thread_id / "user-data" / "uploads" / "attachments"
+    host_dir = Path(app_config.save_dir) / "threads" / \
+        thread_id / "user-data" / "uploads" / "attachments"
     host_dir.mkdir(parents=True, exist_ok=True)
     host_path = host_dir / relative_name
 
@@ -173,11 +181,13 @@ async def _sync_thread_upload_state(
     try:
         agent = agent_manager.get_agent(agent_id)
         if not agent:
-            logger.warning(f"Skip upload state sync: agent not found ({agent_id})")
+            logger.warning(
+                f"Skip upload state sync: agent not found ({agent_id})")
             return
 
         graph = await agent.get_graph()
-        config = {"configurable": {"thread_id": thread_id, "user_id": str(user_id)}}
+        config = {"configurable": {
+            "thread_id": thread_id, "user_id": str(user_id)}}
 
         await graph.aupdate_state(
             config=config,
@@ -186,7 +196,8 @@ async def _sync_thread_upload_state(
             },
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning(f"Failed to sync upload state for thread {thread_id}: {exc}")
+        logger.warning(
+            f"Failed to sync upload state for thread {thread_id}: {exc}")
 
 
 def serialize_attachment(record: dict) -> dict:
@@ -214,7 +225,7 @@ async def _materialize_attachment_files(
     file_name: str,
     file_content: bytes,
 ) -> dict:
-    """将原始附件与可选 markdown 副本落盘到线程 user-data。"""
+    """Persist the original attachment and optional markdown copy into thread user-data."""
     ensure_thread_dirs(thread_id, user_id)
 
     upload_virtual_path = _make_upload_virtual_path(file_name)
@@ -239,7 +250,8 @@ async def _materialize_attachment_files(
     except ValueError:
         return record
     except Exception as exc:  # noqa: BLE001
-        logger.warning(f"Attachment markdown materialization failed for {file_name}: {exc}")
+        logger.warning(
+            f"Attachment markdown materialization failed for {file_name}: {exc}")
         return record
 
     markdown_virtual_path, markdown_host_path = _build_attachment_storage_path(
@@ -277,7 +289,7 @@ async def create_thread_view(
     conversation = await conv_repo.create_conversation(
         user_id=str(current_user_id),
         agent_id=agent_id,
-        title=title or "新的对话",
+        title=title or "New conversation",
         thread_id=thread_id,
         metadata=metadata,
     )
@@ -335,8 +347,9 @@ async def delete_thread_view(
     await require_user_conversation(conv_repo, thread_id, str(current_user_id))
     deleted = await conv_repo.delete_conversation(thread_id, soft_delete=True)
     if not deleted:
-        raise HTTPException(status_code=404, detail="对话线程不存在")
-    return {"message": "删除成功"}
+        raise HTTPException(
+            status_code=404, detail="conversation thread does not exist")
+    return {"message": "deletesuccessful"}
 
 
 async def update_thread_view(
@@ -351,7 +364,7 @@ async def update_thread_view(
     await require_user_conversation(conv_repo, thread_id, str(current_user_id))
     updated_conv = await conv_repo.update_conversation(thread_id, title=title, is_pinned=is_pinned)
     if not updated_conv:
-        raise HTTPException(status_code=500, detail="更新失败")
+        raise HTTPException(status_code=500, detail="updatefailed")
     return {
         "id": updated_conv.thread_id,
         "user_id": updated_conv.user_id,
@@ -374,7 +387,7 @@ async def upload_thread_attachment_view(
     conv_repo = ConversationRepository(db)
     conversation = await require_user_conversation(conv_repo, thread_id, str(current_user_id))
     if not file.filename:
-        raise HTTPException(status_code=400, detail="无法识别的文件名")
+        raise HTTPException(status_code=400, detail="Unrecognized filename")
 
     file_name = Path(file.filename).name
     await file.seek(0)
@@ -382,7 +395,8 @@ async def upload_thread_attachment_view(
     file_size = len(file_content)
     if file_size > MAX_ATTACHMENT_SIZE_BYTES:
         max_size_mb = MAX_ATTACHMENT_SIZE_BYTES // (1024 * 1024)
-        raise HTTPException(status_code=400, detail=f"附件过大，当前仅支持 {max_size_mb} MB 以内的文件")
+        raise HTTPException(
+            status_code=400, detail=f"Attachment is too large; only files up to {max_size_mb} MB are supported")
     materialized = await _materialize_attachment_files(
         thread_id=thread_id,
         user_id=str(conversation.user_id),
@@ -451,11 +465,13 @@ async def delete_thread_attachment_view(
     conversation = await require_user_conversation(conv_repo, thread_id, str(current_user_id))
 
     existing_attachments = await conv_repo.get_attachments(conversation.id)
-    target_attachment = next((item for item in existing_attachments if item.get("file_id") == file_id), None)
+    target_attachment = next(
+        (item for item in existing_attachments if item.get("file_id") == file_id), None)
 
     removed = await conv_repo.remove_attachment(conversation.id, file_id)
     if not removed:
-        raise HTTPException(status_code=404, detail="附件不存在或已被删除")
+        raise HTTPException(
+            status_code=404, detail="Attachment does not exist or was already deleted")
 
     if target_attachment:
         delete_candidates = {
@@ -473,7 +489,8 @@ async def delete_thread_attachment_view(
                 if file_path.exists():
                     file_path.unlink()
             except Exception as exc:  # noqa: BLE001
-                logger.warning(f"Failed to remove attachment file {candidate}: {exc}")
+                logger.warning(
+                    f"Failed to remove attachment file {candidate}: {exc}")
 
     all_attachments = await conv_repo.get_attachments(conversation.id)
     await _sync_thread_upload_state(
@@ -483,7 +500,7 @@ async def delete_thread_attachment_view(
         attachments=all_attachments,
     )
 
-    return {"message": "附件已删除"}
+    return {"message": "Attachment deleted"}
 
 
 async def get_thread_history_view(
@@ -492,16 +509,18 @@ async def get_thread_history_view(
     current_user_id: str,
     db: AsyncSession,
 ) -> dict:
-    """获取对话历史消息，包含用户反馈状态"""
+    """Get conversation message history, including user feedback status."""
     conv_repo = ConversationRepository(db)
     conversation = await conv_repo.get_conversation_by_thread_id(thread_id)
     if not conversation or conversation.user_id != str(current_user_id) or conversation.status == "deleted":
-        raise HTTPException(status_code=404, detail="对话线程不存在")
+        raise HTTPException(
+            status_code=404, detail="conversation thread does not exist")
 
     messages = await conv_repo.get_messages_by_thread_id(thread_id)
 
     history: list[dict] = []
-    role_type_map = {"user": "human", "assistant": "ai", "tool": "tool", "system": "system"}
+    role_type_map = {"user": "human", "assistant": "ai",
+                     "tool": "tool", "system": "system"}
 
     for msg in messages:
         user_feedback = None
@@ -545,5 +564,6 @@ async def get_thread_history_view(
 
         history.append(msg_dict)
 
-    logger.info(f"Loaded {len(history)} messages with feedback for thread {thread_id}")
+    logger.info(
+        f"Loaded {len(history)} messages with feedback for thread {thread_id}")
     return {"history": history}

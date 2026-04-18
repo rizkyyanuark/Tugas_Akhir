@@ -57,7 +57,8 @@ def get_langfuse_client() -> Langfuse | None:
     try:
         return Langfuse(**kwargs)
     except Exception as exc:
-        logger.warning(f"初始化 Langfuse 客户端失败，将跳过 tracing: {exc}")
+        logger.warning(
+            f"Failed to initialize Langfuse client, tracing will be skipped: {exc}")
         return None
 
 
@@ -131,7 +132,8 @@ def build_run_context(
         login_user_id=login_user_id,
         department_id=department_id,
     )
-    tags = build_trace_tags(agent_id=agent_id, operation=operation, message_type=message_type)
+    tags = build_trace_tags(
+        agent_id=agent_id, operation=operation, message_type=message_type)
 
     client = get_langfuse_client()
     if client is None or CallbackHandler is None:
@@ -149,7 +151,8 @@ def get_trace_info(run_context: LangfuseRunContext | None) -> dict[str, Any]:
     metadata = run_context.metadata or {}
     trace_id = run_context.trace_id
     if run_context.callbacks:
-        last_trace_id = getattr(run_context.callbacks[0], "last_trace_id", None)
+        last_trace_id = getattr(
+            run_context.callbacks[0], "last_trace_id", None)
         if last_trace_id:
             trace_id = last_trace_id
 
@@ -179,7 +182,8 @@ async def get_trace_url_async(
 
     trace_id = run_context.trace_id
     if run_context.callbacks:
-        last_trace_id = getattr(run_context.callbacks[0], "last_trace_id", None)
+        last_trace_id = getattr(
+            run_context.callbacks[0], "last_trace_id", None)
         if last_trace_id:
             trace_id = last_trace_id
 
@@ -207,4 +211,4 @@ def flush_langfuse() -> None:
     try:
         client.flush()
     except Exception as exc:
-        logger.warning(f"刷新 Langfuse 事件失败: {exc}")
+        logger.warning(f"Failed to flush Langfuse events: {exc}")

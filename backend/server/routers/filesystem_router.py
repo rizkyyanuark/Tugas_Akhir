@@ -1,7 +1,7 @@
-"""Viewer 文件系统路由
+"""Viewer filesystem routes.
 
-提供 Viewer UI 使用的文件系统 API 端点。
-- /viewer/filesystem/* - Viewer UI 使用
+Provides filesystem API endpoints used by the Viewer UI.
+- /viewer/filesystem/* - Used by the Viewer UI
 """
 
 from __future__ import annotations
@@ -21,7 +21,8 @@ from yunesa.services.viewer_filesystem_service import (
 )
 from yunesa.storage.postgres.models_business import User
 
-filesystem_router = APIRouter(prefix="/viewer/filesystem", tags=["viewer-filesystem"])
+filesystem_router = APIRouter(
+    prefix="/viewer/filesystem", tags=["viewer-filesystem"])
 
 
 class CreateViewerDirectoryRequest(BaseModel):
@@ -34,10 +35,11 @@ class CreateViewerDirectoryRequest(BaseModel):
 
 @filesystem_router.get("/tree", response_model=dict)
 async def get_viewer_tree(
-    thread_id: str = Query(..., description="线程 ID"),
-    path: str = Query("/", description="目录路径"),
-    agent_id: str | None = Query(None, description="智能体 ID"),
-    agent_config_id: int | None = Query(None, description="智能体配置 ID"),
+    thread_id: str = Query(..., description="Thread ID"),
+    path: str = Query("/", description="directorypath"),
+    agent_id: str | None = Query(None, description="agent ID"),
+    agent_config_id: int | None = Query(
+        None, description="Agent Configuration ID"),
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -53,10 +55,11 @@ async def get_viewer_tree(
 
 @filesystem_router.get("/file", response_model=dict)
 async def get_viewer_file(
-    thread_id: str = Query(..., description="线程 ID"),
-    path: str = Query(..., description="文件路径"),
-    agent_id: str | None = Query(None, description="智能体 ID"),
-    agent_config_id: int | None = Query(None, description="智能体配置 ID"),
+    thread_id: str = Query(..., description="Thread ID"),
+    path: str = Query(..., description="filepath"),
+    agent_id: str | None = Query(None, description="agent ID"),
+    agent_config_id: int | None = Query(
+        None, description="Agent Configuration ID"),
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -72,10 +75,11 @@ async def get_viewer_file(
 
 @filesystem_router.delete("/file", response_model=dict)
 async def delete_viewer_file_route(
-    thread_id: str = Query(..., description="线程 ID"),
-    path: str = Query(..., description="文件路径"),
-    agent_id: str | None = Query(None, description="智能体 ID"),
-    agent_config_id: int | None = Query(None, description="智能体配置 ID"),
+    thread_id: str = Query(..., description="Thread ID"),
+    path: str = Query(..., description="filepath"),
+    agent_id: str | None = Query(None, description="agent ID"),
+    agent_config_id: int | None = Query(
+        None, description="Agent Configuration ID"),
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -108,11 +112,12 @@ async def create_viewer_directory_route(
 
 @filesystem_router.post("/upload", response_model=dict)
 async def upload_viewer_file_route(
-    thread_id: str = Form(..., description="线程 ID"),
-    parent_path: str = Form(..., description="父目录路径"),
-    agent_id: str | None = Form(None, description="智能体 ID"),
-    agent_config_id: int | None = Form(None, description="智能体配置 ID"),
-    file: UploadFile = File(..., description="上传文件"),
+    thread_id: str = Form(..., description="Thread ID"),
+    parent_path: str = Form(..., description="Parent directory path"),
+    agent_id: str | None = Form(None, description="agent ID"),
+    agent_config_id: int | None = Form(
+        None, description="Agent Configuration ID"),
+    file: UploadFile = File(..., description="uploadfile"),
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -129,10 +134,11 @@ async def upload_viewer_file_route(
 
 @filesystem_router.get("/download")
 async def download_viewer(
-    thread_id: str = Query(..., description="线程 ID"),
-    path: str = Query(..., description="文件路径"),
-    agent_id: str | None = Query(None, description="智能体 ID"),
-    agent_config_id: int | None = Query(None, description="智能体配置 ID"),
+    thread_id: str = Query(..., description="Thread ID"),
+    path: str = Query(..., description="filepath"),
+    agent_id: str | None = Query(None, description="agent ID"),
+    agent_config_id: int | None = Query(
+        None, description="Agent Configuration ID"),
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):

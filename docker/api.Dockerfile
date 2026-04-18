@@ -45,7 +45,7 @@ RUN mkdir -p /app/package/yunesa && touch /app/package/yunesa/__init__.py
 # Initial sync - This layer is CACHED until dependencies change.
 # Changes to your code will NOT trigger this heavy download step.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev 2>/dev/null || uv lock && uv sync --no-dev
+    uv sync --frozen 2>/dev/null || uv lock && uv sync
 
 # -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"
@@ -59,7 +59,7 @@ COPY configs /app/configs
 # Final fast sync to link actual source files correctly.
 # This step is nearly instant because all heavy lifting is already cached.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen
 
 # -- Expose Port --
 EXPOSE 5050

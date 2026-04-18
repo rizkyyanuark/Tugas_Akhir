@@ -13,22 +13,29 @@ if not _LITE_MODE:
     from .implementations.lightrag import LightRagKB
     from .implementations.milvus import MilvusKB
 
-    # 注册知识库类型
-    KnowledgeBaseFactory.register("milvus", MilvusKB, {"description": "基于 Milvus 的生产级向量知识库，适合高性能部署"})
-    KnowledgeBaseFactory.register("lightrag", LightRagKB, {"description": "基于图的知识库，支持实体关系构建和复杂查询"})
+    # Register knowledge base types
+    KnowledgeBaseFactory.register(
+        "milvus", MilvusKB, {
+            "description": "Production-grade vector knowledge base based on Milvus for high-performance deployment"}
+    )
+    KnowledgeBaseFactory.register(
+        "lightrag", LightRagKB, {
+            "description": "Graph-based knowledge base supporting entity relationship construction and complex queries"}
+    )
 
-KnowledgeBaseFactory.register("dify", DifyKB, {"description": "连接 Dify Dataset 的只读检索知识库"})
+KnowledgeBaseFactory.register("dify", DifyKB, {
+                              "description": "Read-only retrieval knowledge base connected to Dify Dataset"})
 
-# 创建知识库管理器
+# Create knowledge base manager
 work_dir = os.path.join(config.save_dir, "knowledge_base_data")
 knowledge_base = KnowledgeBaseManager(work_dir)
 
-# 创建图数据库实例
+# Create graph database instance
 if _LITE_MODE or _SKIP_APP_INIT:
     from ..utils import logger
 
     class _LiteGraphStub:
-        """Lite 模式下的图数据库占位实例，所有操作报告为不可用"""
+        """Graph database placeholder in Lite mode; all operations report unavailable."""
 
         def is_running(self):
             return False
@@ -37,15 +44,16 @@ if _LITE_MODE or _SKIP_APP_INIT:
             return None
 
     graph_base = _LiteGraphStub()
-    # 向后兼容
+    # Backward compatibility
     GraphDatabase = _LiteGraphStub
     if _LITE_MODE:
         logger.info("LITE_MODE enabled, knowledge graph services disabled")
     else:
-        logger.info("YUNESA_SKIP_APP_INIT enabled, knowledge graph services disabled for current process")
+        logger.info(
+            "YUNESA_SKIP_APP_INIT enabled, knowledge graph services disabled for current process")
 else:
     graph_base = UploadGraphService()
-    # 向后兼容：让 GraphDatabase 指向 UploadGraphService
+    # Backward compatibility: make GraphDatabase point to UploadGraphService
     GraphDatabase = UploadGraphService
 
 __all__ = ["GraphDatabase", "knowledge_base", "graph_base"]

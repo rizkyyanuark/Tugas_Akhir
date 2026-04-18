@@ -24,13 +24,13 @@ class BaseEmbeddingModel(ABC):
     ):
         """
         Args:
-            model: 模型名称，冗余设计，同name
-            name: 模型名称，冗余设计，同model
-            dimension: 维度
-            url: 请求URL，冗余设计，同base_url
-            base_url: 基础URL，请求URL，冗余设计，同url
-            api_key: 请求API密钥
-            batch_size: 模型推荐的批量向量化大小
+            model: modelname，，name
+            name: modelname，，model
+            dimension: 
+            url: requestURL，，base_url
+            base_url: URL，requestURL，，url
+            api_key: requestAPI
+            batch_size: modelvectorsize
         """
         base_url = base_url or url
         self.model = model or name
@@ -42,20 +42,20 @@ class BaseEmbeddingModel(ABC):
 
     @abstractmethod
     def encode(self, message: list[str] | str) -> list[list[float]]:
-        """同步编码"""
+        """encoding"""
         raise NotImplementedError("Subclasses must implement this method")
 
     def encode_queries(self, queries: list[str] | str) -> list[list[float]]:
-        """等同于encode"""
+        """encode"""
         return self.encode(queries)
 
     @abstractmethod
     async def aencode(self, message: list[str] | str) -> list[list[float]]:
-        """异步编码"""
+        """encoding"""
         raise NotImplementedError("Subclasses must implement this method")
 
     async def aencode_queries(self, queries: list[str] | str) -> list[list[float]]:
-        """等同于aencode"""
+        """aencode"""
         return await self.aencode(queries)
 
     def batch_encode(self, messages: list[str], batch_size: int | None = None) -> list[list[float]]:
@@ -88,8 +88,8 @@ class BaseEmbeddingModel(ABC):
             task_id = hashstr(messages)
             self.embed_state[task_id] = {"status": "in-progress", "total": len(messages), "progress": 0}
 
-        # 保留原有逻辑：
-        # 使用 asyncio.gather 并发执行所有 embedding 批次请求：
+        # ：
+        #  asyncio.gather execute embedding timesrequest：
         # tasks = []
         # for i in range(0, len(messages), batch_size):
         #     group_msg = messages[i : i + batch_size]
@@ -120,16 +120,16 @@ class BaseEmbeddingModel(ABC):
 
     async def test_connection(self) -> tuple[bool, str]:
         """
-        测试embedding模型的连接性
+        testembeddingmodelconnect
 
         Returns:
             tuple: (success: bool, message: str)
         """
         try:
-            # 使用简单的测试文本
+            # test
             test_text = ["Hello world"]
             await self.aencode(test_text)
-            return True, "连接正常"
+            return True, "connect"
         except Exception as e:
             error_msg = str(e)
             error_msg += f", maybe you can check the `{self.base_url}` end with /embeddings as examples."
@@ -217,48 +217,48 @@ class OtherEmbedding(BaseEmbeddingModel):
 
 async def test_embedding_model_status(model_id: str) -> dict:
     """
-    测试指定embedding模型的状态
+    testembeddingmodelstatus
 
     Args:
-        model_id: 模型ID，格式为 "provider/model_name"
+        model_id: modelID，format "provider/model_name"
 
     Returns:
-        dict: 包含状态信息的字典
+        dict: status
     """
     try:
         support_embed_models = config.embed_model_names.keys()
         if model_id not in support_embed_models:
-            return {"model_id": model_id, "status": "unsupported", "message": f"不支持的模型: {model_id}"}
+            return {"model_id": model_id, "status": "unsupported", "message": f"not supportedmodel: {model_id}"}
 
-        # 选择并创建模型实例
+        # createmodel
         model = select_embedding_model(model_id)
 
-        # 测试连接
+        # testconnect
         success, message = await model.test_connection()
 
         return {
             "model_id": model_id,
             "status": "available" if success else "unavailable",
-            "message": message if not success else "连接正常",
+            "message": message if not success else "connect",
             "dimension": model.dimension,
         }
 
     except Exception as e:
-        logger.warning(f"测试embedding模型状态失败 {model_id}: {e}")
+        logger.warning(f"testembeddingmodelstatusfailed {model_id}: {e}")
         return {"model_id": model_id, "status": "error", "message": str(e)}
 
 
 async def test_all_embedding_models_status() -> dict:
     """
-    测试所有支持的embedding模型状态
+    testembeddingmodelstatus
 
     Returns:
-        dict: 包含所有模型状态的字典
+        dict: modelstatus
     """
     support_embed_models = list(config.embed_model_names.keys())
     results = {}
 
-    # 并发测试所有模型
+    # testmodel
     tasks = [test_embedding_model_status(model_id) for model_id in support_embed_models]
     model_statuses = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -284,7 +284,7 @@ def select_embedding_model(model_id):
     if provider == "local":
         raise ValueError("Local embedding model is not supported, please use other embedding models")
 
-    # 获取嵌入模型配置并转换为字典
+    # getembeddingmodelconfigureconvert
     embed_config = config.embed_model_names[model_id].model_dump()
 
     if provider == "ollama":

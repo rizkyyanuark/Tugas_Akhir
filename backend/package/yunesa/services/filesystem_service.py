@@ -42,7 +42,8 @@ async def _resolve_filesystem_context(
             created_by=str(user.id),
         )
 
-    context.update_from_dict((config_item.config_json or {}).get("context", {}))
+    context.update_from_dict(
+        (config_item.config_json or {}).get("context", {}))
     return context
 
 
@@ -67,7 +68,8 @@ async def _resolve_filesystem_state(
     runtime_context.user_id = str(user.id)
     await resolve_visible_knowledge_bases_for_context(runtime_context)
 
-    sandbox_backend = ProvisionerSandboxBackend(thread_id=thread_id, user_id=str(user.id))
+    sandbox_backend = ProvisionerSandboxBackend(
+        thread_id=thread_id, user_id=str(user.id))
     return conversation, runtime_context, sandbox_backend
 
 
@@ -81,7 +83,8 @@ async def list_filesystem_entries_view(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
 
     normalized_path = (path or "/").strip() or "/"
 
@@ -115,9 +118,10 @@ async def read_file_content_view(
     db: AsyncSession,
 ) -> dict:
     if not thread_id:
-        raise HTTPException(status_code=422, detail="thread_id 不能为空")
+        raise HTTPException(
+            status_code=422, detail="thread_id cannot be empty")
     if not path:
-        raise HTTPException(status_code=422, detail="path 不能为空")
+        raise HTTPException(status_code=422, detail="path cannot be empty")
 
     normalized_path = path.strip()
 
@@ -142,19 +146,21 @@ async def read_file_content_view(
 
     response = responses[0] if responses else None
     if response is None:
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise HTTPException(status_code=404, detail="filedoes not exist")
     if response.error == "file_not_found":
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise HTTPException(status_code=404, detail="filedoes not exist")
     if response.error == "is_directory":
-        raise HTTPException(status_code=400, detail="当前路径是目录")
+        raise HTTPException(
+            status_code=400, detail="current path is a directory")
     if response.error == "read_failed":
-        raise HTTPException(status_code=400, detail="文件读取失败")
+        raise HTTPException(status_code=400, detail="filereadfailed")
     if response.error:
         raise HTTPException(status_code=400, detail=response.error)
 
     raw_content = response.content or b""
     if _looks_like_binary(raw_content):
-        raise HTTPException(status_code=400, detail="当前文件是二进制文件，不能按文本读取")
+        raise HTTPException(
+            status_code=400, detail="current file is binary and cannot be read as text")
     try:
         content = raw_content.decode("utf-8")
     except UnicodeDecodeError:
