@@ -115,7 +115,7 @@ def generate_unique_user_id(username: str, existing_user_ids: list[str]) -> str:
 
 def is_valid_phone_number(phone: str) -> bool:
     """
-    Validates phone number format (supports China mainland format)
+    Validates phone number format (supports Indonesian mobile formats)
 
     Args:
         phone: Phone number string
@@ -129,8 +129,10 @@ def is_valid_phone_number(phone: str) -> bool:
     # Remove spaces and special characters
     phone = re.sub(r"[\s\-\(\)]", "", phone)
 
-    # China mainland format: starts with 1, second digit 3-9, 11 digits total
-    pattern = r"^1[3-9]\d{9}$"
+    # Indonesian mobile format:
+    # - Local: 08xxxxxxxxxx (10-13 digits)
+    # - Intl : 628xxxxxxxxxx or +628xxxxxxxxxx
+    pattern = r"^(?:\+62|62|0)8[1-9]\d{7,10}$"
 
     return bool(re.match(pattern, phone))
 
@@ -151,8 +153,14 @@ def normalize_phone_number(phone: str) -> str:
     # Remove all non-numeric characters
     phone = re.sub(r"\D", "", phone)
 
-    # Ensure correct format for China mainland numbers
-    if len(phone) == 11 and phone.startswith("1"):
+    # Normalize Indonesian international format to local format (e.g. 62812... -> 0812...)
+    if phone.startswith("62"):
+        phone = f"0{phone[2:]}"
+    elif phone.startswith("8"):
+        phone = f"0{phone}"
+
+    # Keep normalized local format if valid
+    if re.match(r"^08[1-9]\d{7,10}$", phone):
         return phone
 
     return phone

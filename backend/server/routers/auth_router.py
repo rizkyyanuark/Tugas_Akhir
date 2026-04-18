@@ -133,7 +133,7 @@ class OIDCLoginResponse(BaseModel):
 
 async def get_default_department_id(db: AsyncSession) -> int | None:
     """Get default department ID."""
-    result = await db.execute(select(Department).filter(Department.name == "defaultdepartment"))
+    result = await db.execute(select(Department).filter(Department.name == "Default Department"))
     default_dept = result.scalar_one_or_none()
     return default_dept.id if default_dept else None
 
@@ -287,7 +287,7 @@ async def initialize_admin(admin_data: InitializeAdmin, db: AsyncSession = Depen
     dept_repo = DepartmentRepository()
     default_department = await dept_repo.create(
         {
-            "name": "defaultdepartment",
+            "name": "Default Department",
             "description": "Default department created during system initialization",
         }
     )
@@ -482,7 +482,7 @@ async def create_user(
             dept_repo = DepartmentRepository()
             departments = await dept_repo.list_departments()
             default_dept = next(
-                (d for d in departments if d.name == "defaultdepartment"), None)
+                (d for d in departments if d.name == "Default Department"), None)
             department_id = default_dept.id if default_dept else None
     else:
         # When regular admin creates user, inherit admin's department automatically.

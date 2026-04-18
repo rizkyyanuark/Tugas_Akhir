@@ -445,7 +445,7 @@ const handleDownloadMarkdown = () => {
   width: 100%;
 }
 
-/* Chunks 面板样式 */
+/* Chunks panel styles */
 .chunk-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -509,7 +509,7 @@ const handleDownloadMarkdown = () => {
   width: 100%;
 }
 
-/* 文件标题样式 */
+/* File title styles */
 .file-title {
   display: flex;
   align-items: center;
@@ -535,7 +535,7 @@ const handleDownloadMarkdown = () => {
   margin-left: auto;
 }
 
-/* 下载按钮样式 */
+/* Download button styles */
 .download-btn {
   display: inline-flex;
   align-items: center;
@@ -551,7 +551,7 @@ const handleDownloadMarkdown = () => {
   }
 }
 
-/* 自定义关闭按钮 */
+/* Custom close button */
 .custom-close-btn {
   display: flex;
   align-items: center;
@@ -571,7 +571,7 @@ const handleDownloadMarkdown = () => {
   }
 }
 
-/* 视图切换控件 */
+/* View switch controls */
 .view-controls {
   display: flex;
   align-items: center;
@@ -584,7 +584,7 @@ const handleDownloadMarkdown = () => {
   white-space: nowrap;
 }
 
-/* 下拉菜单样式 */
+/* Dropdown menu styles */
 .ant-dropdown-menu {
   border-radius: 8px;
   padding: 4px;

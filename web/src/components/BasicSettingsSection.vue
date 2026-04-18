@@ -165,7 +165,7 @@
         <div class="service-link-card">
           <div class="service-info">
             <h4>Milvus WebUI</h4>
-            <p>向量数据库管理界面</p>
+            <p>Vector database management console</p>
           </div>
           <a-button
             type="default"

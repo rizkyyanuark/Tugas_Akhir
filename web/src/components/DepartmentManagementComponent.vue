@@ -281,7 +281,7 @@ const validatePhoneNumber = (phone) => {
   if (!phone) {
     return true // Phone number is optional
   }
-  const phoneRegex = /^1[3-9]\d{9}$/
+  const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{7,10}$/
   return phoneRegex.test(phone)
 }
 
@@ -291,7 +291,8 @@ watch(
   (newPhone) => {
     departmentManagement.form.phoneError = ''
     if (newPhone && !validatePhoneNumber(newPhone)) {
-      departmentManagement.form.phoneError = 'Please enter a valid phone number format'
+      departmentManagement.form.phoneError =
+        'Please enter a valid Indonesian phone number (e.g. 089..., 628..., or +628...)'
     }
   }
 )
@@ -342,48 +343,56 @@ const handleDepartmentFormSubmit = async () => {
       return
     }
 
-    // Validate admin user ID
     const adminUserId = departmentManagement.form.adminUserId.trim()
-    if (!adminUserId) {
-      notification.error({ message: 'Please enter admin user ID' })
-      return
-    }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(adminUserId)) {
-      notification.error({ message: 'User ID can only contain letters, numbers, and underscores' })
-      return
-    }
+    // Admin account fields are required only when creating a department.
+    if (!departmentManagement.editMode) {
+      // Validate admin user ID
+      if (!adminUserId) {
+        notification.error({ message: 'Please enter admin user ID' })
+        return
+      }
 
-    if (adminUserId.length < 3 || adminUserId.length > 20) {
-      notification.error({ message: 'User ID length must be between 3 and 20 characters' })
-      return
-    }
+      if (!/^[a-zA-Z0-9_]+$/.test(adminUserId)) {
+        notification.error({
+          message: 'User ID can only contain letters, numbers, and underscores'
+        })
+        return
+      }
 
-    if (departmentManagement.form.userIdError) {
-      notification.error({ message: 'Admin user ID already exists or format is invalid' })
-      return
-    }
+      if (adminUserId.length < 3 || adminUserId.length > 20) {
+        notification.error({ message: 'User ID length must be between 3 and 20 characters' })
+        return
+      }
 
-    // Validate password
-    if (!departmentManagement.form.adminPassword) {
-      notification.error({ message: 'Please enter admin password' })
-      return
-    }
+      if (departmentManagement.form.userIdError) {
+        notification.error({ message: 'Admin user ID already exists or format is invalid' })
+        return
+      }
 
-    if (
-      departmentManagement.form.adminPassword !== departmentManagement.form.adminConfirmPassword
-    ) {
-      notification.error({ message: 'The two passwords do not match' })
-      return
-    }
+      // Validate password
+      if (!departmentManagement.form.adminPassword) {
+        notification.error({ message: 'Please enter admin password' })
+        return
+      }
 
-    // Validate phone number
-    if (
-      departmentManagement.form.adminPhone &&
-      !validatePhoneNumber(departmentManagement.form.adminPhone)
-    ) {
-      notification.error({ message: 'Please enter a valid phone number format' })
-      return
+      if (
+        departmentManagement.form.adminPassword !== departmentManagement.form.adminConfirmPassword
+      ) {
+        notification.error({ message: 'The two passwords do not match' })
+        return
+      }
+
+      // Validate phone number
+      if (
+        departmentManagement.form.adminPhone &&
+        !validatePhoneNumber(departmentManagement.form.adminPhone)
+      ) {
+        notification.error({
+          message: 'Please enter a valid Indonesian phone number (e.g. 089..., 628..., or +628...)'
+        })
+        return
+      }
     }
 
     departmentManagement.loading = true
