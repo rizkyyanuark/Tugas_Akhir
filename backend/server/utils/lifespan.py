@@ -11,6 +11,8 @@ from yunesa.storage.postgres.manager import pg_manager
 from yunesa.knowledge import knowledge_base
 from yunesa.utils import logger
 from yunesa.agents.backends.sandbox import init_sandbox_provider, shutdown_sandbox_provider
+from yunesa.config.app import config
+from yunesa.services.kg_service import get_kg_service
 from yunesa import get_version
 
 
@@ -68,39 +70,19 @@ async def lifespan(app: FastAPI):
     await checkpointer.setup()
     print("LangGraph Checkpoint tables verified/created!")
 
-    # =========================================================
-    # NLP Pre-loading
-    # =========================================================
-    logger.info("🔄 Pre-loading NLP models (SpaCy & GLiNER)...")
-    try:
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
-        app.state.spacy_model = nlp
-        logger.info("✅ SpaCy model loaded.")
-    except Exception as e:
-        logger.warning(f"⚠️ SpaCy model not available: {e}")
-
-    try:
-        from gliner import GLiNER
-        gliner_model = GLiNER.from_pretrained(
-            os.environ.get("GLINER_MODEL_NAME", "urchade/gliner_small-v2.1"),
-            load_tokenizer=True
-        )
-        app.state.gliner_model = gliner_model
-        logger.info("✅ GLiNER model loaded.")
-    except Exception as e:
-        logger.warning(f"⚠️ GLiNER model not available: {e}")
+    # Initialize KG Service and attach to app state
+    app.state.kg_service = get_kg_service(config)
 
     await tasker.start()
     logger.info(f"""
 
-░██     ░██                       ░██
+░██     ░██
  ░██   ░██
-  ░██ ░██   ░██    ░██ ░██    ░██ ░██
-   ░████    ░██    ░██  ░██  ░██  ░██
-    ░██     ░██    ░██   ░█████   ░██
-    ░██     ░██   ░███  ░██  ░██  ░██
-    ░██      ░█████░██ ░██    ░██ ░██  v{get_version()}
+  ░██ ░██   ░██    ░██ ░█████░██  ░█████    ░█████    ░█████
+   ░████    ░██    ░██ ░██   ░██ ░██   ░██ ░██             ░██
+    ░██     ░██    ░██ ░██   ░██ ░███████   ░█████    ░██████
+    ░██     ░██   ░███ ░██   ░██ ░██             ░██ ░██   ░██
+    ░██      ░█████░██ ░██   ░██  ░█████   ░█████     ░████░██  v{get_version()}
 
     """)
     logger.info("AgenticRAG backend startup complete")

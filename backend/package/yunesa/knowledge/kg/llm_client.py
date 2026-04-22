@@ -12,12 +12,9 @@ from typing import Optional, Dict, Any
 
 import requests
 
-from .config import GROQ_API_KEY, LLM_MODEL
+from .config import GROQ_API_KEY, SILICONFLOW_API_KEY, LLM_MODEL, LLM_BASE_URL
 
 logger = logging.getLogger(__name__)
-
-# Groq API endpoint (OpenAI-compatible)
-_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 class GroqClient:
@@ -33,21 +30,33 @@ class GroqClient:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        base_url: Optional[str] = None,
         max_retries: int = 3,
         timeout: int = 30,
     ):
-        self.api_key = api_key or GROQ_API_KEY
+        self.base_url = (base_url or LLM_BASE_URL).rstrip("/")
+
+        # Select key based on provider (Northern Standard preference)
+        if "siliconflow" in self.base_url.lower():
+            self.api_key = api_key or SILICONFLOW_API_KEY
+        else:
+            self.api_key = api_key or GROQ_API_KEY
+
         self.model = model or LLM_MODEL
+        self._llm_url = f"{self.base_url}/chat/completions"
         self.max_retries = max_retries
         self.timeout = timeout
         self._call_count = 0
         self._error_count = 0
+        self._last_error: str = ""
 
         if not self.api_key:
-            logger.error("❌ GroqClient: No API key provided. Set GROQ_API_KEY in .env")
-            raise ValueError("GROQ_API_KEY is required")
+            logger.error(
+                f"❌ LLMClient: No API key provided for {self.base_url}")
+            raise ValueError(f"API Key for {self.base_url} is required")
 
-        logger.info(f"✅ GroqClient initialised (model={self.model})")
+        logger.info(
+            f"✅ LLMClient initialised (model={self.model}, base={self.base_url})")
 
     @property
     def stats(self) -> Dict[str, int]:
@@ -82,7 +91,7 @@ class GroqClient:
             try:
                 self._call_count += 1
                 res = requests.post(
-                    _GROQ_URL,
+                    self._llm_url,
                     headers=headers,
                     json=payload,
                     timeout=self.timeout,
@@ -90,28 +99,39 @@ class GroqClient:
 
                 if res.status_code == 429:
                     wait = 5 * (attempt + 1)
-                    logger.warning(f"Groq 429 Rate Limit. Waiting {wait}s... (attempt {attempt+1})")
+                    self._last_error = f"HTTP 429 from {self.base_url}"
+                    logger.warning(
+                        f"LLM 429 Rate Limit. Waiting {wait}s... (attempt {attempt+1})")
                     time.sleep(wait)
                     continue
 
                 if res.status_code != 200:
-                    logger.warning(f"Groq HTTP {res.status_code}: {res.text[:200]}")
+                    self._last_error = f"HTTP {res.status_code}: {res.text[:200]}"
+                    logger.warning(
+                        f"LLM HTTP {res.status_code}: {res.text[:200]}")
                     self._error_count += 1
                     continue
 
-                content = res.json()["choices"][0]["message"]["content"].strip()
+                content = res.json()[
+                    "choices"][0]["message"]["content"].strip()
                 return json.loads(content)
 
             except json.JSONDecodeError as e:
-                logger.warning(f"Groq JSON parse error (attempt {attempt+1}): {e}")
+                self._last_error = f"JSON decode error: {e}"
+                logger.warning(
+                    f"LLM JSON parse error (attempt {attempt+1}): {e}")
                 self._error_count += 1
                 time.sleep(1)
             except requests.exceptions.Timeout:
-                logger.warning(f"Groq timeout (attempt {attempt+1}/{self.max_retries})")
+                self._last_error = "Request timeout"
+                logger.warning(
+                    f"LLM timeout (attempt {attempt+1}/{self.max_retries})")
                 self._error_count += 1
                 time.sleep(2)
             except Exception as e:
-                logger.warning(f"Groq API error (attempt {attempt+1}): {type(e).__name__}: {e}")
+                self._last_error = f"{type(e).__name__}: {e}"
+                logger.warning(
+                    f"LLM API error (attempt {attempt+1}): {type(e).__name__}: {e}")
                 self._error_count += 1
                 time.sleep(2)
 
@@ -128,6 +148,18 @@ class GroqClient:
         Returns:
             Parsed JSON dict.
         """
-        result = self.call(prompt, **kwargs)
-        time.sleep(delay)
-        return result
+        try:
+            result = self.call(prompt, **kwargs)
+            if not result:
+                provider_error = self._last_error or "Failed to get a valid response after retries."
+                raise TimeoutError(
+                    f"LLM request failed after retries (base={self.base_url}, model={self.model}). {provider_error}"
+                )
+            time.sleep(delay)
+            return result
+        except TimeoutError as e:
+            logger.error(f"LLM call failed with timeout: {str(e)}")
+            raise RuntimeError(f"LLM API Error: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"LLM call failed with error: {str(e)}")
+            raise RuntimeError(f"LLM API Error: {str(e)}") from e

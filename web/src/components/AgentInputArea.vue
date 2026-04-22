@@ -21,8 +21,12 @@
       </div>
     </template>
     <template #options-left>
+      <div v-if="isIngestionLocked" class="ingestion-locked-indicator" title="Data Ingestion Locked (Final Engineering Directive)">
+        <Lock :size="16" class="lock-icon" />
+        <span class="lock-text">Ingestion Locked</span>
+      </div>
       <AttachmentOptionsComponent
-        v-if="supportsFileUpload"
+        v-else-if="supportsFileUpload"
         :disabled="disabled"
         @upload="handleAttachmentUpload"
         @upload-image="handleImageUpload"
@@ -108,7 +112,7 @@ import { computed, ref, watch } from 'vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
 import ImagePreviewComponent from '@/components/ImagePreviewComponent.vue'
 import AttachmentOptionsComponent from '@/components/AttachmentOptionsComponent.vue'
-import { FolderCode, SquareCheck } from 'lucide-vue-next'
+import { FolderCode, SquareCheck, Lock } from 'lucide-vue-next'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -125,6 +129,7 @@ const props = defineProps({
   mention: { type: Object, default: () => null },
   supportsFileUpload: { type: Boolean, default: false },
   isPanelOpen: { type: Boolean, default: false },
+  isIngestionLocked: { type: Boolean, default: false },
   hasActiveThread: { type: Boolean, default: true },
   todos: {
     type: Array,
@@ -245,6 +250,36 @@ const getTodoStatusLabel = (status) => {
 }
 
 // Shared styles for input action buttons (applied through slot content)
+.ingestion-locked-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 77, 79, 0.1);
+  border: 1px solid rgba(255, 77, 79, 0.2);
+  color: #ff4d4f;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: default;
+  user-select: none;
+  animation: pulse-red 2s infinite ease-in-out;
+
+  .lock-icon {
+    flex-shrink: 0;
+  }
+
+  .lock-text {
+    white-space: nowrap;
+  }
+}
+
+@keyframes pulse-red {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; border-color: rgba(255, 77, 79, 0.4); background: rgba(255, 77, 79, 0.15); }
+  100% { opacity: 0.8; }
+}
+
 :deep(.input-action-btn) {
   display: flex;
   align-items: center;

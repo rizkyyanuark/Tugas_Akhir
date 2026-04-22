@@ -46,7 +46,7 @@ _DEFAULT_MCP_SERVERS = {
         "tags": ["builtin", "AI"],
     },
     "mcp-server-chart": {
-        "command": "npx",
+        "command": "npx.cmd",
         "args": ["-y", "@antv/mcp-server-chart"],
         "transport": "stdio",
         "description": "Chart generation tool supporting multiple chart types (bar, line, pie, etc.)",

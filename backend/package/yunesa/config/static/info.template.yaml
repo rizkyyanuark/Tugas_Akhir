@@ -3,57 +3,54 @@
 
 # Organization information
 organization:
-  name: "Jiangnan Yuxi" # Full organization name
+  name: "Informatics Department, Yunesa" # Full organization name
   logo: "/favicon.svg" # Logo file path (in web/public)
   avatar: "/avatar.jpg" # Avatar file path (in web/public)
   login_bg: "/login-bg.jpg" # Login background image path (in web/public)
 
 # Project information
 branding:
-  name: "Yuxi"
-  title: "Buildable, Orchestrated, and Deployable Agents" # System title
-  subtitle: "Open-source agent platform suite integrating RAG and knowledge graphs" # Used when subtitles is empty
+  name: "Yunesa"
+  title: "Informatics Agent Platform" # System title
+  subtitle: "Open-source agent platform suite designed for academic and project orchestration" # Used when subtitles is empty
   subtitles:
-    - "Open-source agent platform suite integrating RAG and knowledge graphs"
-    - "Unified orchestration for agents, knowledge bases, graphs, and toolchains"
+    - "Open-source agent platform suite designed for academic and project orchestration"
+    - "Unified orchestration for agents, knowledge bases, and Informatics toolchains"
     - "Build agents, connect knowledge, and make decisions verifiable"
     - "Deploy agents, orchestrate workflows, and scale collaboration"
     - "Accumulate data, reuse capabilities, and evolve systems"
 
 features:
   - label: "GitHub Stars"
-    value: "4800+"
-    description: "Recognition and support from the developer community"
+    value: "0+"
+    description: "New open-source project in development"
     icon: "stars"
-  - label: "Resolved Issues"
-    value: "300+"
-    description: "Continuous improvement and issue resolution capability"
+  - label: "Active Project"
+    value: "V0.6.0"
+    description: "Continuous improvement and student-led development"
     icon: "issues"
   - label: "Total Commits"
-    value: "1600+"
+    value: "100+"
     description: "Active development iterations and feature updates"
     icon: "commits"
   - label: "Open-Source License"
     value: "MIT License"
-    description: "Completely free and ready for commercial use"
+    description: "Completely free and ready for educational use"
     icon: "license"
 
 actions:
-  - name: "Demo Video"
-    icon: "video"
-    url: "https://www.bilibili.com/video/BV1DF14BTETq"
   - name: "Documentation Center"
     icon: "docs"
-    url: "https://xerrors.github.io/Yuxi/"
+    url: "https://github.com/rizkyyanuark/Tugas_Akhir#readme"
   - name: "Submit Issue"
     icon: "issue"
-    url: "https://github.com/xerrors/Yuxi/issues/new/choose"
-  - name: "Development Roadmap"
-    icon: "roadmap"
-    url: "https://xerrors.github.io/Yuxi/develop-guides/roadmap.html"
+    url: "https://github.com/rizkyyanuark/Tugas_Akhir/issues/new"
+  - name: "Repository"
+    icon: "github"
+    url: "https://github.com/rizkyyanuark/Tugas_Akhir"
 
 # Footer information
 footer:
-  copyright: "(C) Jiangnan Yuxi 2026 v0.6.0"
+  copyright: "(C) Informatics Department, Yunesa 2026 v0.6.0"
   user_agreement_url: "/protocols/user-agreement.template.html"
   privacy_policy_url: "/protocols/privacy-policy.template.html"

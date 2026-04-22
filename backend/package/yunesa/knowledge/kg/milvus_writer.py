@@ -5,8 +5,8 @@ Handles all Milvus write operations for the KG pipeline:
   - Collection schema creation (4 collections)
   - Batch insert with error handling
 
-Uses sentence-transformers for local embedding generation,
-matching the Yuxi architecture's PyMilvus integration.
+Uses SiliconFlow API for embedding generation (Qwen/Qwen3-Embedding-0.6B),
+matching the Northern architecture's high-performance requirements.
 """
 
 import logging
@@ -22,30 +22,58 @@ from pymilvus import (
     DataType,
 )
 
-from .config import MILVUS_HOST, MILVUS_PORT
+import requests
+from .config import (
+    MILVUS_HOST, 
+    MILVUS_PORT, 
+    SILICONFLOW_API_KEY, 
+    SILICONFLOW_EMBED_MODEL
+)
 
 logger = logging.getLogger(__name__)
 
 # ── Embedding ──
-# Lazy-loaded sentence-transformers model for local vectorisation
-_EMBED_MODEL_NAME = os.environ.get(
-    "MILVUS_EMBED_MODEL",
-    "sentence-transformers/all-MiniLM-L6-v2",
-)
-_embed_model = None
+# SiliconFlow API Wrapper
+class SiliconFlowEmbedder:
+    """Helper to generate embeddings via SiliconFlow API."""
+    
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model
+        self.url = "https://api.siliconflow.cn/v1/embeddings"
+        
+    def encode(self, texts: List[str]) -> List[List[float]]:
+        if not self.api_key:
+            raise ValueError("SILICONFLOW_API_KEY is missing")
+            
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": self.model,
+            "input": texts
+        }
+        
+        response = requests.post(self.url, json=payload, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        # SiliconFlow returns embeddings in data: [{"embedding": [...], "index": 0}, ...]
+        # We need to sort by index to ensure order
+        results = sorted(data["data"], key=lambda x: x["index"])
+        return [item["embedding"] for item in results]
 
+_embedder = None
 
-def _get_embed_model():
-    """Lazy-load the sentence-transformers model."""
-    global _embed_model
-    if _embed_model is None:
-        from sentence_transformers import SentenceTransformer
-        _embed_model = SentenceTransformer(_EMBED_MODEL_NAME)
-        logger.info(f"Loaded embedding model: {_EMBED_MODEL_NAME}")
-    return _embed_model
+def _get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = SiliconFlowEmbedder(SILICONFLOW_API_KEY, SILICONFLOW_EMBED_MODEL)
+        logger.info(f"Initialized SiliconFlow embedder with model: {SILICONFLOW_EMBED_MODEL}")
+    return _embedder
 
-
-EMBEDDING_DIM = 384  # all-MiniLM-L6-v2 outputs 384-dim vectors
+EMBEDDING_DIM = 1024  # Qwen3-Embedding-0.6B outputs 1024-dim vectors
 
 
 # ── Collection schemas ──
@@ -103,7 +131,7 @@ class MilvusKGWriter:
     """Production-grade Milvus writer for the KG pipeline.
 
     Creates 4 collections with IVF_FLAT index and performs
-    batched inserts with local sentence-transformers embedding.
+    batched inserts with SiliconFlow embedding generation.
 
     Usage:
         writer = MilvusKGWriter()
@@ -196,7 +224,7 @@ class MilvusKGWriter:
 
         spec = _COLLECTIONS[collection_name]
         embed_field = spec["embed_field"]
-        model = _get_embed_model()
+        embedder = _get_embedder()
         col = Collection(collection_name, using=self.alias)
         batch_errors = 0
 
@@ -220,8 +248,8 @@ class MilvusKGWriter:
                         columns[fname].append(val)
                     texts_to_embed.append(str(item.get(embed_field, "")))
 
-                # Generate embeddings
-                embeddings = model.encode(texts_to_embed).tolist()
+                # Generate embeddings via SiliconFlow
+                embeddings = embedder.encode(texts_to_embed)
 
                 # Build insert list in field order
                 insert_data = [columns[fname] for fname in data_field_names]

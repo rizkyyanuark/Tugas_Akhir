@@ -64,6 +64,9 @@ class DeepAgent(BaseAgent):
 
         # Load subagent specs from DB (tool names already resolved).
         user_subagents = await get_subagents_from_names(context.subagents)
+        for sa in user_subagents:
+            if not sa.get("model"):
+                sa["model"] = sub_model
 
         # Main agent context optimization: trigger compression at 90k tokens (70% of 128k context window).
         summary_middleware = SummaryOffloadMiddleware(
@@ -75,7 +78,6 @@ class DeepAgent(BaseAgent):
         )
 
         subagents_middleware = SubAgentMiddleware(
-            default_model=sub_model,
             default_tools=search_tools,
             subagents=user_subagents,
             default_middleware=[

@@ -164,7 +164,8 @@
                 :disabled="!currentAgent"
                 :send-button-disabled="isSendButtonDisabled"
                 :mention="mentionConfig"
-                :supports-file-upload="supportsFileUpload"
+                :supports-file-upload="false"
+                :is-ingestion-locked="true"
                 :is-panel-open="isAgentPanelOpen"
                 :has-active-thread="!!currentChatId"
                 :todos="currentTodos"
@@ -411,9 +412,7 @@ const currentThreadAgentName = computed(() => {
 
 // Check whether the current agent supports file upload
 const supportsFileUpload = computed(() => {
-  if (!currentAgent.value) return false
-  const capabilities = currentAgent.value.capabilities || []
-  return capabilities.includes('file_upload')
+  return false // INGESTION LOCKED per Final Engineering Directive
 })
 
 const supportsFiles = computed(() => {

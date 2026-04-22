@@ -29,7 +29,7 @@ from server.utils.access_log_middleware import AccessLogMiddleware
 import logging
 logger = logging.getLogger("ta-backend")
 
-# 设置日志配置
+# Setup logging configuration
 setup_logging()
 
 RATE_LIMIT_MAX_ATTEMPTS = 10
@@ -41,10 +41,10 @@ _login_attempts: defaultdict[str, deque[float]] = defaultdict(deque)
 _attempt_lock = asyncio.Lock()
 
 app = FastAPI(lifespan=lifespan)
-# 所有业务接口统一挂载到 /api，具体分组在 server.routers 中集中注册。
+# All business interfaces are uniformly mounted to /api, and specific groups are centrally registered in server.routers.
 app.include_router(router, prefix="/api")
 
-# CORS 设置
+# CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -82,7 +82,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
                     retry_after = int(max(1, RATE_LIMIT_WINDOW_SECONDS - (now - attempt_history[0])))
                     return JSONResponse(
                         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        content={"detail": "登录尝试过于频繁，请稍后再试"},
+                        content={"detail": "Too many login attempts, please try again later"},
                         headers={"Retry-After": str(retry_after)},
                     )
 
@@ -99,7 +99,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-# 鉴权中间件
+# Authentication middleware
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -109,10 +109,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         return await call_next(request)
 
-# 添加访问日志中间件（记录请求处理时间）
+# Add access log middleware (record request processing time)
 app.add_middleware(AccessLogMiddleware)
 
-# 添加鉴权中间件
+# Add authentication and rate limit middleware
 app.add_middleware(LoginRateLimitMiddleware)
 app.add_middleware(AuthMiddleware)
 

@@ -1,22 +1,22 @@
 <template>
   <div class="home-container">
-    <!-- Loading state -->
+    <!-- Loading State -->
     <div v-if="isLoading" class="loading-container">
       <a-spin size="large" />
-      <p class="loading-text">Connecting to server...</p>
+      <p class="loading-text">Connecting to services...</p>
     </div>
 
-    <!-- Error state -->
+    <!-- Error State -->
     <div v-else-if="error" class="error-container">
       <a-result status="error" :title="error.title" :sub-title="error.message">
         <template #extra>
-          <a-button type="primary" @click="retryLoad">Try Again</a-button>
+          <a-button type="primary" @click="retryLoad">Retry</a-button>
           <a-button :href="faqUrl" target="_blank" rel="noopener noreferrer">FAQ</a-button>
         </template>
       </a-result>
     </div>
 
-    <!-- Main content -->
+    <!-- Normal Content -->
     <template v-else>
       <div class="hero-section">
         <div class="glass-header">
@@ -30,7 +30,7 @@
           </div>
           <div class="header-actions">
             <div class="github-link">
-              <a :href="repoUrl" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/rizkyyanuark/Tugas_Akhir" target="_blank">
                 <svg height="20" width="20" viewBox="0 0 16 16" version="1.1">
                   <path
                     fill-rule="evenodd"
@@ -66,11 +66,11 @@
                 {{ currentSubtitle }}
               </p>
             </Transition>
-            <!-- <p class="description">{{ infoStore.branding.description }}</p> -->
             <div class="hero-actions">
-              <button class="button-base primary" @click="goToChat">Start Chat</button>
-              <router-link class="doc-text-link" to="/dashboard">View Dashboard</router-link>
-              <router-link class="doc-text-link" to="/graph">Explore Graph</router-link>
+              <button class="button-base primary" @click="goToChat">Get Started</button>
+              <a class="doc-text-link" href="https://github.com/rizkyyanuark/Tugas_Akhir" target="_blank"
+                >View Documentation</a
+              >
             </div>
           </div>
           <div class="insight-panel" v-if="featureCards.length">
@@ -116,7 +116,7 @@
 
       <footer class="footer">
         <div class="footer-content">
-          <p class="copyright">{{ infoStore.footer?.copyright || '© 2025 All rights reserved' }}</p>
+          <p class="copyright">{{ infoStore.footer?.copyright || '© 2026 Informatics Department, Yunesa' }}</p>
         </div>
       </footer>
     </template>
@@ -148,7 +148,7 @@ const userStore = useUserStore()
 const infoStore = useInfoStore()
 const agentStore = useAgentStore()
 const repoUrl = 'https://github.com/rizkyyanuark/Tugas_Akhir'
-const faqUrl = `${repoUrl}#readme`
+const faqUrl = 'https://github.com/rizkyyanuark/Tugas_Akhir'
 
 // Loading state
 const isLoading = ref(true)
@@ -262,7 +262,7 @@ const fetchGithubStars = async () => {
 const getHeroBadgeText = (starsCount = null) => {
   const realtimeStars = formatStars(starsCount)
   if (realtimeStars) {
-    return `${realtimeStars} GitHub Stars`
+    return `Already has ${realtimeStars} GitHub Stars`
   }
 
   const features = Array.isArray(infoStore.features) ? infoStore.features : []
@@ -281,11 +281,7 @@ const getHeroBadgeText = (starsCount = null) => {
   const starValue =
     typeof starFeature === 'string' ? '' : (starFeature?.value || '').toString().trim()
 
-  if (starValue) {
-    return `${starValue} GitHub Stars`
-  }
-
-  return 'UNESA Academic Knowledge Graph'
+  return starValue ? `Already has ${starValue} GitHub Stars` : 'GitHub Stars reached'
 }
 
 const stopBadgeTyping = () => {
@@ -320,12 +316,12 @@ const checkHealth = async () => {
   try {
     const response = await healthApi.checkHealth()
     if (response.status !== 'ok') {
-      throw new Error('Service unavailable')
+      throw new Error('Service Unavailable')
     }
   } catch (e) {
     error.value = {
       title: 'Service Connection Failed',
-      message: 'Backend service is not responding. Please check if the service is running.'
+      message: 'The backend service is not responding, please check if the service is running normally'
     }
     throw e
   }
@@ -338,7 +334,7 @@ const loadData = async () => {
   try {
     // Check health status first
     await checkHealth()
-    // Load configuration after health check passes
+    // Load config after health check passes
     await infoStore.loadInfoConfig()
     startSubtitleCarousel()
     const starsCount = await fetchGithubStars()
@@ -361,21 +357,21 @@ const retryLoad = () => {
 const goToChat = async () => {
   // Check if user is logged in
   if (!userStore.isLoggedIn) {
-    // After login, should redirect to default agent instead of /agent
-    sessionStorage.setItem('redirect', '/') // Set to home page, redirect handled by route guard after login
+    // After login, should redirect to home or default agent
+    sessionStorage.setItem('redirect', '/') 
     router.push('/login')
     return
   }
 
   // Redirect based on user role
   if (userStore.isAdmin) {
-    // Admin users redirect to chat page
+    // Admin user redirects to agent management/chat
     await agentStore.initialize()
     router.push('/agent')
     return
   }
 
-  // Regular users redirect to default agent
+  // Regular user redirects to default agent
   try {
     // Get default agent
     const defaultAgent = agentStore.defaultAgent
@@ -385,7 +381,7 @@ const goToChat = async () => {
       router.push('/agent')
     }
   } catch (error) {
-    console.error('Failed to navigate to agent page:', error)
+    console.error('Redirection to agent page failed:', error)
     router.push('/')
   }
 }
@@ -482,7 +478,7 @@ const actionLinks = computed(() => {
   overflow-x: hidden;
 }
 
-// Loading state
+// Loading State
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -497,7 +493,7 @@ const actionLinks = computed(() => {
   }
 }
 
-// Error state
+// Error State
 .error-container {
   display: flex;
   align-items: center;
@@ -520,48 +516,6 @@ const actionLinks = computed(() => {
   right: 0;
   z-index: 100;
   box-shadow: 0 6px 25px rgba(3, 80, 101, 0.02);
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  text-decoration: none;
-  color: var(--gray-800);
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: color 0.2s ease;
-  position: relative;
-  overflow: hidden;
-
-  &:hover {
-    color: var(--gray-900);
-
-    svg {
-      transform: scale(1.1);
-    }
-  }
-
-  &.router-link-active {
-    background: linear-gradient(135deg, var(--main-600), var(--main-500));
-    color: var(--gray-0);
-    border-radius: 1.5rem;
-
-    &:hover {
-      background: linear-gradient(135deg, var(--main-700), var(--main-600));
-    }
-  }
-
-  span {
-    white-space: nowrap;
-  }
 }
 
 .header-actions {
@@ -612,11 +566,7 @@ const actionLinks = computed(() => {
     fill: currentColor;
   }
 
-  .stars-count {
-    font-weight: 600;
-  }
-
-  // Dark mode styles
+  // 暗色模式样式
   :global(.dark) & {
     color: var(--gray-400);
 
@@ -714,13 +664,6 @@ const actionLinks = computed(() => {
   line-height: 1.1;
 }
 
-.hero-eyebrow {
-  color: var(--main-600);
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 0.85rem;
-}
-
 .subtitle {
   font-size: 1.5rem;
   font-weight: 600;
@@ -741,11 +684,6 @@ const actionLinks = computed(() => {
 .subtitle-switch-leave-to {
   opacity: 0;
   transform: translateY(7px);
-}
-
-.description {
-  color: var(--gray-600);
-  line-height: 1.6;
 }
 
 .hero-actions {
@@ -797,277 +735,153 @@ const actionLinks = computed(() => {
   &:hover {
     background: linear-gradient(135deg, var(--main-700), var(--main-600));
   }
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: inherit;
-    background: radial-gradient(circle, rgba(36, 131, 154, 0.35), transparent 68%);
-    opacity: 0;
-    z-index: -1;
-    transition: opacity 0.25s ease;
-  }
-
-  &:hover::after {
-    opacity: 1;
-  }
-}
-
-.button-base.secondary {
-  background: rgba(2, 57, 68, 0.06);
-  color: var(--main-700);
-  border-color: var(--gray-100);
-
-  &:hover {
-    border-color: var(--main-200);
-    background: var(--gray-50);
-  }
 }
 
 .insight-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  background: var(--main-0);
-  border-radius: 1.5rem;
-  padding: 1.5rem;
-  border: 1px solid var(--main-40);
-  box-shadow: 0 15px 35px rgba(3, 80, 101, 0.08);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
 }
 
 .stat-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  background: var(--color-trans-light);
+  backdrop-filter: blur(20px);
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+  animation: revealUp 0.7s ease forwards;
+  animation-delay: calc(200ms + var(--card-stagger) * 100ms);
   opacity: 0;
-  transform: translateY(12px);
-  animation: cardRise 0.55s ease forwards;
-  animation-delay: calc(var(--card-stagger, 0) * 90ms + 200ms);
-}
+  border: 1px solid var(--gray-50);
+  transition: all 0.3s ease;
 
-.stat-headline {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.stat-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--gray-25);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  :deep(svg) {
-    width: 24px;
-    height: 24px;
-    color: var(--main-700);
+  &:hover {
+    transform: translateY(-5px);
+    border-color: var(--main-color);
+    box-shadow: 0 15px 35px rgba(var(--main-color-rgb), 0.1);
   }
-}
 
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--main-800);
-  margin: 0;
-}
+  .stat-headline {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
 
-.stat-label {
-  margin: 0;
-  color: var(--gray-700);
-  font-weight: 600;
-}
+  .stat-icon {
+    color: var(--main-600);
+  }
 
-.stat-description {
-  margin: 0;
-  color: var(--gray-600);
-  font-size: 0.9rem;
-}
-
-.section {
-  width: 100%;
-  max-width: 1200px;
-  margin: 50px auto 0px auto;
-  padding: 2rem 0;
-}
-
-.section-header {
-  margin-bottom: 1.5rem;
-
-  h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.8rem;
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
     color: var(--main-800);
   }
 
-  p {
+  .stat-label {
+    font-size: 0.9rem;
+    color: var(--gray-500);
     margin: 0;
-    color: var(--gray-600);
+    font-weight: 500;
+  }
+
+  .stat-description {
+    font-size: 0.85rem;
+    color: var(--gray-400);
+    margin: 0.5rem 0 0;
+    line-height: 1.4;
   }
 }
 
-.action-section {
-  padding-bottom: 3rem;
+.section {
+  padding: 4rem 2rem;
 }
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .action-card {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  padding: 1rem 1.25rem;
-  border-radius: 1rem;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--color-trans-light);
+  backdrop-filter: blur(20px);
+  border-radius: 1.25rem;
   text-decoration: none;
-  color: inherit;
-  border: 1px solid var(--gray-50);
-  background: var(--gray-0);
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
-
-  &:hover {
-    background: var(--gray-0);
-    transform: translateY(-2px);
-  }
-}
-
-.action-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--gray-50);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  :deep(svg) {
-    width: 22px;
-    height: 22px;
-    color: var(--main-700);
-  }
-}
-
-.action-meta {
-  flex: 1;
-  overflow: hidden;
-}
-
-.action-title {
-  margin: 0;
-  font-weight: 600;
-  color: var(--main-800);
-}
-
-.action-url {
-  margin: 0.25rem 0 0;
-  font-size: 0.9rem;
-  color: var(--gray-600);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.preview-section {
-  padding: 5rem 2rem;
-  display: flex;
-  justify-content: center;
-}
-
-.preview-container {
-  position: relative;
-  max-width: 1000px;
-  overflow: hidden;
-  border-radius: 1rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  border: 1px solid var(--gray-50);
 
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-
-    .preview-overlay {
-      opacity: 1;
-    }
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+    border-color: var(--main-color);
   }
 
-  img {
-    width: 100%;
-    height: auto;
-    display: block;
-    transition: transform 0.5s ease;
+  .action-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--main-50);
+    color: var(--main-600);
+    border-radius: 1rem;
+    transition: all 0.3s ease;
   }
 
-  .preview-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-    padding: 2rem;
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
+  &:hover .action-icon {
+    background: var(--main-600);
+    color: white;
+  }
 
-    .overlay-content {
-      color: var(--gray-0);
+  .action-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
 
-      h3 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-      }
+  .action-title {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0;
+  }
 
-      p {
-        font-size: 1rem;
-        opacity: 0.9;
-      }
-    }
+  .action-url {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    margin: 0;
+    word-break: break-all;
   }
 }
 
 .footer {
-  margin-top: auto;
-  background: var(--main-0);
-  border-top: 1px solid var(--main-20);
-  position: relative;
-  z-index: 10;
+  padding: 4rem 2rem;
+  border-top: 1px solid var(--main-30);
 }
 
 .footer-content {
-  text-align: center;
-  padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  text-align: center;
 }
 
 .copyright {
-  color: var(--main-700);
+  color: var(--gray-400);
   font-size: 0.9rem;
-  font-weight: 500;
-  margin: 0;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-}
-
-.footer:hover .copyright {
-  opacity: 1;
 }
 
 @keyframes revealUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-}
-
-@keyframes cardRise {
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1075,112 +889,12 @@ const actionLinks = computed(() => {
 }
 
 @keyframes caretBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
   50% {
     opacity: 0;
-  }
-}
-
-:global(:root.dark) {
-  .hero-badge-number {
-    color: var(--main-200);
-    text-decoration-color: var(--main-300);
-  }
-
-  .hero-badge-link:hover .hero-badge-number {
-    color: var(--main-100);
-    text-decoration-color: var(--main-100);
-  }
-
-  .doc-text-link {
-    color: var(--main-300);
-    border-bottom-color: var(--main-500);
-
-    &:hover {
-      color: var(--main-200);
-      border-bottom-color: var(--main-300);
-    }
-  }
-
-  .button-base.primary::after {
-    background: radial-gradient(circle, rgba(130, 195, 214, 0.28), transparent 72%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal-up,
-  .stat-card,
-  .hero-badge.typing::after {
-    animation: none;
-  }
-
-  .reveal-up,
-  .stat-card {
-    opacity: 1;
-    transform: none;
-  }
-
-  .subtitle-switch-enter-active,
-  .subtitle-switch-leave-active {
-    transition: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .glass-header {
-    padding: 0.8rem 1.25rem;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .nav-links {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .nav-link {
-    padding: 0.5rem 0.8rem;
-    font-size: 0.85rem;
-
-    span {
-      display: none;
-    }
-  }
-
-  .logo {
-    font-size: 1.1rem;
-  }
-
-  .title {
-    font-size: 2.4rem;
-  }
-
-  .subtitle {
-    font-size: 1.2rem;
-  }
-
-  .start-button {
-    width: 100%;
-    text-align: center;
-  }
-
-  .hero-content {
-    padding: 0;
-  }
-
-  .github-link a {
-    padding: 0.5rem 0.8rem;
-    font-size: 0.85rem;
-
-    .stars-count {
-      display: none;
-    }
-  }
-
-  .hero-layout {
-    padding: 0 0.5rem;
   }
 }
 </style>
