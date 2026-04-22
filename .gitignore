@@ -9,6 +9,8 @@ __pycache__/
 .venv/
 .ruff_cache
 .pytest_cache/
+.hf_cache
+airflow_variables_import.json
 
 # Node / Vue
 node_modules/
@@ -204,3 +206,4 @@ __package_test__.*
 # Misc project paths
 docs/vibe/
 .github/
+orchestration/airflow_variables_import.json
