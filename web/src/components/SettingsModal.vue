@@ -84,7 +84,7 @@
               <X :size="14" />
             </button>
           </div>
-          <p class="star-card-title">Give Yuxi a Star</p>
+          <p class="star-card-title">Give Yunesa a Star</p>
           <p class="star-card-description">
             If this project helped you, consider starring it on GitHub so more people can find it.
           </p>
@@ -96,8 +96,8 @@
           >
             <img
               class="star-card-link-image"
-              src="https://img.shields.io/github/stars/xerrors/Yuxi?label=Yuxi&style=social"
-              alt="GitHub stars for Yuxi"
+              src="https://img.shields.io/github/stars/rizkyyanuark/Tugas_Akhir?label=Yunesa&style=social"
+              alt="GitHub stars for Yunesa"
             />
             <ExternalLink :size="13" />
           </a>
@@ -208,8 +208,8 @@ const userStore = useUserStore()
 const activeTab = ref('base')
 const showStarCard = ref(true)
 
-const STAR_CARD_STORAGE_KEY = 'yuxi-settings-star-card-dismissed'
-const projectRepoUrl = 'https://github.com/xerrors/Yuxi'
+const STAR_CARD_STORAGE_KEY = 'yunesa-settings-star-card-dismissed'
+const projectRepoUrl = 'https://github.com/rizkyyanuark/Tugas_Akhir'
 
 const visible = computed({
   get: () => props.visible,

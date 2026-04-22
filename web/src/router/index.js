@@ -27,6 +27,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/auth/oidc/callback',
+      name: 'OIDCCallback',
+      component: () => import('@/views/OIDCCallbackView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/agent',
       name: 'AgentMain',
       component: AppLayout,
@@ -67,6 +73,25 @@ const router = createRouter({
           path: '',
           name: 'GraphComp',
           component: () => import('../views/GraphView.vue'),
+          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
+        }
+      ]
+    },
+    {
+      path: '/database',
+      name: 'DatabaseMain',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'DatabaseComp',
+          component: () => import('../views/DataBaseView.vue'),
+          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: ':database_id',
+          name: 'DatabaseInfoComp',
+          component: () => import('../views/DataBaseInfoView.vue'),
           meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
         }
       ]

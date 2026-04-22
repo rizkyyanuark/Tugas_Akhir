@@ -79,10 +79,18 @@
             <template v-for="(value, key) in filteredConfigurableItems" :key="key">
               <a-form-item
                 v-if="shouldShowConfig(key, value)"
-                :label="getConfigLabel(key, value)"
                 :name="key"
                 class="config-item"
+                :class="{ 'is-locked': value.template_metadata?.kind === 'knowledges' }"
               >
+                <template #label>
+                  <div class="config-label-row">
+                    <span class="config-label-text">{{ getConfigLabel(key, value) }}</span>
+                    <a-tag v-if="value.template_metadata?.kind === 'knowledges'" color="error" class="lock-tag">
+                      <Lock :size="10" /> Locked
+                    </a-tag>
+                  </div>
+                </template>
                 <p v-if="value.description" class="config-description">{{ value.description }}</p>
 
                 <!-- <div>{{ value }}</div> -->
@@ -140,7 +148,7 @@
                 </a-select>
 
                 <!-- Multi-select / tool list (handled uniformly) -->
-                <div v-else-if="isListConfig(key, value)" class="list-config-container">
+                <div v-else-if="isListConfig(key, value)" class="list-config-container" :class="{ 'is-locked': value.template_metadata?.kind === 'knowledges' }">
                   <!-- Case 1: <= 5 options, inline list -->
                   <div v-if="getConfigOptions(value).length <= 5" class="multi-select-cards">
                     <div class="multi-select-label">
@@ -148,7 +156,7 @@
                         >Selected {{ getSelectedCount(key) }} items | Total
                         {{ getConfigOptions(value).length }} items</span
                       >
-                      <div v-if="!isReadOnlyConfig" class="label-actions">
+                      <div v-if="!isReadOnlyConfig && value.template_metadata?.kind !== 'knowledges'" class="label-actions">
                         <a-button
                           type="link"
                           size="small"
@@ -184,7 +192,7 @@
 
                     <div class="options-grid">
                       <div
-                        v-for="option in isReadOnlyConfig
+                        v-for="option in (isReadOnlyConfig || value.template_metadata?.kind === 'knowledges')
                           ? getConfigOptions(value).filter((opt) =>
                               isOptionSelected(key, getOptionValue(opt))
                             )
@@ -194,9 +202,9 @@
                         :class="{
                           selected: isOptionSelected(key, getOptionValue(option)),
                           unselected: !isOptionSelected(key, getOptionValue(option)),
-                          readonly: isReadOnlyConfig
+                          readonly: isReadOnlyConfig || value.template_metadata?.kind === 'knowledges'
                         }"
-                        @click="!isReadOnlyConfig && toggleOption(key, getOptionValue(option))"
+                        @click="!(isReadOnlyConfig || value.template_metadata?.kind === 'knowledges') && toggleOption(key, getOptionValue(option))"
                       >
                         <div class="option-content">
                           <span class="option-text">{{ getOptionLabel(option) }}</span>
@@ -234,7 +242,7 @@
                       </div>
 
                       <a-button
-                        v-if="!isReadOnlyConfig"
+                        v-if="!isReadOnlyConfig && value.template_metadata?.kind !== 'knowledges'"
                         type="primary"
                         size="small"
                         class="selection-trigger-btn"
@@ -1347,7 +1355,29 @@ const confirmDeleteConfig = async () => {
           padding: 12px;
           border-radius: 8px;
           border: 1px solid var(--gray-100);
-          // box-shadow: 0px 0px 2px var(--shadow-3);
+          
+          &.is-locked {
+            border-color: rgba(255, 77, 79, 0.3);
+            background: rgba(255, 77, 79, 0.02);
+          }
+
+          .config-label-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .lock-tag {
+              height: 18px;
+              line-height:16px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 10px;
+              padding: 0 6px;
+              border-radius: 4px;
+              margin: 0;
+            }
+          }
 
           :deep(.ant-form-item-label > label) {
             font-weight: 600;

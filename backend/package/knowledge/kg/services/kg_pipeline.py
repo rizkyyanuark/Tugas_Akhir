@@ -28,7 +28,7 @@ import pandas as pd
 
 from ..config import (
     SUPABASE_URL, SUPABASE_KEY,
-    MAX_PAPERS, LLM_BATCH_SIZE, KG_ARTIFACTS_DIR,
+    MAX_PAPERS, LLM_BATCH_SIZE, KG_ARTIFACTS_DIR, ENABLE_MILVUS,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,13 +139,14 @@ class KGPipeline:
 
         from supabase import create_client
         from ..config import SUPABASE_URL, SUPABASE_KEY
-        
+
         if not SUPABASE_URL or not SUPABASE_KEY:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be properly configured.")
+            raise ValueError(
+                "SUPABASE_URL and SUPABASE_KEY must be properly configured.")
 
         # Create native Supabase client inline (no need for scraping notebooks hack)
         sb = create_client(SUPABASE_URL, SUPABASE_KEY)
-        
+
         logger.info(
             "Fetching data from Supabase tables: 'papers' and 'lecturers'...")
 
@@ -332,7 +333,6 @@ class KGPipeline:
         self._start_step("Step 6: Database Ingestion")
 
         from ..neo4j_writer import Neo4jKGWriter
-        from ..milvus_writer import MilvusKGWriter
 
         # ── Neo4j ──
         neo4j_writer = Neo4jKGWriter()
@@ -349,25 +349,33 @@ class KGPipeline:
         finally:
             neo4j_writer.close()
 
-        # ── Milvus ──
-        mv_writer = MilvusKGWriter()
-        try:
-            mv_writer.ensure_collections(recreate=self.clear_db)
-            mv_errors = mv_writer.ingest_all(
-                entity_vdb=self.entity_vdb,
-                relationship_vdb=self.relationship_vdb,
-                keywords_vdb=self.keywords_vdb,
-                chunk_vdb=self.chunk_vdb,
-            )
-        finally:
-            mv_writer.close()
+        # ── Milvus (optional) ──
+        mv_error_total = 0
+        if ENABLE_MILVUS:
+            from ..milvus_writer import MilvusKGWriter
+
+            mv_writer = MilvusKGWriter()
+            try:
+                mv_writer.ensure_collections(recreate=self.clear_db)
+                mv_errors = mv_writer.ingest_all(
+                    entity_vdb=self.entity_vdb,
+                    relationship_vdb=self.relationship_vdb,
+                    keywords_vdb=self.keywords_vdb,
+                    chunk_vdb=self.chunk_vdb,
+                )
+                mv_error_total = sum(mv_errors.values())
+            finally:
+                mv_writer.close()
+        else:
+            logger.info("Milvus ingestion skipped (KG_ENABLE_MILVUS=false).")
 
         self._end_step("Step 6: Database Ingestion", {
             "Neo4j node errors": node_stats["errors"],
             "Neo4j edge errors": edge_stats["errors"],
             "Neo4j edge skipped": edge_stats["skipped"],
             "COLLABORATES_WITH derived": collab_count,
-            "Milvus batch errors": sum(mv_errors.values()),
+            "Milvus enabled": ENABLE_MILVUS,
+            "Milvus batch errors": mv_error_total,
         })
 
     # ══════════════════════════════════════════════════════════
@@ -436,7 +444,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="UNESA KG Construction Pipeline")
+        description="Yunesa KG Construction Pipeline")
     parser.add_argument(
         "--test", action="store_true", help="Run in test mode (5 papers only)"
     )

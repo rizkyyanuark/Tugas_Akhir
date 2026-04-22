@@ -204,7 +204,7 @@ def _dispatch_task(task: str, test_mode: bool):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="ETL Worker CLI — Level 3 Decoupled Architecture"
+        description="Yunesa ETL Worker CLI — Level 3 Decoupled Architecture"
     )
     parser.add_argument(
         "task",

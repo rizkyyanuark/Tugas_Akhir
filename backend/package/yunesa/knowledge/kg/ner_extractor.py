@@ -23,15 +23,22 @@ from .utils import make_lemma_key, truncate
 logger = logging.getLogger(__name__)
 
 # ══════════════════════════════════════════════════════════════
-# Auto-load GLiNER model at module level
+# Lazy-load GLiNER model
 # ══════════════════════════════════════════════════════════════
-logger.info(f"Loading GLiNER model: {GLINER_MODEL_NAME}...")
-gliner_model = GLiNER.from_pretrained(
-    GLINER_MODEL_NAME,
-    load_tokenizer=True,
-    resize_token_embeddings=True,
-)
-logger.info(f"✅ GLiNER model loaded: {GLINER_MODEL_NAME}")
+_gliner_model = None
+
+def get_gliner_model():
+    """Lazy loader for GLiNER model."""
+    global _gliner_model
+    if _gliner_model is None:
+        logger.info(f"Loading GLiNER model: {GLINER_MODEL_NAME}...")
+        _gliner_model = GLiNER.from_pretrained(
+            GLINER_MODEL_NAME,
+            load_tokenizer=True,
+            resize_token_embeddings=True,
+        )
+        logger.info(f"✅ GLiNER model loaded: {GLINER_MODEL_NAME}")
+    return _gliner_model
 
 # Source priority constants (lower = higher priority)
 SRC_NER = 0        # GLiNER NER (highest)
@@ -185,9 +192,10 @@ def extract_entities_from_paper(
     gliner_errors = 0
 
     # ── Pass 1: GLiNER NER ──
+    model = get_gliner_model()
     for label_set in [GLINER_SET1, GLINER_SET2]:
         try:
-            ents = gliner_model.predict_entities(
+            ents = model.predict_entities(
                 input_text, label_set, threshold=threshold
             )
             for e in ents:

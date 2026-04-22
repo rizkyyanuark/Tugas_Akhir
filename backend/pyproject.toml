@@ -3,11 +3,12 @@ name = "yunesa-workspace"
 version = "0.6.0"
 description = "Yunesa backend workspace"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.121",
     "uvicorn[standard]>=0.34.2",
     "arq>=0.26.3",
+    "numpy<2.0.0",
     "Yunesa",
 ]
 [tool.ruff]

@@ -2,19 +2,16 @@
   <div class="database-empty" v-if="!state.showPage">
     <a-empty>
       <template #description>
-        <span>
-          Enable the knowledge graph from System Settings in the user menu to start using this page.
-        </span>
+        <span> Click "System Settings" in the user menu (top-right) to enable Knowledge Graph. </span>
       </template>
     </a-empty>
   </div>
-
   <div class="graph-container layout-container" v-else>
     <ViewSwitchHeader
-      title="Knowledge Graph"
+      title="Knowledge base"
       :active-key="knowledgeActiveView"
       :items="knowledgeViewItems"
-      aria-label="Switch knowledge views"
+      aria-label="Knowledge base view switch"
     >
       <template #actions>
         <div class="db-selector">
@@ -22,34 +19,28 @@
             <div class="status-indicator" :class="graphStatusClass"></div>
             <span class="status-text">{{ graphStatusText }}</span>
           </div>
-
-          <span class="label">Graph Source:</span>
+          <span class="label">Knowledge Base: </span>
           <a-select
             v-model:value="state.selectedDbId"
-            style="width: 240px"
+            style="width: 200px"
             :options="state.dbOptions"
             @change="handleDbChange"
             :loading="state.loadingDatabases"
             mode="combobox"
-            placeholder="Select or enter graph ID"
+            placeholder="Select or enter KB ID"
           />
+          <a-button @click="state.showKgBuilder = true" style="margin-left: 8px">
+            <template #icon><SettingOutlined /></template>
+            Graph Builder
+          </a-button>
         </div>
-
-        <a-button v-if="isNeo4j" type="primary" @click="state.showModal = true">
-          <UploadOutlined /> Upload File
-        </a-button>
-
-        <a-button v-else type="primary" @click="state.showUploadTipModal = true">
-          <UploadOutlined /> Upload File
-        </a-button>
-
         <a-button
           v-if="unindexedCount > 0"
           type="primary"
           @click="indexNodes"
           :loading="state.indexing"
         >
-          <SyncOutlined v-if="!state.indexing" /> Index {{ unindexedCount }} Nodes
+          <SyncOutlined v-if="!state.indexing" /> Index {{ unindexedCount }} nodes
         </a-button>
       </template>
     </ViewSwitchHeader>
@@ -69,7 +60,7 @@
             <div class="actions-left">
               <a-input
                 v-model:value="state.searchInput"
-                placeholder="Search entity (* for all)"
+                placeholder="Enter entity to query (* for all)"
                 style="width: 300px"
                 @keydown.enter="onSearch"
                 allow-clear
@@ -81,11 +72,10 @@
                   />
                 </template>
               </a-input>
-
               <a-input
                 v-model:value="sampleNodeCount"
-                placeholder="Node limit"
-                style="width: 120px"
+                placeholder="Query count"
+                style="width: 100px"
                 @keydown.enter="loadSampleNodes"
                 :loading="graph.fetching"
               >
@@ -97,20 +87,12 @@
                 </template>
               </a-input>
             </div>
-
-            <div class="actions-right">
-              <a-button type="default" @click="exportGraphData" :icon="h(ExportOutlined)">
-                Export Data
-              </a-button>
-            </div>
           </div>
         </template>
-
         <template #content>
           <a-empty v-show="graph.graphData.nodes.length === 0" style="padding: 4rem 0" />
         </template>
       </GraphCanvas>
-
       <GraphDetailPanel
         :visible="graph.showDetailDrawer"
         :item="graph.selectedItem"
@@ -121,97 +103,17 @@
       />
     </div>
 
-    <a-modal
-      :open="state.showModal"
-      title="Upload JSONL File"
-      @ok="addDocumentByFile"
-      @cancel="handleModalCancel"
-      ok-text="Add to Graph"
-      cancel-text="Cancel"
-      :confirm-loading="state.processing"
-      :ok-button-props="{ disabled: !hasValidFile }"
+    <!-- KG Builder Drawer -->
+    <a-drawer
+      v-model:open="state.showKgBuilder"
+      title="Knowledge Graph Builder"
+      placement="right"
+      width="500px"
+      :closable="true"
+      :destroyOnClose="false"
     >
-      <div class="upload">
-        <div class="note">
-          <p>Upload a JSONL file to ingest entities and relationships into Neo4j.</p>
-        </div>
-
-        <div class="upload-config">
-          <div class="config-row">
-            <label class="config-label">Embedding model</label>
-            <div class="config-field">
-              <EmbeddingModelSelector
-                v-model:value="state.embedModelName"
-                :disabled="!embedModelConfigurable"
-                :style="{ width: '100%' }"
-              />
-            </div>
-          </div>
-
-          <div v-if="!embedModelConfigurable" class="config-hint-row">
-            Existing graph data already pins the embedding model for this Neo4j database.
-          </div>
-
-          <div class="config-row">
-            <label class="config-label">Batch size</label>
-            <div class="config-field">
-              <a-input-number
-                v-model:value="state.batchSize"
-                :min="1"
-                :max="1000"
-                style="width: 100%"
-              />
-            </div>
-          </div>
-
-          <div class="config-hint-row">Default: 40, range: 1-1000</div>
-        </div>
-
-        <a-upload-dragger
-          class="upload-dragger"
-          v-model:fileList="fileList"
-          name="file"
-          :fileList="fileList"
-          :max-count="1"
-          accept=".jsonl"
-          action="/api/knowledge/files/upload?allow_jsonl=true"
-          :headers="userStore.getAuthHeaders()"
-          @change="handleFileUpload"
-          @drop="handleDrop"
-        >
-          <p class="ant-upload-text">Click or drag a file to this area to upload</p>
-          <p class="ant-upload-hint">Only .jsonl files are supported for graph ingestion.</p>
-        </a-upload-dragger>
-      </div>
-    </a-modal>
-
-    <a-modal
-      :open="state.showUploadTipModal"
-      title="Upload Guidance"
-      @cancel="() => (state.showUploadTipModal = false)"
-      :footer="null"
-      width="520px"
-    >
-      <div class="upload-tip-content">
-        <a-alert
-          :message="getUploadTipMessage()"
-          type="info"
-          show-icon
-          style="margin-bottom: 16px"
-        />
-        <div v-if="!isNeo4j" class="upload-tip-actions">
-          <p>
-            This source does not support direct file upload from Graph View. Open dashboard or
-            knowledge workflows to process documents first.
-          </p>
-          <div class="action-buttons">
-            <a-button type="primary" @click="goToDashboardPage">
-              <DatabaseOutlined /> Go to Dashboard
-            </a-button>
-          </div>
-        </div>
-      </div>
-    </a-modal>
+      <KGBuilder />
+    </a-drawer>
   </div>
 </template>
 
@@ -221,36 +123,37 @@ import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useConfigStore } from '@/stores/config'
 import {
-  UploadOutlined,
   SyncOutlined,
   SearchOutlined,
   ReloadOutlined,
   LoadingOutlined,
   DatabaseOutlined,
-  ExportOutlined
+  SettingOutlined
 } from '@ant-design/icons-vue'
 import ViewSwitchHeader from '@/components/ViewSwitchHeader.vue'
+import KGBuilder from '@/components/KGBuilder.vue'
 import { neo4jApi, unifiedApi } from '@/apis/graph_api'
 import { useUserStore } from '@/stores/user'
 import GraphCanvas from '@/components/GraphCanvas.vue'
 import GraphDetailPanel from '@/components/GraphDetailPanel.vue'
-import EmbeddingModelSelector from '@/components/EmbeddingModelSelector.vue'
 import { useGraph } from '@/composables/useGraph'
 
 const configStore = useConfigStore()
-const userStore = useUserStore()
-const router = useRouter()
-
-const curEmbedModel = computed(() => configStore.config?.embed_model)
+const cur_embed_model = computed(() => configStore.config?.embed_model)
 const knowledgeActiveView = 'graph'
 const knowledgeViewItems = [
-  { key: 'graph', label: 'Knowledge Graph', path: '/graph' },
-  { key: 'dashboard', label: 'Dashboard', path: '/dashboard' }
+  { key: 'documents', label: 'Knowledge base', path: '/database' },
+  { key: 'graph', label: 'Knowledge Graph', path: '/graph' }
 ]
+const modelMatched = computed(
+  () =>
+    !graphInfo?.value?.embed_model_name ||
+    graphInfo.value.embed_model_name === cur_embed_model.value
+)
 
+const router = useRouter()
 const graphRef = ref(null)
 const graphInfo = ref(null)
-const fileList = ref([])
 const sampleNodeCount = ref(100)
 
 const graph = reactive(useGraph(graphRef))
@@ -260,39 +163,20 @@ const state = reactive({
   loadingDatabases: false,
   searchInput: '',
   searchLoading: false,
-  showModal: false,
-  showUploadTipModal: false,
-  processing: false,
   indexing: false,
   showPage: true,
   selectedDbId: 'neo4j',
   dbOptions: [],
   lightragStats: null,
-  embedModelName: '',
-  batchSize: 40
-})
-
-const selectedDbOption = computed(() => {
-  return state.dbOptions.find((option) => option.value === state.selectedDbId) || null
+  showKgBuilder: false
 })
 
 const isNeo4j = computed(() => {
-  return selectedDbOption.value?.type === 'neo4j' || state.selectedDbId === 'neo4j'
-})
-
-const modelMatched = computed(() => {
-  if (!graphInfo?.value?.embed_model_name) {
-    return true
-  }
-  return graphInfo.value.embed_model_name === curEmbedModel.value
+  return state.selectedDbId === 'neo4j'
 })
 
 const embedModelConfigurable = computed(() => {
   return graphInfo.value?.embed_model_configurable ?? true
-})
-
-const hasValidFile = computed(() => {
-  return fileList.value.some((file) => file.status === 'done' && file.response?.file_path)
 })
 
 const unindexedCount = computed(() => {
@@ -305,11 +189,11 @@ const formattedGraphInfo = computed(() => {
       node_count: graphInfo.value?.entity_count || 0,
       edge_count: graphInfo.value?.relationship_count || 0
     }
-  }
-
-  return {
-    node_count: state.lightragStats?.total_nodes || 0,
-    edge_count: state.lightragStats?.total_edges || 0
+  } else {
+    return {
+      node_count: state.lightragStats?.total_nodes || 0,
+      edge_count: state.lightragStats?.total_edges || 0
+    }
   }
 })
 
@@ -317,35 +201,21 @@ const loadDatabases = async () => {
   state.loadingDatabases = true
   try {
     const res = await unifiedApi.getGraphs()
-    if (res.success && Array.isArray(res.data)) {
-      const options = res.data.map((db) => ({
+    if (res.success && res.data) {
+      state.dbOptions = res.data.map((db) => ({
         label: `${db.name} (${db.type})`,
         value: db.id,
         type: db.type
       }))
 
-      if (!options.find((option) => option.value === 'neo4j')) {
-        options.unshift({
-          label: 'Neo4j (neo4j)',
-          value: 'neo4j',
-          type: 'neo4j'
-        })
-      }
-
-      state.dbOptions = options
-
       if (!state.selectedDbId || !state.dbOptions.find((o) => o.value === state.selectedDbId)) {
-        state.selectedDbId = state.dbOptions.length > 0 ? state.dbOptions[0].value : 'neo4j'
+        if (state.dbOptions.length > 0) {
+          state.selectedDbId = state.dbOptions[0].value
+        }
       }
-      return
     }
-
-    state.dbOptions = [{ label: 'Neo4j (neo4j)', value: 'neo4j', type: 'neo4j' }]
-    state.selectedDbId = 'neo4j'
   } catch (error) {
-    console.error('Failed to load graph databases:', error)
-    state.dbOptions = [{ label: 'Neo4j (neo4j)', value: 'neo4j', type: 'neo4j' }]
-    state.selectedDbId = 'neo4j'
+    console.error('Failed to load databases:', error)
   } finally {
     state.loadingDatabases = false
   }
@@ -359,10 +229,8 @@ const handleDbChange = () => {
   if (isNeo4j.value) {
     loadGraphInfo()
   } else {
-    graphInfo.value = null
     loadLightRAGStats()
   }
-
   loadSampleNodes()
 }
 
@@ -374,74 +242,22 @@ const loadLightRAGStats = () => {
         state.lightragStats = res.data
       }
     })
-    .catch((error) => {
-      console.error('Failed to load graph stats:', error)
-    })
+    .catch((e) => console.error(e))
 }
 
 const loadGraphInfo = () => {
   state.loadingGraphInfo = true
-
   neo4jApi
     .getInfo()
     .then((data) => {
+      console.log(data)
       graphInfo.value = data.data
-      state.embedModelName = graphInfo.value?.embed_model_name || curEmbedModel.value || ''
       state.loadingGraphInfo = false
     })
     .catch((error) => {
       console.error(error)
-      message.error(error.message || 'Failed to load Neo4j graph info')
+      message.error(error.message || 'Failed to load graph info')
       state.loadingGraphInfo = false
-    })
-}
-
-const addDocumentByFile = () => {
-  if (!hasValidFile.value) {
-    message.error('Wait until file upload is complete')
-    return
-  }
-
-  if (!state.embedModelName) {
-    message.error('Select an embedding model first')
-    return
-  }
-
-  state.processing = true
-
-  const uploadedFile = fileList.value.find(
-    (file) => file.status === 'done' && file.response?.file_path
-  )
-  const filePath = uploadedFile?.response?.file_path
-
-  if (!filePath) {
-    message.error('Upload response did not include file_path. Please upload again.')
-    state.processing = false
-    return
-  }
-
-  neo4jApi
-    .addEntities(filePath, state.selectedDbId || 'neo4j', state.embedModelName, state.batchSize)
-    .then((response) => {
-      if (response.status === 'success') {
-        message.success(response.message || 'File imported into graph database')
-        state.showModal = false
-        fileList.value = []
-        setTimeout(() => {
-          loadGraphInfo()
-          loadSampleNodes()
-        }, 500)
-        return
-      }
-
-      throw new Error(response.message || 'Failed to add file to graph')
-    })
-    .catch((error) => {
-      console.error(error)
-      message.error(error.message || 'Failed to import file')
-    })
-    .finally(() => {
-      state.processing = false
     })
 }
 
@@ -452,25 +268,23 @@ const loadSampleNodes = () => {
     .getSubgraph({
       db_id: state.selectedDbId,
       node_label: '*',
-      max_nodes: Number(sampleNodeCount.value) || 100,
-      max_depth: 2
+      max_nodes: sampleNodeCount.value
     })
-    .then((response) => {
-      const result = response.data
-      graph.updateGraphData(result?.nodes || [], result?.edges || [])
+    .then((data) => {
+      const result = data.data
+      graph.updateGraphData(result.nodes, result.edges)
+      console.log(graph.graphData)
     })
     .catch((error) => {
       console.error(error)
-      message.error(error.message || 'Failed to load graph nodes')
+      message.error(error.message || 'Failed to load nodes')
     })
-    .finally(() => {
-      graph.fetching = false
-    })
+    .finally(() => (graph.fetching = false))
 }
 
 const onSearch = () => {
   if (state.searchLoading) {
-    message.error('Please wait for the current request to finish')
+    message.error('Please try again later')
     return
   }
 
@@ -480,151 +294,81 @@ const onSearch = () => {
     .getSubgraph({
       db_id: state.selectedDbId,
       node_label: state.searchInput || '*',
-      max_nodes: Number(sampleNodeCount.value) || 100,
-      max_depth: 2
+      max_nodes: sampleNodeCount.value
     })
-    .then((response) => {
-      const result = response.data
-      if (!result || !Array.isArray(result.nodes) || !Array.isArray(result.edges)) {
-        throw new Error('Invalid graph response format')
+    .then((data) => {
+      const result = data.data
+      if (!result || !result.nodes || !result.edges) {
+        throw new Error('Invalid data format')
       }
-
       graph.updateGraphData(result.nodes, result.edges)
-
       if (graph.graphData.nodes.length === 0) {
-        message.info('No matching entities found')
+        message.info('No relevant entities found')
       }
+      console.log(data)
+      console.log(graph.graphData)
     })
     .catch((error) => {
-      console.error('Graph query failed:', error)
-      message.error(error.message || 'Graph query failed')
+      console.error('Search error:', error)
+      message.error(`Search error: ${error.message || 'Unknown error'}`)
     })
-    .finally(() => {
-      state.searchLoading = false
-    })
+    .finally(() => (state.searchLoading = false))
 }
 
-const handleFileUpload = ({ file, fileList: newFileList }) => {
-  fileList.value = newFileList
-
-  if (file.status === 'error') {
-    message.error(`Upload failed: ${file.name}`)
-  }
-
-  if (file.status === 'done' && file.response?.file_path) {
-    message.success(`Uploaded: ${file.name}`)
-  }
-}
-
-const handleDrop = (event) => {
-  console.log('File dropped:', event)
-}
-
-const handleModalCancel = () => {
-  state.showModal = false
-  fileList.value = []
-}
+onMounted(async () => {
+  await loadDatabases()
+  loadGraphInfo()
+  loadSampleNodes()
+})
 
 const graphStatusClass = computed(() => {
-  if (state.loadingGraphInfo) {
-    return 'loading'
-  }
+  if (state.loadingGraphInfo) return 'loading'
   return graphInfo.value?.status === 'open' ? 'open' : 'closed'
 })
 
 const graphStatusText = computed(() => {
-  if (state.loadingGraphInfo) {
-    return 'Loading'
-  }
-  return graphInfo.value?.status === 'open' ? 'Connected' : 'Disconnected'
+  if (state.loadingGraphInfo) return 'Loading'
+  return graphInfo.value?.status === 'open' ? 'Connected' : 'Closed'
 })
 
 const indexNodes = () => {
   if (!modelMatched.value) {
     message.error(
-      `Embedding model mismatch: current model is ${curEmbedModel.value}, but graph model is ${graphInfo.value?.embed_model_name}`
+      `Model mismatch, cannot index. Current: ${cur_embed_model.value}, Graph: ${graphInfo.value?.embed_model_name}`
     )
     return
   }
 
   if (state.processing) {
-    message.error('Another process is currently running, please try again later')
+    message.error('Processing in background, please try again later')
     return
   }
 
   state.indexing = true
   neo4jApi
-    .indexEntities(state.selectedDbId || 'neo4j')
-    .then((response) => {
-      message.success(response.message || 'Indexes added successfully')
+    .indexEntities('neo4j')
+    .then((data) => {
+      message.success(data.message || 'Indexing successful')
       loadGraphInfo()
     })
     .catch((error) => {
       console.error(error)
-      message.error(error.message || 'Failed to add indexes')
+      message.error(error.message || 'Failed to index')
     })
     .finally(() => {
       state.indexing = false
     })
 }
 
-const exportGraphData = () => {
-  const payload = {
-    nodes: graph.graphData.nodes,
-    edges: graph.graphData.edges,
-    graphInfo: isNeo4j.value ? graphInfo.value : state.lightragStats,
-    source: state.selectedDbId,
-    exportTime: new Date().toISOString()
-  }
-
-  const dataBlob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(dataBlob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `graph-data-${state.selectedDbId}-${new Date().toISOString().slice(0, 10)}.json`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-
-  message.success('Graph data exported')
+const getAuthHeaders = () => {
+  const userStore = useUserStore()
+  return userStore.getAuthHeaders()
 }
 
-const getUploadTipMessage = () => {
-  if (isNeo4j.value) {
-    return 'Neo4j supports direct JSONL upload from this page.'
-  }
-
-  const dbType = selectedDbOption.value?.type || 'unknown'
-  const dbLabel = selectedDbOption.value?.label || state.selectedDbId
-  return `Current source is ${dbType.toUpperCase()} (${dbLabel}). Use your document ingestion workflow to build graph data first.`
-}
-
-const goToDashboardPage = () => {
-  state.showUploadTipModal = false
-  router.push('/dashboard')
-}
-
-onMounted(async () => {
-  await loadDatabases()
-  if (isNeo4j.value) {
-    loadGraphInfo()
-  } else {
-    loadLightRAGStats()
-  }
-  loadSampleNodes()
-})
 </script>
 
 <style lang="less" scoped>
 @graph-header-height: 50px;
-
-.database-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-}
 
 .graph-container {
   padding: 0;
@@ -642,7 +386,6 @@ onMounted(async () => {
   .label {
     font-size: 14px;
     margin-right: 8px;
-    color: var(--color-text-secondary);
   }
 }
 
@@ -679,67 +422,41 @@ onMounted(async () => {
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
 }
 
 .upload {
   margin-bottom: 20px;
-
-  .upload-dragger {
-    margin: 0;
-  }
-
+  .upload-dragger { margin: 0px; }
   .upload-config {
     margin: 24px 0;
     padding: 16px;
     background-color: var(--gray-0);
     border-radius: 4px;
-
     .config-row {
       display: flex;
       align-items: center;
       margin-bottom: 16px;
-
-      &:last-of-type {
-        margin-bottom: 0;
-      }
-
+      &:last-of-type { margin-bottom: 0; }
       .config-label {
-        width: 120px;
+        width: 100px;
         flex-shrink: 0;
         font-size: 14px;
         color: var(--color-text);
         text-align: right;
         margin-right: 16px;
       }
-
-      .config-field {
-        flex: 1;
-        min-width: 0;
-      }
+      .config-field { flex: 1; min-width: 0; }
     }
-
     .config-hint-row {
       margin-bottom: 16px;
-      padding-left: 136px;
+      padding-left: 116px;
       font-size: 12px;
       color: var(--color-text-secondary);
       line-height: 1.5;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
+      &:last-child { margin-bottom: 0; }
     }
   }
 }
@@ -749,7 +466,6 @@ onMounted(async () => {
   height: calc(100vh - @graph-header-height);
   overflow: hidden;
   background: var(--gray-10);
-
   .actions {
     display: flex;
     justify-content: space-between;
@@ -757,67 +473,28 @@ onMounted(async () => {
     padding: 0 24px;
     width: 100%;
   }
+  .tags { display: flex; gap: 8px; }
 }
 
 .actions {
   top: 0;
-
-  .actions-left,
-  .actions-right {
+  .actions-left, .actions-right {
     display: flex;
     align-items: center;
     gap: 10px;
   }
-
-  :deep(.ant-input) {
-    padding: 2px 0;
-  }
-
-  button {
-    height: 37px;
-    box-shadow: none;
-  }
+  :deep(.ant-input) { padding: 2px 0px; }
+  button { height: 37px; box-shadow: none; }
 }
 
 .upload-tip-content {
   .upload-tip-actions {
-    p {
-      margin-bottom: 16px;
-      color: var(--color-text-secondary);
-    }
+    p { margin-bottom: 16px; color: var(--color-text-secondary); }
   }
-
   .action-buttons {
     display: flex;
     justify-content: center;
     margin-top: 20px;
-  }
-}
-
-@media (max-width: 960px) {
-  .db-selector {
-    .status-wrapper {
-      display: none;
-    }
-
-    .label {
-      display: none;
-    }
-  }
-
-  .container-outter .actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .actions {
-    .actions-left,
-    .actions-right {
-      width: 100%;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
   }
 }
 </style>

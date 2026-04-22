@@ -77,6 +77,31 @@ export const unifiedApi = {
     })
 
     return await apiGet(`/api/graph/labels?${queryParams.toString()}`, {}, true)
+  },
+
+  /**
+   * Start managed KG construction process
+   * @param {Object} params - Construction parameters
+   * @returns {Promise} - Build start result
+   */
+  buildKg: async (params = {}) => {
+    return await apiPost('/api/graph/kg/build', params, {}, true)
+  },
+
+  /**
+   * Get real-time status of managed KG build process
+   * @returns {Promise} - Status data
+   */
+  getKgStatus: async () => {
+    return await apiGet('/api/graph/kg/status', {}, true)
+  },
+
+  /**
+   * Stop current managed KG build process
+   * @returns {Promise} - Stop result
+   */
+  stopKgBuild: async () => {
+    return await apiPost('/api/graph/kg/stop', {}, {}, true)
   }
 }
 

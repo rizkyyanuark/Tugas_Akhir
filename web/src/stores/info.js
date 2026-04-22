@@ -23,10 +23,10 @@ export const useInfoStore = defineStore('info', () => {
   const branding = computed(
     () =>
       infoConfig.value.branding || {
-        name: 'Yunesa ARE',
-        title: 'Yunesa Agentic Research Engine',
-        subtitle: 'Advanced Academic RAG Assistant',
-        subtitles: ['Intelligent Academic Inquiry', 'Agentic Knowledge Retrieval']
+        name: 'Yunesa',
+        title: 'Yunesa Knowledge Engine',
+        subtitle: 'Intelligent Agent & Knowledge Management Platform',
+        subtitles: ['Yunesa Agent Terminal', 'Strategic Knowledge Management']
       }
   )
 

@@ -69,7 +69,7 @@ const fetchGithubStars = async () => {
   try {
     isLoadingStars.value = true
     // Public API, can use fetch directly
-    const response = await fetch('https://api.github.com/repos/xerrors/Yuxi')
+    const response = await fetch('https://api.github.com/repos/rizkyyanuark/Tugas_Akhir')
     const data = await response.json()
     githubStars.value = data.stargazers_count
   } catch (error) {
@@ -88,7 +88,6 @@ onMounted(async () => {
   if (userStore.isAdmin) {
     await getRemoteConfig()
     taskerStore.loadTasks()
-    fetchGithubStars() // Fetch GitHub stars on mount
   }
 })
 
@@ -98,7 +97,7 @@ console.log(route)
 
 const activeTaskCount = computed(() => activeCountRef.value || 0)
 
-// Navigation menu aligned with reference flow (without Knowledge Base)
+// Navigation menu aligned with reference flow
 const mainList = computed(() => {
   const items = [
     {
@@ -111,9 +110,9 @@ const mainList = computed(() => {
 
   if (userStore.isAdmin) {
     items.push({
-      name: 'Knowledge Graph',
-      path: '/graph',
-      activePaths: ['/graph'],
+      name: 'Knowledge Base',
+      path: '/database',
+      activePaths: ['/database', '/graph'],
       icon: LibraryBig,
       activeIcon: LibraryBig
     })
@@ -179,17 +178,8 @@ provide('settingsModal', {
         </RouterLink>
       </div>
       <div class="fill"></div>
-      <div class="github nav-item">
-        <a-tooltip placement="right">
-          <template #title>Star on GitHub</template>
-          <a href="https://github.com/xerrors/Yuxi" target="_blank" class="github-link">
-            <GithubOutlined class="icon" />
-            <span v-if="githubStars > 0" class="github-stars">
-              <span class="star-count">{{ (githubStars / 1000).toFixed(1) }}k</span>
-            </span>
-          </a>
-        </a-tooltip>
-      </div>
+      <div class="fill"></div>
+
       <div
         v-if="userStore.isAdmin"
         class="nav-item task-center"

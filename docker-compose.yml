@@ -73,6 +73,7 @@ services:
       - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
       - ./.env:/app/.env
       - ${MODEL_DIR:-./models}:/models # Use default value when the environment variable is undefined
+      - ./.hf_cache:/app/.cache/huggingface
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5050:5050"
@@ -127,6 +128,7 @@ services:
       - ./backend/pyproject.toml:/app/pyproject.toml
       - ./backend/uv.lock:/app/uv.lock
       - ${MODEL_DIR:-./models}:/models
+      - ./.hf_cache:/app/.cache/huggingface
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - app-network

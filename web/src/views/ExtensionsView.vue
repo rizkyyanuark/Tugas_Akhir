@@ -7,44 +7,7 @@
       aria-label="Extension management tabs"
     >
       <template #actions>
-        <div class="extension-header-actions">
-          <template v-if="activeTab === 'skills'">
-            <a-button
-              class="lucide-icon-btn"
-              :disabled="skillsLoading || skillsImporting"
-              @click="handleOpenRemoteInstall"
-            >
-              <Computer :size="14" />
-              <span>Remote Install</span>
-            </a-button>
-            <a-upload
-              accept=".zip,.md"
-              :show-upload-list="false"
-              :custom-request="handleImportUpload"
-              :before-upload="beforeSkillUpload"
-              :disabled="skillsLoading || skillsImporting"
-            >
-              <a-button type="primary" class="lucide-icon-btn" :loading="skillsImporting">
-                <Upload :size="14" />
-                <span>Upload Skill</span>
-              </a-button>
-            </a-upload>
-          </template>
-
-          <template v-else-if="activeTab === 'mcp'">
-            <a-button type="primary" class="lucide-icon-btn" @click="handleMcpAdd">
-              <Plus :size="14" />
-              <span>Add MCP</span>
-            </a-button>
-          </template>
-
-          <template v-else-if="activeTab === 'subagents'">
-            <a-button type="primary" class="lucide-icon-btn" @click="handleSubagentAdd">
-              <Plus :size="14" />
-              <span>Add</span>
-            </a-button>
-          </template>
-        </div>
+        <!-- Manual ingestion features (Add, Upload, Remote Install) are disabled as per engineering directive -->
       </template>
     </ViewSwitchHeader>
 

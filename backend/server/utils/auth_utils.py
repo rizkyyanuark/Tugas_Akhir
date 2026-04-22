@@ -10,31 +10,31 @@ from argon2.exceptions import InvalidHash, VerificationError, VerifyMismatchErro
 
 from yunesa.utils.datetime_utils import utc_now
 
-# JWT配置
+# JWT Configuration
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "ta_know_secure_key")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION = 7 * 24 * 60 * 60  # 7天过期
+JWT_EXPIRATION = 7 * 24 * 60 * 60  # Expires in 7 days
 PASSWORD_HASHER = PasswordHasher()
 
 
 class AuthUtils:
-    """认证工具类"""
+    """Authentication utility class"""
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """使用 Argon2 哈希密码"""
+        """Hash password using Argon2"""
         return PASSWORD_HASHER.hash(password)
 
     @staticmethod
     def verify_password(stored_password: str, provided_password: str) -> bool:
-        """验证密码"""
+        """Verify password"""
         if stored_password.startswith("$argon2"):
             try:
                 return PASSWORD_HASHER.verify(stored_password, provided_password)
             except (InvalidHash, VerifyMismatchError, VerificationError):
                 return False
 
-        # 兼容历史 SHA-256:盐 格式，避免现有账号密码在升级后立即失效。
+        # Compatible with historical SHA-256:salt format, avoiding existing account passwords from failing immediately after upgrade.
         if ":" not in stored_password:
             return False
 
@@ -44,10 +44,10 @@ class AuthUtils:
 
     @staticmethod
     def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
-        """创建JWT访问令牌"""
+        """Create JWT access token"""
         to_encode = data.copy()
 
-        # 设置过期时间
+        # Set expiration time
         if expires_delta:
             expire = utc_now() + expires_delta
         else:
@@ -55,13 +55,13 @@ class AuthUtils:
 
         to_encode.update({"exp": expire})
 
-        # 编码JWT
+        # Encode JWT
         encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
         return encoded_jwt
 
     @staticmethod
     def decode_token(token: str) -> dict[str, Any] | None:
-        """解码验证JWT令牌"""
+        """Decode and verify JWT token"""
         try:
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             return payload
@@ -70,11 +70,11 @@ class AuthUtils:
 
     @staticmethod
     def verify_access_token(token: str) -> dict[str, Any]:
-        """验证访问令牌，如果无效则抛出异常"""
+        """Verify access token, raise exception if invalid"""
         try:
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             return payload
         except jwt.ExpiredSignatureError:
-            raise ValueError("令牌已过期")
+            raise ValueError("Token has expired")
         except jwt.InvalidTokenError:
-            raise ValueError("无效的令牌")
+            raise ValueError("Invalid token")

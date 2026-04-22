@@ -30,7 +30,7 @@ from ..config import (
     MAX_PAPERS, LLM_BATCH_SIZE, KG_ARTIFACTS_DIR,
 )
 
-logger = logging.getLogger(__name__)
+from yunesa.utils.logging_config import logger
 
 
 class KGPipeline:
@@ -57,11 +57,14 @@ class KGPipeline:
         max_papers: Optional[int] = None,
         clear_db: bool = True,
         batch_size: int = LLM_BATCH_SIZE,
+        llm_config: Optional[Dict[str, str]] = None,
     ):
         self.test_mode = test_mode
         self.max_papers = 5 if test_mode else (max_papers or MAX_PAPERS)
         self.clear_db = clear_db
         self.batch_size = batch_size
+        self.llm_config = llm_config or {}
+        self.progress_callback = None
 
         # Pipeline state (populated during run)
         self.nodes = {}
@@ -81,36 +84,28 @@ class KGPipeline:
         # Timing
         self._timers = {}
 
-        self._setup_logging()
+    def _create_llm_client(self):
+        """Create a runtime-configured LLM client for KG curation steps."""
+        from ..llm_client import GroqClient
 
-    def _setup_logging(self):
-        """Configure file + console logging for the pipeline."""
-        kg_logger = logging.getLogger("src.kg")
-        if not kg_logger.handlers:
-            kg_logger.setLevel(logging.DEBUG)
+        return GroqClient(
+            api_key=self.llm_config.get("api_key"),
+            model=self.llm_config.get("model"),
+            base_url=self.llm_config.get("base_url"),
+        )
 
-            # File handler
-            log_file = KG_ARTIFACTS_DIR / \
-                f'kg_pipeline_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-            fh = logging.FileHandler(str(log_file), encoding="utf-8")
-            fh.setLevel(logging.DEBUG)
-            fh.setFormatter(logging.Formatter(
-                "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S",
-            ))
-            kg_logger.addHandler(fh)
+    def _report_progress(self, data: dict):
+        """Invoke progress callback if registered."""
+        if self.progress_callback:
+            try:
+                self.progress_callback(data)
+            except Exception as e:
+                logger.warning(f"Progress callback failed: {e}")
 
-            # Console handler
-            ch = logging.StreamHandler(sys.stdout)
-            ch.setLevel(logging.INFO)
-            ch.setFormatter(logging.Formatter("%(levelname)-8s | %(message)s"))
-            kg_logger.addHandler(ch)
-
-            # Suppress noisy libs
-            logging.getLogger("urllib3").setLevel(logging.WARNING)
-            logging.getLogger("neo4j").setLevel(logging.WARNING)
-
-    def _start_step(self, name: str):
+    def _start_step(self, name: str, percentage: int = None):
+        if self.progress_callback:
+            self.progress_callback(
+                {"step": name, "status": "started", "percentage": percentage or 0})
         self._timers[name] = time.time()
         logger.info(f"{'='*60}")
         logger.info(f"START: {name}")
@@ -138,13 +133,14 @@ class KGPipeline:
 
         from supabase import create_client
         from ..config import SUPABASE_URL, SUPABASE_KEY
-        
+
         if not SUPABASE_URL or not SUPABASE_KEY:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be properly configured.")
+            raise ValueError(
+                "SUPABASE_URL and SUPABASE_KEY must be properly configured.")
 
         # Create native Supabase client inline (no need for scraping notebooks hack)
         sb = create_client(SUPABASE_URL, SUPABASE_KEY)
-        
+
         logger.info(
             "Fetching data from Supabase tables: 'papers' and 'lecturers'...")
 
@@ -205,7 +201,7 @@ class KGPipeline:
     # ══════════════════════════════════════════════════════════
     def extract_entities(self):
         """Run GLiNER NER + title regex + CSV keyword extraction."""
-        self._start_step("Step 3: NER Extraction")
+        self._start_step("Step 3: NER Extraction", percentage=20)
 
         from ..ner_extractor import EntityStore, extract_entities_from_paper
 
@@ -248,6 +244,19 @@ class KGPipeline:
             )
             self.extracted_entities[pid] = paper_lks
 
+            if total > 0:
+                # Step 3 occupies 20% -> 50% of the progress bar.
+                # Keep running updates below 50 to reserve 50% for the completion event.
+                ner_progress = 20 + int(((i + 1) / total) * 30)
+                self._report_progress(
+                    {
+                        "step": "Step 3: NER Extraction",
+                        "status": "running",
+                        "percentage": min(49, ner_progress),
+                        "message": f"NER extracting {i+1}/{total} papers",
+                    }
+                )
+
             if (i + 1) % 10 == 0 or (i + 1) == total:
                 logger.info(
                     f"  Parsed {i+1}/{total} papers | unique entities: {len(self.entity_store)}"
@@ -263,9 +272,8 @@ class KGPipeline:
         self._start_step("Step 4: Entity Resolution")
 
         from ..entity_resolver import build_alias_map, apply_resolution
-        from ..llm_client import GroqClient
 
-        llm_client = GroqClient()
+        llm_client = self._create_llm_client()
         entity_texts = self.entity_store.get_all_texts()
 
         self.alias_map = build_alias_map(
@@ -292,28 +300,33 @@ class KGPipeline:
         self._start_step("Step 5: LLM Curation")
 
         from ..graph_builder import curate_entities_llm
-        from ..llm_client import GroqClient
 
-        llm_client = GroqClient()
+        llm_client = self._create_llm_client()
 
-        (
-            self.nodes,
-            self.edges,
-            self.entity_vdb,
-            self.relationship_vdb,
-            self.keywords_vdb,
-            self.entity_node_map,
-        ) = curate_entities_llm(
-            extracted_entities=self.extracted_entities,
-            entity_store=self.entity_store,
-            paper_abstracts=self.paper_abstracts,
-            paper_titles=self.paper_titles,
-            alias_map=self.alias_map,
-            nodes=self.nodes,
-            edges=self.edges,
-            llm_client=llm_client,
-            text_chunks_db=self.text_chunks_db,
-        )
+        try:
+            (
+                self.nodes,
+                self.edges,
+                self.entity_vdb,
+                self.relationship_vdb,
+                self.keywords_vdb,
+                self.entity_node_map,
+            ) = curate_entities_llm(
+                extracted_entities=self.extracted_entities,
+                entity_store=self.entity_store,
+                paper_abstracts=self.paper_abstracts,
+                paper_titles=self.paper_titles,
+                alias_map=self.alias_map,
+                nodes=self.nodes,
+                edges=self.edges,
+                llm_client=llm_client,
+                text_chunks_db=self.text_chunks_db,
+            )
+        except Exception as e:
+            logger.error(f"Error during LLM Curation: {e}")
+            self._report_progress(
+                {"step": "Step 5: LLM Curation", "status": "error", "message": f"LLM Curation failed: {str(e)}"})
+            raise RuntimeError(f"LLM Curation failed: {str(e)}") from e
 
         self._end_step("Step 5: LLM Curation", {
             "Curated entities": len(self.entity_vdb),
@@ -383,17 +396,42 @@ class KGPipeline:
         logger.info(
             f"🚀 KG Pipeline starting ({mode} mode, max_papers={self.max_papers})")
 
-        df_papers, df_dosen = self.load_sources()
-        self.build_backbone(df_papers, df_dosen)
-        self.extract_entities()
-        self.resolve_entities()
-        self.curate_entities()
-        self.ingest_databases()
+        try:
+            df_papers, df_dosen = self.load_sources()
+            self._report_progress({"step": "Step 1: Source Loading",
+                                  "status": "completed", "percentage": 10, "message": "Sources loaded."})
+
+            self.build_backbone(df_papers, df_dosen)
+            self._report_progress({"step": "Step 2: Backbone Construction",
+                                  "status": "completed", "percentage": 20, "message": "Backbone built."})
+
+            self.extract_entities()
+            self._report_progress({"step": "Step 3: NER Extraction", "status": "completed",
+                                  "percentage": 50, "message": "NER extraction complete."})
+
+            self.resolve_entities()
+            self._report_progress({"step": "Step 4: Entity Resolution",
+                                  "status": "completed", "percentage": 60, "message": "Entities resolved."})
+
+            self.curate_entities()
+            self._report_progress({"step": "Step 5: LLM Curation", "status": "completed",
+                                  "percentage": 80, "message": "Entities curated."})
+
+            self.ingest_databases()
+            self._report_progress({"step": "Step 6: Database Ingestion", "status": "completed",
+                                  "percentage": 100, "message": "Database ingestion complete."})
+        except Exception as e:
+            logger.error(f"Pipeline failed: {e}")
+            self._report_progress(
+                {"step": "Pipeline", "status": "error", "message": str(e), "percentage": 100})
+            raise
 
         elapsed = time.time() - t0
         summary = {
             "mode": mode,
             "max_papers": self.max_papers,
+            "llm_provider": self.llm_config.get("provider", "unknown"),
+            "llm_model": self.llm_config.get("model", "unknown"),
             "total_nodes": len(self.nodes),
             "total_edges": len(self.edges),
             "entities_extracted": len(self.entity_store) if self.entity_store else 0,
@@ -435,7 +473,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="UNESA KG Construction Pipeline")
+        description="Yunesa KG Construction Pipeline")
     parser.add_argument(
         "--test", action="store_true", help="Run in test mode (5 papers only)"
     )

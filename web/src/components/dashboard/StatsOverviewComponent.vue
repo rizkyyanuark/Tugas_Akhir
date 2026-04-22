@@ -3,11 +3,11 @@
     <div class="stats-grid">
       <div class="stat-card primary">
         <div class="stat-icon">
-          <MessageCircle class="icon" />
+          <BookOpen class="icon" />
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ basicStats?.total_conversations || 0 }}</div>
-          <div class="stat-label">Total Conversations</div>
+          <div class="stat-label">Knowledge Items</div>
           <div class="stat-trend" v-if="basicStats?.conversation_trend">
             <TrendingUp v-if="basicStats.conversation_trend > 0" class="trend-icon up" />
             <TrendingDown v-else-if="basicStats.conversation_trend < 0" class="trend-icon down" />
@@ -28,11 +28,11 @@
 
       <div class="stat-card info">
         <div class="stat-icon">
-          <Mail class="icon" />
+          <Network class="icon" />
         </div>
         <div class="stat-content">
           <div class="stat-value">{{ basicStats?.total_messages || 0 }}</div>
-          <div class="stat-label">Total Messages</div>
+          <div class="stat-label">Relationships</div>
         </div>
       </div>
 
@@ -71,12 +71,8 @@
 
 <script setup>
 import {
-  MessageCircle,
-  Activity,
-  Mail,
-  Users,
-  BarChart3,
-  Heart,
+  Network,
+  BookOpen,
   TrendingUp,
   TrendingDown
 } from 'lucide-vue-next'
@@ -121,11 +117,12 @@ const getSatisfactionClass = () => {
     gap: 16px;
 
     .stat-card {
-      background: var(--gray-0);
-      border-radius: 8px;
+      background: var(--bg-sider);
+      backdrop-filter: blur(20px);
+      border-radius: 12px;
       padding: 20px;
-      border: 1px solid var(--gray-100);
-      transition: all 0.2s ease;
+      border: 1px solid var(--gray-150);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -134,8 +131,9 @@ const getSatisfactionClass = () => {
       justify-content: flex-start;
 
       &:hover {
-        border-color: var(--gray-200);
-        box-shadow: 0 1px 3px 0 var(--shadow-1);
+        border-color: var(--main-color);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
       }
 
       &.primary {

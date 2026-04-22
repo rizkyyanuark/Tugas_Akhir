@@ -35,9 +35,12 @@ async def _build_middlewares(context):
 
     # subagents
     subagents = await get_subagents_from_names(context.subagents)
+    sub_model = load_chat_model(fully_specified_name=context.subagents_model)
+    for sa in subagents:
+        if not sa.get("model"):
+            sa["model"] = sub_model
+
     subagents_middleware = SubAgentMiddleware(
-        default_model=load_chat_model(
-            fully_specified_name=context.subagents_model),
         subagents=subagents,
         general_purpose_agent=True,
         default_middleware=[

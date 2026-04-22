@@ -50,6 +50,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"
 
+# -- Pre-download Core NLP Models (CACHED) --
+# This ensures models are already in the image, avoiding downloads at runtime.
+RUN uv run python -c "from gliner import GLiNER; GLiNER.from_pretrained('urchade/gliner_small-v2.1')" && \
+    uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # ── LAYER 2: Actual Source Code (BUSTS on code change) ──────
 # Now copy the real source code. This is very fast (milliseconds).
 COPY backend/package /app/package
