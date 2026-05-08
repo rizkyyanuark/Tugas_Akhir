@@ -33,13 +33,13 @@ jobs:
       - name: 📦 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🔑 Write config files to temp
+      - name: 🔑 Write config files to workspace
         run: |
-          cat << 'DOTENV_EOF' > /tmp/.env.deploy
+          cat << 'DOTENV_EOF' > .env.deploy
           ${{ secrets.DOT_ENV }}
           DOTENV_EOF
 
-          cat << 'AIRFLOW_EOF' > /tmp/airflow_variables_import.json
+          cat << 'AIRFLOW_EOF' > airflow_variables_import.json
           ${{ secrets.AIRFLOW_VARIABLES }}
           AIRFLOW_EOF
 
@@ -49,9 +49,8 @@ jobs:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/tmp/.env.deploy,/tmp/airflow_variables_import.json"
+          source: ".env.deploy,airflow_variables_import.json"
           target: /tmp/
-          strip_components: 1
 
       - name: 🚀 Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2

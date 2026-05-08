@@ -143,6 +143,7 @@ neo4j_import/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+146: 
 
 # LaTeX compilation artifacts
 *.aux
@@ -206,4 +207,5 @@ __package_test__.*
 
 # Misc project paths
 docs/vibe/
-# .github/  # TRACKED: contains CI/CD workflow for production deployment
+# .github/  <-- ALLOWED for CI/CD
+orchestration/airflow_variables_import.json
