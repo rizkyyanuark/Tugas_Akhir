@@ -78,12 +78,14 @@ jobs:
             ./setup-server.sh
 
             # --- 4. Deploy services ---
-            echo "🐳 [4/5] Deploying Docker services..."
-            docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans 2>/dev/null \
-              || docker-compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
+            echo "🧹 [4/6] Pre-build cleanup (freeing disk space)..."
+            docker system prune -af --volumes || true
 
-            # --- 5. Cleanup ---
-            echo "🧹 [5/5] Cleaning up old images..."
+            echo "🐳 [5/6] Deploying Docker services..."
+            docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
+
+            # --- 6. Final Cleanup ---
+            echo "🧹 [6/6] Final cleanup..."
             docker image prune -f
 
             echo ""
