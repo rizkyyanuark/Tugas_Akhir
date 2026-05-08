@@ -4,7 +4,7 @@
 # Triggers: Push to master, or manual dispatch from GitHub UI.
 #
 # Required GitHub Secrets:
-#   - REMOTE_HOST         : EC2 Public IP (e.g., 34.207.102.165)
+#   - REMOTE_HOST         : EC2 Public IP 
 #   - REMOTE_USER         : SSH username (e.g., ubuntu)
 #   - SSH_PRIVATE_KEY      : Contents of .pem file
 #   - DOT_ENV             : Full contents of .env file
@@ -15,7 +15,7 @@ name: 🚀 Production Deployment
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   workflow_dispatch:  # Manual trigger dari GitHub UI
 
 # Prevent concurrent deployments — queue any new push
@@ -43,7 +43,6 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: DOT_ENV,AIRFLOW_VARS
-          debug: true
           script_stop: true
           command_timeout: 25m
           script: |
@@ -61,11 +60,13 @@ jobs:
 
             cd ~/Tugas_Akhir
 
-            # --- 1. Pull latest code ---
+            # --- 1. Pull latest code (Match current branch) ---
             echo ""
             echo "📥 [1/5] Pulling latest code..."
             git stash --quiet 2>/dev/null || true
-            git pull origin master --force
+            git fetch origin
+            git checkout ${GITHUB_REF##*/}
+            git pull origin ${GITHUB_REF##*/} --force
 
             # --- 2. Inject config files from GitHub Secrets ---
             echo "🔑 [2/5] Writing .env & Airflow variables..."
@@ -77,20 +78,19 @@ jobs:
             chmod +x setup-server.sh
             ./setup-server.sh
 
-            # --- 4. Deploy services ---
-            echo "📊 [4/7] Disk & Inode Diagnostics..."
+            echo "📊 [4/7] Disk Diagnostics (Verifying 40GB+)..."
             df -h /
-            df -i /
-
-            echo "🧹 [5/7] Aggressive Cleanup (Freeing space & build cache)..."
+            
+            echo "🧹 [5/7] Fresh Start: Cleaning previous artifacts..."
             docker system prune -af --volumes || true
             docker builder prune -af || true
+            sudo apt-get clean || true
 
-            echo "🐳 [6/7] Deploying Docker services..."
+            echo "🐳 [6/7] Deploying Fresh Services..."
             docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
 
             # --- 6. Final Cleanup ---
-            echo "🧹 [6/6] Final cleanup..."
+            echo "🧹 [7/7] Final cleanup..."
             docker image prune -f
 
             echo ""
