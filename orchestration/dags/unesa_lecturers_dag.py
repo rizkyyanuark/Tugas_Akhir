@@ -26,17 +26,15 @@ import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.models import Variable
-from airflow.providers.ssh.operators.ssh import SSHOperator
 from airflow.providers.standard.operators.bash import BashOperator
 
 AIRFLOW_ENV = os.environ.get("AIRFLOW_ENV", "production")
 
 # --- Constants --------------------------------------------------
 
-ETL_WORKER_IMAGE = os.environ.get("ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:latest")
+ETL_WORKER_IMAGE = os.environ.get("ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:prod")
 DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "tugas-akhir-network")
-HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "./data").replace("\\", "/")
+HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "/home/ubuntu/Tugas_Akhir/data").replace("\\", "/")
 
 
 def _get_docker_bash_cmd(command):
@@ -87,25 +85,16 @@ dag = DAG(
 
 
 # --- Task Definitions -------------------------------------------
+# Always use BashOperator — the scheduler container has docker.sock mounted,
+# so it can run `docker run` commands directly without SSH.
 
 def create_operator(task_id: str, command_suffix: str):
     cmd = _get_docker_bash_cmd(command_suffix)
-    if AIRFLOW_ENV == "production":
-        return SSHOperator(
-            task_id=task_id,
-            ssh_conn_id="ssh_default",
-            command=cmd,
-            cmd_timeout=3600,
-            dag=dag,
-        )
-    else:
-        # Development environment (Local)
-        # Airflow scheduler container has /var/run/docker.sock mounted, run bash natively!
-        return BashOperator(
-            task_id=task_id,
-            bash_command=cmd,
-            dag=dag,
-        )
+    return BashOperator(
+        task_id=task_id,
+        bash_command=cmd,
+        dag=dag,
+    )
 
 extract_web = create_operator("extract_web", "lec_extract_web")
 extract_pddikti = create_operator("extract_pddikti", "lec_extract_pddikti")

@@ -40,8 +40,7 @@ WORKDIR /app
 
 # ── LAYER 1: Python Dependencies (cached separately) ────────
 COPY docker/requirements-etl.txt /app/requirements.txt
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --no-cache -r /app/requirements.txt
+RUN uv pip install --system --no-cache -r /app/requirements.txt
 
 # ── LAYER 2: Application Code ───────────────────────────────
 COPY backend/package /app/package

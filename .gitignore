@@ -206,5 +206,4 @@ __package_test__.*
 
 # Misc project paths
 docs/vibe/
-.github/
-orchestration/airflow_variables_import.json
+# .github/  # TRACKED: contains CI/CD workflow for production deployment

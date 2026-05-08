@@ -1,19 +1,27 @@
-# docker-compose.prod.yml
+# ══════════════════════════════════════════════════════════════
+# docker-compose.prod.yml — Production (AWS EC2)
+# ══════════════════════════════════════════════════════════════
+# Usage:
+#   docker-compose -f docker-compose.prod.yml --profile etl up -d --build
+# ══════════════════════════════════════════════════════════════
+
 x-api-worker-env: &api-worker-env
-  HOST_IP: ${HOST_IP}
+  HOST_IP: ${HOST_IP:-}
   LITE_MODE: ${LITE_MODE:-false}
   RUNNING_IN_DOCKER: "true"
   MODEL_DIR_IN_DOCKER: /models
-  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
   REDIS_URL: redis://redis:6379/0
   NEO4J_URI: bolt://graph:7687
-  NEO4J_USERNAME: ${NEO4J_USERNAME}
-  NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+  NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-0123456789}
   MILVUS_URI: http://milvus:19530
   MILVUS_DB_NAME: default
   MINIO_URI: http://minio:9000
   SANDBOX_PROVIDER: provisioner
   SANDBOX_PROVISIONER_URL: http://sandbox-provisioner:8002
+  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,etcd,sandbox-provisioner
+  no_proxy: localhost,127.0.0.1,milvus,graph,minio,etcd,sandbox-provisioner
 
 x-airflow-common: &airflow-common
   build:
@@ -28,16 +36,22 @@ x-airflow-common: &airflow-common
   environment:
     AIRFLOW_ENV: production
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-defaultsecretkey123}
     AIRFLOW__WEBSERVER__RBAC: "true"
     DOCKER_NETWORK: tugas-akhir-network
+    HOST_DATA_DIR: ${HOST_DATA_DIR:-/home/ubuntu/Tugas_Akhir/data}
+    # --- Airflow 3 Task Execution API ---
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
-    # Penting untuk AWS/Ubuntu:
-    AIRFLOW_UID: ${AIRFLOW_UID:-50000}
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-static-jwt-secret-for-dev-12345}
+    AIRFLOW__API__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.session,airflow.sdk.api.auth.backend.token
 
 services:
+  # ════════════════════════════════════════════════════════════
+  # CORE APPLICATION
+  # ════════════════════════════════════════════════════════════
   api:
     build:
       context: .
@@ -56,6 +70,19 @@ services:
     environment:
       <<: *api-worker-env
     command: uv run uvicorn server.main:app --host 0.0.0.0 --port 5050
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5050/api/system/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
   worker:
     build:
@@ -73,6 +100,11 @@ services:
     environment:
       <<: *api-worker-env
     command: uv run arq server.worker_main.WorkerSettings
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   sandbox-provisioner:
     build:
@@ -91,6 +123,12 @@ services:
       - PROVISIONER_BACKEND=docker
       - DOCKER_NETWORK=tugas-akhir-network
     command: uvicorn app:app --host 0.0.0.0 --port 8002
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
 
   web:
     build:
@@ -102,33 +140,32 @@ services:
     restart: always
     ports:
       - "80:80"
+    depends_on:
+      - api
     networks:
       - app-network
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=http://${HOST_IP}:5050 # Menggunakan variabel HOST_IP agar otomatis
+    # NOTE: Nginx reverse proxy handles /api/ -> api:5050
+    # No VITE_API_URL needed at runtime — it's baked at build time.
 
+  # ════════════════════════════════════════════════════════════
+  # DATABASES & INFRASTRUCTURE
+  # ════════════════════════════════════════════════════════════
   graph:
     image: neo4j:5.26
     container_name: graph-prod
     restart: always
     environment:
-      - NEO4J_AUTH=${NEO4J_USERNAME}/${NEO4J_PASSWORD}
+      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-0123456789}
+      - NEO4J_server_bolt_listen__address=0.0.0.0:7687
+      - NEO4J_server_http_listen__address=0.0.0.0:7474
     volumes:
       - neo4j-data:/data
-    networks:
-      - app-network
-
-  milvus:
-    image: milvusdb/milvus:v2.5.6
-    container_name: milvus-prod
-    restart: always
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-    depends_on:
-      - etcd
-      - minio
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7474 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
 
@@ -136,7 +173,20 @@ services:
     image: quay.io/coreos/etcd:v3.5.5
     container_name: etcd-prod
     restart: always
-    command: etcd -advertise-client-urls http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd-data:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
 
@@ -147,9 +197,41 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-    command: server /data --console-address ":9001"
     volumes:
-      - minio-data:/data
+      - minio-data:/minio_data
+      - minio-config:/root/.minio
+    command: minio server /minio_data --address 0.0.0.0:9000 --console-address 0.0.0.0:9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+  milvus:
+    image: milvusdb/milvus:v2.5.6
+    container_name: milvus-prod
+    restart: always
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MILVUS_LOG_LEVEL: error
+    volumes:
+      - milvus-data:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 60s
+      start_period: 120s
+      timeout: 30s
+      retries: 5
+    depends_on:
+      - etcd
+      - minio
     networks:
       - app-network
 
@@ -158,11 +240,17 @@ services:
     container_name: postgres-prod
     restart: always
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./docker/init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres} || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     networks:
       - app-network
 
@@ -170,9 +258,20 @@ services:
     image: redis:7-alpine
     container_name: redis-prod
     restart: always
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - redis-data:/data
     networks:
       - app-network
 
+  # ════════════════════════════════════════════════════════════
+  # ETL & ORCHESTRATION (Profile: etl)
+  # ════════════════════════════════════════════════════════════
   etl-worker:
     build:
       context: .
@@ -188,24 +287,45 @@ services:
   airflow-init:
     <<: *airflow-common
     container_name: airflow-init-prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./orchestration/airflow_variables_import.json:/opt/airflow/variables.json:ro
     command: >
-      bash -c "airflow db migrate && airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true"
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true &&
+      airflow variables import /opt/airflow/variables.json || true
+      "
 
   airflow-webserver:
     <<: *airflow-common
     container_name: airflow-webserver-prod
     restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
-    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/public/monitor/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: api-server
 
   airflow-scheduler:
     <<: *airflow-common
     container_name: airflow-scheduler-prod
     restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
@@ -214,10 +334,15 @@ services:
 
 networks:
   app-network:
+    driver: bridge
     name: tugas-akhir-network
 
 volumes:
   postgres-data:
   neo4j-data:
+  etcd-data:
   minio-data:
+  minio-config:
+  milvus-data:
+  redis-data:
   airflow-logs:

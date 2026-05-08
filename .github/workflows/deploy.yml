@@ -1,0 +1,110 @@
+# ══════════════════════════════════════════════════════════════
+# Production Deployment (CD) — GitHub Actions
+# ══════════════════════════════════════════════════════════════
+# Triggers: Push to master, or manual dispatch from GitHub UI.
+#
+# Required GitHub Secrets:
+#   - REMOTE_HOST         : EC2 Public IP (e.g., 34.207.102.165)
+#   - REMOTE_USER         : SSH username (e.g., ubuntu)
+#   - SSH_PRIVATE_KEY      : Contents of .pem file
+#   - DOT_ENV             : Full contents of .env file
+#   - AIRFLOW_VARIABLES   : Full contents of airflow_variables_import.json
+# ══════════════════════════════════════════════════════════════
+
+name: 🚀 Production Deployment
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:  # Manual trigger dari GitHub UI
+
+# Prevent concurrent deployments — queue any new push
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📦 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Write config files to temp
+        run: |
+          cat << 'DOTENV_EOF' > /tmp/.env.deploy
+          ${{ secrets.DOT_ENV }}
+          DOTENV_EOF
+
+          cat << 'AIRFLOW_EOF' > /tmp/airflow_variables_import.json
+          ${{ secrets.AIRFLOW_VARIABLES }}
+          AIRFLOW_EOF
+
+      - name: 📤 Transfer config files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "/tmp/.env.deploy,/tmp/airflow_variables_import.json"
+          target: /tmp/
+          strip_components: 1
+
+      - name: 🚀 Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          command_timeout: 25m
+          script: |
+            set -e
+
+            echo "═══════════════════════════════════════"
+            echo "  🚀 Starting Production Deployment"
+            echo "═══════════════════════════════════════"
+
+            # --- 0. Ensure repo exists on server ---
+            if [ ! -d ~/Tugas_Akhir ]; then
+              echo "📥 First-time setup: cloning repository..."
+              git clone https://github.com/rizkyyanuark/Tugas_Akhir.git ~/Tugas_Akhir
+            fi
+
+            cd ~/Tugas_Akhir
+
+            # --- 1. Pull latest code ---
+            echo ""
+            echo "📥 [1/5] Pulling latest code..."
+            git stash --quiet 2>/dev/null || true
+            git pull origin master --force
+
+            # --- 2. Inject config files from GitHub Secrets ---
+            echo "🔑 [2/5] Updating .env & Airflow variables..."
+            cp /tmp/.env.deploy .env
+            cp /tmp/airflow_variables_import.json orchestration/airflow_variables_import.json
+            rm -f /tmp/.env.deploy /tmp/airflow_variables_import.json
+
+            # --- 3. Run server setup (swap, dirs, IP, password resolution) ---
+            echo "⚙️  [3/5] Running server setup..."
+            chmod +x setup-server.sh
+            ./setup-server.sh
+
+            # --- 4. Deploy services ---
+            echo "🐳 [4/5] Deploying Docker services..."
+            docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans 2>/dev/null \
+              || docker-compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
+
+            # --- 5. Cleanup ---
+            echo "🧹 [5/5] Cleaning up old images..."
+            docker image prune -f
+
+            echo ""
+            echo "═══════════════════════════════════════"
+            echo "  ✅ Deployment Complete!"
+            echo "  🌐 Frontend : http://${{ secrets.REMOTE_HOST }}"
+            echo "  📊 Airflow  : http://${{ secrets.REMOTE_HOST }}:8080"
+            echo "═══════════════════════════════════════"
