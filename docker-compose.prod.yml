@@ -97,6 +97,10 @@ services:
     environment:
       <<: *api-worker-env
     command: uv run arq server.worker_main.WorkerSettings
+    # arq is a background job processor (no HTTP server),
+    # so disable the image's inherited HTTP health check
+    healthcheck:
+      disable: true
     depends_on:
       api:
         condition: service_started
