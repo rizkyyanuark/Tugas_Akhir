@@ -85,9 +85,6 @@ services:
         condition: service_healthy
 
   worker:
-    build:
-      context: .
-      dockerfile: docker/api.Dockerfile
     image: tugas-akhir-api:prod
     container_name: worker-prod
     restart: always
@@ -101,6 +98,8 @@ services:
       <<: *api-worker-env
     command: uv run arq server.worker_main.WorkerSettings
     depends_on:
+      api:
+        condition: service_started
       postgres:
         condition: service_healthy
       redis:
