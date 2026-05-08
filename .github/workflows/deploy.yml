@@ -33,31 +33,16 @@ jobs:
       - name: 📦 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🔑 Write config files to workspace
-        run: |
-          cat << 'DOTENV_EOF' > .env.deploy
-          ${{ secrets.DOT_ENV }}
-          DOTENV_EOF
-
-          cat << 'AIRFLOW_EOF' > airflow_variables_import.json
-          ${{ secrets.AIRFLOW_VARIABLES }}
-          AIRFLOW_EOF
-
-      - name: 📤 Transfer config files via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ".env.deploy,airflow_variables_import.json"
-          target: /tmp/
-
       - name: 🚀 Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          DOT_ENV: ${{ secrets.DOT_ENV }}
+          AIRFLOW_VARS: ${{ secrets.AIRFLOW_VARIABLES }}
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DOT_ENV,AIRFLOW_VARS
           script_stop: true
           command_timeout: 25m
           script: |
@@ -82,10 +67,9 @@ jobs:
             git pull origin master --force
 
             # --- 2. Inject config files from GitHub Secrets ---
-            echo "🔑 [2/5] Updating .env & Airflow variables..."
-            cp /tmp/.env.deploy .env
-            cp /tmp/airflow_variables_import.json orchestration/airflow_variables_import.json
-            rm -f /tmp/.env.deploy /tmp/airflow_variables_import.json
+            echo "🔑 [2/5] Writing .env & Airflow variables..."
+            printf '%s\n' "$DOT_ENV" > .env
+            printf '%s\n' "$AIRFLOW_VARS" > orchestration/airflow_variables_import.json
 
             # --- 3. Run server setup (swap, dirs, IP, password resolution) ---
             echo "⚙️  [3/5] Running server setup..."
@@ -104,6 +88,6 @@ jobs:
             echo ""
             echo "═══════════════════════════════════════"
             echo "  ✅ Deployment Complete!"
-            echo "  🌐 Frontend : http://${{ secrets.REMOTE_HOST }}"
-            echo "  📊 Airflow  : http://${{ secrets.REMOTE_HOST }}:8080"
+            echo "  🌐 Frontend : http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'SERVER')"
+            echo "  📊 Airflow  : http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'SERVER'):8080"
             echo "═══════════════════════════════════════"
