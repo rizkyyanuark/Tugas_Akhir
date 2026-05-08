@@ -43,6 +43,7 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: DOT_ENV,AIRFLOW_VARS
+          debug: true
           script_stop: true
           command_timeout: 25m
           script: |
