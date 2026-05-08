@@ -78,10 +78,15 @@ jobs:
             ./setup-server.sh
 
             # --- 4. Deploy services ---
-            echo "🧹 [4/6] Pre-build cleanup (freeing disk space)..."
-            docker system prune -af --volumes || true
+            echo "📊 [4/7] Disk & Inode Diagnostics..."
+            df -h /
+            df -i /
 
-            echo "🐳 [5/6] Deploying Docker services..."
+            echo "🧹 [5/7] Aggressive Cleanup (Freeing space & build cache)..."
+            docker system prune -af --volumes || true
+            docker builder prune -af || true
+
+            echo "🐳 [6/7] Deploying Docker services..."
             docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
 
             # --- 6. Final Cleanup ---
