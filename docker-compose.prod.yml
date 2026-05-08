@@ -63,8 +63,6 @@ services:
       - ./saves:/app/saves
       - ./.env:/app/.env
       - ${MODEL_DIR:-./models}:/models
-    ports:
-      - "5050:5050"
     networks:
       - app-network
     environment:
@@ -142,8 +140,6 @@ services:
     image: tugas-akhir-web:prod
     container_name: web-prod
     restart: always
-    ports:
-      - "80:80"
     depends_on:
       - api
     networks:
@@ -311,8 +307,6 @@ services:
     depends_on:
       airflow-init:
         condition: service_completed_successfully
-    ports:
-      - "8080:8080"
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
@@ -336,6 +330,23 @@ services:
       - airflow-logs:/opt/airflow/logs
       - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: always
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    command: tunnel --config /etc/cloudflared/config.yaml run
+    networks:
+      - app-network
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+      airflow-webserver:
+        condition: service_healthy
 
 networks:
   app-network:

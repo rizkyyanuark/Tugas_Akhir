@@ -38,11 +38,13 @@ jobs:
         env:
           DOT_ENV: ${{ secrets.DOT_ENV }}
           AIRFLOW_VARS: ${{ secrets.AIRFLOW_VARIABLES }}
+          CF_CONFIG: ${{ secrets.CLOUDFLARE_CONFIG }}
+          CF_CREDS: ${{ secrets.CLOUDFLARE_CREDENTIALS }}
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: DOT_ENV,AIRFLOW_VARS
+          envs: DOT_ENV,AIRFLOW_VARS,CF_CONFIG,CF_CREDS
           script_stop: true
           command_timeout: 25m
           script: |
@@ -52,15 +54,16 @@ jobs:
             echo "  🚀 Starting Production Deployment"
             echo "═══════════════════════════════════════"
 
-            # --- 0. Ensure repo exists on server ---
+            # --- 0. Ensure repo and directories exist ---
             if [ ! -d ~/Tugas_Akhir ]; then
               echo "📥 First-time setup: cloning repository..."
               git clone https://github.com/rizkyyanuark/Tugas_Akhir.git ~/Tugas_Akhir
             fi
 
             cd ~/Tugas_Akhir
+            mkdir -p cloudflared
 
-            # --- 1. Pull latest code (Match current branch) ---
+            # --- 1. Pull latest code ---
             echo ""
             echo "📥 [1/5] Pulling latest code..."
             git stash --quiet 2>/dev/null || true
@@ -69,9 +72,11 @@ jobs:
             git pull origin master --force
 
             # --- 2. Inject config files from GitHub Secrets ---
-            echo "🔑 [2/5] Writing .env & Airflow variables..."
+            echo "🔑 [2/5] Writing config files..."
             printf '%s\n' "$DOT_ENV" > .env
             printf '%s\n' "$AIRFLOW_VARS" > orchestration/airflow_variables_import.json
+            printf '%s\n' "$CF_CONFIG" > cloudflared/config.yaml
+            printf '%s\n' "$CF_CREDS" > cloudflared/credentials.json
 
             # --- 3. Run server setup (swap, dirs, IP, password resolution) ---
             echo "⚙️  [3/5] Running server setup..."

@@ -209,3 +209,7 @@ __package_test__.*
 docs/vibe/
 # .github/  <-- ALLOWED for CI/CD
 orchestration/airflow_variables_import.json
+
+# Cloudflare Tunnel
+cloudflared/credentials.json
+cloudflared/config.yaml
