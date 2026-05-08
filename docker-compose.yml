@@ -46,10 +46,10 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-c8a2f0e9b7d4a1e6f3c5d8b2a9e7f4c1}
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
     AIRFLOW__WEBSERVER__RBAC: "true"
     DOCKER_NETWORK: ${SANDBOX_DOCKER_NETWORK:-tugas-akhir-network}
-    HOST_DATA_DIR: ${HOST_DATA_DIR:-./data}
+    HOST_DATA_DIR: ${HOST_DATA_DIR:-${PWD}/data}
     # --- Variabel Baru untuk Airflow 3 Task Execution API ---
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-static-jwt-secret-for-dev-12345}
@@ -417,7 +417,7 @@ services:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/public/monitor/health"]
       interval: 30s
       timeout: 10s
       retries: 5

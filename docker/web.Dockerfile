@@ -8,7 +8,7 @@
 # ══════════════════════════════════════════════════════════════
 
 # ─── DEVELOPMENT ────────────────────────────────────────────
-FROM node:20-alpine AS development
+FROM node:22-alpine AS development
 WORKDIR /app
 RUN npm install -g pnpm@latest
 
@@ -20,7 +20,7 @@ COPY ./web .
 EXPOSE 5173
 
 # ─── BUILD (production assets) ──────────────────────────────
-FROM node:20-alpine AS build-stage
+FROM node:22-alpine AS build-stage
 WORKDIR /app
 RUN npm install -g pnpm@latest
 

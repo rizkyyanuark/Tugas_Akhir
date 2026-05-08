@@ -8,6 +8,7 @@ dependencies = [
     "alive-progress>=3.3.0",
     "apache-airflow>=3.2.0",
     "beautifulsoup4>=4.14.3",
+    "deep-translator>=1.11.4",
     "dotenv>=0.9.9",
     "fake-useragent>=2.2.0",
     "fuzzywuzzy>=0.18.0",

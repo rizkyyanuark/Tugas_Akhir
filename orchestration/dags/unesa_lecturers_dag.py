@@ -36,7 +36,7 @@ AIRFLOW_ENV = os.environ.get("AIRFLOW_ENV", "production")
 
 ETL_WORKER_IMAGE = os.environ.get("ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:latest")
 DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "tugas-akhir-network")
-HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "./data")
+HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "./data").replace("\\", "/")
 
 
 def _get_docker_bash_cmd(command):
@@ -44,7 +44,7 @@ def _get_docker_bash_cmd(command):
     return f"""
 docker run --rm \
 --network {DOCKER_NETWORK} \
--v {HOST_DATA_DIR}:/app/data \
+-v "{HOST_DATA_DIR}:/app/data" \
 -e SUPABASE_URL="{{{{ var.value.SUPABASE_URL_SECRET }}}}" \
 -e SUPABASE_KEY="{{{{ var.value.SUPABASE_KEY_SECRET }}}}" \
 -e SCIVAL_EMAIL="{{{{ var.value.SCIVAL_EMAIL_SECRET }}}}" \
@@ -55,8 +55,10 @@ docker run --rm \
 -e BD_PASS_UNLOCKER="{{{{ var.value.BD_PASS_UNLOCKER_SECRET }}}}" \
 -e BD_USER_SERP="{{{{ var.value.BD_USER_SERP_SECRET }}}}" \
 -e BD_PASS_SERP="{{{{ var.value.BD_PASS_SERP_SECRET }}}}" \
+-e BRIGHTDATA_SERP_TOKEN="{{{{ var.value.BRIGHTDATA_SERP_TOKEN_SECRET }}}}" \
 -e GROQ_API_KEY="{{{{ var.value.GROQ_API_KEY_SECRET }}}}" \
 -e NOTIFICATION_EMAIL="{{{{ var.value.NOTIFICATION_EMAIL_SECRET }}}}" \
+-e DOCKER_ENVIRONMENT=true \
 {ETL_WORKER_IMAGE} {command}
 """.strip()
 

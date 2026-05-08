@@ -23,7 +23,7 @@ import pandas as pd
 from pathlib import Path
 from difflib import SequenceMatcher
 
-from .config import SAVE_DIR, SCIVAL_EMAIL, SCIVAL_PASS, SERPAPI_KEY
+from .config import SAVE_DIR, SCIVAL_EMAIL, SCIVAL_PASS, BRIGHTDATA_SERP_TOKEN
 
 # --- FILE PATHS (Single Source of Truth) ---
 DOSEN_CSV          = SAVE_DIR / "dosen_infokom_final.csv"
@@ -190,75 +190,100 @@ def _is_similar(title1, title2, threshold=0.90):
     return SequenceMatcher(None, t1, t2).ratio() >= threshold
 
 
-def _serpapi_fetch_author(api_key, scholar_id, start=0, num=100, max_retries=2):
+def _brightdata_fetch_author(api_token, scholar_id, start=0, num=100, max_retries=30):
     """
-    Fetch one page of Google Scholar Author articles via SerpAPI.
+    Fetch one page of Google Scholar Author articles via Bright Data SERP API (async).
     Returns (articles_list, has_next_page).
-
-    Includes automatic retry logic for flaky Free Plan responses:
-      - Retry 1: same params, wait 3s
-      - Retry 2: remove sort=pubdate (fallback), wait 3s
     """
     import requests
+    import time
+    from bs4 import BeautifulSoup
+    import urllib.parse as urlparse
+    from urllib.parse import parse_qs
 
-    params = {
-        "engine": "google_scholar_author",
-        "author_id": scholar_id,
-        "api_key": api_key,
-        "hl": "en",
-        "start": start,
-        "num": num,
-        "sort": "pubdate",
+    url_submit = "https://api.brightdata.com/serp/req"
+    target_url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart={start}&pagesize={num}"
+    
+    payload = {
+        "zone": "serp_api1", 
+        "url": target_url
+    }
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json"
     }
 
-    for attempt in range(max_retries + 1):
-        try:
-            # On last retry, try without sort=pubdate as fallback
-            current_params = dict(params)
-            if attempt == max_retries and "sort" in current_params:
-                current_params.pop("sort")
-
-            resp = requests.get(
-                "https://serpapi.com/search.json",
-                params=current_params, timeout=30
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                articles = data.get("articles", [])
-                has_next = "next" in data.get("serpapi_pagination", {})
-
-                # If articles found OR this is the last attempt, return
-                if articles or attempt == max_retries:
-                    if attempt > 0 and articles:
-                        print(f"        Retry {attempt} berhasil ({len(articles)} articles)")
-                    return articles, has_next
-
-                # Empty result on non-last attempt   retry
-                print(f"         SerpAPI return kosong (attempt {attempt+1}), retry in 3s...")
-                time.sleep(3)
+    try:
+        response = requests.post(url_submit, json=payload, headers=headers, timeout=30)
+        if response.status_code == 200:
+            data = response.json()
+            if "response_id" in data:
+                response_id = data["response_id"]
+                url_result = f"https://api.brightdata.com/serp/get_result?response_id={response_id}"
+                
+                for attempt in range(max_retries):
+                    res = requests.get(url_result, headers=headers, timeout=30)
+                    if res.status_code == 200:
+                        soup = BeautifulSoup(res.text, "html.parser")
+                        rows = soup.find_all("tr", class_="gsc_a_tr")
+                        print(f"         Bright Data GET Result 200: Found {len(rows)} rows.")
+                        
+                        articles = []
+                        for row in rows:
+                            title_tag = row.find("a", class_="gsc_a_at")
+                            title = title_tag.text.strip() if title_tag else ""
+                            
+                            href = title_tag['href'] if title_tag and 'href' in title_tag.attrs else ""
+                            link = "https://scholar.google.com" + href if href else ""
+                            
+                            citation_id = ""
+                            if href:
+                                parsed = urlparse.urlparse(href)
+                                qs = parse_qs(parsed.query)
+                                if 'citation_for_view' in qs:
+                                    citation_id = qs['citation_for_view'][0]
+                            
+                            gray_divs = row.find_all("div", class_="gs_gray")
+                            authors = gray_divs[0].text.strip() if len(gray_divs) > 0 else ""
+                            publication = gray_divs[1].text.strip() if len(gray_divs) > 1 else ""
+                            
+                            year_tag = row.find("span", class_="gsc_a_h gsc_a_hc gs_ibl")
+                            year = year_tag.text.strip() if year_tag else ""
+                            
+                            articles.append({
+                                "title": title,
+                                "year": year,
+                                "publication": publication,
+                                "link": link,
+                                "authors": authors,
+                                "citation_id": citation_id
+                            })
+                        
+                        has_next = len(articles) == num
+                        return articles, has_next
+                        
+                    elif res.status_code == 202:
+                        print(f"         Bright Data GET Result 202: Data masih diproses. Menunggu 5 detik... (Percobaan {attempt+1}/{max_retries})")
+                        time.sleep(5)
+                    else:
+                        print(f"         Bright Data GET Result Error: HTTP {res.status_code} - {res.text[:200]}")
+                        break
             else:
-                error = resp.json().get("error", resp.text[:200])
-                print(f"         SerpAPI HTTP {resp.status_code}: {error}")
-                if attempt < max_retries:
-                    time.sleep(3)
-                else:
-                    return [], False
-        except Exception as e:
-            print(f"         SerpAPI Error: {e}")
-            if attempt < max_retries:
-                time.sleep(3)
-            else:
-                return [], False
+                print(f"         Bright Data did not return response_id: {data}")
+        else:
+            print(f"         Bright Data POST Error: HTTP {response.status_code} - {response.text[:200]}")
+    except Exception as e:
+        print(f"         Bright Data Exception: {e}")
 
     return [], False
 
 
-def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None):
+def run_scholar_scraping(api_token=None, limit_per_author=500, test_target_id=None):
     """
-    Scrape papers from Google Scholar via SerpAPI (google_scholar_author engine).
+    Scrape papers from Google Scholar via Bright Data SERP API.
 
     3-Phase Architecture:
-        Phase 1   Pure Scrape: Fetch all papers from SerpAPI, no filtering.
+        Phase 1   Pure Scrape: Fetch all papers from SERP API, no filtering.
                   Auto-saves every 10 dosen for resume capability.
         Phase 2   Batch Dedup: Remove duplicates vs Scopus + cross-dosen.
                   Uses exact match (O(1) set) + fuzzy match (SequenceMatcher).
@@ -267,9 +292,9 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
 
     Output: dosen_papers_scholar.csv
     """
-    api_key = api_key or SERPAPI_KEY
-    if not api_key:
-        print("     SERPAPI_KEY not configured! Add to credentials_new.json.")
+    api_token = api_token or BRIGHTDATA_SERP_TOKEN
+    if not api_token:
+        print("     BRIGHTDATA_SERP_TOKEN not configured! Add to config.py.")
         return
 
     print("\n  STEP 4: GOOGLE SCHOLAR SCRAPING (3-Phase: Scrape   Dedup   Match)")
@@ -350,7 +375,7 @@ def run_scholar_scraping(api_key=None, limit_per_author=500, test_target_id=None
         author_count = 0
 
         while author_count < limit_per_author:
-            articles, has_next = _serpapi_fetch_author(api_key, t["id"], start=start, num=100)
+            articles, has_next = _brightdata_fetch_author(api_token, t["id"], start=start, num=100)
             total_api_calls += 1
 
             if not articles:

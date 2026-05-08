@@ -56,6 +56,7 @@ docker run --rm \
 -e BD_PASS_UNLOCKER="{{{{ var.value.BD_PASS_UNLOCKER_SECRET }}}}" \
 -e BD_USER_SERP="{{{{ var.value.BD_USER_SERP_SECRET }}}}" \
 -e BD_PASS_SERP="{{{{ var.value.BD_PASS_SERP_SECRET }}}}" \
+-e BRIGHTDATA_SERP_TOKEN="{{{{ var.value.BRIGHTDATA_SERP_TOKEN_SECRET }}}}" \
 -e GROQ_API_KEY="{{{{ var.value.GROQ_API_KEY_SECRET }}}}" \
 -e NOTIFICATION_EMAIL="{{{{ var.value.NOTIFICATION_EMAIL_SECRET }}}}" \
 {ETL_WORKER_IMAGE} {command}
