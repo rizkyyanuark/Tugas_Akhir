@@ -15,7 +15,7 @@ name: 🚀 Production Deployment
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   workflow_dispatch:  # Manual trigger dari GitHub UI
 
 # Prevent concurrent deployments — queue any new push
@@ -60,11 +60,13 @@ jobs:
 
             cd ~/Tugas_Akhir
 
-            # --- 1. Pull latest code ---
+            # --- 1. Pull latest code (Match current branch) ---
             echo ""
             echo "📥 [1/5] Pulling latest code..."
             git stash --quiet 2>/dev/null || true
-            git pull origin master --force
+            git fetch origin
+            git checkout ${GITHUB_REF##*/}
+            git pull origin ${GITHUB_REF##*/} --force
 
             # --- 2. Inject config files from GitHub Secrets ---
             echo "🔑 [2/5] Writing .env & Airflow variables..."
@@ -76,13 +78,19 @@ jobs:
             chmod +x setup-server.sh
             ./setup-server.sh
 
-            # --- 4. Deploy services ---
-            echo "🐳 [4/5] Deploying Docker services..."
-            docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans 2>/dev/null \
-              || docker-compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
+            echo "📊 [4/7] Disk Diagnostics (Verifying 40GB+)..."
+            df -h /
+            
+            echo "🧹 [5/7] Fresh Start: Cleaning previous artifacts..."
+            docker system prune -af --volumes || true
+            docker builder prune -af || true
+            sudo apt-get clean || true
 
-            # --- 5. Cleanup ---
-            echo "🧹 [5/5] Cleaning up old images..."
+            echo "🐳 [6/7] Deploying Fresh Services..."
+            docker compose -f docker-compose.prod.yml --profile etl up -d --build --remove-orphans
+
+            # --- 6. Final Cleanup ---
+            echo "🧹 [7/7] Final cleanup..."
             docker image prune -f
 
             echo ""
