@@ -114,6 +114,7 @@ services:
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./saves:/app/saves
     ports:
       - "8002:8002"
     networks:
@@ -164,7 +165,7 @@ services:
       interval: 20s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 90s
     networks:
       - app-network
 
@@ -277,11 +278,12 @@ services:
       dockerfile: docker/etl-worker.Dockerfile
     image: tugas-akhir-etl-worker:prod
     profiles: ["etl"]
-    restart: always
+    restart: "no"
     env_file:
       - .env
     networks:
       - app-network
+    command: ["echo", "ETL Worker image built successfully"]
 
   airflow-init:
     <<: *airflow-common

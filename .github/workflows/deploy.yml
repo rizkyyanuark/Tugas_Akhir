@@ -65,8 +65,8 @@ jobs:
             echo "📥 [1/5] Pulling latest code..."
             git stash --quiet 2>/dev/null || true
             git fetch origin
-            git checkout ${GITHUB_REF##*/}
-            git pull origin ${GITHUB_REF##*/} --force
+            git checkout master
+            git pull origin master --force
 
             # --- 2. Inject config files from GitHub Secrets ---
             echo "🔑 [2/5] Writing .env & Airflow variables..."
@@ -82,7 +82,7 @@ jobs:
             df -h /
             
             echo "🧹 [5/7] Fresh Start: Cleaning previous artifacts..."
-            docker system prune -af --volumes || true
+            docker system prune -af || true
             docker builder prune -af || true
             sudo apt-get clean || true
 

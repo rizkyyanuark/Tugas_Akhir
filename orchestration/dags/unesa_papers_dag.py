@@ -25,16 +25,13 @@ import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.providers.ssh.operators.ssh import SSHOperator
 from airflow.providers.standard.operators.bash import BashOperator
-
-AIRFLOW_ENV = os.environ.get("AIRFLOW_ENV", "production")
 
 # --- Constants --------------------------------------------------
 
-ETL_WORKER_IMAGE = os.environ.get("ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:latest")
+ETL_WORKER_IMAGE = os.environ.get("ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:prod")
 DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "tugas-akhir-network")
-HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "./data")
+HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR", "/home/ubuntu/Tugas_Akhir/data").replace("\\", "/")
 
 
 def _get_docker_bash_cmd(command: str) -> str:
@@ -43,7 +40,7 @@ def _get_docker_bash_cmd(command: str) -> str:
 docker run --rm \
 --network {DOCKER_NETWORK} \
 --shm-size 2g \
--v {HOST_DATA_DIR}:/app/data \
+-v "{HOST_DATA_DIR}:/app/data" \
 -e SUPABASE_URL="{{{{ var.value.SUPABASE_URL_SECRET }}}}" \
 -e SUPABASE_KEY="{{{{ var.value.SUPABASE_KEY_SECRET }}}}" \
 -e ELSEVIER_EMAIL="{{{{ var.value.SCIVAL_EMAIL_SECRET }}}}" \
@@ -59,6 +56,7 @@ docker run --rm \
 -e BRIGHTDATA_SERP_TOKEN="{{{{ var.value.BRIGHTDATA_SERP_TOKEN_SECRET }}}}" \
 -e GROQ_API_KEY="{{{{ var.value.GROQ_API_KEY_SECRET }}}}" \
 -e NOTIFICATION_EMAIL="{{{{ var.value.NOTIFICATION_EMAIL_SECRET }}}}" \
+-e DOCKER_ENVIRONMENT=true \
 {ETL_WORKER_IMAGE} {command}
 """.strip()
 
@@ -87,25 +85,16 @@ dag = DAG(
 
 
 # --- Task Definitions -------------------------------------------
+# Always use BashOperator — the scheduler container has docker.sock mounted,
+# so it can run `docker run` commands directly without SSH.
 
 def create_operator(task_id: str, command_suffix: str):
     cmd = _get_docker_bash_cmd(command_suffix)
-    if AIRFLOW_ENV == "production":
-        return SSHOperator(
-            task_id=task_id,
-            ssh_conn_id="ssh_default",
-            command=cmd,
-            cmd_timeout=3600,
-            dag=dag,
-        )
-    else:
-        # Development environment (Local)
-        # Airflow scheduler container has /var/run/docker.sock mounted, run bash natively!
-        return BashOperator(
-            task_id=task_id,
-            bash_command=cmd,
-            dag=dag,
-        )
+    return BashOperator(
+        task_id=task_id,
+        bash_command=cmd,
+        dag=dag,
+    )
 
 extract_scopus = create_operator("extract_scopus", "paper_extract_scopus")
 extract_scholar = create_operator("extract_scholar", "paper_extract_scholar")
