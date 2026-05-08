@@ -15,7 +15,7 @@ name: 🚀 Production Deployment
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master ]
   workflow_dispatch:  # Manual trigger dari GitHub UI
 
 # Prevent concurrent deployments — queue any new push
