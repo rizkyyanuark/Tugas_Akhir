@@ -114,7 +114,7 @@ jobs:
             sudo apt-get clean || true
 
             echo "🐳 [6/7] Building Docker images..."
-            docker compose -f docker-compose.prod.yml --profile etl build --no-cache
+            docker compose -f docker-compose.prod.yml --profile etl build
 
             echo "🚀 [6.5/7] Starting services..."
             docker compose -f docker-compose.prod.yml --profile etl up -d --remove-orphans

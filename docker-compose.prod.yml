@@ -3,6 +3,9 @@
 # ══════════════════════════════════════════════════════════════
 # Usage:
 #   docker-compose -f docker-compose.prod.yml --profile etl up -d --build
+#
+# IMPORTANT: All passwords MUST be set in .env file.
+# Compose will refuse to start if required secrets are missing.
 # ══════════════════════════════════════════════════════════════
 
 x-api-worker-env: &api-worker-env
@@ -10,11 +13,11 @@ x-api-worker-env: &api-worker-env
   LITE_MODE: ${LITE_MODE:-false}
   RUNNING_IN_DOCKER: "true"
   MODEL_DIR_IN_DOCKER: /models
-  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-postgres}
   REDIS_URL: redis://redis:6379/0
   NEO4J_URI: bolt://graph:7687
   NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
-  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-0123456789}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD required}
   MILVUS_URI: http://milvus:19530
   MILVUS_DB_NAME: default
   MINIO_URI: http://minio:9000
@@ -43,10 +46,10 @@ x-airflow-common: &airflow-common
   environment:
     AIRFLOW_ENV: production
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-postgres}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-defaultsecretkey123}
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY:?AIRFLOW_SECRET_KEY required}
     AIRFLOW__WEBSERVER__RBAC: "true"
     AIRFLOW__LOGGING__LOG_CLEANUP_LOGS: "true"
     AIRFLOW__LOGGING__LOG_RETENTION_DAYS: "7"
@@ -54,7 +57,7 @@ x-airflow-common: &airflow-common
     HOST_DATA_DIR: ${HOST_DATA_DIR:-/home/ubuntu/Tugas_Akhir/data}
     # --- Airflow 3 Task Execution API ---
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
-    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-static-jwt-secret-for-dev-12345}
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?AIRFLOW_JWT_SECRET required}
     AIRFLOW__API__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.session,airflow.sdk.api.auth.backend.token
 
 services:
@@ -69,12 +72,15 @@ services:
     container_name: api-prod
     restart: always
     logging: *default-logging
+    mem_limit: 2g
+    memswap_limit: 3g
     volumes:
       - ./saves:/app/saves
-      - ./.env:/app/.env
       - ${MODEL_DIR:-./models}:/models
     networks:
       - app-network
+    env_file:
+      - .env
     environment:
       <<: *api-worker-env
     command: uv run uvicorn server.main:app --host 0.0.0.0 --port 5050
@@ -97,12 +103,15 @@ services:
     container_name: worker-prod
     restart: always
     logging: *default-logging
+    mem_limit: 2g
+    memswap_limit: 3g
     volumes:
       - ./saves:/app/saves
-      - ./.env:/app/.env
       - ${MODEL_DIR:-./models}:/models
     networks:
       - app-network
+    env_file:
+      - .env
     environment:
       <<: *api-worker-env
     command: uv run arq server.worker_main.WorkerSettings
@@ -168,8 +177,9 @@ services:
     container_name: graph-prod
     restart: always
     logging: *default-logging
+    mem_limit: 768m
     environment:
-      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-0123456789}
+      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD required}
       - NEO4J_server_bolt_listen__address=0.0.0.0:7687
       - NEO4J_server_http_listen__address=0.0.0.0:7474
     volumes:
@@ -210,9 +220,10 @@ services:
     container_name: minio-prod
     restart: always
     logging: *default-logging
+    mem_limit: 256m
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY required}
     volumes:
       - minio-data:/minio_data
       - minio-config:/root/.minio
@@ -231,6 +242,7 @@ services:
     container_name: milvus-prod
     restart: always
     logging: *default-logging
+    mem_limit: 512m
     command: ["milvus", "run", "standalone"]
     security_opt:
       - seccomp:unconfined
@@ -257,9 +269,10 @@ services:
     container_name: postgres-prod
     restart: always
     logging: *default-logging
+    mem_limit: 512m
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       - POSTGRES_DB=${POSTGRES_DB:-postgres}
     volumes:
       - postgres-data:/var/lib/postgresql/data

@@ -69,7 +69,7 @@ EXPOSE 5050
 
 # -- Health Check --
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:5050/health || exit 1
+    CMD curl -f http://localhost:5050/api/system/health || exit 1
 
 # -- Default: Run FastAPI with Uvicorn --
 CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "5050", "--workers", "1"]
