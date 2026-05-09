@@ -57,6 +57,9 @@ push-gitlab: ## Push to GitLab only (triggers CI/CD deploy)
 # --- Utilities ---
 .PHONY: status help
 
+etl-new: ## Create a new ETL pipeline module and DAG
+	python scripts/new_etl_pipeline.py --pipeline "$(PIPELINE)" $(EXTRA_ARGS)
+
 status: ## Check GitLab pipeline status
 	glab ci status --branch main
 
