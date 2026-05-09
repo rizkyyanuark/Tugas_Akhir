@@ -344,7 +344,7 @@ services:
     container_name: airflow-scheduler-prod
     restart: always
     logging: *default-logging
-    # Run as root to access Docker socket for BashOperator → docker run.
+    # Run as root to access Docker socket for DockerOperator → etl-worker.
     # Only the scheduler needs this; webserver stays as default airflow user.
     user: "0:0"
     depends_on:

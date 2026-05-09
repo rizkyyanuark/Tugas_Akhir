@@ -2,8 +2,8 @@
 # airflow.Dockerfile — Pure Orchestrator (Level 3 Architecture)
 # ══════════════════════════════════════════════════════════════
 # Airflow does NOT run ETL code directly. All heavy lifting runs
-# in isolated etl-worker containers via BashOperator → docker run.
-# Requires: Docker CLI installed + /var/run/docker.sock mounted.
+# in isolated etl-worker containers via DockerOperator.
+# Requires: docker-ce-cli (debug) + Docker SDK + /var/run/docker.sock.
 # ══════════════════════════════════════════════════════════════
 FROM apache/airflow:3.1.7-python3.12
 

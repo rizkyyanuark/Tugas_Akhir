@@ -99,7 +99,7 @@ def create_operator(task_id: str, command_suffix: str):
         network_mode=DOCKER_NETWORK,
         mounts=[DATA_MOUNT],
         environment=_worker_env(),
-        auto_remove=True,
+        auto_remove="success",
         dag=dag,
     )
 
