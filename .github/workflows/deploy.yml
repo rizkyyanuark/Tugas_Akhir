@@ -45,7 +45,7 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: DOT_ENV,AIRFLOW_VARS,CF_CONFIG,CF_CREDS
-          script_stop: true
+          # script_stop: true (Removed to fix warning: Unexpected input)
           command_timeout: 25m
           script: |
             set -e
@@ -65,11 +65,11 @@ jobs:
 
             # --- 1. Pull latest code ---
             echo ""
-            echo "📥 [1/5] Pulling latest code..."
+            echo "📥 [1/5] Syncing code (Force Rewrite History)..."
             git stash --quiet 2>/dev/null || true
-            git fetch origin
+            git fetch origin master
             git checkout master
-            git pull origin master --force
+            git reset --hard origin/master
 
             # --- 2. Inject config files from GitHub Secrets ---
             echo "🔑 [2/5] Writing config files..."
