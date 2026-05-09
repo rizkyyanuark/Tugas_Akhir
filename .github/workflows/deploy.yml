@@ -120,15 +120,37 @@ jobs:
             docker compose -f docker-compose.prod.yml --profile etl up -d --remove-orphans
 
             echo "HEALTH [6.7/7] Waiting for services..."
-            for i in $(seq 1 12); do
-              if curl -fsS http://localhost:5050/api/system/health >/dev/null; then
+            api_status="unknown"
+            for i in $(seq 1 24); do
+              api_status=$(docker inspect -f '{{.State.Health.Status}}' api-prod 2>/dev/null || echo "unknown")
+              if [ "$api_status" = "healthy" ]; then
                 break
               fi
-              echo "Waiting for API health..."
+              echo "Waiting for API health... status=$api_status"
               sleep 5
             done
 
-            curl -fsS http://localhost:8080/public/monitor/health >/dev/null
+            if [ "$api_status" != "healthy" ]; then
+              echo "API did not become healthy in time"
+              docker logs --tail=200 api-prod || true
+              exit 1
+            fi
+
+            airflow_status="unknown"
+            for i in $(seq 1 24); do
+              airflow_status=$(docker inspect -f '{{.State.Health.Status}}' airflow-webserver-prod 2>/dev/null || echo "unknown")
+              if [ "$airflow_status" = "healthy" ]; then
+                break
+              fi
+              echo "Waiting for Airflow health... status=$airflow_status"
+              sleep 5
+            done
+
+            if [ "$airflow_status" != "healthy" ]; then
+              echo "Airflow did not become healthy in time"
+              docker logs --tail=200 airflow-webserver-prod || true
+              exit 1
+            fi
 
             # --- 6. Final Cleanup ---
             echo "🧹 [7/7] Final cleanup..."
