@@ -27,7 +27,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 # --- Neo4j ---
 NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://ta-neo4j:7687")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "REDACTED")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "")
 NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "infokom-unesa")
 
 # --- Milvus ---

@@ -1,8 +1,9 @@
 # ══════════════════════════════════════════════════════════════
 # airflow.Dockerfile — Pure Orchestrator (Level 3 Architecture)
 # ══════════════════════════════════════════════════════════════
-# Airflow does NOT run ETL code directly. All heavy work runs
-# in isolated etl-worker containers via DockerOperator.
+# Airflow does NOT run ETL code directly. All heavy lifting runs
+# in isolated etl-worker containers via BashOperator → docker run.
+# Requires: docker.io installed + /var/run/docker.sock mounted.
 # ══════════════════════════════════════════════════════════════
 FROM apache/airflow:3.1.7-python3.12
 
@@ -11,6 +12,7 @@ USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
+    docker.io \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

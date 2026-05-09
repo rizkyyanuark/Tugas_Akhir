@@ -3,7 +3,7 @@ Airflow DAG: UNESA Lecturers ETL Pipeline (Level 3 Architecture)
 =================================================================
 PURE ORCHESTRATOR --- All heavy work delegated to etl-worker containers.
 
-Tasks (via DockerOperator):
+Tasks (via BashOperator → docker run):
   1. extract_web      -> Scrape lecturer data from prodi websites
   2. extract_pddikti  -> Fetch lecturer data from PDDIKTI API
   3. merge            -> Web-First Smart Merge
@@ -85,8 +85,11 @@ dag = DAG(
 
 
 # --- Task Definitions -------------------------------------------
-# Always use BashOperator — the scheduler container has docker.sock mounted,
-# so it can run `docker run` commands directly without SSH.
+# Uses BashOperator to invoke `docker run` on the host's Docker daemon
+# via the mounted /var/run/docker.sock. Prerequisites:
+#   1. Docker CLI installed in the Airflow image (docker.io package)
+#   2. Scheduler container running as root (user: "0:0")
+#   3. /var/run/docker.sock mounted as volume
 
 def create_operator(task_id: str, command_suffix: str):
     cmd = _get_docker_bash_cmd(command_suffix)

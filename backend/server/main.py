@@ -154,7 +154,30 @@ async def webhook_trigger(payload: WebhookPayload, background_tasks: BackgroundT
         batch_id=payload.batch_id
     )
 
-@app.get("/health")
+@app.get("/", tags=["Root"])
+async def root():
+    """Root endpoint for API metadata and status check."""
+    banner = """
+░██     ░██
+ ░██   ░██
+  ░██ ░██   ░██    ░██ ░█████░██  ░█████    ░█████    ░█████
+   ░████    ░██    ░██ ░██   ░██ ░██   ░██ ░██             ░██
+    ░██     ░██    ░██ ░██   ░██ ░███████   ░█████    ░██████
+    ░██     ░██   ░███ ░██   ░██ ░██             ░██ ░██   ░██
+    ░██      ░█████░██ ░██   ░██  ░█████   ░█████     ░████░██  v1.6.0
+    """
+    return {
+        "banner": banner,
+        "title": "YUNESA",
+        "version": "V 1.6.0",
+        "description": "Knowledge Discovery System",
+        "status": "Running",
+        "environment": "production",
+        "author": "Rizky Yanuar Kristianto",
+        "docs_url": "/docs",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 async def health_check():
     """Health check endpoint for Docker/load balancer probes."""
     return {"status": "healthy", "service": "kg-backend", "timestamp": datetime.now(timezone.utc).isoformat()}

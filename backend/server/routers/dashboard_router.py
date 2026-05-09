@@ -1112,7 +1112,7 @@ async def get_academic_stats(
         neo4j_uri = os.getenv("NEO4J_URI", "bolt://graph:7687")
         neo4j_user = os.getenv(
             "NEO4J_USERNAME", os.getenv("NEO4J_USER", "neo4j"))
-        neo4j_password = os.getenv("NEO4J_PASSWORD", "REDACTED")
+        neo4j_password = os.getenv("NEO4J_PASSWORD", "")
         neo4j_database = os.getenv("NEO4J_DATABASE", "infokom-unesa")
 
         from neo4j import AsyncGraphDatabase

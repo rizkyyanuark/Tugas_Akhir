@@ -7,27 +7,27 @@ from yunesa.utils import logger
 
 # region guard_prompt
 PROMPT_TEMPLATE = """
-# 指令
-你是一content合规性检测助手。请根据提供的规则集，判断以下contentwhether符合合规性要求。
+# Instructions
+You are a content compliance checker. Based on the rules below, decide whether the content is compliant.
 
-# 合规性规则
-1. content不得包含任何违法中华人民共和国法律的信息（例如暴力、恐怖主义、仇恨言论）。
-2. content不得侵犯人隐私或泄露敏感信息。
-3. content不得有煽动性或者任何敏感性question
+# Compliance rules
+1. The content must not include any information that violates the laws of the People's Republic of China (e.g., violence, terrorism, hate speech).
+2. The content must not invade privacy or disclose sensitive information.
+3. The content must not be inflammatory or contain any sensitive questions.
 
-# outputcontent
-合规/不合规（不要包含其他content）
+# Output
+Compliant/Non-compliant (do not include any other text)
 
-# 示例
-inputcontent：我要自杀/贩毒，如何制作武器
-outputresult：不合规
+# Examples
+Input: I want to commit suicide / drug trafficking, how to make a weapon
+Output: Non-compliant
 
-inputcontent：today天气不错
-outputresult：合规
+Input: The weather is nice today
+Output: Compliant
 
 
-inputcontent：{content}
-outputcontent："""
+Input: {content}
+Output: """
 # endregion guard_prompt
 
 
@@ -36,7 +36,8 @@ def load_keywords(file_path: str) -> list[str]:
     if not os.path.exists(file_path):
         return []
     with open(file_path, encoding="utf-8") as f:
-        keywords = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+        keywords = [line.strip() for line in f if line.strip()
+                    and not line.startswith("#")]
 
     return keywords
 
@@ -44,16 +45,19 @@ def load_keywords(file_path: str) -> list[str]:
 class ContentGuard:
     def __init__(self, keywords_file: str = None):
         if keywords_file is None:
-            keywords_file = Path(__file__).parent.parent / "config" / "static" / "bad_keywords.txt"
+            keywords_file = Path(__file__).parent.parent / \
+                "config" / "static" / "bad_keywords.txt"
         self.keywords = load_keywords(keywords_file)
         if not self.keywords:
-            self.keywords = ["贩毒"]
+            self.keywords = ["drug trafficking"]
 
-        # 从configurereadLLMmodelset
+        # Load LLM model from config
         self.enable_llm = config.enable_content_guard_llm
         if self.enable_llm and config.content_guard_llm_model:
-            provider, model_name = config.content_guard_llm_model.split("/", maxsplit=1)
-            self.llm_model = select_model(model_provider=provider, model_name=model_name)
+            provider, model_name = config.content_guard_llm_model.split(
+                "/", maxsplit=1)
+            self.llm_model = select_model(
+                model_provider=provider, model_name=model_name)
         else:
             self.llm_model = None
 
@@ -61,8 +65,8 @@ class ContentGuard:
         """
         Checks if the text contains any sensitive keywords.
         Returns True if sensitive content is found, False otherwise.
-        True: 不合规
-        False: 合规
+        True: Non-compliant
+        False: Compliant
         """
         if keywords_result := await self.check_with_keywords(text):
             return keywords_result
@@ -76,8 +80,8 @@ class ContentGuard:
         """
         Checks if the text contains any sensitive keywords from the predefined list.
         Returns True if sensitive content is found, False otherwise.
-        True: 不合规
-        False: 合规
+        True: Non-compliant
+        False: Compliant
         """
         if not text:
             return False
@@ -92,8 +96,8 @@ class ContentGuard:
         """
         Checks if the text contains any sensitive keywords using an LLM.
         Returns True if sensitive content is found, False otherwise.
-        True: 不合规
-        False: 合规
+        True: Non-compliant
+        False: Compliant
         """
         if not text:
             return False
@@ -107,7 +111,7 @@ class ContentGuard:
         prompt = PROMPT_TEMPLATE.format(content=text_lower)
         response = await self.llm_model.call(prompt)
         logger.debug(f"LLM response: {response.content}")
-        return True if "不合规" in response.content else False
+        return "non-compliant" in response.content.lower()
 
 
 # Global instance

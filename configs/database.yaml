@@ -4,7 +4,7 @@ neo4j:
   default_port: 7687
   default_db: "infokom-unesa"
   user: "neo4j"
-  password: "REDACTED"
+  password: "${NEO4J_PASSWORD}"
 
 milvus:
   default_host: "milvus-standalone"
