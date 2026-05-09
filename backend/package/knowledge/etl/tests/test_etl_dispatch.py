@@ -55,11 +55,11 @@ def test_all_lecturers_commands_in_task_choices():
 
 def test_paper_handlers_are_callable():
     """Each paper_* command must map to a callable handler."""
-    from knowledge.etl.run_worker import _PAPER_HANDLERS
+    from knowledge.etl.pipelines.unesa_papers import TASKS
 
     for cmd in PAPERS_DAG_COMMANDS:
-        assert cmd in _PAPER_HANDLERS, f"No handler for '{cmd}'"
-        assert callable(_PAPER_HANDLERS[cmd]), f"Handler for '{cmd}' is not callable"
+        assert cmd in TASKS, f"No handler for '{cmd}'"
+        assert callable(TASKS[cmd]), f"Handler for '{cmd}' is not callable"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -80,7 +80,8 @@ def test_lec_dispatch_routes_all_commands():
         try:
             _dispatch_task(cmd, test_mode=True)
         except ValueError:
-            pytest.fail(f"_dispatch_task raised ValueError for '{cmd}' — routing is broken")
+            pytest.fail(
+                f"_dispatch_task raised ValueError for '{cmd}' — routing is broken")
         except (ImportError, ModuleNotFoundError):
             pass  # Expected: scraping deps missing in test env
         except Exception:
@@ -93,7 +94,8 @@ def test_lec_dispatch_routes_all_commands():
 
 def test_papers_service_functions_importable():
     """All functions called from run_worker.py paper_* handlers must be importable."""
-    pd = pytest.importorskip("pandas", reason="pandas not installed in local test env")
+    pd = pytest.importorskip(
+        "pandas", reason="pandas not installed in local test env")
     from knowledge.etl.services.unesa_papers import (
         run_scopus_extraction,
         run_scholars_extraction,
@@ -102,7 +104,7 @@ def test_papers_service_functions_importable():
         run_transform,
         run_database_commit,
     )
-    
+
     assert callable(run_scopus_extraction)
     assert callable(run_scholars_extraction)
     assert callable(run_merge)
@@ -122,7 +124,7 @@ def test_scraping_pipeline_functions_importable():
             run_post_processing,
             run_supabase_sync,
         )
-        
+
         assert callable(run_web_step)
         assert callable(run_pddikti_step)
         assert callable(run_smart_merge)
@@ -131,6 +133,15 @@ def test_scraping_pipeline_functions_importable():
         assert callable(run_supabase_sync)
     except ImportError:
         pytest.skip("Scraping pipeline dependencies not installed in test env")
+
+
+def test_lecturers_handlers_are_callable():
+    """Each lec_* command must map to a callable handler."""
+    from knowledge.etl.pipelines.unesa_lecturers import TASKS
+
+    for cmd in LECTURERS_DAG_COMMANDS:
+        assert cmd in TASKS, f"No handler for '{cmd}'"
+        assert callable(TASKS[cmd]), f"Handler for '{cmd}' is not callable"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -156,10 +167,12 @@ def test_config_module_loads():
 
 def test_unesa_papers_has_os_import():
     """Ensure `import os` is present in services/unesa_papers.py (needed by run_merge)."""
-    pytest.importorskip("pandas", reason="pandas not installed in local test env")
+    pytest.importorskip(
+        "pandas", reason="pandas not installed in local test env")
     import knowledge.etl.services.unesa_papers as mod
     import os as _os
-    
-    # The module should have 'os' in its namespace  
-    assert hasattr(mod, 'os'), "services/unesa_papers.py is missing `import os` — run_merge() will crash!"
+
+    # The module should have 'os' in its namespace
+    assert hasattr(
+        mod, 'os'), "services/unesa_papers.py is missing `import os` — run_merge() will crash!"
     assert mod.os is _os
