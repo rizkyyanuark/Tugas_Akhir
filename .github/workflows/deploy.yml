@@ -159,9 +159,9 @@ jobs:
             printf '%s\n' "$CF_CREDS" > cloudflared/credentials.json
 
             # --- 4. Run server setup (swap, dirs, IP detection) ---
-            echo "⚙️  [3/7] Running server setup..."
-            chmod +x setup-server.sh
-            ./setup-server.sh
+            # --- 5. Initial Server Setup ---
+            chmod +x scripts/setup-server.sh
+            bash scripts/setup-server.sh
 
             echo "📊 [4/7] Disk diagnostics..."
             df -h /
