@@ -18,7 +18,10 @@ import requests
 import urllib3
 from bs4 import BeautifulSoup
 
-from ..config import HEADERS, STRICT_AFFILIATION, CRAWLER_MAX_RETRIES, CRAWLER_TIMEOUT
+from ..config import (
+    HEADERS, STRICT_AFFILIATION, CRAWLER_MAX_RETRIES, CRAWLER_TIMEOUT,
+    BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BRIGHT_DATA_HOST
+)
 
 # Disable SSL warnings   some UNESA subdomains have expired certs.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -81,12 +84,21 @@ class WebProdiScraper:
         return results
 
     def _fetch_with_retry(self, url: str) -> str | None:
-        """Fetch URL content with configurable retry logic."""
+        """Fetch URL content with configurable retry logic, using BrightData proxy to bypass IP blocks."""
+        proxies = None
+        if BD_USER_UNLOCKER and BD_PASS_UNLOCKER:
+            proxy_url = f"http://{BD_USER_UNLOCKER}:{BD_PASS_UNLOCKER}@{BRIGHT_DATA_HOST}"
+            proxies = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
+
         for attempt in range(CRAWLER_MAX_RETRIES):
             try:
                 resp = requests.get(
                     url,
                     headers=self.headers,
+                    proxies=proxies,
                     timeout=CRAWLER_TIMEOUT,
                     verify=False,
                 )
