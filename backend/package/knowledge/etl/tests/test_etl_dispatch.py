@@ -116,7 +116,7 @@ def test_papers_service_functions_importable():
 def test_scraping_pipeline_functions_importable():
     """All functions called from run_worker.py lec_* handlers must be importable."""
     try:
-        from knowledge.etl.scraping.pipeline import (
+        from knowledge.etl.services.unesa_lecturers import (
             run_web_step,
             run_pddikti_step,
             run_smart_merge,

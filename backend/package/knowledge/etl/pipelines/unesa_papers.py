@@ -8,47 +8,38 @@ logger = logging.getLogger("etl-worker")
 
 def _paper_extract_scopus(test_mode: bool):
     """Extract raw papers from Scopus via SciVal/Selenium."""
-    from knowledge.etl.services.unesa_papers import run_scopus_extraction
+    from knowledge.etl.services.unesa_papers import run_scopus_scraping
 
-    result = run_scopus_extraction()
+    result = run_scopus_scraping()
     logger.info("paper_extract_scopus complete -> %s", result)
 
 
 def _paper_extract_scholar(test_mode: bool):
     """Extract raw papers from Google Scholar via SerpAPI."""
-    from knowledge.etl.services.unesa_papers import run_scholars_extraction
+    from knowledge.etl.services.unesa_papers import run_scholar_scraping
 
-    result = run_scholars_extraction(test_mode=test_mode)
+    result = run_scholar_scraping(test_target_id="test" if test_mode else None)
     logger.info("paper_extract_scholar complete -> %s", result)
 
 
 def _paper_transform(test_mode: bool):
     """Full post-extraction pipeline: Merge → Enrich → Clean."""
-    from knowledge.etl.services.unesa_papers import run_merge, run_enrichment, run_transform
-    from knowledge.etl.config import RAW_DATA_DIR
+    from knowledge.etl.services.unesa_papers import run_scopus_processing, run_scholar_enrichment
 
-    # Step 1: Merge (deduplicate across Scopus + Scholar)
-    scholar_path = str(RAW_DATA_DIR / "scholar_papers_raw.csv")
-    scopus_path = str(RAW_DATA_DIR / "dosen_papers_scopus_raw.csv")
-    merged_path = run_merge(scholar_path, scopus_path)
-    logger.info("Merge complete -> %s", merged_path)
+    # Step 1: Scopus Processing (Clean + Dedup)
+    run_scopus_processing()
+    logger.info("Scopus Processing complete")
 
-    # Step 2: Enrich (Semantic Scholar + OpenAlex + TLDR)
-    enriched_path = run_enrichment(merged_path, test_mode=test_mode)
-    logger.info("Enrich complete -> %s", enriched_path)
-
-    # Step 3: Clean (HTML scrubbing, Unicode normalization)
-    cleaned_path = run_transform(enriched_path)
-    logger.info("paper_transform complete -> %s", cleaned_path)
+    # Step 2: Scholar Enrichment (Keywords, TLDR, etc)
+    run_scholar_enrichment(test_limit=5 if test_mode else None)
+    logger.info("Scholar Enrichment complete")
 
 
 def _paper_load(test_mode: bool):
     """UPSERT cleaned papers to Supabase PostgreSQL."""
-    from knowledge.etl.services.unesa_papers import run_database_commit
-    from knowledge.etl.config import PROCESSED_DATA_DIR
+    from knowledge.etl.services.unesa_papers import run_supabase_insert
 
-    cleaned_path = str(PROCESSED_DATA_DIR / "unesa_papers_cleaned.csv")
-    run_database_commit(cleaned_path)
+    run_supabase_insert()
     logger.info("paper_load complete")
 
 

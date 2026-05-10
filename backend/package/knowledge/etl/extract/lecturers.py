@@ -18,7 +18,7 @@ def extract_lecturers_web(target_configs, parser_map):
     No more sys.path hacks — the Docker image has PYTHONPATH=/app/package.
     """
     try:
-        from knowledge.etl.scraping.web_scraper import WebProdiScraper
+        from knowledge.etl.clients.web_scraper import WebProdiScraper
     except ImportError as e:
         logger.error(f"❌ Failed to load WebProdiScraper: {e}")
         return []
@@ -38,7 +38,7 @@ def extract_lecturers_pddikti(target_configs):
     Uses PddiktiClient from the consolidated scraping package.
     """
     try:
-        from knowledge.etl.scraping.pddikti_client import PddiktiClient
+        from knowledge.etl.clients.pddikti_client import PddiktiClient
     except ImportError as e:
         logger.error(f"❌ Failed to load PddiktiClient: {e}")
         return []

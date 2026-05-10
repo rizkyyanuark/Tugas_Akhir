@@ -143,7 +143,6 @@ neo4j_import/
 ehthumbs.db
 Thumbs.db
 desktop.ini
-146: 
 
 # LaTeX compilation artifacts
 *.aux
@@ -206,10 +205,6 @@ __package_test__.*
 .latex_deps_cache/
 
 # Misc project paths
-docs/vibe/
-# .github/  <-- ALLOWED for CI/CD
-orchestration/airflow_variables_import.json
-
 # Cloudflare Tunnel
 cloudflared/credentials.json
 cloudflared/config.yaml

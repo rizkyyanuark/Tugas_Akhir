@@ -6,44 +6,44 @@ logger = logging.getLogger("etl-worker")
 
 
 def _lec_extract_web(test_mode: bool):
-    from knowledge.etl.services.unesa_lecturers import run_extract_web
+    from knowledge.etl.services.unesa_lecturers import run_web_step
 
-    output = run_extract_web()
+    output = run_web_step()
     logger.info("lec_extract_web complete -> %s", output)
 
 
 def _lec_extract_pddikti(test_mode: bool):
-    from knowledge.etl.services.unesa_lecturers import run_extract_pddikti
+    from knowledge.etl.services.unesa_lecturers import run_pddikti_step
 
-    output = run_extract_pddikti()
+    output = run_pddikti_step()
     logger.info("lec_extract_pddikti complete -> %s", output)
 
 
 def _lec_merge(test_mode: bool):
-    from knowledge.etl.services.unesa_lecturers import run_merge
+    from knowledge.etl.services.unesa_lecturers import run_smart_merge
 
-    output = run_merge()
+    output = run_smart_merge()
     logger.info("lec_merge complete -> %s", output)
 
 
 def _lec_enrich(test_mode: bool):
-    from knowledge.etl.services.unesa_lecturers import run_enrich
+    from knowledge.etl.services.unesa_lecturers import run_enrichment
 
-    output = run_enrich(test_mode=test_mode)
+    output = run_enrichment(scholar_sample=5 if test_mode else None)
     logger.info("lec_enrich complete -> %s", output)
 
 
 def _lec_transform(test_mode: bool):
-    from knowledge.etl.services.unesa_lecturers import run_transform
+    from knowledge.etl.services.unesa_lecturers import run_post_processing
 
-    output = run_transform()
+    output = run_post_processing()
     logger.info("lec_transform complete -> %s", output)
 
 
 def _lec_load(test_mode: bool):
-    from knowledge.etl.services.unesa_lecturers import run_load
+    from knowledge.etl.services.unesa_lecturers import run_supabase_sync
 
-    synced_count = run_load()
+    synced_count = run_supabase_sync()
     logger.info("lec_load complete -> Synced %s records", synced_count)
 
 

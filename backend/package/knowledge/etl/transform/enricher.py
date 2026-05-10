@@ -19,7 +19,7 @@ from ..extract.openalex import extract_openalex_metadata
 import os
 
 try:
-    from knowledge.etl.scraping.keyword_scraper import (
+    from knowledge.etl.clients.keyword_scraper import (
         search_scholar_proxy_query,
         scrape_publisher_page,
         search_scholar_proxy_query_html,

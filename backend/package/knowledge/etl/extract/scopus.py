@@ -15,7 +15,7 @@ import pandas as pd
 from pathlib import Path
 
 from knowledge.etl.config import DATA_DIR, RAW_DATA_DIR, SCIVAL_EMAIL, SCIVAL_PASS
-from knowledge.etl.scraping.config import CRAWLER_HEADLESS
+from knowledge.etl.config import CRAWLER_HEADLESS
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ def _apply_docker_chromium_patch(client_instance):
 
     # Override SAVE_DIR inside the scraping config for this process
     try:
-        import knowledge.etl.scraping.config as scraping_cfg
+        import knowledge.etl.config as scraping_cfg
         scraping_cfg.SAVE_DIR = Path(temp_dir)
     except Exception:
         pass
@@ -133,7 +133,7 @@ def extract_scopus_papers(limit_per_author: int = 500, test_target_id: str | Non
     Uses Batched Advanced Search for maximum speed and stability.
     """
     try:
-        from knowledge.etl.scraping.scopus_client import ScopusPaperClient
+        from knowledge.etl.clients.scopus_client import ScopusPaperClient
     except ImportError as e:
         logger.error(f"❌ Failed to load ScopusClient: {e}")
         return []
