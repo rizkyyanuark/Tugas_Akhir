@@ -64,47 +64,21 @@ if command -v growpart &> /dev/null; then
 fi
 echo "      ✓ Filesystem: $(df -h / | tail -1 | awk '{print $2}') total, $(df -h / | tail -1 | awk '{print $4}') free"
 
-# --- 5. Process .env for production ---
+# --- 5. Verify .env exists ---
 echo ""
-echo "[5/5] Mengecek file .env..."
+echo "[5/5] Verifying .env..."
 if [ ! -f .env ]; then
     echo "      ❌ File .env BELUM ADA!"
-    echo "      File .env akan di-inject otomatis oleh GitHub Actions CI/CD."
-    echo "      Jika setup manual, copy dari laptop:"
+    echo "      File .env di-generate otomatis oleh GitHub Actions CI/CD."
+    echo "      Jika setup manual, salin dari template:"
     echo ""
-    echo "      scp -i key.pem .env ubuntu@${HOST_IP}:~/Tugas_Akhir/.env"
+    echo "      cp .env.example .env   # lalu isi kredensial"
     echo ""
     exit 1
 else
-    # Update HOST_IP jika masih placeholder
-    if grep -q "your-ec2-ip" .env; then
-        sed -i "s/HOST_IP=your-ec2-ip/HOST_IP=$HOST_IP/" .env
-        echo "      ✓ HOST_IP diupdate ke $HOST_IP"
-    fi
-
-    # Update BACKEND_RELOAD ke false untuk production
-    sed -i "s/BACKEND_RELOAD=true/BACKEND_RELOAD=false/" .env
-
-    # Flatten ${GLOBAL_PASSWORD} references ke nilai aslinya
-    GLOBAL_PW=$(grep "^GLOBAL_PASSWORD=" .env | cut -d'=' -f2)
-    if [ -n "$GLOBAL_PW" ]; then
-        sed -i "s/\${GLOBAL_PASSWORD}/$GLOBAL_PW/g" .env
-        echo "      ✓ Variabel \${GLOBAL_PASSWORD} di-resolve ke nilai asli"
-    fi
-
-    # Flatten ${POSTGRES_USER} and ${POSTGRES_DB} for POSTGRES_URL
-    PG_USER=$(grep "^POSTGRES_USER=" .env | cut -d'=' -f2)
-    PG_DB=$(grep "^POSTGRES_DB=" .env | cut -d'=' -f2)
-    if [ -n "$PG_USER" ]; then
-        sed -i "s/\${POSTGRES_USER}/$PG_USER/g" .env
-        echo "      ✓ Variabel \${POSTGRES_USER} di-resolve"
-    fi
-    if [ -n "$PG_DB" ]; then
-        sed -i "s/\${POSTGRES_DB}/$PG_DB/g" .env
-        echo "      ✓ Variabel \${POSTGRES_DB} di-resolve"
-    fi
-
-    echo "      ✓ File .env siap untuk production"
+    # Count secrets (non-empty, non-comment lines)
+    SECRET_COUNT=$(grep -c '^[A-Z]' .env || echo 0)
+    echo "      ✅ .env ready ($SECRET_COUNT variables loaded)"
 fi
 
 echo ""

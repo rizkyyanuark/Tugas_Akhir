@@ -89,7 +89,7 @@ SCIVAL_PASS: str = os.environ.get("SCIVAL_PASS", "")
 SERPAPI_KEY: str = os.environ.get("SERPAPI_KEY", "").strip()
 
 # BrightData SERP API
-BRIGHTDATA_SERP_TOKEN: str = os.environ.get("BRIGHTDATA_SERP_TOKEN", "14b4140a-89a6-438c-be9d-25718ef2369e").strip()
+BRIGHTDATA_SERP_TOKEN: str = os.environ.get("BRIGHTDATA_SERP_TOKEN", "").strip()
 
 # BrightData Proxy (anti-bot bypass)
 BRIGHT_DATA_HOST: str = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")
