@@ -21,7 +21,7 @@ class ScholarVerificationClient:
     """
     
     def __init__(self):
-        from .config import PROXY_URL, HEADERS
+        from ..config import PROXY_URL, HEADERS
         self.proxies = None
         if PROXY_URL:
             self.proxies = {
@@ -258,7 +258,7 @@ class ScholarPaperClient:
     """
     
     def __init__(self):
-        from .config import PROXY_URL, HEADERS
+        from ..config import PROXY_URL, HEADERS
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         

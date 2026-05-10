@@ -18,7 +18,7 @@ import requests
 import urllib3
 from bs4 import BeautifulSoup
 
-from .config import HEADERS, STRICT_AFFILIATION, CRAWLER_MAX_RETRIES, CRAWLER_TIMEOUT
+from ..config import HEADERS, STRICT_AFFILIATION, CRAWLER_MAX_RETRIES, CRAWLER_TIMEOUT
 
 # Disable SSL warnings   some UNESA subdomains have expired certs.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

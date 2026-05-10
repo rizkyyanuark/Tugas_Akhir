@@ -12,7 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 
-from .config import SAVE_DIR, CRAWLER_HEADLESS
+from ..config import SAVE_DIR, CRAWLER_HEADLESS
 
 def _flip_author_name(name):
     """Convert 'Last, First Middle' -> 'First Middle Last'."""

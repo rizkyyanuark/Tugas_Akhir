@@ -48,6 +48,11 @@ else:
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 
+# Legacy alias — services/unesa_lecturers.py and services/unesa_papers.py
+# use SAVE_DIR as the base directory for pipeline CSV outputs.
+# Points to DATA_DIR so all outputs land in the persistent volume.
+SAVE_DIR = DATA_DIR
+
 RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -67,6 +72,9 @@ BD_PASS_SERP = os.environ.get("BD_PASS_SERP", "")
 # Web Unlocker Zone
 BD_USER_UNLOCKER = os.environ.get("BD_USER_UNLOCKER", "")
 BD_PASS_UNLOCKER = os.environ.get("BD_PASS_UNLOCKER", "")
+
+# SERP API Token (used by Scholar scraping pipeline)
+BRIGHTDATA_SERP_TOKEN = os.environ.get("BRIGHTDATA_SERP_TOKEN", "")
 
 # Host
 BRIGHT_DATA_HOST = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
-from .config import SUPABASE_URL, SUPABASE_KEY
+from ..config import SUPABASE_URL, SUPABASE_KEY
 from .utils import clean_identifier, enforce_strict_types
 
 

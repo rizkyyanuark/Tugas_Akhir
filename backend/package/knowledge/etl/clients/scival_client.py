@@ -19,7 +19,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-from .config import SAVE_DIR, SCIVAL_EMAIL, SCIVAL_PASS, CRAWLER_HEADLESS
+from ..config import SAVE_DIR, SCIVAL_EMAIL, SCIVAL_PASS, CRAWLER_HEADLESS
 from .utils import normalize_name, fuzzy_match_name
 
 class SciValClient:

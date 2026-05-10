@@ -31,7 +31,7 @@ from bs4 import BeautifulSoup
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from .config import SERPAPI_KEY, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SERP, BD_PASS_SERP, BRIGHT_DATA_HOST
+from ..config import SERPAPI_KEY, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SERP, BD_PASS_SERP, BRIGHT_DATA_HOST
 
 import sys
 from pathlib import Path

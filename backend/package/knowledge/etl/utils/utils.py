@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import unicodedata
 from difflib import SequenceMatcher
-from .config import PREFIX_TITLES
+from ..config import PREFIX_TITLES
 
 def clean_name_expert(name):
     """

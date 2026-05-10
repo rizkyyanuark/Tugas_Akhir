@@ -1,7 +1,7 @@
 # knowledge/etl/scraping/pddikti_client.py
 """PDDIKTI API Client   fetches lecturer data from the national database."""
 
-from .config import STRICT_AFFILIATION
+from ..config import STRICT_AFFILIATION
 from .utils import make_entry
 
 try:

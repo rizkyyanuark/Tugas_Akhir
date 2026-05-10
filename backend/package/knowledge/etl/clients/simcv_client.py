@@ -2,7 +2,7 @@
 """SimCV Client   searches the UNESA SimCV system for lecturer NIP/NIDN data."""
 
 import requests
-from .config import HEADERS
+from ..config import HEADERS
 
 
 class SimCVClient:

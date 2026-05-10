@@ -3,7 +3,7 @@ import time
 import re
 import pandas as pd
 from difflib import SequenceMatcher
-from .config import SAVE_DIR
+from ..config import SAVE_DIR
 
 import sys
 from pathlib import Path

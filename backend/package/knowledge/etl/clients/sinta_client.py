@@ -12,7 +12,7 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-from .config import HEADERS, SINTA_DEPTS, CRAWLER_TIMEOUT
+from ..config import HEADERS, SINTA_DEPTS, CRAWLER_TIMEOUT
 
 
 class SintaCrawler:
