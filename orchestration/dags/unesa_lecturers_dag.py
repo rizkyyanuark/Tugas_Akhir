@@ -100,6 +100,7 @@ def create_operator(task_id: str, command_suffix: str):
         mounts=[DATA_MOUNT],
         environment=_worker_env(),
         auto_remove="success",
+        mount_tmp_dir=False,
         dag=dag,
     )
 
