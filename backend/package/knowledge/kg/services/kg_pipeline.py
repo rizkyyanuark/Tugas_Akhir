@@ -332,22 +332,11 @@ class KGPipeline:
         """Write all data to Neo4j and Milvus."""
         self._start_step("Step 6: Database Ingestion")
 
-        from ..neo4j_writer import Neo4jKGWriter
-
-        # ── Neo4j ──
-        neo4j_writer = Neo4jKGWriter()
+        # ── Neo4j (DISABLED) ──
+        logger.info("  Neo4j ingestion is DISABLED in this version.")
+        node_stats = {"errors": 0}
+        edge_stats = {"errors": 0, "skipped": 0}
         collab_count = 0
-        try:
-            if self.clear_db:
-                neo4j_writer.clear_database()
-            neo4j_writer.ensure_constraints()
-            node_stats = neo4j_writer.ingest_nodes(self.nodes)
-            edge_stats = neo4j_writer.ingest_edges(self.edges, self.nodes)
-            # Derive COLLABORATES_WITH from co-authorship
-            collab_count = neo4j_writer.derive_collaborations()
-            neo4j_writer.print_summary()
-        finally:
-            neo4j_writer.close()
 
         # ── Milvus (optional) ──
         mv_error_total = 0

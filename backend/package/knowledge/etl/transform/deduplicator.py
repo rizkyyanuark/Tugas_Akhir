@@ -1,23 +1,26 @@
-"""
-Transform: Paper Deduplication
-==============================
-Removes duplicate papers using exact + trigram fuzzy matching.
-"""
-import pandas as pd
-from collections import defaultdict
-from difflib import SequenceMatcher
+from __future__ import annotations
+
 import logging
+from collections import defaultdict
+from typing import Any, Iterable, List, Optional, Set, TYPE_CHECKING
+
+import pandas as pd
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
 
-def _normalize_text(text) -> str:
+def _normalize_text(text: Any) -> str:
+    """Normalize text for deduplication purposes."""
     if pd.isna(text):
         return ""
     return str(text).lower().strip().replace(' ', '')
 
 
-def _trigrams(text: str) -> set:
+def _trigrams(text: str) -> Set[str]:
+    """Generate trigrams for a given string."""
     s = _normalize_text(text)
     if len(s) < 3:
         return set()
@@ -26,7 +29,7 @@ def _trigrams(text: str) -> set:
 
 def deduplicate_papers(
     df: pd.DataFrame,
-    existing_titles = None,
+    existing_titles: Iterable[str] | None = None,
     fuzzy_threshold: float = 0.80,
 ) -> pd.DataFrame:
     """
@@ -43,7 +46,7 @@ def deduplicate_papers(
     if df.empty:
         return df
 
-    logger.info(f"\n🔍 DEDUP: {len(df)} papers")
+    logger.info(f"[DEDUP] Processing {len(df)} papers...")
 
     df = df.copy()
     df['_title_norm'] = df['Title'].apply(_normalize_text)
@@ -54,18 +57,18 @@ def deduplicate_papers(
         mask = df['_title_norm'].isin(existing_titles)
         removed = mask.sum()
         df = df[~mask].reset_index(drop=True)
-        logger.info(f"   ✅ Cross-source exact dedup: {removed} removed")
+        logger.info(f"   [DEDUP] Cross-source exact dedup: {removed} removed")
 
     # 2. Self exact dedup
     before = len(df)
     df = df.drop_duplicates(subset='_title_norm', keep='first').reset_index(drop=True)
-    logger.info(f"   ✅ Self exact dedup: {before - len(df)} removed")
+    logger.info(f"   [DEDUP] Self exact dedup: {before - len(df)} removed")
 
     # 3. Fuzzy dedup via trigram Jaccard (O(N) amortized with inverted index)
-    logger.info(f"   🔄 Fuzzy dedup on {len(df)} papers...")
-    trigram_index = defaultdict(set)
-    trigram_cache = {}
-    dup_indices = set()
+    logger.info(f"   Fuzzy dedup on {len(df)} papers...")
+    trigram_index: Dict[str, Set[int]] = defaultdict(set)
+    trigram_cache: Dict[int, Set[str]] = {}
+    dup_indices: Set[int] = set()
 
     for idx, row in df.iterrows():
         norm = row['_title_norm']
@@ -100,10 +103,10 @@ def deduplicate_papers(
                 trigram_index[t].add(idx)
 
     df = df.drop(index=dup_indices).reset_index(drop=True)
-    logger.info(f"   ✅ Fuzzy dedup: {len(dup_indices)} removed")
+    logger.info(f"   Fuzzy dedup complete: {len(dup_indices)} removed")
 
     df = df.drop(columns=['_title_norm'], errors='ignore')
     total_after = len(df)
-    logger.info(f"   📊 Summary: {total_before} → {total_after} ({total_before - total_after} removed)")
+    logger.info(f"   [DEDUP] Summary: {total_before} -> {total_after} ({total_before - total_after} removed)")
 
     return df

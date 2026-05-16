@@ -1,19 +1,19 @@
 [project]
 name = "yunesa-workspace"
-version = "0.6.0"
-description = "Yunesa backend workspace"
+version = "0.6.2.dev1"
+description = "Intelligent knowledge base and knowledge graph agent platform based on LLMs, rebranded as YUnesa. Integrates RAG and Knowledge Graph technologies with a lean FastAPI + Arq architecture."
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.121",
     "uvicorn[standard]>=0.34.2",
     "arq>=0.26.3",
-    "numpy<2.0.0",
-    "Yunesa",
+    "YUnesa",
 ]
+
 [tool.ruff]
-line-length = 120  # Maximum code line length
-lint.select = [         # Selected rules
+line-length = 120
+lint.select = [
     "F",
     "E",
     "W",
@@ -34,10 +34,7 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [tool.uv.sources]
-Yunesa = { path = "package", editable = true }
-torch = { index = "pytorch-cpu" }
-torchvision = { index = "pytorch-cpu" }
-
+YUnesa = { path = "package", editable = true }
 
 [tool.pytest.ini_options]
 addopts = "-v --tb=short"

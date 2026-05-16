@@ -18,18 +18,20 @@ x-api-worker-env: &api-worker-env
   NEO4J_URI: bolt://graph:7687
   NEO4J_USERNAME: neo4j
   NEO4J_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
-  NEO4J_DATABASE: infokom-unesa
+  NEO4J_DATABASE: neo4j
   MILVUS_URI: http://milvus:19530
-  MILVUS_DB_NAME: default
+  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-yuxi_know}
   MINIO_URI: http://minio:9000
-  SANDBOX_PROVIDER: provisioner
-  SANDBOX_PROVISIONER_URL: http://sandbox-provisioner:8002
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-/minio}
+  SANDBOX_ENABLED: ${SANDBOX_ENABLED:-false}
   # --- Non-secret config (hardcoded defaults) ---
   OPIK_WORKSPACE: rizkyyanuark
   BACKEND_RELOAD: "false"
   LANGGRAPH_CHECKPOINTER_BACKEND: postgres
-  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,etcd,sandbox-provisioner
-  no_proxy: localhost,127.0.0.1,milvus,graph,minio,etcd,sandbox-provisioner
+  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,etcd
+  no_proxy: localhost,127.0.0.1,milvus,graph,minio,etcd
 
 x-default-logging: &default-logging
   driver: "json-file"
@@ -50,6 +52,7 @@ x-airflow-common: &airflow-common
     - .env
   environment:
     AIRFLOW_ENV: production
+    ENVIRONMENT: prod
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}@postgres:5432/postgres
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
@@ -60,7 +63,9 @@ x-airflow-common: &airflow-common
     AIRFLOW__LOGGING__LOG_RETENTION_DAYS: "7"
     DOCKER_NETWORK: tugas-akhir-network
     HOST_DATA_DIR: ${HOST_DATA_DIR:-/home/ubuntu/Tugas_Akhir/data}
-    ETL_WORKER_IMAGE: tugas-akhir-etl-worker:prod
+    HOST_PACKAGE_DIR: ${HOST_PACKAGE_DIR:-/home/ubuntu/Tugas_Akhir/backend/package}
+    ETL_WORKER_IMAGE: ${ETL_WORKER_IMAGE:-tugas-akhir-etl-worker:prod}
+    ETL_WORKER_MOUNT_CODE: "false"
     # --- Airflow Variables (Auto-injected from .env) ---
     AIRFLOW_VAR_SUPABASE_URL_SECRET: ${SUPABASE_URL}
     AIRFLOW_VAR_SUPABASE_KEY_SECRET: ${SUPABASE_KEY}
@@ -72,6 +77,7 @@ x-airflow-common: &airflow-common
     AIRFLOW_VAR_BD_USER_SERP_SECRET: ${BD_USER_SERP}
     AIRFLOW_VAR_BD_PASS_SERP_SECRET: ${BD_PASS_SERP}
     AIRFLOW_VAR_BRIGHTDATA_SERP_TOKEN_SECRET: ${BRIGHTDATA_SERP_TOKEN}
+    AIRFLOW_VAR_BRIGHTDATA_SERP_ZONE_SECRET: ${BRIGHTDATA_SERP_ZONE}
     AIRFLOW_VAR_GROQ_API_KEY_SECRET: ${GROQ_API_KEY}
     AIRFLOW_VAR_NOTIFICATION_EMAIL_SECRET: ${NOTIFICATION_EMAIL:-}
     AIRFLOW_VAR_BRIGHT_DATA_HOST: "brd.superproxy.io:33335"
@@ -103,7 +109,7 @@ services:
       - .env
     environment:
       <<: *api-worker-env
-    command: uv run uvicorn server.main:app --host 0.0.0.0 --port 5050
+    command: uvicorn server.main:app --host 0.0.0.0 --port 5050
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5050/api/system/health || exit 1"]
       interval: 30s
@@ -116,6 +122,10 @@ services:
       redis:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      milvus:
         condition: service_healthy
 
   worker:
@@ -134,7 +144,7 @@ services:
       - .env
     environment:
       <<: *api-worker-env
-    command: uv run arq server.worker_main.WorkerSettings
+    command: arq server.worker_main.WorkerSettings
     # arq is a background job processor (no HTTP server),
     # so disable the image's inherited HTTP health check
     healthcheck:
@@ -146,32 +156,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-
-  sandbox-provisioner:
-    build:
-      context: ./docker/sandbox_provisioner
-      dockerfile: Dockerfile
-    image: tugas-akhir-sandbox-provisioner:prod
-    container_name: sandbox-provisioner
-    restart: always
-    logging: *default-logging
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./saves:/app/saves
-    ports:
-      - "8002:8002"
-    networks:
-      - app-network
-    environment:
-      - PROVISIONER_BACKEND=docker
-      - DOCKER_NETWORK=tugas-akhir-network
-    command: uvicorn app:app --host 0.0.0.0 --port 8002
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
+      minio:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
 
   web:
     build:
@@ -183,7 +173,10 @@ services:
     restart: always
     logging: *default-logging
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
     networks:
       - app-network
     # NOTE: Nginx reverse proxy handles /api/ -> api:5050
@@ -204,6 +197,7 @@ services:
       - NEO4J_server_http_listen__address=0.0.0.0:7474
     volumes:
       - neo4j-data:/data
+      - neo4j-logs:/logs
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 20s
@@ -242,8 +236,8 @@ services:
     logging: *default-logging
     mem_limit: 256m
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio-data:/minio_data
       - minio-config:/root/.minio
@@ -269,6 +263,8 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MILVUS_LOG_LEVEL: error
     volumes:
       - milvus-data:/var/lib/milvus
@@ -279,8 +275,10 @@ services:
       timeout: 30s
       retries: 5
     depends_on:
-      - etcd
-      - minio
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -328,6 +326,8 @@ services:
     build:
       context: .
       dockerfile: docker/etl-worker.Dockerfile
+      args:
+        ETL_INSTALL_TEST_DEPS: "false"
     image: tugas-akhir-etl-worker:prod
     profiles: ["etl"]
     restart: "no"
@@ -336,7 +336,23 @@ services:
       - .env
     networks:
       - app-network
-    command: ["echo", "ETL Worker image built successfully"]
+    environment:
+      <<: *api-worker-env
+      PYTHONPATH: /app/package
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
 
   airflow-init:
     <<: *airflow-common
@@ -362,6 +378,8 @@ services:
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/public/monitor/health"]
       interval: 30s
@@ -387,24 +405,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
 
-  tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflare-tunnel
-    restart: always
-    logging: *default-logging
-    volumes:
-      - ./cloudflared:/etc/cloudflared:ro
-    command: tunnel --config /etc/cloudflared/config.yaml run
-    networks:
-      - app-network
-    depends_on:
-      api:
-        condition: service_healthy
-      web:
-        condition: service_started
-      airflow-webserver:
-        condition: service_healthy
-
 networks:
   app-network:
     driver: bridge
@@ -413,6 +413,7 @@ networks:
 volumes:
   postgres-data:
   neo4j-data:
+  neo4j-logs:
   etcd-data:
   minio-data:
   minio-config:

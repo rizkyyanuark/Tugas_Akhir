@@ -1,35 +1,35 @@
-"""
-Extract: Scopus Papers via SciVal/Selenium
-==========================================
-Fetches paper metadata from Scopus export function.
-Uses ScopusPaperClient with Selenium WebDriver for browser automation.
+from __future__ import annotations
 
-Architecture Note:
-  Docker containers use /usr/bin/chromium with --no-sandbox.
-  The Docker compatibility patch below auto-detects this environment.
-"""
+import logging
 import os
 import time
-import logging
-import pandas as pd
+import types
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
-from knowledge.etl.config import DATA_DIR, RAW_DATA_DIR, SCIVAL_EMAIL, SCIVAL_PASS
-from knowledge.etl.config import CRAWLER_HEADLESS
+import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+
+from ..clients.scopus_client import ScopusPaperClient
+from ..config import (CRAWLER_HEADLESS, RAW_DATA_DIR, SCIVAL_EMAIL,
+                      SCIVAL_PASS)
+from ..load.supabase_loader import SupabaseLoader
+from ..utils.storage import write_dataframe_csv
 
 logger = logging.getLogger(__name__)
 
 
-def _apply_docker_chromium_patch(client_instance):
+def _apply_docker_chromium_patch(client_instance: ScopusPaperClient) -> ScopusPaperClient:
     """
     Monkey-patch the ScopusPaperClient's setup_driver() for Docker's
     system-installed Chromium (no webdriver-manager needed).
 
     Only applies when /usr/bin/chromium or /usr/bin/chromium-browser exists.
-    Returns the same client instance (mutated in-place).
     """
     chrome_bin = None
-    for path in ('/usr/bin/chromium', '/usr/bin/chromium-browser'):
+    for path in ("/usr/bin/chromium", "/usr/bin/chromium-browser"):
         if os.path.exists(path):
             chrome_bin = path
             break
@@ -37,20 +37,16 @@ def _apply_docker_chromium_patch(client_instance):
     if not chrome_bin:
         return client_instance
 
-    logger.info("      🐳 Applying Docker Chromium Patch for session...")
-
-    import types
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.support.ui import WebDriverWait
+    logger.info("Applying Docker Chromium patch for Selenium session...")
 
     temp_dir = "/app/data/scopus_temp"
     os.makedirs(temp_dir, exist_ok=True)
 
-    def _docker_setup_driver(self_client):
+    def _docker_setup_driver(self_client: ScopusPaperClient) -> None:
         options = webdriver.ChromeOptions()
         if CRAWLER_HEADLESS:
             options.add_argument("--headless=new")
+        
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -61,6 +57,7 @@ def _apply_docker_chromium_patch(client_instance):
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
         options.binary_location = chrome_bin
+        
         options.add_experimental_option("prefs", {
             "download.default_directory": temp_dir,
             "download.prompt_for_download": False,
@@ -72,131 +69,124 @@ def _apply_docker_chromium_patch(client_instance):
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
 
+        # In Docker, we assume chromedriver is at /usr/bin/chromedriver
         self_client.driver = webdriver.Chrome(
-            service=Service("/usr/bin/chromedriver"), options=options
+            service=Service("/usr/bin/chromedriver"),
+            options=options
         )
+        
         try:
             self_client.driver.execute_cdp_cmd("Page.setDownloadBehavior", {
                 "behavior": "allow",
                 "downloadPath": temp_dir,
             })
         except Exception as e:
-            logger.warning(f"      ⚠️ CDP Page Download Error: {e}")
+            logger.warning(f"CDP Page Download Error: {e}")
 
-        self_client.wait = WebDriverWait(self_client.driver, 20)
+        self_client.wait = WebDriverWait(self_client.driver, 30)
 
+    # Bind the new setup_driver method to the client instance
     client_instance.setup_driver = types.MethodType(_docker_setup_driver, client_instance)
-
-    # Override SAVE_DIR inside the scraping config for this process
-    try:
-        import knowledge.etl.config as scraping_cfg
-        scraping_cfg.SAVE_DIR = Path(temp_dir)
-    except Exception:
-        pass
 
     return client_instance
 
 
-def _fetch_target_scopus_ids(test_target_id: str | None = None) -> list[str]:
+def _fetch_target_scopus_ids(test_target_id: Optional[str] = None) -> List[str]:
     """
-    Fetch Scopus Author IDs from Supabase (Level 3 Architecture).
-    Falls back to an empty list if Supabase is unreachable.
+    Fetch Scopus Author IDs from Supabase.
     """
-    from knowledge.etl.load.supabase_loader import SupabaseLoader
-
     if test_target_id:
-        logger.info(f"🧪 RUNNING IN TEST MODE FOR ID: {test_target_id}")
+        logger.info(f"Running in test mode for Scopus ID: {test_target_id}")
         return [test_target_id]
 
     loader = SupabaseLoader()
-    logger.info("      🐳 Fetching Scopus IDs from Supabase...")
+    logger.info("Fetching target Scopus IDs from Supabase...")
     
     try:
         response = loader.client.table("lecturers").select("scopus_id").execute()
-        ids: set[str] = set()
+        ids: Set[str] = set()
         for row in response.data:
             sid = str(row.get("scopus_id", "")).strip().replace(".0", "")
             if sid and sid.lower() not in ("nan", "none", "null"):
                 ids.add(sid)
 
-        target_ids = list(ids)
-        logger.info(f"      ✅ Found {len(target_ids)} unique Scopus IDs.")
+        target_ids = sorted(list(ids))
+        logger.info(f"Found {len(target_ids)} unique Scopus IDs to process.")
         return target_ids
     except Exception as e:
-        logger.error(f"      ❌ Failed to fetch IDs from Supabase: {e}")
+        logger.error(f"Failed to fetch IDs from Supabase: {e}")
         return []
 
 
-def extract_scopus_papers(limit_per_author: int = 500, test_target_id: str | None = None, cutoff_year: int | None = None):
+def extract_scopus_papers(
+    limit_per_author: int = 500,
+    test_target_id: Optional[str] = None,
+    cutoff_year: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """
     Scrape papers from Scopus using ScopusPaperClient.
-    Uses Batched Advanced Search for maximum speed and stability.
+    Uses Batched Advanced Search for efficiency.
     """
-    try:
-        from knowledge.etl.clients.scopus_client import ScopusPaperClient
-    except ImportError as e:
-        logger.error(f"❌ Failed to load ScopusClient: {e}")
-        return []
-
-    logger.info("\n📚 EXTRACT: SCOPUS SCRAPING (BATCH MODE)")
+    logger.info("Extracting Scopus papers in batch mode...")
 
     target_ids = _fetch_target_scopus_ids(test_target_id)
     if not target_ids:
-        logger.warning("⚠️ No Scopus IDs found to process.")
+        logger.warning("No Scopus IDs available for extraction.")
         return []
 
-    # ── Batched Advanced Search Sessions ──
-    # Increased batch size as Advanced Search can handle many IDs in one query string
-    all_papers: list[dict] = []
-    BATCH_SIZE = 50 
+    all_papers: List[Dict[str, Any]] = []
+    batch_size = 50 
 
-    for i in range(0, len(target_ids), BATCH_SIZE):
-        batch = target_ids[i : i + BATCH_SIZE]
-        batch_num = (i // BATCH_SIZE) + 1
-        total_batches = (len(target_ids) + BATCH_SIZE - 1) // BATCH_SIZE
+    total_ids = len(target_ids)
+    for i in range(0, total_ids, batch_size):
+        batch = target_ids[i : i + batch_size]
+        batch_num = (i // batch_size) + 1
+        total_batches = (total_ids + batch_size - 1) // batch_size
 
-        logger.info(f"\n--- 🔄 Processing Batch [{batch_num}/{total_batches}] ({len(batch)} IDs) ---")
+        logger.info(f"Processing Batch [{batch_num}/{total_batches}] ({len(batch)} IDs)...")
 
         client = ScopusPaperClient(SCIVAL_EMAIL, SCIVAL_PASS)
         client = _apply_docker_chromium_patch(client)
 
         try:
-            # Pass cutoff_year to the optimized run_scraper
             papers = client.run_scraper(batch, cutoff_year=cutoff_year)
             if papers:
                 all_papers.extend(papers)
-                logger.info(f"      ✅ Batch total: {len(papers)} | Accumulated: {len(all_papers)}")
+                logger.info(f"Batch {batch_num} complete. Added {len(papers)} papers. Total: {len(all_papers)}")
             else:
-                logger.warning(f"      ⚠️ No papers found for this batch.")
+                logger.warning(f"Batch {batch_num} returned no papers.")
         except Exception as e:
-            logger.error(f"      ❌ Fatal runtime error on batch {batch_num}: {e}")
+            logger.error(f"Fatal error during batch {batch_num}: {e}", exc_info=True)
         finally:
             try:
                 if hasattr(client, "driver") and client.driver:
                     client.driver.quit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Error closing driver: {e}")
 
-        # Brief pause between browser sessions
-        if batch_num < total_batches:
-            time.sleep(3)
+        # Rate limiting sleep between browser sessions
+        if i + batch_size < total_ids:
+            time.sleep(5)
 
-    # ── Save Results ──
-    df_new = pd.DataFrame(all_papers) if all_papers else pd.DataFrame()
-    raw_csv = RAW_DATA_DIR / "dosen_papers_scopus_raw.csv"
+    # Final Save and Deduplication
+    if not all_papers:
+        logger.warning("No papers collected across all batches.")
+        return []
 
-    if not df_new.empty:
-        # Deduplicate results if multiple authors overlap on same papers
-        if "eid" in df_new.columns:
-            initial_count = len(df_new)
-            df_new = df_new.drop_duplicates(subset=["eid"])
-            if len(df_new) < initial_count:
-                logger.info(f"      ✨ Deduplicated {initial_count - len(df_new)} overlapping papers.")
+    df = pd.DataFrame(all_papers)
+    
+    # Deduplicate by EID (Scopus unique identifier)
+    if "eid" in df.columns:
+        initial_len = len(df)
+        df = df.drop_duplicates(subset=["eid"])
+        if len(df) < initial_len:
+            logger.info(f"Removed {initial_len - len(df)} duplicate papers by EID.")
 
-        df_new.to_csv(raw_csv, index=False)
-        logger.info(f"\n✅ SUCCESS: Saved {len(df_new)} papers to {raw_csv}")
-    else:
-        pd.DataFrame().to_csv(raw_csv, index=False)
-        logger.info("\n⚠️ No papers collected in this run.")
+    output_path = RAW_DATA_DIR / "dosen_papers_scopus_raw.csv"
+    try:
+        write_dataframe_csv(df, output_path, index=False)
+        logger.info(f"Successfully saved {len(df)} papers to {output_path}")
+    except Exception as e:
+        logger.error(f"Failed to save results to {output_path}: {e}")
 
-    return all_papers
+    return df.to_dict("records")

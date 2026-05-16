@@ -1,17 +1,18 @@
-"""
-Load: Supabase PostgreSQL Loader
-=================================
-Handles batch UPSERT of papers and lecturers to Supabase.
-Implements idempotency via ON CONFLICT DO UPDATE.
-"""
-import math
+from __future__ import annotations
+
 import json
 import logging
-import pandas as pd
+import math
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+
 import numpy as np
+import pandas as pd
 from supabase import create_client, Client
 
-from ..config import SUPABASE_URL, SUPABASE_KEY
+from knowledge.etl.config import SUPABASE_URL, SUPABASE_KEY
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,11 @@ class SupabaseLoader:
     - Junction table linking (paper_lecturers)
     """
 
-    def __init__(self, url: str = None, key: str = None):
+    def __init__(self, url: Optional[str] = None, key: Optional[str] = None):
         self.url = url or SUPABASE_URL
         self.key = key or SUPABASE_KEY
         if not self.url or not self.key:
-            raise ValueError("❌ SUPABASE_URL or SUPABASE_KEY missing!")
+            raise ValueError("SUPABASE_URL or SUPABASE_KEY missing!")
             
         # --- DOCKER/SUPABASE-PY PATCH ---
         # supabase-py > 2.0 strictly validates the key via regex matching JWTs.
@@ -52,12 +53,12 @@ class SupabaseLoader:
             re.match = original_match # Restore
         # --- END PATCH ---
         
-        logger.info(f"✅ SupabaseLoader connected to {self.url}")
+        logger.info(f"SupabaseLoader connected to {self.url}")
 
-    # ─── Value Cleaning ──────────────────────────────────────────────
+    # --- Value Cleaning ---
 
     @staticmethod
-    def _clean_value(value):
+    def _clean_value(value: Any) -> Any:
         """Clean a single value for JSON/SQL compliance."""
         if value is None:
             return None
@@ -84,7 +85,7 @@ class SupabaseLoader:
             return v
         return value
 
-    # ─── Lecturers ───────────────────────────────────────────────────
+    # --- Lecturers ---
 
     def upsert_lecturers(self, df: pd.DataFrame) -> int:
         """
@@ -92,7 +93,7 @@ class SupabaseLoader:
         """
         count = 0
         total = len(df)
-        logger.info(f"\n👨‍🏫 Upserting {total} lecturers...")
+        logger.info(f"Upserting {total} lecturers to Supabase...")
 
         # Prepare records
         records = []
@@ -115,7 +116,7 @@ class SupabaseLoader:
                 "sinta_id": self._clean_value(row.get('sinta_id')),
             })
 
-        logger.info(f"   📋 Valid records to upsert: {len(records)}/{total}")
+        logger.info(f"Valid records to upsert: {len(records)}/{total}")
         
         # Batch insert
         for i in range(0, len(records), 100):
@@ -128,20 +129,20 @@ class SupabaseLoader:
                 ).execute()
                 count += len(chunk)
             except Exception as e:
-                logger.error(f"   ⚠️ Error upserting lecturer batch at {i}: {e}")
+                logger.error(f"Error upserting lecturer batch at {i}: {e}")
 
-        logger.info(f"   ✅ Upserted {count}/{total} lecturers via NIP")
+        logger.info(f"Upserted {count}/{total} lecturers via NIP")
         return count
 
-    # ─── Papers ──────────────────────────────────────────────────────
+    # --- Papers ---
 
     def upsert_papers(self, df: pd.DataFrame, chunk_size: int = 100) -> int:
         """
         Batch upsert papers to 'papers' table using deterministic `paper_id` as PK.
         Papers missing DOI are now gracefully handled via Title+Year hashes.
         """
-        from ..utils.hasher import generate_paper_id
-        records = []
+        from knowledge.etl.utils.hasher import generate_paper_id
+        records: List[Dict[str, Any]] = []
         skipped = 0
 
         for _, row in df.iterrows():
@@ -178,7 +179,7 @@ class SupabaseLoader:
                 "tldr": self._clean_value(row.get('TLDR') or row.get('tldr')),
             })
 
-        logger.info(f"\n📄 Upserting {len(records)} papers using MD5 Hashes (chunk={chunk_size})...")
+        logger.info(f"Upserting {len(records)} papers using MD5 Hashes (chunk={chunk_size})...")
 
         total_upserted = 0
         for i in range(0, len(records), chunk_size):
@@ -188,20 +189,20 @@ class SupabaseLoader:
                     chunk, on_conflict="paper_id"
                 ).execute()
                 total_upserted += len(chunk)
-                logger.info(f"   ✅ Batch {i // chunk_size + 1}: {len(chunk)} papers")
+                logger.info(f"Batch {i // chunk_size + 1}: {len(chunk)} papers")
             except Exception as e:
-                logger.error(f"   ❌ Batch error at {i}: {e}")
+                logger.error(f"Batch error at {i}: {e}")
 
-        logger.info(f"   ✅ Total: {total_upserted} upserted, {skipped} skipped (no title)")
+        logger.info(f"Total: {total_upserted} upserted, {skipped} skipped (no title)")
         return total_upserted
 
-    # ─── Junction Table ──────────────────────────────────────────────
+    # --- Junction Table ---
 
     def link_papers_to_lecturers(self, df: pd.DataFrame) -> int:
         """
         Populate paper_lecturers junction table. (M:M relasi menggunakan paper_id dan nip).
         """
-        from ..utils.hasher import generate_paper_id
+        from knowledge.etl.utils.hasher import generate_paper_id
         
         # 1. Get lecturer mapping: lookup NIP using scopus_id & scholar_id
         res = self.client.table("lecturers").select("nip, scopus_id, scholar_id").execute()
@@ -241,14 +242,14 @@ class SupabaseLoader:
                     links.add((paper_id, id_to_nip[aid]))
 
         if not links:
-            logger.warning("   ⚠️ No lecturer-paper links to insert.")
+            logger.warning("No lecturer-paper links to insert.")
             return 0
 
         # 3. Batch Upsert to Junction Table
         link_data = [{"paper_id": p, "nip": n} for p, n in links]
         total = 0
 
-        logger.info(f"\n🔗 Linking {len(link_data)} paper-lecturer relationships (Hash <-> NIP)...")
+        logger.info(f"Linking {len(link_data)} paper-lecturer relationships (Hash <-> NIP)...")
         for i in range(0, len(link_data), 500):
             chunk = link_data[i:i + 500]
             try:
@@ -258,7 +259,7 @@ class SupabaseLoader:
                 ).execute()
                 total += len(chunk)
             except Exception as e:
-                logger.error(f"   ❌ Link batch error: {e}")
+                logger.error(f"Link batch error: {e}")
 
-        logger.info(f"   ✅ Linked {total} relationships")
+        logger.info(f"Linked {total} relationships")
         return total

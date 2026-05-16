@@ -29,10 +29,6 @@
             mode="combobox"
             placeholder="Select or enter KB ID"
           />
-          <a-button @click="state.showKgBuilder = true" style="margin-left: 8px">
-            <template #icon><SettingOutlined /></template>
-            Graph Builder
-          </a-button>
         </div>
         <a-button
           v-if="unindexedCount > 0"
@@ -103,17 +99,6 @@
       />
     </div>
 
-    <!-- KG Builder Drawer -->
-    <a-drawer
-      v-model:open="state.showKgBuilder"
-      title="Knowledge Graph Builder"
-      placement="right"
-      width="500px"
-      :closable="true"
-      :destroyOnClose="false"
-    >
-      <KGBuilder />
-    </a-drawer>
   </div>
 </template>
 
@@ -131,7 +116,6 @@ import {
   SettingOutlined
 } from '@ant-design/icons-vue'
 import ViewSwitchHeader from '@/components/ViewSwitchHeader.vue'
-import KGBuilder from '@/components/KGBuilder.vue'
 import { neo4jApi, unifiedApi } from '@/apis/graph_api'
 import { useUserStore } from '@/stores/user'
 import GraphCanvas from '@/components/GraphCanvas.vue'
@@ -167,8 +151,7 @@ const state = reactive({
   showPage: true,
   selectedDbId: 'neo4j',
   dbOptions: [],
-  lightragStats: null,
-  showKgBuilder: false
+  lightragStats: null
 })
 
 const isNeo4j = computed(() => {

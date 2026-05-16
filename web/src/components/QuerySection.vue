@@ -46,7 +46,7 @@
                     </a-button>
                   </transition>
 
-                  <!-- Empty state - automatically generated after adding files -->
+                  <!-- Empty state - generated from knowledge base metadata -->
                   <span v-else style="color: var(--gray-500); font-size: 12px"
                     >No questions yet, click the button on the left to generate</span
                   >
@@ -575,7 +575,7 @@ onMounted(async () => {
   if (queryExamples.value.length > 0) {
     startExampleCarousel()
   }
-  // Do not auto-generate here; DataBaseInfoView triggers generation on KB creation/file upload
+  // Do not auto-generate here; DataBaseInfoView owns page-level refresh behavior.
 })
 
 // Stop sample carousel on unmount

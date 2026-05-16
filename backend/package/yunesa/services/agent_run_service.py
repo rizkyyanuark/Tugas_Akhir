@@ -58,7 +58,6 @@ async def create_agent_run_view(
     agent_config_id: int,
     thread_id: str,
     meta: dict,
-    image_content: str | None,
     current_user_id: str,
     db: AsyncSession,
 ) -> dict:
@@ -106,7 +105,6 @@ async def create_agent_run_view(
     input_payload = {
         "query": query,
         "config": config or {},
-        "image_content": image_content,
         "agent_id": agent_id,
         "thread_id": thread_id,
         "user_id": str(current_user_id),

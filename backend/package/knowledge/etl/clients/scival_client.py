@@ -8,6 +8,7 @@ who are missing this identifier. Uses Selenium for OAuth login flow.
 
 import re
 import time
+import logging
 import os
 import pandas as pd
 from pathlib import Path
@@ -19,14 +20,19 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-from ..config import SAVE_DIR, SCIVAL_EMAIL, SCIVAL_PASS, CRAWLER_HEADLESS
+from ..config import DATA_DIR, SCIVAL_EMAIL, SCIVAL_PASS, CRAWLER_HEADLESS
 from .utils import normalize_name, fuzzy_match_name
+
+logger = logging.getLogger(__name__)
 
 class SciValClient:
     def __init__(self):
         self.email = SCIVAL_EMAIL
         self.password = SCIVAL_PASS
-        self.save_dir = SAVE_DIR
+        self.save_dir = Path(
+            os.getenv("ETL_SCIVAL_DOWNLOAD_DIR", str(DATA_DIR / "downloads" / "scival"))
+        )
+        self.save_dir.mkdir(parents=True, exist_ok=True)
 
     def find_best_match(self, target, candidates, threshold=0.8):
         best = None
@@ -42,33 +48,33 @@ class SciValClient:
 
     def run_automation(self, df_main):
         if not self.email or not self.password:
-            print("  SciVal Error: Credentials missing in config/json.")
+            logger.error("SciVal credentials missing in configuration")
             return None
 
-        print("\n--- STARTING SCIVAL AUTOMATION ---")
+        logger.info("Starting SciVal automation pipeline")
         
         # A. RESUME LOGIC: Check for existing fresh file
-        print("     Checking for existing SciVal export in save directory...")
+        logger.info("Checking for existing SciVal export in save directory...")
         existing_files = sorted(self.save_dir.glob("All_Authors*.csv"), key=os.path.getmtime, reverse=True)
         if existing_files:
             newest = existing_files[0]
             # If file is less than 24 hours old, reuse it
             if time.time() - newest.stat().st_mtime < 86400:
-                print(f"     Found fresh SciVal export: {newest.name} ({time.ctime(newest.stat().st_mtime)})")
-                print("     Skipping Selenium automation.")
+                logger.info("Found fresh SciVal export: %s (%s)", newest.name, time.ctime(newest.stat().st_mtime))
+                logger.info("Skipping Selenium automation")
                 return self.process_scival_csv(newest, df_main)
             else:
-                print(f"      Found old export ({newest.name}), will download fresh one.")
+                logger.info("Found old export (%s), downloading fresh one", newest.name)
         else:
-            print("     No existing SciVal export found.")
+            logger.info("No existing SciVal export found")
 
         missing_count = (df_main['scopus_id'].isna() | (df_main['scopus_id'].astype(str).str.strip() == '')).sum()
-        print(f"   Missing Scopus IDs to find: {missing_count}")
+        logger.info("Target: %d missing Scopus IDs to resolve", missing_count)
         
         driver = None
         try:
             # B. SETUP HEADLESS CHROME
-            print("     Initializing Chrome Driver...")
+            logger.info("Initializing Chrome Driver...")
             opts = Options()
             if CRAWLER_HEADLESS:
                 opts.add_argument("--headless=new")
@@ -91,7 +97,7 @@ class SciValClient:
             if os.path.exists(chromedriver_path):
                 service = Service(chromedriver_path)
             else:
-                print("        Installing/Updating ChromeDriver...")
+                logger.info("Installing/Updating ChromeDriver...")
                 service = Service(ChromeDriverManager().install())
             
             driver = webdriver.Chrome(service=service, options=opts)
@@ -100,61 +106,61 @@ class SciValClient:
             })
             
             # C. LOGIN
-            print("     Logging into SciVal...")
+            logger.info("Logging into SciVal...")
             driver.get("https://id.elsevier.com/as/authorization.oauth2?platSite=SVE%2FSciVal&ui_locales=en-US&scope=openid+profile+email+els_auth_info+els_analytics_info&response_type=code&redirect_uri=https%3A%2F%2Fwww.scival.com%2Fidp%2Fcode&prompt=login&client_id=SCIVAL")
             
             try: 
                 WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))).click()
-                print("      (OK) Cookie banner accepted")
+                logger.debug("Cookie banner accepted")
             except: pass
             
             try:
-                print("         Entering Email...")
+                logger.info("Entering credentials...")
                 email_field = WebDriverWait(driver, 15).until(EC.visibility_of_element_located((By.ID, "bdd-email")))
                 email_field.clear(); email_field.send_keys(self.email)
                 driver.find_element(By.ID, "bdd-elsPrimaryBtn").click()
-            except Exception as e: print(f"      Email Step Error: {e}")
+            except Exception as e:
+                logger.error("Email step error: %s", e)
                 
             try:
-                print("         Entering Password...")
                 pw_field = WebDriverWait(driver, 15).until(EC.visibility_of_element_located((By.ID, "bdd-password")))
                 pw_field.send_keys(self.password)
                 driver.find_element(By.ID, "bdd-elsPrimaryBtn").click()
-                print("     Credentials Submitted")
+                logger.info("Credentials submitted")
             except Exception as e:
-                print(f"     Login Failed (Check credentials or CAPTCHA): {e}")
+                logger.error("Login failed (check credentials or CAPTCHA): %s", e)
                 raise e
                 
-            print("     Waiting for redirect to SciVal dashboard...")
+            logger.info("Waiting for redirect to SciVal dashboard...")
             WebDriverWait(driver, 60).until(EC.url_contains("scival.com"))
-            print("   (OK) Login Success!")
+            logger.info("Login successful")
             
             # D. NAVIGATE & DOWNLOAD
-            print("     Navigating to Author Overview...")
+            logger.info("Navigating to Author Overview...")
             driver.get("https://www.scival.com/overview/authors?uri=Institution%2F707254")
             time.sleep(5)
             
-            print("      Triggering CSV Download...")
+            logger.info("Triggering CSV download...")
             try:
-                print("      Clicking download toggle...")
+                logger.debug("Clicking download toggle...")
                 btn = WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.showDownloadFullListOfAuthors")))
                 btn.click()
                 time.sleep(3)
                 
-                print("      Selecting CSV format...")
+                logger.debug("Selecting CSV format...")
                 try: driver.find_element(By.XPATH, "//label[contains(text(), 'CSV')]").click()
                 except: pass
                 time.sleep(2)
                 
-                print("      Executing 'Download list' button...")
+                logger.debug("Executing download...")
                 try: driver.find_element(By.XPATH, "//button[contains(text(), 'Download list')]").click()
-                except: print("      Could not click 'Download list'")
-                
+                except: logger.warning("Could not click 'Download list'")
+
             except Exception as e:
-                print(f"      Download UI Interaction Failed: {e}")
+                logger.error("Download UI interaction failed: %s", e)
             
             # E. WAIT FOR FILE
-            print("     Waiting for file to appear in save directory...")
+            logger.info("Waiting for file to appear in save directory...")
             download_file = None
             start_time = time.time()
             while time.time() - start_time < 120:
@@ -169,14 +175,14 @@ class SciValClient:
                 time.sleep(3)
                 
             if download_file:
-                print(f"   (OK) Download Successful: {download_file.name}")
+                logger.info("Download successful: %s", download_file.name)
                 return self.process_scival_csv(download_file, df_main)
             else:
-                print("     Error: Download timeout (No file appeared within 120s).")
+                logger.error("Download timeout (No file appeared within 120s)")
                 return None
 
         except Exception as e:
-            print(f"     Automation Error: {e}")
+            logger.error("Automation error: %s", e)
             return None
         finally:
             if driver: driver.quit()
@@ -194,7 +200,7 @@ class SciValClient:
         return f"{initials} {last_name}"
 
     def process_scival_csv(self, csv_path, df_main):
-        print("     Processing SciVal Data...")
+        logger.info("Processing SciVal data...")
         
         # 1. Skip Metadata
         header_idx = 0
@@ -211,7 +217,7 @@ class SciValClient:
         col_id = next((c for c in df_scival.columns if 'Scopus' in c and ('ID' in c or 'Author' in c) and 'link' not in c.lower()), None)
         
         if not col_name or not col_id:
-            print("     Error: Columns not found in SciVal CSV.")
+            logger.error("Columns not found in SciVal CSV")
             return None
 
         # Build Lookup
@@ -240,7 +246,7 @@ class SciValClient:
                     scival_map[norm_nm] = clean_sid
                     scival_norms.append(norm_nm)
                     
-        print(f"     Built lookup: {len(scival_map)} names")
+        logger.info("Built lookup: %d names", len(scival_map))
         
         # Match
         count_new = 0
@@ -283,11 +289,11 @@ class SciValClient:
                 if curr_sid == 'nan' or not curr_sid:
                     df_main.at[idx, 'scopus_id'] = found_sid
                     count_new += 1
-                    print(f"      (OK) {match_info}: {row['nama_dosen']} -> {found_sid}")
+                    logger.info("Found Scopus ID via %s: %s -> %s", match_info, row['nama_dosen'], found_sid)
                 elif curr_sid != found_sid:
                     df_main.at[idx, 'scopus_id'] = found_sid
                     count_corr += 1
-                    print(f"        CORRECTED: {row['nama_dosen']} ({curr_sid} -> {found_sid})")
+                    logger.info("Updated Scopus ID for %s: %s -> %s", row['nama_dosen'], curr_sid, found_sid)
 
-        print(f"   (OK) Stats: {count_new} New, {count_corr} Corrected.")
+        logger.info("SciVal Matching complete: %d New, %d Updated", count_new, count_corr)
         return df_main

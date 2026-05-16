@@ -54,12 +54,15 @@ class MinIOClient:
     def __init__(self):
         """initialize MinIO client"""
         self.endpoint = os.getenv("MINIO_URI") or "http://minio:9000"
-        self.access_key = os.getenv("MINIO_ACCESS_KEY") or "minioadmin"
-        self.secret_key = os.getenv("MINIO_SECRET_KEY") or "minioadmin"
+        self.access_key = os.getenv("MINIO_ROOT_USER") or os.getenv("MINIO_ACCESS_KEY") or "minioadmin"
+        self.secret_key = os.getenv("MINIO_ROOT_PASSWORD") or os.getenv("MINIO_SECRET_KEY") or "minioadmin"
+        self.public_base_url = (os.getenv("MINIO_PUBLIC_BASE_URL") or "").strip().rstrip("/")
         self._client = None
 
         # Set public access endpoint
-        if os.getenv("RUNNING_IN_DOCKER"):
+        if self.public_base_url:
+            logger.debug(f"MinIOClient public_base_url: {self.public_base_url}")
+        elif os.getenv("RUNNING_IN_DOCKER"):
             host_ip = (os.getenv("HOST_IP") or "").strip()
             if not host_ip:
                 host_ip = "localhost"
@@ -72,6 +75,11 @@ class MinIOClient:
         else:
             self.public_endpoint = "localhost:9000"
             logger.debug(f"Default_client: {self.public_endpoint}")
+
+    def _public_url(self, bucket_name: str, object_name: str) -> str:
+        if self.public_base_url:
+            return f"{self.public_base_url}/{bucket_name}/{object_name}"
+        return f"http://{self.public_endpoint}/{bucket_name}/{object_name}"
 
     @property
     def client(self) -> Minio:
@@ -127,7 +135,7 @@ class MinIOClient:
             )
 
             assert result is not None
-            url = f"http://{self.public_endpoint}/{bucket_name}/{object_name}"
+            url = self._public_url(bucket_name, object_name)
 
             return UploadResult(url, bucket_name, object_name)
 

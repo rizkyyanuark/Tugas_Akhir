@@ -202,7 +202,6 @@ async def process_agent_run(ctx, run_id: str):
     query = payload.get("query")
     config = payload.get("config") or {}
     agent_id = payload.get("agent_id")
-    image_content = payload.get("image_content")
     user_id = payload.get("user_id")
     request_id = payload.get("request_id")
 
@@ -221,7 +220,6 @@ async def process_agent_run(ctx, run_id: str):
         "server_model_name": config.get("model", agent_id),
         "thread_id": config.get("thread_id"),
         "user_id": user.id,
-        "has_image": bool(image_content),
     }
 
     await mark_run_running(run_id)
@@ -241,7 +239,6 @@ async def process_agent_run(ctx, run_id: str):
                 agent_config_id=config.get("agent_config_id"),
                 thread_id=config.get("thread_id"),
                 meta=meta,
-                image_content=image_content,
                 current_user=user,
                 db=db,
             )

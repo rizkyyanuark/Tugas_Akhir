@@ -5,13 +5,14 @@ Handles all Milvus write operations for the KG pipeline:
   - Collection schema creation (4 collections)
   - Batch insert with error handling
 
-Uses sentence-transformers for local embedding generation,
-matching the Yuxi architecture's PyMilvus integration.
+Uses SiliconFlow API for embedding generation,
+matching the Yuxi architecture's lean integration.
 """
 
 import logging
 import os
 from typing import Dict, List, Optional
+import requests
 
 from pymilvus import (
     connections,
@@ -26,30 +27,43 @@ from .config import MILVUS_HOST, MILVUS_PORT
 
 logger = logging.getLogger(__name__)
 
-# ── Embedding ──
-# Lazy-loaded sentence-transformers model for local vectorisation
+# ── Embedding Configuration ──
+# Using SiliconFlow API for embeddings to keep the environment lean
 _EMBED_MODEL_NAME = os.environ.get(
     "MILVUS_EMBED_MODEL",
-    "sentence-transformers/all-MiniLM-L6-v2",
+    "BAAI/bge-m3",
 )
-_embed_model = None
+_API_KEY = os.environ.get("SILICONFLOW_API_KEY")
+_API_URL = "https://api.siliconflow.cn/v1/embeddings"
+
+EMBEDDING_DIM = 1024  # BAAI/bge-m3 outputs 1024-dim vectors
 
 
-def _get_embed_model():
-    """Lazy-load the sentence-transformers model."""
-    global _embed_model
-    if _embed_model is None:
-        from sentence_transformers import SentenceTransformer
-        _embed_model = SentenceTransformer(_EMBED_MODEL_NAME)
-        logger.info(f"Loaded embedding model: {_EMBED_MODEL_NAME}")
-    return _embed_model
+def get_embeddings(texts: List[str]) -> List[List[float]]:
+    """Fetch embeddings from SiliconFlow API."""
+    if not _API_KEY:
+        raise ValueError("SILICONFLOW_API_KEY environment variable is not set.")
 
+    headers = {
+        "Authorization": f"Bearer {_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": _EMBED_MODEL_NAME,
+        "input": texts
+    }
 
-EMBEDDING_DIM = 384  # all-MiniLM-L6-v2 outputs 384-dim vectors
+    try:
+        response = requests.post(_API_URL, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        return [item["embedding"] for item in data["data"]]
+    except Exception as e:
+        logger.error(f"Failed to fetch embeddings from SiliconFlow: {e}")
+        raise RuntimeError(f"Embedding generation failed: {e}")
 
 
 # ── Collection schemas ──
-# Each entry: (name, text_field_for_embedding, [extra_fields])
 _COLLECTIONS = {
     "EntityEmbedding": {
         "embed_field": "description",
@@ -103,14 +117,7 @@ class MilvusKGWriter:
     """Production-grade Milvus writer for the KG pipeline.
 
     Creates 4 collections with IVF_FLAT index and performs
-    batched inserts with local sentence-transformers embedding.
-
-    Usage:
-        writer = MilvusKGWriter()
-        writer.ensure_collections(recreate=True)
-        writer.ingest("EntityEmbedding", entity_data)
-        writer.ingest("PaperChunk", chunk_data)
-        writer.close()
+    batched inserts with API-based embedding generation.
     """
 
     def __init__(
@@ -143,11 +150,7 @@ class MilvusKGWriter:
             pass
 
     def ensure_collections(self, recreate: bool = True):
-        """Create all 4 Milvus collections for the KG pipeline.
-
-        Args:
-            recreate: If True, drop existing collections first (fresh start).
-        """
+        """Create all 4 Milvus collections for the KG pipeline."""
         for name, spec in _COLLECTIONS.items():
             if utility.has_collection(name, using=self.alias):
                 if recreate:
@@ -180,27 +183,17 @@ class MilvusKGWriter:
         data: List[Dict],
         batch_size: int = 50,
     ) -> int:
-        """Batch-insert data into a Milvus collection.
-
-        Args:
-            collection_name: Name of the target collection.
-            data: List of property dicts to insert.
-            batch_size: Number of objects per batch insert.
-
-        Returns:
-            Number of batch errors.
-        """
+        """Batch-insert data into a Milvus collection."""
         if not data:
             logger.info(f"  {collection_name}: no data to ingest")
             return 0
 
         spec = _COLLECTIONS[collection_name]
         embed_field = spec["embed_field"]
-        model = _get_embed_model()
         col = Collection(collection_name, using=self.alias)
         batch_errors = 0
 
-        # Get field names (excluding id and embedding — auto-generated)
+        # Get field names (excluding id and embedding)
         data_field_names = [
             f.name for f in spec["fields"]
             if f.name not in ("id", "embedding")
@@ -220,8 +213,8 @@ class MilvusKGWriter:
                         columns[fname].append(val)
                     texts_to_embed.append(str(item.get(embed_field, "")))
 
-                # Generate embeddings
-                embeddings = model.encode(texts_to_embed).tolist()
+                # Generate embeddings via API
+                embeddings = get_embeddings(texts_to_embed)
 
                 # Build insert list in field order
                 insert_data = [columns[fname] for fname in data_field_names]
@@ -244,35 +237,9 @@ class MilvusKGWriter:
         return batch_errors
 
     @staticmethod
-    def _max_len(spec: dict, field_name: str) -> int:
-        """Get the max_length for a VARCHAR field, defaulting to 4096."""
+    def _max_len(spec: Dict, field_name: str) -> int:
+        """Get max length for a VARCHAR field."""
         for f in spec["fields"]:
-            if f.name == field_name and hasattr(f, "max_length") and f.max_length:
-                return f.max_length
-        return 4096
-
-    def ingest_all(
-        self,
-        entity_vdb: List[Dict],
-        relationship_vdb: List[Dict],
-        keywords_vdb: List[Dict],
-        chunk_vdb: List[Dict],
-    ) -> Dict[str, int]:
-        """Ingest all VDB data into their respective collections.
-
-        Args:
-            entity_vdb: EntityEmbedding data.
-            relationship_vdb: RelationshipEmbedding data.
-            keywords_vdb: ContentKeyword data.
-            chunk_vdb: PaperChunk data.
-
-        Returns:
-            Dict of {collection_name: error_count}.
-        """
-        logger.info("Ingesting to Milvus (batched)...")
-        errors = {}
-        errors["EntityEmbedding"] = self.ingest("EntityEmbedding", entity_vdb)
-        errors["RelationshipEmbedding"] = self.ingest("RelationshipEmbedding", relationship_vdb)
-        errors["ContentKeyword"] = self.ingest("ContentKeyword", keywords_vdb)
-        errors["PaperChunk"] = self.ingest("PaperChunk", chunk_vdb)
-        return errors
+            if f.name == field_name:
+                return getattr(f, "max_length", 65535)
+        return 65535

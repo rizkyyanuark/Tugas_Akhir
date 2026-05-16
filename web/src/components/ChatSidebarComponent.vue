@@ -16,7 +16,7 @@
             alt="logo"
             class="brand-logo"
           />
-          <div class="header-title">{{ branding.name || organization.name || 'agenticrag' }}</div>
+          <div class="header-title">{{ branding.name || organization.name || 'YUnesa' }}</div>
         </div>
         <div class="header-actions">
           <div

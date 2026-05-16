@@ -268,9 +268,9 @@
     <!-- Page footer: copyright, etc. -->
     <footer class="page-footer">
       <div class="footer-links">
-        <a href="https://github.com/xerrors" target="_blank">Contact Us</a>
+        <a href="https://github.com/rizkyyanuark/Tugas_Akhir" target="_blank">Contact Us</a>
         <span class="divider">|</span>
-        <a href="https://github.com/xerrors/agenticrag" target="_blank">Help</a>
+        <a href="https://github.com/rizkyyanuark/Tugas_Akhir#readme" target="_blank">Help</a>
       </div>
       <div class="copyright">
         &copy; {{ new Date().getFullYear() }} {{ brandName }}. All Rights Reserved.
@@ -314,7 +314,7 @@ const brandOrgName = computed(() => {
 })
 const brandName = computed(() => {
   const orgName = brandOrgName.value
-  const brandNameRaw = infoStore.branding?.name?.trim() || 'agenticrag'
+  const brandNameRaw = infoStore.branding?.name?.trim() || 'YUnesa'
 
   if (orgName && brandNameRaw && orgName !== brandNameRaw) {
     return brandNameRaw

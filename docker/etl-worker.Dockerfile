@@ -39,11 +39,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # ── LAYER 1: Python Dependencies (cached separately) ────────
-COPY docker/requirements-etl.txt /app/requirements.txt
-RUN uv pip install --system --no-cache -r /app/requirements.txt
 
 # ── LAYER 2: Application Code ───────────────────────────────
 COPY backend/package /app/package
+COPY README.md /app/package/README.md
+ARG ETL_INSTALL_TEST_DEPS=true
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -e /app/package && \
+    if [ "$ETL_INSTALL_TEST_DEPS" = "true" ]; then \
+        uv pip install --system --project /app/package --group test; \
+    fi
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/package"

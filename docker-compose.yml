@@ -6,20 +6,25 @@ x-api-worker-env: &api-worker-env
   # DBs and other services
   POSTGRES_URL: ${POSTGRES_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}}
   REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-yuxi_know}
   NEO4J_URI: ${NEO4J_URI:-bolt://graph:7687}
   NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-0123456789}
-  MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
-  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-default}
-  MILVUS_TOKEN: ${MILVUS_TOKEN:-}
+  NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+  # --- Core Credentials (Shared by ETL & Server) ---
+  SUPABASE_URL: ${SUPABASE_URL}
+  SUPABASE_KEY: ${SUPABASE_KEY}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+  BRIGHTDATA_SERP_TOKEN: ${BRIGHTDATA_SERP_TOKEN}
+  GROQ_API_KEY: ${GROQ_API_KEY}
   MINIO_URI: ${MINIO_URI:-http://minio:9000}
-  # Sandbox related
-  YUXI_DOCKER_API_BASE: ${YUXI_DOCKER_API_BASE:-http://localhost}
-  SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-provisioner}
-  SANDBOX_PROVISIONER_URL: ${SANDBOX_PROVISIONER_URL:-http://sandbox-provisioner:8002}
-  SANDBOX_VIRTUAL_PATH_PREFIX: ${SANDBOX_VIRTUAL_PATH_PREFIX:-/home/gem/user-data}
-  SANDBOX_EXEC_TIMEOUT_SECONDS: ${SANDBOX_EXEC_TIMEOUT_SECONDS:-180}
-  SANDBOX_MAX_OUTPUT_BYTES: ${SANDBOX_MAX_OUTPUT_BYTES:-262144}
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-http://localhost:9000}
+  SANDBOX_ENABLED: ${SANDBOX_ENABLED:-false}
   # LightRAG
   EMBEDDING_TIMEOUT: ${EMBEDDING_TIMEOUT:-600}
   LLM_TIMEOUT: ${LLM_TIMEOUT:-600}
@@ -27,8 +32,8 @@ x-api-worker-env: &api-worker-env
   RUN_CANCEL_KEY_TTL_SECONDS: ${RUN_CANCEL_KEY_TTL_SECONDS:-1800}
   RUN_EVENTS_STREAM_TTL_SECONDS: ${RUN_EVENTS_STREAM_TTL_SECONDS:-7200}
   # Other environment variables
-  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,sandbox-provisioner,api.siliconflow.cn
-  no_proxy: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,sandbox-provisioner,api.siliconflow.cn
+  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,api.siliconflow.cn
+  no_proxy: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,api.siliconflow.cn
 
 x-airflow-common: &airflow-common
   build:
@@ -42,172 +47,84 @@ x-airflow-common: &airflow-common
     - .env
   environment:
     AIRFLOW_ENV: dev
+    ENVIRONMENT: dev
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
     AIRFLOW__WEBSERVER__RBAC: "true"
-    DOCKER_NETWORK: ${SANDBOX_DOCKER_NETWORK:-tugas-akhir-network}
+    DOCKER_NETWORK: ${DOCKER_NETWORK:-tugas-akhir-network}
     HOST_DATA_DIR: ${HOST_DATA_DIR:-${PWD}/data}
+    HOST_PACKAGE_DIR: ${HOST_PACKAGE_DIR:-${PWD}/backend/package}
+    ETL_WORKER_IMAGE: ${ETL_WORKER_IMAGE:-tugas-akhir-etl-worker:latest}
+    ETL_WORKER_MOUNT_CODE: ${ETL_WORKER_MOUNT_CODE:-true}
     # --- Variabel Baru untuk Airflow 3 Task Execution API ---
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-static-jwt-secret-for-dev-12345}
     AIRFLOW__API__AUTH_BACKENDS: airflow.providers.fab.auth_manager.api.auth.backend.session,airflow.sdk.api.auth.backend.token
     # --------------------------------------------------------
 
+x-python-base: &python-base
+  build:
+    context: .
+    dockerfile: docker/api.Dockerfile
+  image: tugas-akhir-api:latest
+  working_dir: /app
+  volumes:
+    - ./backend/server:/app/server
+    - ./backend/package:/app/package
+    - ./saves:/app/saves
+    - ./backend/test:/app/test
+    - ./backend/scripts:/app/scripts
+    - ./.env:/app/.env
+    - ${MODEL_DIR:-./models}:/models
+    - ./.hf_cache:/app/.cache/huggingface
+  networks:
+    - app-network
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  env_file:
+    - .env
+  environment:
+    <<: *api-worker-env
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    minio: { condition: service_healthy }
+    graph: { condition: service_healthy }
+    milvus: { condition: service_healthy }
+
 services:
   api:
-    build:
-      context: .
-      dockerfile: docker/api.Dockerfile
-    image: tugas-akhir-api:0.6.0
+    <<: *python-base
     container_name: api-dev
-    working_dir: /app
-    volumes:
-      - ./backend/server:/app/server
-      - ./backend/package:/app/package
-      - ./saves:/app/saves
-      - ./backend/test:/app/test
-      - ./backend/scripts:/app/scripts
-      - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
-      - ./.env:/app/.env
-      - ${MODEL_DIR:-./models}:/models # Use default value when the environment variable is undefined
-      - ./.hf_cache:/app/.cache/huggingface
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5050:5050"
-    networks:
-      - app-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file:
-      - .env
-    # region api_envs
-    environment:
-      <<: *api-worker-env
-    # endregion api_envs
     command: >
       sh -c "if [ \"$$BACKEND_RELOAD\" = \"true\" ]; then
-        uv run uvicorn server.main:app --host 0.0.0.0 --port 5050 --reload --reload-dir /app/server --reload-dir /app/package;
+        uvicorn server.main:app --host 0.0.0.0 --port 5050 --reload --reload-dir /app/server --reload-dir /app/package;
       else
-        uv run uvicorn server.main:app --host 0.0.0.0 --port 5050;
+        uvicorn server.main:app --host 0.0.0.0 --port 5050;
       fi"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5050/api/system/health || exit 1"]
       interval: 30s
       timeout: 15s
       retries: 8
       start_period: 180s
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      sandbox-provisioner:
-        condition: service_healthy
 
   worker:
-    build:
-      context: .
-      dockerfile: docker/api.Dockerfile
-    image: tugas-akhir-api:0.6.0
+    <<: *python-base
     container_name: worker-dev
-    working_dir: /app
-    volumes:
-      - ./backend/server:/app/server
-      - ./backend/package:/app/package
-      - ./saves:/app/saves
-      - ./backend/test:/app/test
-      - ./backend/scripts:/app/scripts
-      - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
-      - ./.env:/app/.env
-      - ./backend/pyproject.toml:/app/pyproject.toml
-      - ./backend/uv.lock:/app/uv.lock
-      - ${MODEL_DIR:-./models}:/models
-      - ./.hf_cache:/app/.cache/huggingface
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - app-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file:
-      - .env
-    environment:
-      <<: *api-worker-env
     command: >
       sh -c "if [ \"$$BACKEND_RELOAD\" = \"true\" ]; then
-        uv run watchfiles \"arq server.worker_main.WorkerSettings\" /app/server /app/package;
+        watchfiles \"arq server.worker_main.WorkerSettings\" /app/server /app/package;
       else
-        uv run arq server.worker_main.WorkerSettings;
+        arq server.worker_main.WorkerSettings;
       fi"
-    healthcheck:
-      disable: true
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      sandbox-provisioner:
-        condition: service_healthy
-
-  sandbox-provisioner:
-    build:
-      context: ./docker/sandbox_provisioner
-      dockerfile: Dockerfile
-    image: tugas-akhir-sandbox-provisioner:0.6.0
-    container_name: sandbox-provisioner
-    volumes:
-      - ./saves:/app/saves
-      - ./docker/sandbox_provisioner/app.py:/app/app.py:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "8002:8002"
-    networks:
-      - app-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      # Common provisioner settings
-      - PROVISIONER_BACKEND=${SANDBOX_PROVISIONER_BACKEND:-docker}
-      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest}
-      - SANDBOX_CONTAINER_PORT=${SANDBOX_CONTAINER_PORT:-8080}
-      - MEMORY_SANDBOX_URL_TEMPLATE=${MEMORY_SANDBOX_URL_TEMPLATE:-http://agent-sandbox:8000}
-      - SANDBOX_HEALTH_TIMEOUT_SECONDS=${SANDBOX_HEALTH_TIMEOUT_SECONDS:-300}
-      - SANDBOX_IDLE_TIMEOUT_SECONDS=${SANDBOX_IDLE_TIMEOUT_SECONDS:-120}
-      - SANDBOX_IDLE_CHECK_INTERVAL_SECONDS=${SANDBOX_IDLE_CHECK_INTERVAL_SECONDS:-10}
-      - SANDBOX_EXEC_TIMEOUT_SECONDS=${SANDBOX_EXEC_TIMEOUT_SECONDS:-180}
-      # Optional proxy for sandbox-provisioner container
-      - HTTP_PROXY=${SANDBOX_HTTP_PROXY:-}
-      - HTTPS_PROXY=${SANDBOX_HTTPS_PROXY:-}
-      - NO_PROXY=localhost,127.0.0.1,host.docker.internal
-      # Docker backend only
-      - DOCKER_NETWORK=${SANDBOX_DOCKER_NETWORK:-yuxi-know_app-network}
-      - DOCKER_THREADS_HOST_PATH=${SANDBOX_DOCKER_THREADS_HOST_PATH:-}
-      - DOCKER_SANDBOX_PREFIX=${SANDBOX_DOCKER_SANDBOX_PREFIX:-yuxi-sandbox}
-      - DOCKER_SANDBOX_HOST=${SANDBOX_DOCKER_SANDBOX_HOST:-host.docker.internal}
-      # Kubernetes backend only
-      - K8S_NAMESPACE=${SANDBOX_K8S_NAMESPACE:-yuxi-know}
-      - NODE_HOST=${SANDBOX_NODE_HOST:-host.docker.internal}
-      - KUBECONFIG_PATH=${KUBECONFIG_PATH:-}
-      - THREAD_PVC=${THREAD_PVC:-yuxi-thread}
-      - SKILLS_PVC=${SKILLS_PVC:-yuxi-skills}
-    command: >
-      sh -lc "python -c 'import docker' >/dev/null 2>&1 || pip install --no-cache-dir 'docker>=7.1.0';
-      uvicorn app:app --host 0.0.0.0 --port 8002 --reload"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
-    restart: unless-stopped
+    healthcheck: { disable: true }
 
   web:
     build:
@@ -224,7 +141,8 @@ services:
     ports:
       - "5173:5173"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - app-network
     environment:
@@ -235,31 +153,28 @@ services:
     command: pnpm run server
     restart: unless-stopped
 
-  # region neo4j
   graph:
     image: neo4j:5.26
     container_name: graph
     ports:
       - "7474:7474"
       - "7687:7687"
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-0123456789}
+      NEO4J_server_bolt_listen__address: 0.0.0.0:7687
+      NEO4J_server_http_listen__address: 0.0.0.0:7474
     volumes:
       - neo4j-data:/data
-      - neo4j-logs:/var/lib/neo4j/logs
+      - neo4j-logs:/logs
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u ${NEO4J_USERNAME:-neo4j} -p ${NEO4J_PASSWORD:-0123456789} 'RETURN 1;' >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
       interval: 20s
       timeout: 10s
-      retries: 5
-      start_period: 30s
-    environment:
-      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-0123456789}
-      - NEO4J_server_bolt_listen__address=0.0.0.0:7687
-      - NEO4J_server_http_listen__address=0.0.0.0:7474
-      - ENTITY_EMBEDDING=true
+      retries: 8
+      start_period: 90s
     networks:
       - app-network
     restart: unless-stopped
-  # endregion neo4j
 
   etcd:
     container_name: milvus-etcd-dev
@@ -286,8 +201,8 @@ services:
     container_name: minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio-data:/minio_data
       - minio-config:/root/.minio
@@ -314,6 +229,8 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MILVUS_LOG_LEVEL: error
     volumes:
       - milvus-data:/var/lib/milvus
@@ -328,8 +245,10 @@ services:
       - "19530:19530"
       - "9091:9091"
     depends_on:
-      - "etcd"
-      - "minio"
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
@@ -381,6 +300,8 @@ services:
     build:
       context: .
       dockerfile: docker/etl-worker.Dockerfile
+      args:
+        ETL_INSTALL_TEST_DEPS: "true"
     image: tugas-akhir-etl-worker:latest
     container_name: etl-worker
     profiles: ["etl"]
@@ -388,6 +309,25 @@ services:
       - app-network
     env_file:
       - .env
+    environment:
+      <<: *api-worker-env
+      PYTHONPATH: /app/package
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./backend/package:/app/package
+      - ./data:/app/data
+      - ./.env:/app/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      graph:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
 
   airflow-init:
     <<: *airflow-common
@@ -395,13 +335,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./orchestration/airflow_variables_import.json:/opt/airflow/variables.json:ro
     command: >
       bash -c "
       airflow db migrate &&
-      airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true &&
-      airflow variables import /opt/airflow/variables.json || true
+      airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Airflow --lastname Admin --role Admin --email admin@example.com || true
       "
 
   airflow-webserver:
@@ -441,7 +378,7 @@ services:
 networks:
   app-network:
     driver: bridge
-    name: ${SANDBOX_DOCKER_NETWORK:-tugas-akhir-network}
+    name: ${DOCKER_NETWORK:-tugas-akhir-network}
 
 volumes:
   postgres-data:

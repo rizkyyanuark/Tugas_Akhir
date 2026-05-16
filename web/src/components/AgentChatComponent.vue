@@ -150,28 +150,15 @@
                 />
               </div>
 
-              <AgentArtifactsCard
-                :artifacts="currentArtifacts"
-                :thread-id="currentChatId"
-                :agent-id="currentThread?.agent_id || currentAgentId"
-                :agent-config-id="selectedAgentConfigId"
-                @saved="handleArtifactSaved"
-              />
-
               <AgentInputArea
                 v-model="userInput"
                 :is-loading="isProcessing"
                 :disabled="!currentAgent"
                 :send-button-disabled="isSendButtonDisabled"
                 :mention="mentionConfig"
-                :supports-file-upload="false"
-                :is-ingestion-locked="true"
-                :is-panel-open="isAgentPanelOpen"
                 :has-active-thread="!!currentChatId"
                 :todos="currentTodos"
                 @send="handleSendOrStop"
-                @upload-attachment="handleAttachmentUpload"
-                @toggle-panel="toggleAgentPanel"
               >
                 <template #actions-left-extra>
                   <slot name="input-actions-left"></slot>
@@ -205,36 +192,6 @@
           </div>
         </div>
 
-        <!-- Agent Panel Area -->
-
-        <div
-          class="agent-panel-wrapper"
-          ref="panelWrapperRef"
-          :class="{
-            'is-visible': isAgentPanelOpen,
-            'no-transition': isResizing,
-            'is-expanded': isAgentPanelExpanded
-          }"
-          :style="{
-            flexBasis: isAgentPanelOpen ? `${panelRatio * 100}%` : '0px'
-          }"
-        >
-          <AgentPanel
-            v-if="isAgentPanelOpen"
-            :agent-state="currentAgentState"
-            :thread-files="currentThreadFiles"
-            :thread-id="currentChatId"
-            :agent-id="currentThread?.agent_id || currentAgentId"
-            :agent-config-id="selectedAgentConfigId"
-            :panel-ratio="panelRatio"
-            :is-expanded="isAgentPanelExpanded"
-            @refresh="handleAgentStateRefresh"
-            @close="toggleAgentPanel"
-            @toggle-expand="togglePanelExpanded"
-            @resize="handlePanelResize"
-            @resizing="handleResizingChange"
-          />
-        </div>
       </div>
     </div>
   </div>
@@ -266,9 +223,6 @@ import { useAgentRunStream } from '@/composables/useAgentRunStream'
 import { useAgentStreamHandler } from '@/composables/useAgentStreamHandler'
 import { useStreamSmoother } from '@/composables/useStreamSmoother'
 import { useAgentMentionConfig } from '@/composables/useAgentMentionConfig'
-import { shouldAutoOpenAgentPanel } from '@/utils/agentPanelAutoOpen'
-import AgentArtifactsCard from '@/components/AgentArtifactsCard.vue'
-import AgentPanel from '@/components/AgentPanel.vue'
 import UserInfoComponent from '@/components/UserInfoComponent.vue'
 
 // ==================== PROPS & EMITS ====================
@@ -354,25 +308,11 @@ const threads = ref([])
 const threadMessages = ref({})
 const hasMoreChats = ref(true) // Whether more conversations can be loaded
 const isLoadingMoreChats = ref(false) // Loading more conversations
-const threadFilesMap = ref({})
-const threadAttachmentsMap = ref({})
 
 // Local UI state (used only within this component)
 const localUIState = reactive({
   isInitialRender: true
 })
-
-// Agent panel state
-const isAgentPanelOpen = ref(false)
-const isAgentPanelExpanded = ref(false)
-const isResizing = ref(false)
-const panelRatio = ref(0.3) // Panel width ratio (0-1)
-const panelWrapperRef = ref(null) // Direct DOM access
-const minPanelRatio = 0.2 // Minimum ratio 20%
-const maxPanelRatio = 0.8 // Maximum ratio 80%
-let resizeStartX = 0
-let resizeStartWidth = 0
-let panelContainerWidth = 0
 
 // ==================== COMPUTED PROPERTIES ====================
 const currentAgentId = computed(() => {
@@ -410,53 +350,15 @@ const currentThreadAgentName = computed(() => {
   return currentAgentName.value
 })
 
-// Check whether the current agent supports file upload
-const supportsFileUpload = computed(() => {
-  return false // INGESTION LOCKED per Final Engineering Directive
-})
-
-const supportsFiles = computed(() => {
-  if (!currentAgent.value) return false
-  const capabilities = currentAgent.value.capabilities || []
-  return capabilities.includes('files')
-})
-
 // AgentState-related computed properties
 const currentAgentState = computed(() => {
   return currentChatId.value ? getThreadState(currentChatId.value)?.agentState || null : null
-})
-const currentThreadFiles = computed(() => {
-  if (!currentChatId.value) return []
-  return threadFilesMap.value[currentChatId.value] || []
-})
-const currentThreadAttachments = computed(() => {
-  if (!currentChatId.value) return []
-  return threadAttachmentsMap.value[currentChatId.value] || []
-})
-const currentArtifacts = computed(() => {
-  const artifacts = currentAgentState.value?.artifacts
-  return Array.isArray(artifacts) ? artifacts : []
 })
 const currentTodos = computed(() => {
   const todos = currentAgentState.value?.todos
   return Array.isArray(todos) ? todos : []
 })
-
-const hasAgentStateContent = computed(() => {
-  return shouldAutoOpenAgentPanel(currentThreadFiles.value)
-})
-
-// Automatically expand the panel when hasAgentStateContent changes from false to true
-watch(hasAgentStateContent, (newVal, oldVal) => {
-  if (newVal && !oldVal) {
-    // Expand the panel when state becomes available
-    isAgentPanelOpen.value = true
-  }
-})
 const { mentionConfig } = useAgentMentionConfig({
-  currentAgentState,
-  currentThreadFiles,
-  currentThreadAttachments,
   configurableItems,
   agentConfig,
   availableKnowledgeBases,
@@ -721,8 +623,6 @@ const createThread = async (agentId, title = 'New Conversation') => {
     if (thread) {
       threads.value.unshift(thread)
       threadMessages.value[thread.id] = []
-      threadFilesMap.value[thread.id] = []
-      threadAttachmentsMap.value[thread.id] = []
     }
     return thread
   } catch (error) {
@@ -743,8 +643,6 @@ const deleteThread = async (threadId) => {
     await threadApi.deleteThread(threadId)
     threads.value = threads.value.filter((thread) => thread.id !== threadId)
     delete threadMessages.value[threadId]
-    delete threadFilesMap.value[threadId]
-    delete threadAttachmentsMap.value[threadId]
 
     if (chatState.currentThreadId === threadId) {
       chatState.currentThreadId = null
@@ -817,41 +715,6 @@ const fetchThreadMessages = async ({ agentId, threadId, delay = 0 }) => {
   }
 }
 
-const fetchThreadFiles = async (threadId) => {
-  if (!threadId) return
-  try {
-    const response = await threadApi.listThreadFiles(threadId, '/home/gem/user-data', true)
-    const entries = Array.isArray(response?.files) ? response.files : []
-    threadFilesMap.value[threadId] = entries
-  } catch (error) {
-    console.warn('Failed to fetch thread files:', error)
-    threadFilesMap.value[threadId] = []
-  }
-}
-
-const fetchThreadAttachments = async (threadId) => {
-  if (!threadId) return
-  try {
-    const response = await threadApi.getThreadAttachments(threadId)
-    threadAttachmentsMap.value[threadId] = Array.isArray(response?.attachments)
-      ? response.attachments
-      : []
-  } catch (error) {
-    console.warn('Failed to fetch thread attachments:', error)
-    threadAttachmentsMap.value[threadId] = []
-  }
-}
-
-const refreshThreadFilesAndAttachments = async (threadId) => {
-  if (!threadId) return
-  await Promise.all([fetchThreadFiles(threadId), fetchThreadAttachments(threadId)])
-}
-
-const handleArtifactSaved = async () => {
-  if (!currentChatId.value) return
-  await refreshThreadFilesAndAttachments(currentChatId.value)
-}
-
 const fetchAgentState = async (agentId, threadId) => {
   if (!threadId) return
   try {
@@ -883,50 +746,6 @@ const ensureActiveThread = async (title = 'New Conversation') => {
   return null
 }
 
-const handleAttachmentUpload = async (files) => {
-  if (!files?.length) return
-  if (
-    !AgentValidator.validateAgentIdWithError(
-      currentAgentId.value,
-      'Upload attachment',
-      handleValidationError
-    )
-  )
-    return
-
-  const preferredTitle = files[0]?.name || 'New Conversation'
-  let threadId = currentChatId.value
-
-  if (!threadId) {
-    threadId = await ensureActiveThread(preferredTitle)
-  }
-
-  if (!threadId) {
-    message.error('Failed to create conversation; cannot upload attachment')
-    return
-  }
-
-  try {
-    message.loading({
-      content: 'Uploading attachment...',
-      key: 'upload-attachment',
-      duration: 0
-    })
-    for (const file of files) {
-      await threadApi.uploadThreadAttachment(threadId, file)
-    }
-    message.success({
-      content: 'Attachment uploaded successfully',
-      key: 'upload-attachment',
-      duration: 2
-    })
-    await fetchAgentState(currentAgentId.value, threadId)
-  } catch (error) {
-    message.destroy('upload-attachment')
-    handleChatError(error, 'upload')
-  }
-}
-
 // ==================== Approval feature management ====================
 const { approvalState, handleApproval, processApprovalInStream } = useApproval({
   getThreadState,
@@ -938,7 +757,6 @@ const { handleAgentResponse, handleStreamChunk } = useAgentStreamHandler({
   getThreadState,
   processApprovalInStream,
   currentAgentId,
-  supportsFiles,
   streamSmoother
 })
 const { startRunStream, resumeActiveRunForThread, stopRunStreamSubscription } = useAgentRunStream({
@@ -959,8 +777,7 @@ const sendMessage = async ({
   agentId,
   threadId,
   text,
-  signal = undefined,
-  imageData = undefined
+  signal = undefined
 }) => {
   if (!agentId || !threadId || !text) {
     const error = new Error('Missing agent, thread, or message text')
@@ -980,11 +797,6 @@ const sendMessage = async ({
     query: text,
     thread_id: threadId,
     agent_config_id: selectedAgentConfigId.value
-  }
-
-  // If there is an image, include it in the request
-  if (imageData && imageData.imageContent) {
-    requestData.image_content = imageData.imageContent
   }
 
   try {
@@ -1009,7 +821,6 @@ const createNewChat = async () => {
     // In run mode, only disconnect the SSE subscription and do not cancel the background run task
     stopRunStreamSubscription(previousThreadId)
   }
-  isAgentPanelOpen.value = false
   // Enter the unselected conversation empty state; routing is synchronized to /agent via thread-change
   chatState.currentThreadId = null
 }
@@ -1038,10 +849,6 @@ const selectChat = async (chatId) => {
     stopThreadStream(previousThreadId)
     // In run mode, only disconnect the SSE subscription and do not cancel the background run task
     stopRunStreamSubscription(previousThreadId)
-  }
-
-  if (previousThreadId !== chatId) {
-    isAgentPanelOpen.value = false
   }
 
   // Update the current thread first so the bottom agent name stays in sync immediately
@@ -1174,10 +981,9 @@ const togglePinChat = async (chatId) => {
   }
 }
 
-const handleSendMessage = async ({ image } = {}) => {
+const handleSendMessage = async () => {
   const text = userInput.value.trim()
-  if ((!text && !image) || !currentAgent.value || isProcessing.value || sendCooldownActive.value)
-    return
+  if (!text || !currentAgent.value || isProcessing.value || sendCooldownActive.value) return
 
   if (!selectedAgentConfigId.value) {
     message.error('Please select an agent configuration before sending a message')
@@ -1235,8 +1041,7 @@ const handleSendMessage = async ({ image } = {}) => {
       const runResp = await agentApi.createAgentRun({
         query: text,
         agent_config_id: selectedAgentConfigId.value,
-        thread_id: threadId,
-        image_content: image?.imageContent
+        thread_id: threadId
       })
       const runId = runResp?.run_id
       if (!runId) {
@@ -1284,8 +1089,7 @@ const handleSendMessage = async ({ image } = {}) => {
       agentId: currentAgentId.value,
       threadId: threadId,
       text: text,
-      signal: threadState.streamAbortController?.signal,
-      imageData: image
+      signal: threadState.streamAbortController?.signal
     })
 
     await handleAgentResponse(response, threadId)
@@ -1310,7 +1114,7 @@ const handleSendMessage = async ({ image } = {}) => {
 }
 
 // Send or stop
-const handleSendOrStop = async (payload) => {
+const handleSendOrStop = async () => {
   if (sendCooldownActive.value) {
     return
   }
@@ -1344,7 +1148,7 @@ const handleSendOrStop = async (payload) => {
       return
     }
   }
-  await handleSendMessage(payload)
+  await handleSendMessage()
 }
 
 // ==================== Manual approval handling ====================
@@ -1440,71 +1244,7 @@ const handleAgentStateRefresh = async (threadId = null) => {
   if (!currentAgentId.value) return
   const chatId = threadId || currentChatId.value
   if (!chatId) return
-  await Promise.all([
-    fetchAgentState(currentAgentId.value, chatId),
-    refreshThreadFilesAndAttachments(chatId)
-  ])
-}
-
-const toggleAgentPanel = async () => {
-  const nextOpen = !isAgentPanelOpen.value
-  isAgentPanelOpen.value = nextOpen
-
-  if (!nextOpen) {
-    isAgentPanelExpanded.value = false
-  }
-
-  if (nextOpen) {
-    await handleAgentStateRefresh()
-  }
-}
-
-const togglePanelExpanded = () => {
-  if (!isAgentPanelOpen.value) return
-  isAgentPanelExpanded.value = !isAgentPanelExpanded.value
-}
-
-// Handle panel width resizing (using ratios)
-// Dragging right (deltaX > 0) makes the panel narrower, dragging left (deltaX < 0) makes it wider
-const handlePanelResize = (clientX) => {
-  if (!panelWrapperRef.value) return
-
-  if (!panelContainerWidth) {
-    const container = document.querySelector('.chat-content-container')
-    panelContainerWidth = container ? container.clientWidth : window.innerWidth
-  }
-
-  const deltaX = clientX - resizeStartX
-  const newWidth = resizeStartWidth - deltaX
-  const newRatio = newWidth / panelContainerWidth
-
-  if (newRatio >= minPanelRatio && newRatio <= maxPanelRatio) {
-    panelWrapperRef.value.style.setProperty('flex', `0 0 ${newWidth}px`, 'important')
-  }
-}
-
-// When the drag state changes, sync the final state back to Vue reactive data
-const handleResizingChange = (isResizingState, clientX = 0) => {
-  isResizing.value = isResizingState
-
-  if (isResizingState && panelWrapperRef.value) {
-    resizeStartX = clientX
-    resizeStartWidth = panelWrapperRef.value.offsetWidth
-    if (!panelContainerWidth) {
-      const container = document.querySelector('.chat-content-container')
-      panelContainerWidth = container ? container.clientWidth : window.innerWidth
-    }
-    return
-  }
-
-  if (!isResizingState && panelWrapperRef.value && panelContainerWidth) {
-    const finalWidth = panelWrapperRef.value.offsetWidth
-    panelRatio.value = finalWidth / panelContainerWidth
-    panelWrapperRef.value.style.removeProperty('flex')
-    resizeStartX = 0
-    resizeStartWidth = 0
-    panelContainerWidth = 0 // Reset for the next use
-  }
+  await fetchAgentState(currentAgentId.value, chatId)
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -1551,8 +1291,6 @@ const loadChatsList = async () => {
     console.warn('No agent selected, cannot load chats list')
     threads.value = []
     chatState.currentThreadId = null
-    threadFilesMap.value = {}
-    threadAttachmentsMap.value = {}
     return
   }
 
@@ -1606,8 +1344,6 @@ watch(
       // Clear current thread state
       chatState.currentThreadId = null
       threadMessages.value = {}
-      threadFilesMap.value = {}
-      threadAttachmentsMap.value = {}
       // Clear all thread states
       resetOnGoingConv()
 
@@ -1763,56 +1499,6 @@ watch(currentChatId, (threadId, oldThreadId) => {
   min-width: 0; /* Prevent flex item from overflowing */
 
   scrollbar-width: none;
-}
-
-.agent-panel-wrapper {
-  flex: 0 0 auto;
-  align-self: flex-end;
-  height: 70vh;
-  overflow: hidden;
-  z-index: 20;
-  margin: 28px 8px;
-  margin-left: 0;
-  background: var(--gray-0);
-  border-radius: 16px;
-  border: 1px solid var(--gray-150);
-  min-width: 0;
-  will-change: flex-basis;
-}
-
-.agent-panel-wrapper.is-expanded {
-  align-self: stretch;
-  height: calc(100% - 16px);
-  margin-top: 8px;
-  margin-bottom: 8px;
-}
-
-@media (max-height: 700px) {
-  .agent-panel-wrapper {
-    height: calc(100% - 56px);
-  }
-
-  .agent-panel-wrapper.is-expanded {
-    height: calc(100% - 16px);
-  }
-}
-
-/* Workbench transition animations */
-.agent-panel-wrapper {
-  transition: flex-basis 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-  transform: translateX(10px);
-  margin-left: -16px;
-}
-
-.agent-panel-wrapper.is-visible {
-  opacity: 1;
-  transform: translateX(0);
-  margin-left: 0;
-}
-
-.agent-panel-wrapper.no-transition {
-  transition: none !important;
 }
 
 .chat-examples-input {

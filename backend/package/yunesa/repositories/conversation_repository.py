@@ -42,7 +42,6 @@ class ConversationRepository:
             thread_id = str(uuid_lib.uuid4())
 
         metadata = (metadata or {}).copy()
-        metadata.setdefault("attachments", [])
 
         normalized_title = self._normalize_title(title)
 
@@ -77,7 +76,6 @@ class ConversationRepository:
 
     def _ensure_metadata(self, conversation: Conversation) -> dict:
         metadata = dict(conversation.extra_metadata or {})
-        metadata["attachments"] = list(metadata.get("attachments", []))
         return metadata
 
     def _normalize_agent_config_id(self, agent_config_id: int | None) -> int | None:
@@ -109,7 +107,6 @@ class ConversationRepository:
         content: str,
         message_type: str = "text",
         extra_metadata: dict | None = None,
-        image_content: str | None = None,
     ) -> Message:
         message = Message(
             conversation_id=conversation_id,
@@ -117,7 +114,6 @@ class ConversationRepository:
             content=content,
             message_type=message_type,
             extra_metadata=extra_metadata or {},
-            image_content=image_content,
         )
 
         self.db.add(message)
@@ -140,7 +136,6 @@ class ConversationRepository:
         content: str,
         message_type: str = "text",
         extra_metadata: dict | None = None,
-        image_content: str | None = None,
     ) -> Message | None:
         conversation = await self.get_conversation_by_thread_id(thread_id)
         if not conversation:
@@ -154,7 +149,6 @@ class ConversationRepository:
             content=content,
             message_type=message_type,
             extra_metadata=extra_metadata,
-            image_content=image_content,
         )
 
     async def add_tool_call(
@@ -400,70 +394,3 @@ class ConversationRepository:
             message_count = result.scalar()
             stats.message_count = message_count
             await self.db.commit()
-
-    async def get_attachments(self, conversation_id: int) -> list[dict]:
-        conversation = await self._get_conversation_by_id(conversation_id)
-        if not conversation:
-            return []
-        metadata = self._ensure_metadata(conversation)
-        return list(metadata.get("attachments", []))
-
-    async def get_attachments_by_thread_id(self, thread_id: str) -> list[dict]:
-        conversation = await self.get_conversation_by_thread_id(thread_id)
-        if not conversation:
-            return []
-        return await self.get_attachments(conversation.id)
-
-    async def add_attachment(self, conversation_id: int, attachment_info: dict) -> dict | None:
-        conversation = await self._get_conversation_by_id(conversation_id)
-        if not conversation:
-            return None
-
-        metadata = self._ensure_metadata(conversation)
-        attachments = metadata.get("attachments", [])
-        attachments = [item for item in attachments if item.get(
-            "file_id") != attachment_info.get("file_id")]
-        attachments.append(attachment_info)
-        metadata["attachments"] = attachments
-        await self._save_metadata(conversation, metadata)
-        return attachment_info
-
-    async def update_attachment_status(
-        self, conversation_id: int, file_id: str, status: str, update_fields: dict | None = None
-    ) -> dict | None:
-        conversation = await self._get_conversation_by_id(conversation_id)
-        if not conversation:
-            return None
-
-        metadata = self._ensure_metadata(conversation)
-        attachments = metadata.get("attachments", [])
-        target = None
-        for item in attachments:
-            if item.get("file_id") == file_id:
-                item["status"] = status
-                if update_fields:
-                    item.update(update_fields)
-                target = item
-                break
-
-        if target is not None:
-            metadata["attachments"] = attachments
-            await self._save_metadata(conversation, metadata)
-        return target
-
-    async def remove_attachment(self, conversation_id: int, file_id: str) -> bool:
-        conversation = await self._get_conversation_by_id(conversation_id)
-        if not conversation:
-            return False
-
-        metadata = self._ensure_metadata(conversation)
-        attachments = metadata.get("attachments", [])
-        new_attachments = [
-            item for item in attachments if item.get("file_id") != file_id]
-
-        if len(new_attachments) == len(attachments):
-            return False
-
-        metadata["attachments"] = new_attachments
-        await self._save_metadata(conversation, metadata)
-        return True

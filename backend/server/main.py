@@ -13,18 +13,20 @@ import time
 from collections import defaultdict, deque
 
 import uvicorn
-from fastapi import FastAPI, Request, status, BackgroundTasks, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, Request, status
 from datetime import datetime, timezone
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from server.app_metadata import API_DESCRIPTION, API_TITLE, DOCS_URL, REDOC_URL, get_api_metadata
+from server.presentation import render_api_homepage
 from server.routers import router
 from server.utils.lifespan import lifespan
 from server.utils.auth_middleware import is_public_path
 from server.utils.common_utils import setup_logging
 from server.utils.access_log_middleware import AccessLogMiddleware
+from yunesa import get_version
 
 import logging
 logger = logging.getLogger("ta-backend")
@@ -40,7 +42,14 @@ RATE_LIMIT_ENDPOINTS = {("/api/auth/token", "POST")}
 _login_attempts: defaultdict[str, deque[float]] = defaultdict(deque)
 _attempt_lock = asyncio.Lock()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=get_version(),
+    docs_url=DOCS_URL,
+    redoc_url=REDOC_URL,
+)
 # All business interfaces are uniformly mounted to /api, and specific groups are centrally registered in server.routers.
 app.include_router(router, prefix="/api")
 
@@ -116,67 +125,16 @@ app.add_middleware(AccessLogMiddleware)
 app.add_middleware(LoginRateLimitMiddleware)
 app.add_middleware(AuthMiddleware)
 
+@app.get("/", response_class=HTMLResponse, tags=["Root"])
+async def root(request: Request):
+    """Human-readable API landing page."""
+    base_url = str(request.base_url).rstrip("/")
+    return render_api_homepage(get_api_metadata(), base_url)
 
-# ── Strwythura Webhook Integration (DEPRECATED) ─────────────────
-# NOTE: KG construction is now triggered via POST /api/graph/kg/build
-# This webhook is kept for backward compatibility with existing Airflow DAGs.
-class WebhookPayload(BaseModel):
-    task_name: str = Field(..., description="Name of the Airflow task/DAG")
-    batch_id: str = Field(..., description="Unique batch identifier")
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
-        description="ISO 8601 timestamp"
-    )
-    status: str = Field(default="ETL_SUCCESS", description="Pipeline completion status")
 
-class TriggerResponse(BaseModel):
-    accepted: bool
-    message: str
-    batch_id: str
-
-async def run_kg_pipeline(payload: WebhookPayload):
-    logger.info(f"🚀 Starting KG pipeline for batch: {payload.batch_id}")
-    try:
-        from yunesa.knowledge.kg.services.kg_pipeline import KGPipeline
-        pipeline = KGPipeline(test_mode=False) 
-        summary = pipeline.run()
-        logger.info(f"✅ KG pipeline completed for batch: {payload.batch_id}")
-    except Exception as e:
-        logger.error(f"❌ KG pipeline failed for batch {payload.batch_id}: {e}")
-        raise
-@app.post("/webhook/trigger", response_model=TriggerResponse, status_code=status.HTTP_202_ACCEPTED)
-async def webhook_trigger(payload: WebhookPayload, background_tasks: BackgroundTasks):
-    logger.info(f"📥 Received Webhook Trigger from Airflow: {payload.dict()}")
-    background_tasks.add_task(run_kg_pipeline, payload)
-    return TriggerResponse(
-        accepted=True,
-        message=f"Batch {payload.batch_id} accepted. Processing in background.",
-        batch_id=payload.batch_id
-    )
-
-@app.get("/", tags=["Root"])
-async def root():
-    """Root endpoint for API metadata and status check."""
-    banner = """
-░██     ░██
- ░██   ░██
-  ░██ ░██   ░██    ░██ ░█████░██  ░█████    ░█████    ░█████
-   ░████    ░██    ░██ ░██   ░██ ░██   ░██ ░██             ░██
-    ░██     ░██    ░██ ░██   ░██ ░███████   ░█████    ░██████
-    ░██     ░██   ░███ ░██   ░██ ░██             ░██ ░██   ░██
-    ░██      ░█████░██ ░██   ░██  ░█████   ░█████     ░████░██  v1.6.0
-    """
-    return {
-        "banner": banner,
-        "title": "YUNESA",
-        "version": "V 1.6.0",
-        "description": "Knowledge Discovery System",
-        "status": "Running",
-        "environment": "production",
-        "author": "Rizky Yanuar Kristianto",
-        "docs_url": "/docs",
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+@app.get("/docs", include_in_schema=False)
+async def legacy_docs_redirect():
+    return RedirectResponse(url="/doc", status_code=308)
 
 async def health_check():
     """Health check endpoint for Docker/load balancer probes."""

@@ -1,4 +1,3 @@
-from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.subagents import SubAgentMiddleware
 from langchain.agents import create_agent
@@ -12,7 +11,6 @@ from yunesa.agents.backends import create_agent_composite_backend
 from yunesa.agents.middlewares import (
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
-    save_attachments_to_fs,
 )
 from yunesa.agents.middlewares.knowledge_base_middleware import KnowledgeBaseMiddleware
 from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
@@ -27,7 +25,7 @@ from .prompt import DEEP_PROMPT
 class DeepAgent(BaseAgent):
     name = "Deep Analysis"
     description = "An agent with planning, deep analysis, and sub-agent collaboration capabilities for complex multi-step tasks"
-    capabilities = ["file_upload", "files"]  # Supports file upload capability
+    capabilities = ["knowledge_base"]
     metadata = {"examples": ["Research papers related to multimodal GraphRAG"]}
 
     def __init__(self, **kwargs):
@@ -77,12 +75,8 @@ class DeepAgent(BaseAgent):
             max_retention_ratio=0.5,
         )
 
-        subagents_middleware = SubAgentMiddleware(
-            default_tools=search_tools,
-            subagents=user_subagents,
-            default_middleware=[
-                # Filesystem backend
-                FilesystemMiddleware(backend=create_agent_composite_backend),
+        for subagent in user_subagents:
+            subagent["middleware"] = [
                 PatchToolCallsMiddleware(),
                 summary_middleware,
                 # Sub-agent search tool limit: tavily_search at most 8 times.
@@ -91,26 +85,17 @@ class DeepAgent(BaseAgent):
                     run_limit=8,
                     exit_behavior="continue",
                 ),
-            ],
-            general_purpose_agent=True,
-        )
+            ]
 
         # Create deep agent graph using create_agent.
-        graph = create_agent(
-            model=model,
-            system_prompt=system_prompt,
-            middleware=[
-                # Filesystem backend
-                FilesystemMiddleware(backend=create_agent_composite_backend),
+        middlewares = [
                 RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
                 # Skills middleware (prompt injection, dependency expansion, dynamic activation)
                 SkillsMiddleware(),
-                save_attachments_to_fs,  # Inject attachment context into prompt
                 TodoListMiddleware(
                     system_prompt="Before ending the task, check whether the maintained todo list is completed."),
                 PatchToolCallsMiddleware(),
                 KnowledgeBaseMiddleware(),  # Knowledge-base tools
-                subagents_middleware,
                 summary_middleware,
                 # Tool call limit: tavily_search at most 20 calls per thread.
                 ToolCallLimitMiddleware(
@@ -123,7 +108,20 @@ class DeepAgent(BaseAgent):
                     run_limit=50,
                     exit_behavior="end",
                 ),
-            ],
+        ]
+        if user_subagents:
+            middlewares.insert(
+                4,
+                SubAgentMiddleware(
+                    backend=create_agent_composite_backend,
+                    subagents=user_subagents,
+                ),
+            )
+
+        graph = create_agent(
+            model=model,
+            system_prompt=system_prompt,
+            middleware=middlewares,
             state_schema=BaseState,
             checkpointer=await self._get_checkpointer(),
         )

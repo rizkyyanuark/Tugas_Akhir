@@ -1,4 +1,4 @@
 # graphs Package initialization file for directory
-from .adapters import GraphAdapter, GraphAdapterFactory, LightRAGGraphAdapter, UploadGraphAdapter
+from .adapters import CoreGraphAdapter, GraphAdapter, GraphAdapterFactory, LightRAGGraphAdapter
 
-__all__ = ["GraphAdapter", "UploadGraphAdapter", "LightRAGGraphAdapter", "GraphAdapterFactory"]
+__all__ = ["CoreGraphAdapter", "GraphAdapter", "LightRAGGraphAdapter", "GraphAdapterFactory"]

@@ -30,29 +30,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# ── LAYER 1: Core Dependency Resolution (MAX CACHE) ─────────
-# Copy ONLY manifest files to resolve external dependencies.
-# This layer includes the 2GB+ AI libraries (PyTorch, etc.).
+# ── LAYER 1: Python Dependencies (cached separately) ────────
+COPY README.md /app/README.md
 COPY backend/pyproject.toml /app/pyproject.toml
-COPY backend/uv.lock /app/uv.lock
-COPY backend/package/pyproject.toml /app/package/pyproject.toml
+COPY backend/package /app/package
+COPY README.md /app/package/README.md
 
-# Create a skeleton directory structure for the local 'Yunesa' package.
-# This allows 'uv sync' to "install" the local package in editable mode 
-# without needing the actual source code yet.
-RUN mkdir -p /app/package/yunesa && touch /app/package/yunesa/__init__.py
-
-# Initial sync - This layer is CACHED until dependencies change.
-# Changes to your code will NOT trigger this heavy download step.
-RUN uv sync --frozen 2>/dev/null || uv lock && uv sync
+# Install dependencies into the virtual environment
+# We use cache mount to speed up downloads
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev
 
 # -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"
-
-# -- Pre-download Core NLP Models (CACHED) --
-# This ensures models are already in the image, avoiding downloads at runtime.
-RUN uv run python -c "from gliner import GLiNER; GLiNER.from_pretrained('urchade/gliner_small-v2.1')" && \
-    uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
 # ── LAYER 2: Actual Source Code (BUSTS on code change) ──────
 # Now copy the real source code. This is very fast (milliseconds).
@@ -62,7 +52,7 @@ COPY configs /app/configs
 
 # Final fast sync to link actual source files correctly.
 # This step is nearly instant because all heavy lifting is already cached.
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev
 
 # -- Expose Port --
 EXPOSE 5050

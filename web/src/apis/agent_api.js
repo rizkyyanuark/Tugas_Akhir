@@ -4,8 +4,7 @@ import {
   apiDelete,
   apiPut,
   apiAdminPost,
-  apiAdminDelete,
-  apiRequest
+  apiAdminDelete
 } from './base'
 import { useUserStore } from '@/stores/user'
 
@@ -195,8 +194,7 @@ export const agentApi = {
       query: data.query,
       agent_config_id: data.agent_config_id,
       thread_id: data.thread_id,
-      meta: data.meta || {},
-      image_content: data.image_content || null
+      meta: data.meta || {}
     }),
 
   /**
@@ -238,31 +236,6 @@ export const agentApi = {
         },
         signal
       }
-    )
-  }
-}
-
-// =============================================================================
-// === Multimodal image support group ===
-// =============================================================================
-
-export const multimodalApi = {
-  /**
-   * Upload an image and get its base64 encoding
-   * @param {File} file - Image file
-   * @returns {Promise} - Upload result
-   */
-  uploadImage: (file) => {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    return apiRequest(
-      '/api/chat/image/upload',
-      {
-        method: 'POST',
-        body: formData
-      },
-      true
     )
   }
 }
@@ -326,93 +299,7 @@ export const threadApi = {
   deleteThread: (threadId) => apiDelete(`/api/chat/thread/${threadId}`),
 
   /**
-   * Get the thread attachment list
-   * @param {string} threadId - Conversation thread ID
-   * @returns {Promise}
+   * File-system and attachment APIs were intentionally removed from the chat UI.
+   * The project scope is text-only question answering over graph/vector context.
    */
-  getThreadAttachments: (threadId) => apiGet(`/api/chat/thread/${threadId}/attachments`),
-
-  /**
-   * List thread files (directories)
-   * @param {string} threadId
-   * @param {string} path
-   * @param {boolean} recursive
-   * @returns {Promise}
-   */
-  listThreadFiles: (threadId, path = '/home/gem/user-data', recursive = false) =>
-    apiGet(
-      `/api/chat/thread/${threadId}/files?path=${encodeURIComponent(path)}&recursive=${recursive}`
-    ),
-
-  /**
-   * Read the content of a thread text file (paged)
-   * @param {string} threadId
-   * @param {string} path
-   * @param {number} offset
-   * @param {number} limit
-   * @returns {Promise}
-   */
-  readThreadFile: (threadId, path, offset = 0, limit = 2000) =>
-    apiGet(
-      `/api/chat/thread/${threadId}/files/content?path=${encodeURIComponent(path)}&offset=${offset}&limit=${limit}`
-    ),
-
-  /**
-   * Get the download/preview URL for a thread file
-   * @param {string} threadId
-   * @param {string} path
-   * @param {boolean} download
-   * @returns {string}
-   */
-  getThreadArtifactUrl: (threadId, path, download = false) => {
-    const encodedPath = path
-      .split('/')
-      .filter(Boolean)
-      .map((segment) => encodeURIComponent(segment))
-      .join('/')
-    const query = download ? '?download=true' : ''
-    return `/api/chat/thread/${threadId}/artifacts/${encodedPath}${query}`
-  },
-
-  /**
-   * Download a thread file (authenticated)
-   * @param {string} threadId
-   * @param {string} path
-   * @returns {Promise<Response>}
-   */
-  downloadThreadArtifact: (threadId, path) =>
-    apiGet(threadApi.getThreadArtifactUrl(threadId, path, true), {}, true, 'blob'),
-
-  /**
-   * Save artifacts to workspace/saved_artifacts
-   * @param {string} threadId
-   * @param {string} path
-   * @returns {Promise}
-   */
-  saveThreadArtifactToWorkspace: (threadId, path) =>
-    apiPost(`/api/chat/thread/${threadId}/artifacts/save`, { path }),
-
-  /**
-   * Upload an attachment
-   * @param {string} threadId
-   * @param {File} file
-   * @returns {Promise}
-   */
-  uploadThreadAttachment: (threadId, file) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    return apiRequest(`/api/chat/thread/${threadId}/attachments`, {
-      method: 'POST',
-      body: formData
-    })
-  },
-
-  /**
-   * Delete an attachment
-   * @param {string} threadId
-   * @param {string} fileId
-   * @returns {Promise}
-   */
-  deleteThreadAttachment: (threadId, fileId) =>
-    apiDelete(`/api/chat/thread/${threadId}/attachments/${fileId}`)
 }

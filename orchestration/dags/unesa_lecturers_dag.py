@@ -6,10 +6,11 @@ PURE ORCHESTRATOR --- All heavy work delegated to etl-worker containers.
 Tasks (via DockerOperator → etl-worker container):
   1. extract_web      -> Scrape lecturer data from prodi websites
   2. extract_pddikti  -> Fetch lecturer data from PDDIKTI API
-  3. merge            -> Web-First Smart Merge
-  4. enrich           -> API Enrichment (SimCV, Sinta, SciVal, Scholar)
-  5. transform        -> Final Post-Processing
-  6. load             -> UPSERT to Supabase PostgreSQL
+  3. extract_siakadu  -> Fetch lecturer NIP/NIDN identities from SIAKADU
+  4. merge            -> Web-First Smart Merge
+  5. enrich           -> API Enrichment (SIAKADU, SimCV, Sinta, SciVal, Scholar)
+  6. transform        -> Final Post-Processing
+  7. load             -> UPSERT to Supabase PostgreSQL
 
 Schedule: Weekly (Sunday 02:00 WIB = Saturday 19:00 UTC)
 
@@ -22,42 +23,15 @@ Maintenance Guide:
     +-----------------------------------------------------------------+
 """
 
-import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
-from docker.types import Mount
+from etl_common import DOCKER_NETWORK, ETL_WORKER_IMAGE, worker_env, worker_mounts
 
 # --- Constants --------------------------------------------------
 
-ETL_WORKER_IMAGE = os.environ.get(
-    "ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:prod")
-DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "tugas-akhir-network")
-HOST_DATA_DIR = os.environ.get(
-    "HOST_DATA_DIR", "/home/ubuntu/Tugas_Akhir/data").replace("\\", "/")
-
-DATA_MOUNT = Mount(source=HOST_DATA_DIR, target="/app/data", type="bind")
-
-
-def _worker_env() -> dict[str, str]:
-    # Using Jinja templates {{ var.value.VAR_NAME }} for Airflow compatibility
-    return {
-        "SUPABASE_URL": "{{ var.value.SUPABASE_URL_SECRET }}",
-        "SUPABASE_KEY": "{{ var.value.SUPABASE_KEY_SECRET }}",
-        "SCIVAL_EMAIL": "{{ var.value.SCIVAL_EMAIL_SECRET }}",
-        "SCIVAL_PASS": "{{ var.value.SCIVAL_PASS_SECRET }}",
-        "SERPAPI_KEY": "{{ var.value.SERPAPI_KEY_SECRET }}",
-        "BRIGHT_DATA_HOST": "{{ var.value.BRIGHT_DATA_HOST }}",
-        "BD_USER_UNLOCKER": "{{ var.value.BD_USER_UNLOCKER_SECRET }}",
-        "BD_PASS_UNLOCKER": "{{ var.value.BD_PASS_UNLOCKER_SECRET }}",
-        "BD_USER_SERP": "{{ var.value.BD_USER_SERP_SECRET }}",
-        "BD_PASS_SERP": "{{ var.value.BD_PASS_SERP_SECRET }}",
-        "BRIGHTDATA_SERP_TOKEN": "{{ var.value.BRIGHTDATA_SERP_TOKEN_SECRET }}",
-        "GROQ_API_KEY": "{{ var.value.GROQ_API_KEY_SECRET }}",
-        "NOTIFICATION_EMAIL": "{{ var.value.NOTIFICATION_EMAIL_SECRET }}",
-        "DOCKER_ENVIRONMENT": "true",
-    }
+RUN_MODE_TEMPLATE = "{{ dag_run.conf.get('mode', 'incremental') if dag_run else 'incremental' }}"
 
 
 # --- DAG Configuration ------------------------------------------
@@ -78,7 +52,7 @@ dag = DAG(
     schedule="0 19 * * 6",  # Sunday 02:00 WIB = Saturday 19:00 UTC
     start_date=datetime(2026, 3, 1),
     catchup=False,
-    tags=["unesa", "lecturers", "etl", "pddikti"],
+    tags=["unesa", "lecturers", "etl", "pddikti", "siakadu"],
     max_active_runs=1,
 )
 
@@ -97,22 +71,28 @@ def create_operator(task_id: str, command_suffix: str):
         command=command_suffix,
         docker_url="unix://var/run/docker.sock",
         network_mode=DOCKER_NETWORK,
-        mounts=[DATA_MOUNT],
-        environment=_worker_env(),
+        mounts=worker_mounts(),
+        environment=worker_env(),
         auto_remove="success",
         mount_tmp_dir=False,
         dag=dag,
     )
 
 
-extract_web = create_operator("extract_web", "lec_extract_web")
-extract_pddikti = create_operator("extract_pddikti", "lec_extract_pddikti")
-merge_task = create_operator("merge", "lec_merge")
-enrich_task = create_operator("enrich", "lec_enrich")
-transform_task = create_operator("transform", "lec_transform")
-load_task = create_operator("load", "lec_load")
+def worker_command(task_name: str) -> str:
+    return f"{task_name} --mode {RUN_MODE_TEMPLATE}"
+
+
+extract_web = create_operator("extract_web", worker_command("lec_extract_web"))
+extract_pddikti = create_operator("extract_pddikti", worker_command("lec_extract_pddikti"))
+extract_siakadu = create_operator("extract_siakadu", worker_command("lec_extract_siakadu"))
+merge_task = create_operator("merge", worker_command("lec_merge"))
+enrich_task = create_operator("enrich", worker_command("lec_enrich"))
+transform_task = create_operator("transform", worker_command("lec_transform"))
+load_task = create_operator("load", worker_command("lec_load"))
 
 
 # --- DAG Pipeline Flow ------------------------------------------
 [extract_web, extract_pddikti] >> merge_task
-merge_task >> enrich_task >> transform_task >> load_task
+[merge_task, extract_siakadu] >> enrich_task
+enrich_task >> transform_task >> load_task

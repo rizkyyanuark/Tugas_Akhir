@@ -1,7 +1,5 @@
 <template>
   <div class="database-info-container">
-    <FileDetailModal />
-
     <!-- Search config modal -->
     <SearchConfigModal
       v-model="searchConfigModalVisible"
@@ -9,35 +7,13 @@
       @save="handleSearchConfigSave"
     />
 
-    <FileUploadModal
-      v-model:visible="addFilesModalVisible"
-      :folder-tree="folderTree"
-      :current-folder-id="currentFolderId"
-      :is-folder-mode="isFolderUploadMode"
-      :mode="addFilesMode"
-      @success="onFileUploadSuccess"
-    />
-
     <div class="unified-layout">
       <div class="left-panel" :style="{ width: leftPanelWidth + '%' }">
         <KnowledgeBaseCard />
-        <!-- Pending file notice bar -->
-        <div v-if="!isDify && (pendingParseCount > 0 || pendingIndexCount > 0)" class="info-panel">
-          <div class="banner-item" v-if="pendingParseCount > 0" @click="confirmBatchParse">
-            <FileText :size="14" />
-            <span>{{ pendingParseCount }} files to parse, click to parse</span>
-          </div>
-          <div class="banner-item" v-if="pendingIndexCount > 0" @click="confirmBatchIndex">
-            <Database :size="14" />
-            <span>{{ pendingIndexCount }} files to index, click to index</span>
-          </div>
+        <div class="text-only-note">
+          Runtime knowledge base is text-query only. Data is retrieved from existing Milvus vectors
+          and Neo4j graph data.
         </div>
-        <FileTable
-          v-if="!isDify"
-          :right-panel-visible="state.rightPanelVisible"
-          @show-add-files-modal="showAddFilesModal"
-          @toggle-right-panel="toggleRightPanel"
-        />
       </div>
 
       <div v-if="!isDify" class="resize-handle" ref="resizeHandle"></div>
@@ -46,7 +22,7 @@
         class="right-panel"
         :style="{
           width: 100 - leftPanelWidth + '%',
-          display: isDify || store.state.rightPanelVisible ? 'flex' : 'none'
+          display: 'flex'
         }"
       >
         <a-tabs
@@ -70,70 +46,7 @@
             />
           </a-tab-pane>
           <a-tab-pane key="query" tab="Query Test">
-            <QuerySection ref="querySectionRef" :visible="true" @toggle-visible="() => {}" />
-          </a-tab-pane>
-          <a-tab-pane v-if="!isDify" key="mindmap" tab="Knowledge Map">
-            <MindMapSection v-if="databaseId" :database-id="databaseId" ref="mindmapSectionRef" />
-          </a-tab-pane>
-          <a-tab-pane
-            v-if="!isDify"
-            key="evaluation"
-            tab="RAG Evaluation"
-            :disabled="!isEvaluationSupported"
-          >
-            <template #tab>
-              <span :style="{ color: !isEvaluationSupported ? 'var(--gray-400)' : '' }">
-                RAG Evaluation
-                <a-tooltip
-                  v-if="!isEvaluationSupported"
-                  title="Only supports Milvus knowledge bases"
-                >
-                  <Info :size="14" style="margin-left: 4px; vertical-align: middle" />
-                </a-tooltip>
-              </span>
-            </template>
-            <RAGEvaluationTab
-              v-if="databaseId && isEvaluationSupported"
-              :database-id="databaseId"
-              @switch-to-benchmarks="activeTab = 'benchmarks'"
-            />
-          </a-tab-pane>
-          <a-tab-pane
-            v-if="!isDify"
-            key="benchmarks"
-            tab="Evaluation Benchmark"
-            :disabled="!isEvaluationSupported"
-          >
-            <template #tab>
-              <span :style="{ color: !isEvaluationSupported ? 'var(--gray-400)' : '' }">
-                Evaluation Benchmark
-                <a-tooltip
-                  v-if="!isEvaluationSupported"
-                  title="Only supports Milvus knowledge bases"
-                >
-                  <Info :size="14" style="margin-left: 4px; vertical-align: middle" />
-                </a-tooltip>
-              </span>
-            </template>
-            <div class="benchmark-management-container">
-              <div class="benchmark-content">
-                <EvaluationBenchmarks
-                  v-if="databaseId && isEvaluationSupported"
-                  :database-id="databaseId"
-                  @benchmark-selected="
-                    (benchmark) => {
-                      // Handle benchmark selection logic
-                      activeTab = 'evaluation'
-                    }
-                  "
-                  @refresh="
-                    () => {
-                      // Refresh logic
-                    }
-                  "
-                />
-              </div>
-            </div>
+            <QuerySection :visible="true" @toggle-visible="() => {}" />
           </a-tab-pane>
         </a-tabs>
       </div>
@@ -145,28 +58,17 @@
 import { onMounted, ref, watch, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDatabaseStore } from '@/stores/database'
-import { useTaskerStore } from '@/stores/tasker'
-import { Info, FileText, Database } from 'lucide-vue-next'
 import { SettingOutlined } from '@ant-design/icons-vue'
-import { Modal } from 'ant-design-vue'
 import KnowledgeBaseCard from '@/components/KnowledgeBaseCard.vue'
-import FileTable from '@/components/FileTable.vue'
-import FileDetailModal from '@/components/FileDetailModal.vue'
-import FileUploadModal from '@/components/FileUploadModal.vue'
 import KnowledgeGraphSection from '@/components/KnowledgeGraphSection.vue'
 import QuerySection from '@/components/QuerySection.vue'
-import MindMapSection from '@/components/MindMapSection.vue'
-import RAGEvaluationTab from '@/components/RAGEvaluationTab.vue'
-import EvaluationBenchmarks from '@/components/EvaluationBenchmarks.vue'
 import SearchConfigModal from '@/components/SearchConfigModal.vue'
 
 const route = useRoute()
 const store = useDatabaseStore()
-const taskerStore = useTaskerStore()
 
 const databaseId = computed(() => store.databaseId)
-const database = computed(() => store.database)
-const state = computed(() => store.state)
+const database = computed(() => store.database || {})
 const isDify = computed(() => database.value.kb_type?.toLowerCase() === 'dify')
 // Computed: whether knowledge graph is supported
 const isGraphSupported = computed(() => {
@@ -174,89 +76,8 @@ const isGraphSupported = computed(() => {
   return kbType === 'lightrag'
 })
 
-// Computed: whether evaluation is supported
-const isEvaluationSupported = computed(() => {
-  const kbType = database.value.kb_type?.toLowerCase()
-  return kbType === 'milvus'
-})
-
-// Compute pending parse file count (status: 'uploaded')
-const pendingParseCount = computed(() => {
-  const files = store.database.files || {}
-  return Object.values(files).filter((f) => !f.is_folder && f.status === 'uploaded').length
-})
-
-// Compute pending index file count (status: 'parsed' or 'error_indexing')
-const pendingIndexCount = computed(() => {
-  const files = store.database.files || {}
-  const isLightRAG = database.value?.kb_type?.toLowerCase() === 'lightrag'
-  return Object.values(files).filter((f) => {
-    if (f.is_folder) return false
-    if (isLightRAG) {
-      return f.status === 'parsed'
-    }
-    return f.status === 'parsed' || f.status === 'error_indexing'
-  }).length
-})
-
-// Confirm batch parse
-const confirmBatchParse = () => {
-  const fileIds = Object.values(store.database.files || {})
-    .filter((f) => f.status === 'uploaded')
-    .map((f) => f.file_id)
-
-  if (fileIds.length === 0) {
-    return
-  }
-
-  Modal.confirm({
-    title: 'Batch Parse',
-    content: `Are you sure you want to parse ${fileIds.length} files?`,
-    onOk: () => store.parseFiles(fileIds)
-  })
-}
-
-// Confirm batch index
-const confirmBatchIndex = () => {
-  const isLightRAG = database.value?.kb_type?.toLowerCase() === 'lightrag'
-  const fileIds = Object.values(store.database.files || {})
-    .filter((f) => {
-      if (f.is_folder) return false
-      if (isLightRAG) return f.status === 'parsed'
-      return f.status === 'parsed' || f.status === 'error_indexing'
-    })
-    .map((f) => f.file_id)
-
-  if (fileIds.length === 0) {
-    return
-  }
-
-  if (isLightRAG) {
-    Modal.confirm({
-      title: 'Batch Index',
-      content: `Are you sure you want to index ${fileIds.length} files?`,
-      onOk: () => store.indexFiles(fileIds)
-    })
-    return
-  }
-
-  // Non-LightRAG: trigger FileTable indexing flow
-  // Temporary simple handling: call store.indexFiles directly
-  Modal.confirm({
-    title: 'Batch Index',
-    content: `Are you sure you want to index ${fileIds.length} files?`,
-    onOk: () => store.indexFiles(fileIds)
-  })
-}
-
 // Tab switching logic - smart default
 const activeTab = ref('query')
-
-// Mind map section reference
-const mindmapSectionRef = ref(null)
-
-// Query section reference
-const querySectionRef = ref(null)
 
 const resetGraphStats = () => {
   store.graphStats = {
@@ -270,8 +91,8 @@ const resetGraphStats = () => {
 
 // LightRAG defaults to the knowledge graph tab
 watch(
-  () => [databaseId.value, isGraphSupported.value, isEvaluationSupported.value, isDify.value],
-  ([newDbId, supported, , difyMode], oldValue = []) => {
+  () => [databaseId.value, isGraphSupported.value, isDify.value],
+  ([newDbId, supported, difyMode], oldValue = []) => {
     const [oldDbId, previouslySupported] = oldValue
 
     if (!newDbId) {
@@ -300,25 +121,12 @@ watch(
     if (!supported && activeTab.value === 'graph') {
       activeTab.value = 'query'
     }
-
-    // If the KB type does not support evaluation and current tab is evaluation-related, switch to query
-    if (
-      !isEvaluationSupported.value &&
-      (activeTab.value === 'evaluation' || activeTab.value === 'benchmarks')
-    ) {
-      activeTab.value = 'query'
-    }
   },
   { immediate: true }
 )
 
-// Toggle right panel visibility
-const toggleRightPanel = () => {
-  store.state.rightPanelVisible = !store.state.rightPanelVisible
-}
-
 // Drag to resize (horizontal only)
-const leftPanelWidth = ref(50)
+const leftPanelWidth = ref(34)
 const isDragging = ref(false)
 const resizeHandle = ref(null)
 
@@ -334,88 +142,16 @@ const openSearchConfigModal = () => {
   searchConfigModalVisible.value = true
 }
 
-// Add files modal
-const addFilesModalVisible = ref(false)
-const currentFolderId = ref(null)
-const isFolderUploadMode = ref(false)
-const addFilesMode = ref('file')
-
-// Mark whether this is the initial load
-const isInitialLoad = ref(true)
-
-// Show add files modal
-const showAddFilesModal = (options = {}) => {
-  const { isFolder = false, mode = 'file' } = options
-  isFolderUploadMode.value = isFolder
-  addFilesMode.value = mode
-  addFilesModalVisible.value = true
-  currentFolderId.value = null // Reset
-}
-
-// Folder tree passed to FileUploadModal
-const folderTree = computed(() => {
-  // Reuse FileTable tree-building logic, or get it from store
-  // For simplicity, assume store.database.files is flat and rebuild a selection-only tree here
-  // Since FileTable is a child component, ideally this logic should live in store/composable
-  // FileTable already has buildFileTree; this can be extracted later
-  // Quick implementation: build a simplified tree for folder selection only
-  const files = store.database.files || {}
-  const fileList = Object.values(files)
-
-  // Simplified tree-building logic (folders only)
-  const nodeMap = new Map()
-  const roots = []
-
-  // 1. Initialize nodes
-  fileList.forEach((file) => {
-    if (file.is_folder) {
-      const item = { ...file, title: file.filename, value: file.file_id, children: [] }
-      nodeMap.set(file.file_id, item)
-    }
-  })
-
-  // 2. Build hierarchy
-  fileList.forEach((file) => {
-    if (file.is_folder && file.parent_id && nodeMap.has(file.parent_id)) {
-      const parent = nodeMap.get(file.parent_id)
-      const child = nodeMap.get(file.file_id)
-      if (parent && child) {
-        parent.children.push(child)
-      }
-    } else if (file.is_folder && !file.parent_id) {
-      // Only explicit root folders are added to roots
-      // Folders generated from implicit paths are not selectable in this simplified version
-      // because they do not have physical IDs unless we reuse FileTable's full logic
-      // If users create folders via the new-folder feature, this logic is sufficient
-      if (nodeMap.has(file.file_id)) {
-        roots.push(nodeMap.get(file.file_id))
-      }
-    }
-  })
-
-  return roots
-})
-
-// File upload success callback
-const onFileUploadSuccess = () => {
-  taskerStore.loadTasks()
-}
-
-// Reset file selection state
-const resetFileSelectionState = () => {
+const resetRuntimeState = () => {
   store.selectedRowKeys = []
   store.selectedFile = null
-  store.state.fileDetailModalVisible = false
 }
 
 watch(
   () => route.params.database_id,
   async (newId) => {
-    // Mark as initial load when switching knowledge bases
-    isInitialLoad.value = true
-
     store.databaseId = newId
-    resetFileSelectionState()
+    resetRuntimeState()
     resetGraphStats()
     store.stopAutoRefresh()
     await store.getDatabaseInfo(newId, false) // Explicitly load query params on initial load
@@ -424,85 +160,8 @@ watch(
   { immediate: true }
 )
 
-// Watch file list changes and regenerate sample questions when needed
-const previousFileCount = ref(0)
-
-watch(
-  () => database.value?.files,
-  (newFiles) => {
-    if (!newFiles) return
-
-    const newFileCount = Object.keys(newFiles).length
-    const oldFileCount = previousFileCount.value
-
-    // On first load, only update count and skip side effects
-    if (isInitialLoad.value) {
-      previousFileCount.value = newFileCount
-      isInitialLoad.value = false
-      return
-    }
-
-    // If file count changes (increase/decrease), regenerate questions only
-    if (newFileCount !== oldFileCount) {
-      const changeType = newFileCount > oldFileCount ? 'increased' : 'decreased'
-      console.log(
-        `File count ${changeType} from ${oldFileCount} to ${newFileCount}, preparing to regenerate questions`
-      )
-
-      // Regenerate questions whenever files exist, regardless of prior question state
-      if (newFileCount > 0) {
-        setTimeout(async () => {
-          console.log(
-            'File count changed, checking whether question generation is needed, querySectionRef:',
-            querySectionRef.value
-          )
-          if (querySectionRef.value) {
-            // Check whether auto-generate questions is enabled
-            if (database.value.additional_params?.auto_generate_questions) {
-              console.log('Start regenerating questions...')
-              await querySectionRef.value.generateSampleQuestions(true)
-            } else {
-              console.log('Auto-generate questions is disabled, skip generation')
-            }
-          } else {
-            console.warn('querySectionRef is not ready, retry later')
-            // If component is not ready yet, wait a bit longer
-            setTimeout(async () => {
-              if (querySectionRef.value) {
-                if (database.value.additional_params?.auto_generate_questions) {
-                  console.log('Start generating questions after delay...')
-                  await querySectionRef.value.generateSampleQuestions(true)
-                } else {
-                  console.log('Auto-generate questions is disabled, skip generation')
-                }
-              }
-            }, 2000)
-          }
-        }, 3000) // Wait 3 seconds for backend processing
-      } else {
-        // If file count becomes 0, clear question list
-        console.log('File count is 0, clearing question list')
-        setTimeout(() => {
-          if (querySectionRef.value) {
-            // Clear question list
-            querySectionRef.value.clearQuestions()
-          }
-        }, 1000)
-      }
-    }
-
-    previousFileCount.value = newFileCount
-  },
-  { deep: true }
-)
-
 // Handle component mount lifecycle
 onMounted(() => {
-  store.databaseId = route.params.database_id
-  resetFileSelectionState()
-  store.getDatabaseInfo()
-  store.startAutoRefresh()
-
   // Add drag event listener (horizontal only)
   if (resizeHandle.value) {
     resizeHandle.value.addEventListener('mousedown', handleMouseDown)
@@ -601,6 +260,17 @@ const handleMouseUp = () => {
     padding-right: 0;
     flex-direction: column;
     // max-height: calc(100% - 16px);
+  }
+
+  .text-only-note {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    background: var(--gray-25);
+    color: var(--gray-700);
+    font-size: 13px;
+    line-height: 1.5;
   }
 
   .info-panel {

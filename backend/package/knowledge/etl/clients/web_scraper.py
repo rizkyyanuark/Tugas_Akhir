@@ -14,6 +14,7 @@ Configuration:
 """
 
 import time
+import logging
 import requests
 import urllib3
 from bs4 import BeautifulSoup
@@ -23,8 +24,10 @@ from ..config import (
     BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BRIGHT_DATA_HOST
 )
 
-# Disable SSL warnings   some UNESA subdomains have expired certs.
+# Disable SSL warnings (some UNESA subdomains have expired certs).
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+logger = logging.getLogger(__name__)
 
 
 class WebProdiScraper:
@@ -47,10 +50,10 @@ class WebProdiScraper:
             prodi_name, source_url, source, affiliation, etc.
         """
         results: list[dict] = []
-        print("\n--- STARTING WEB SCRAPING ---")
+        logger.info("Starting web scraping pipeline")
 
         for code, name, url, keyword, parser_key in active_configs:
-            print(f"     Scraping: {name} ({url})")
+            logger.info("Scraping: %s (%s)", name, url)
             html = self._fetch_with_retry(url)
             if html is None:
                 continue
@@ -60,7 +63,7 @@ class WebProdiScraper:
                 parser_func = self.parser_map.get(parser_key)
 
                 if not parser_func:
-                    print(f"         No parser registered for key: {parser_key}")
+                    logger.error("No parser registered for key: %s", parser_key)
                     continue
 
                 entries = parser_func(soup)
@@ -76,10 +79,10 @@ class WebProdiScraper:
                         })
                         results.append(entry)
                         valid_count += 1
-                print(f"        Parsed: {valid_count}")
+                logger.info("Parsed %d records from %s", valid_count, name)
 
             except Exception as e:
-                print(f"        Error parsing: {e}")
+                logger.error("Error parsing %s: %s", url, e)
 
         return results
 
@@ -107,8 +110,8 @@ class WebProdiScraper:
             except Exception as e:
                 if attempt < CRAWLER_MAX_RETRIES - 1:
                     wait = 5 * (attempt + 1)  # Progressive backoff: 5s, 10s, 15s
-                    print(f"         Attempt {attempt + 1} failed: {e}. Retrying in {wait}s...")
+                    logger.warning("Attempt %d failed: %s. Retrying in %ds...", attempt + 1, e, wait)
                     time.sleep(wait)
                 else:
-                    print(f"        Failed after {CRAWLER_MAX_RETRIES} attempts: {e}")
+                    logger.error("Failed after %d attempts: %s", CRAWLER_MAX_RETRIES, e)
         return None

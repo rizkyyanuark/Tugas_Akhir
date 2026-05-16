@@ -166,7 +166,6 @@ async def test_create_agent_run_commits_before_enqueue(monkeypatch: pytest.Monke
         agent_config_id=1,
         thread_id="thread-1",
         meta={"request_id": "req-1"},
-        image_content=None,
         current_user_id="1",
         db=db,
     )
@@ -243,7 +242,6 @@ async def test_create_agent_run_handles_integrity_error_with_same_user_existing(
         agent_config_id=1,
         thread_id="thread-1",
         meta={"request_id": "req-1"},
-        image_content=None,
         current_user_id="1",
         db=db,
     )
@@ -313,7 +311,6 @@ async def test_create_agent_run_integrity_error_returns_409_for_other_user(monke
             agent_config_id=1,
             thread_id="thread-1",
             meta={"request_id": "req-1"},
-            image_content=None,
             current_user_id="1",
             db=db,
         )

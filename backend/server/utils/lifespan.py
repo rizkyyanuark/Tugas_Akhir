@@ -12,8 +12,7 @@ from yunesa.knowledge import knowledge_base
 from yunesa.utils import logger
 from yunesa.agents.backends.sandbox import init_sandbox_provider, shutdown_sandbox_provider
 from yunesa.config.app import config
-from yunesa.services.kg_service import get_kg_service
-from yunesa import get_version
+from server.app_metadata import get_yunesa_banner
 
 
 @asynccontextmanager
@@ -58,10 +57,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Run queue redis unavailable on startup: {e}")
 
-    try:
-        init_sandbox_provider()
-    except Exception as e:
-        logger.error(f"Failed to initialize sandbox provider during startup: {e}")
+    sandbox_enabled = os.environ.get("SANDBOX_ENABLED", "").lower() in ("true", "1", "yes")
+    if sandbox_enabled:
+        try:
+            init_sandbox_provider()
+        except Exception as e:
+            logger.error(f"Failed to initialize sandbox provider during startup: {e}")
+    else:
+        logger.info("SANDBOX_ENABLED is false; skipping sandbox provider startup")
 
     # =========================================================
     # LangGraph Checkpointer Setup
@@ -70,24 +73,12 @@ async def lifespan(app: FastAPI):
     await checkpointer.setup()
     print("LangGraph Checkpoint tables verified/created!")
 
-    # Initialize KG Service and attach to app state
-    app.state.kg_service = get_kg_service(config)
-
     await tasker.start()
-    logger.info(f"""
-
-░██     ░██
- ░██   ░██
-  ░██ ░██   ░██    ░██ ░█████░██  ░█████    ░█████    ░█████
-   ░████    ░██    ░██ ░██   ░██ ░██   ░██ ░██             ░██
-    ░██     ░██    ░██ ░██   ░██ ░███████   ░█████    ░██████
-    ░██     ░██   ░███ ░██   ░██ ░██             ░██ ░██   ░██
-    ░██      ░█████░██ ░██   ░██  ░█████   ░█████     ░████░██  v{get_version()}
-
-    """)
+    logger.info("\n%s", get_yunesa_banner())
     logger.info("AgenticRAG backend startup complete")
     yield
     await tasker.shutdown()
-    shutdown_sandbox_provider()
+    if sandbox_enabled:
+        shutdown_sandbox_provider()
     await close_queue_clients()
     await pg_manager.close()

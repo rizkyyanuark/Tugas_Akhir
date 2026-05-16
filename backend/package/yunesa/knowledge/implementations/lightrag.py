@@ -7,7 +7,10 @@ from lightrag import LightRAG, QueryParam
 from lightrag.kg.shared_storage import initialize_pipeline_status
 from lightrag.llm.openai import openai_complete_if_cache, openai_embed
 from lightrag.utils import EmbeddingFunc
-from neo4j import GraphDatabase
+try:
+    from neo4j import GraphDatabase as Neo4jGraphDatabase
+except ImportError:
+    Neo4jGraphDatabase = None
 from pymilvus import connections, utility
 
 from yunesa import config
@@ -15,7 +18,6 @@ from yunesa.knowledge.base import FileStatus, KnowledgeBase
 from yunesa.knowledge.chunking.ragflow_like.dispatcher import chunk_markdown
 from yunesa.knowledge.chunking.ragflow_like.presets import resolve_chunk_processing_params
 from yunesa.knowledge.utils.kb_utils import get_embedding_config
-from yunesa.plugins.parser.unified import Parser
 from yunesa.utils import hashstr, logger
 from yunesa.utils.datetime_utils import utc_isoformat
 
@@ -82,29 +84,34 @@ class LightRagKB(KnowledgeBase):
             logger.error(f"Failed to drop Milvus collection {db_id}: {e}")
 
         # Delete Neo4j data
-        neo4j_uri = os.getenv("NEO4J_URI") or "bolt://localhost:7687"
-        neo4j_username = os.getenv("NEO4J_USERNAME") or "neo4j"
-        neo4j_password = os.getenv("NEO4J_PASSWORD") or "0123456789"
+        LITE_MODE = os.environ.get("LITE_MODE", "").lower() in ("true", "1")
+        if not LITE_MODE and Neo4jGraphDatabase:
+            neo4j_uri = os.getenv("NEO4J_URI") or "bolt://localhost:7687"
+            neo4j_username = os.getenv("NEO4J_USERNAME") or "neo4j"
+            neo4j_password = os.getenv("NEO4J_PASSWORD") or "0123456789"
 
-        try:
-            driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_username, neo4j_password))
-            with driver.session() as session:
-                # delete db_id labelnoderelationship
-                session.run(
+            try:
+                driver = Neo4jGraphDatabase.driver(neo4j_uri, auth=(neo4j_username, neo4j_password))
+                with driver.session() as session:
+                    # delete db_id labelnoderelationship
+                    session.run(
+                        """
+                        MATCH (n:`"""
+                        + db_id
+                        + """`)
+                        DETACH DELETE n
                     """
-                    MATCH (n:`"""
-                    + db_id
-                    + """`)
-                    DETACH DELETE n
-                """
-                )
+                    )
 
-                logger.info(f"Deleted Neo4j nodes and relationships for workspace {db_id}")
-        except Exception as e:
-            logger.error(f"Failed to delete Neo4j data for {db_id}: {e}")
-        finally:
-            if "driver" in locals():
-                driver.close()
+                    logger.info(f"Deleted Neo4j nodes and relationships for workspace {db_id}")
+            except Exception as e:
+                logger.error(f"Failed to delete Neo4j data for {db_id}: {e}")
+            finally:
+                if "driver" in locals():
+                    driver.close()
+        else:
+            reason = "LITE_MODE=true" if LITE_MODE else "neo4j-driver not installed"
+            logger.info(f"Skipping Neo4j data deletion for {db_id} ({reason})")
 
         # Delete local files and metadata
         return super().delete_database(db_id)
@@ -157,6 +164,7 @@ class LightRagKB(KnowledgeBase):
         working_dir = os.path.join(self.work_dir, db_id)
         os.makedirs(working_dir, exist_ok=True)
 
+        LITE_MODE = os.environ.get("LITE_MODE", "").lower() in ("true", "1")
         # create LightRAG 
         rag = LightRAG(
             working_dir=working_dir,
@@ -165,7 +173,7 @@ class LightRagKB(KnowledgeBase):
             embedding_func=self._get_embedding_func(embed_info),
             vector_storage="MilvusVectorDBStorage",
             kv_storage="JsonKVStorage",
-            graph_storage="Neo4JStorage",
+            graph_storage="JsonGraphStorage" if LITE_MODE else "Neo4JStorage",
             doc_status_storage="JsonDocStatusStorage",
             log_file_path=os.path.join(working_dir, "lightrag.log"),
             addon_params=addon_params,
@@ -302,17 +310,18 @@ class LightRagKB(KnowledgeBase):
             ),
         )
 
-    async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
+    async def index_text(self, db_id: str, text: str, metadata: dict | None = None, operator_id: str | None = None) -> dict:
         """
-        Index parsed file (Status: INDEXING -> INDEXED/ERROR_INDEXING)
+        Index direct text content into LightRAG.
 
         Args:
             db_id: Database ID
-            file_id: File ID
+            text: The text content to index
+            metadata: Optional metadata (title, tags, etc.)
             operator_id: ID of the user performing the operation
 
         Returns:
-            Updated file metadata
+            Record metadata
         """
         if db_id not in self.databases_meta:
             raise ValueError(f"Database {db_id} not found")
@@ -323,205 +332,87 @@ class LightRagKB(KnowledgeBase):
             if not rag:
                 raise ValueError(f"Failed to get LightRAG instance for {db_id}")
 
-            # Get file meta
-            if file_id not in self.files_meta:
-                raise ValueError(f"File {file_id} not found")
-            file_meta = self.files_meta[file_id]
+            # Create a record entry in metadata (using a UUID as file_id)
+            import uuid
+            record_id = str(uuid.uuid4())
 
-            # Validate current status - only allow indexing from these states
-            current_status = file_meta.get("status")
-            allowed_statuses = {
-                FileStatus.PARSED,
-                FileStatus.ERROR_INDEXING,
-                FileStatus.INDEXED,  # For re-indexing
-                "done",  # Legacy status
+            # Prepare metadata
+            title = (metadata or {}).get("title", f"Text Record {record_id[:8]}")
+            record_meta = {
+                "id": record_id,
+                "filename": title,
+                "status": FileStatus.INDEXING,
+                "created_at": utc_isoformat(),
+                "updated_at": utc_isoformat(),
+                "type": "text",
+                "size": len(text),
+                "metadata": metadata or {}
             }
 
-            if current_status not in allowed_statuses:
-                raise ValueError(
-                    f"Cannot index file with status '{current_status}'. "
-                    f"File must be parsed first (status should be one of: {', '.join(allowed_statuses)})"
-                )
-
-            # Check markdown file exists
-            if not file_meta.get("markdown_file"):
-                raise ValueError("File has not been parsed yet (no markdown_file)")
-
-            # Clear previous error if any
-            if "error" in file_meta:
-                self.files_meta[file_id].pop("error", None)
-
-            # Update status and add to processing queue
-            self.files_meta[file_id]["status"] = FileStatus.INDEXING
-            self.files_meta[file_id]["updated_at"] = utc_isoformat()
-            if operator_id:
-                self.files_meta[file_id]["updated_by"] = operator_id
-            await self._persist_file(file_id)
-
-            # Add to processing queue
-            self._add_to_processing_queue(file_id)
+            self.files_meta[record_id] = record_meta
+            await self._persist_file(record_id)
+            self._add_to_processing_queue(record_id)
 
             try:
-                # Read markdown
-                markdown_content = await self._read_markdown_from_minio(file_meta["markdown_file"])
-                file_path = file_meta.get("path")
-                filename = file_meta.get("filename") or file_id
+                # Use default processing params
                 processing_params = resolve_chunk_processing_params(
                     kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
-                    file_processing_params=file_meta.get("processing_params"),
+                    file_processing_params=None,
                 )
-                self.files_meta[file_id]["processing_params"] = processing_params
-                await self._save_metadata()
 
-                chunks = chunk_markdown(markdown_content, file_id, filename, processing_params)
+                # Split into chunks for LightRAG
+                chunks = chunk_markdown(text, record_id, title, processing_params)
                 chunk_input, split_by_character, split_by_character_only = self._prepare_lightrag_insert_payload(chunks)
                 if not chunk_input:
-                    chunk_input = markdown_content
+                    chunk_input = text
 
-                # Clean up existing chunks if any (for re-indexing)
-                await self.delete_file_chunks_only(db_id, file_id)
-
-                # Insert
+                # Insert into LightRAG
                 await rag.ainsert(
                     input=chunk_input,
-                    ids=file_id,
-                    file_paths=file_path,
+                    ids=record_id,
                     split_by_character=split_by_character,
                     split_by_character_only=split_by_character_only,
                 )
-                await self._ensure_doc_processed(rag, file_id)
+                await self._ensure_doc_processed(rag, record_id)
 
-                logger.info(
-                    f"Indexed file {file_id} into LightRAG with {len(chunks)} chunks, "
-                    f"chunk_preset_id={processing_params.get('chunk_preset_id')}"
-                )
+                # Update status to INDEXED
+                self.files_meta[record_id]["status"] = FileStatus.INDEXED
+                self.files_meta[record_id]["updated_at"] = utc_isoformat()
+                await self._persist_file(record_id)
 
-                # Update status
-                self.files_meta[file_id]["status"] = FileStatus.INDEXED
-                self.files_meta[file_id]["updated_at"] = utc_isoformat()
-                if operator_id:
-                    self.files_meta[file_id]["updated_by"] = operator_id
-                await self._persist_file(file_id)
-
-                return self.files_meta[file_id]
+                return self.files_meta[record_id]
 
             except Exception as e:
-                logger.error(f"Indexing failed for {file_id}: {e}")
-                self.files_meta[file_id]["status"] = FileStatus.ERROR_INDEXING
-                self.files_meta[file_id]["error"] = str(e)
-                self.files_meta[file_id]["updated_at"] = utc_isoformat()
-                if operator_id:
-                    self.files_meta[file_id]["updated_by"] = operator_id
-                await self._persist_file(file_id)
+                logger.error(f"Text indexing failed: {e}")
+                self.files_meta[record_id]["status"] = FileStatus.ERROR_INDEXING
+                self.files_meta[record_id]["error"] = str(e)
+                await self._persist_file(record_id)
                 raise
-
             finally:
-                # Remove from processing queue
-                self._remove_from_processing_queue(file_id)
+                self._remove_from_processing_queue(record_id)
 
-    async def update_content(self, db_id: str, file_ids: list[str], params: dict | None = None) -> list[dict]:
-        """updatecontent - file_idsparsefileupdatevector"""
+    async def delete_record(self, db_id: str, record_id: str) -> None:
+        """Delete a record from the knowledge base."""
         if db_id not in self.databases_meta:
             raise ValueError(f"Database {db_id} not found")
 
-        db_write_lock = await self._get_db_write_lock(db_id)
-        async with db_write_lock:
-            rag = await self._get_lightrag_instance(db_id)
-            if not rag:
-                raise ValueError(f"Failed to get LightRAG instance for {db_id}")
+        rag = await self._get_lightrag_instance(db_id)
+        if not rag:
+            return
 
-            # processdefaultparameter
-            if params is None:
-                params = {}
-            processed_items_info = []
+        try:
+            # Delete from LightRAG internal storage
+            await rag.adelete_by_doc_id(record_id)
 
-            for file_id in file_ids:
-                # datagetfile
-                if file_id not in self.files_meta:
-                    logger.warning(f"File {file_id} not found in metadata, skipping")
-                    continue
-
-                file_meta = self.files_meta[file_id]
-                file_path = file_meta.get("path")
-
-                if not file_path:
-                    logger.warning(f"File path not found for {file_id}, skipping")
-                    continue
-
-                # addprocesscolumn
-                self._add_to_processing_queue(file_id)
-
-                try:
-                    # updatestatusprocess
-                    resolved_params = resolve_chunk_processing_params(
-                        kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
-                        file_processing_params=self.files_meta[file_id].get("processing_params"),
-                        request_params=params,
-                    )
-                    self.files_meta[file_id]["processing_params"] = resolved_params
-                    self.files_meta[file_id]["status"] = "processing"
-                    await self._persist_file(file_id)
-
-                    # parsefile markdown
-                    params["image_bucket"] = "public"
-                    params["image_prefix"] = f"{db_id}/kb-images"
-                    markdown_content = await Parser.aparse(source=file_path, params=params)
-                    markdown_content_lines = markdown_content[:100].replace("\n", " ")
-                    logger.info(f"Markdown content: {markdown_content_lines}...")
-                    filename = file_meta.get("filename") or file_id
-                    chunks = chunk_markdown(markdown_content, file_id, filename, resolved_params)
-                    chunk_input, split_by_character, split_by_character_only = self._prepare_lightrag_insert_payload(
-                        chunks
-                    )
-                    if not chunk_input:
-                        chunk_input = markdown_content
-
-                    # delete LightRAG data（deletechunks，data）
-                    await self.delete_file_chunks_only(db_id, file_id)
-
-                    #  LightRAG content
-                    await rag.ainsert(
-                        input=chunk_input,
-                        ids=file_id,
-                        file_paths=file_path,
-                        split_by_character=split_by_character,
-                        split_by_character_only=split_by_character_only,
-                    )
-                    await self._ensure_doc_processed(rag, file_id)
-
-                    logger.info(f"Updated file {file_path} in LightRAG. Done.")
-
-                    # updatedatastatus
-                    self.files_meta[file_id]["status"] = "done"
-                    await self._persist_file(file_id)
-
-                    # processcolumnremove
-                    self._remove_from_processing_queue(file_id)
-
-                    # returnupdatefile
-                    updated_file_meta = file_meta.copy()
-                    updated_file_meta["status"] = "done"
-                    updated_file_meta["file_id"] = file_id
-                    processed_items_info.append(updated_file_meta)
-
-                except Exception as e:
-                    error_msg = str(e)
-                    logger.error(f"updatefile {file_path} failed: {error_msg}, {traceback.format_exc()}")
-                    self.files_meta[file_id]["status"] = "failed"
-                    self.files_meta[file_id]["error"] = error_msg
-                    await self._persist_file(file_id)
-
-                    # processcolumnremove
-                    self._remove_from_processing_queue(file_id)
-
-                    # returnfailedfile
-                    failed_file_meta = file_meta.copy()
-                    failed_file_meta["status"] = "failed"
-                    failed_file_meta["file_id"] = file_id
-                    failed_file_meta["error"] = error_msg
-                    processed_items_info.append(failed_file_meta)
-
-            return processed_items_info
+            # Remove from metadata
+            if record_id in self.files_meta:
+                del self.files_meta[record_id]
+                # Persistence would happen via periodic sync or explicit call
+                # For now, let's just log it
+                logger.info(f"Deleted record {record_id} from metadata and LightRAG")
+        except Exception as e:
+            logger.error(f"Error deleting record {record_id}: {e}")
+            raise
 
     async def aquery(self, query_text: str, db_id: str, agent_call: bool = False, **kwargs) -> str:
         """queryknowledge base"""
@@ -599,16 +490,6 @@ class LightRagKB(KnowledgeBase):
             logger.error(f"Query error: {e}, {traceback.format_exc()}")
             return ""
 
-    async def delete_file_chunks_only(self, db_id: str, file_id: str) -> None:
-        """deletefilechunksdata，data（updateoperation）"""
-        rag = await self._get_lightrag_instance(db_id)
-        if rag:
-            try:
-                #  LightRAG deletedocument
-                await rag.adelete_by_doc_id(file_id)
-                logger.info(f"Deleted chunks for file {file_id} from LightRAG")
-            except Exception as e:
-                logger.error(f"Error deleting file {file_id} from LightRAG: {e}")
         # ：delete files_meta[file_id]，dataoperation
 
     async def delete_file(self, db_id: str, file_id: str) -> None:

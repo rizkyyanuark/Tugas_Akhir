@@ -1,13 +1,13 @@
-from .base import GraphAdapter
+﻿from .base import GraphAdapter
+from .core import CoreGraphAdapter
 from .lightrag import LightRAGGraphAdapter
-from .upload import UploadGraphAdapter
 
 
 class GraphAdapterFactory:
     """Graph adapter factory (Graph Adapter Factory)"""
 
     _registry: dict[str, type[GraphAdapter]] = {
-        "upload": UploadGraphAdapter,
+        "core": CoreGraphAdapter,
         "lightrag": LightRAGGraphAdapter,
     }
 
@@ -29,7 +29,7 @@ class GraphAdapterFactory:
     def get_supported_types(cls) -> dict[str, str]:
         """Get supported graph types and their descriptions."""
         return {
-            "upload": "Upload file graph - supports embedding and threshold queries",
+            "core": "Core graph - direct Neo4j access for structured data visualization",
             "lightrag": "LightRAG knowledge graph - graph based on kb_id labels",
         }
 
@@ -43,7 +43,7 @@ class GraphAdapterFactory:
             knowledge_base_manager: Knowledge base manager instance.
 
         Returns:
-            Graph type: "lightrag" (LightRAG) or "upload".
+            Graph type: "lightrag" (LightRAG) or "core".
         """
         # 1. First check whether this is a LightRAG database (via knowledge base manager)
         if knowledge_base_manager:
@@ -55,8 +55,8 @@ class GraphAdapterFactory:
         if db_id.startswith("kb_"):
             return "lightrag"
 
-        # 3. Default to Upload type
-        return "upload"
+        # 3. Default to Core type
+        return "core"
 
     @classmethod
     async def create_adapter_by_db_id(
@@ -68,7 +68,7 @@ class GraphAdapterFactory:
         Args:
             db_id: Database ID.
             knowledge_base_manager: Knowledge base manager instance.
-            graph_db_instance: Graph database instance (for Upload type).
+            graph_db_instance: Graph database instance (for Core type).
 
         Returns:
             Corresponding graph adapter.
@@ -79,8 +79,8 @@ class GraphAdapterFactory:
             # LightRAG type, use kb_id as config
             return cls.create_adapter("lightrag", config={"kb_id": db_id})
         else:
-            # Upload type, use kgdb_name as config
-            return cls.create_adapter("upload", graph_db_instance=graph_db_instance, config={"kgdb_name": db_id})
+            # Core type, use kgdb_name as config
+            return cls.create_adapter("core", graph_db_instance=graph_db_instance, config={"kgdb_name": db_id})
 
     @classmethod
     async def create_adapter_for_db_id(

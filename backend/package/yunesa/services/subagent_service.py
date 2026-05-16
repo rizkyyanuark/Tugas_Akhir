@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from yunesa.repositories.subagent_repository import SubAgentRepository
 from yunesa.storage.postgres.manager import pg_manager
 from yunesa.utils import logger
-from yunesa.utils.paths import OUTPUTS_DIR_NAME
 
 # SubAgent specs cache for get_subagent_specs
 _subagent_specs_cache: list[dict[str, Any]] | None = None
@@ -30,12 +29,12 @@ async def _get_session(db: AsyncSession | None = None):
 _DEFAULT_SUBAGENTS = [
     {
         "name": "research-agent",
-        "description": "Use search tools for deeper research questions and write results to a topic research file.",
+        "description": "Use search tools for deeper research questions and return a complete sourced answer.",
         "system_prompt": (
             "You are a focused researcher. Your job is to research based on the user's question. "
             "Perform thorough research and reply with a detailed answer. Only your final response will be passed to "
             "the user. They will not see anything else, so your final report must be complete. "
-            f"Save research results to the topic research file at {OUTPUTS_DIR_NAME}/sub_research/xxx.md."
+            "Do not create, edit, upload, or reference local files. Return the answer directly."
         ),
         "tools": ["tavily_search"],
         "is_builtin": True,
@@ -45,11 +44,10 @@ _DEFAULT_SUBAGENTS = [
         "description": "Review the final report and provide detailed critique guidance.",
         "system_prompt": (
             "You are a focused editor. Your task is to critique a report.\n\n"
-            "You can find the report in `final_report.md`.\n\n"
-            "You can find the report topic/question in `question.txt`.\n\n"
-            "The user may ask you to critique specific aspects. Provide detailed feedback and point out areas for improvement.\n\n"
+            "The user may provide a draft or ask you to critique specific aspects. "
+            "Provide detailed feedback and point out areas for improvement.\n\n"
             "If useful, you may use search tools to gather supporting information.\n\n"
-            "Do not write to `final_report.md` yourself.\n\n"
+            "Do not create, edit, upload, or reference local files. Return the critique directly.\n\n"
             "Checklist:\n"
             "- Check whether each section title is appropriate\n"
             "- Check whether the writing style resembles a paper or textbook; it should be prose-heavy, not just bullet lists\n"
