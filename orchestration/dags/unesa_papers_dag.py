@@ -8,7 +8,14 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
-from etl_common import DOCKER_NETWORK, ETL_WORKER_IMAGE, worker_env, worker_mounts
+from etl_common import (
+    DOCKER_NETWORK,
+    ETL_RUN_MODE,
+    ETL_WORKER_IMAGE,
+    worker_command,
+    worker_env,
+    worker_mounts,
+)
 
 
 default_args = {
@@ -23,11 +30,11 @@ default_args = {
 dag = DAG(
     dag_id="unesa_papers_etl",
     default_args=default_args,
-    description="ETL: Sinkronisasi publikasi UNESA ke Supabase",
-    schedule="0 20 * * *",  # 03:00 WIB = 20:00 UTC
+    description=f"ETL: Sinkronisasi publikasi UNESA ke Supabase ({ETL_RUN_MODE} mode)",
+    schedule="0 20 * * 6",  # Sunday 03:00 WIB = Saturday 20:00 UTC
     start_date=datetime(2026, 3, 1),
     catchup=False,
-    tags=["unesa", "papers", "etl", "supabase"],
+    tags=["unesa", "papers", "etl", "supabase", f"mode:{ETL_RUN_MODE}"],
     max_active_runs=1,
 )
 
@@ -47,10 +54,10 @@ def create_operator(task_id: str, command_suffix: str):
     )
 
 
-extract_scopus = create_operator("extract_scopus", "paper_extract_scopus --mode incremental")
-extract_scholar = create_operator("extract_scholar", "paper_extract_scholar --mode incremental")
-transform = create_operator("transform", "paper_transform --mode incremental")
-load = create_operator("load", "paper_load --mode incremental")
-notify = create_operator("notify", "paper_notify --mode incremental")
+extract_scopus = create_operator("extract_scopus", worker_command("paper_extract_scopus"))
+extract_scholar = create_operator("extract_scholar", worker_command("paper_extract_scholar"))
+transform = create_operator("transform", worker_command("paper_transform"))
+enrich = create_operator("enrich", worker_command("paper_enrich"))
+load = create_operator("load", worker_command("paper_load"))
 
-[extract_scopus, extract_scholar] >> transform >> load >> notify
+[extract_scopus, extract_scholar] >> transform >> enrich >> load

@@ -5,8 +5,7 @@ Multi-Source Keyword & Abstract Extraction Module
 Integrated from 'scraping scopus.ipynb' + API fallbacks.
 
 Enrichment flow:
-  1. SerpAPI Citation API   abstract, title, publisher link (structured)
-  1b. BrightData Scholar Page   publisher/PDF link (proxy scraping)
+  1. BrightData Scholar Page   publisher/PDF link (proxy scraping)
   2. Publisher/PDF Page   keywords, abstract, DOI (proxy scraping)
   2b. CrossRef API   DOI fallback (free, title-based)
   2c. OpenAlex API   keyword/concept fallback (free)
@@ -34,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from ..config import SERPAPI_KEY, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SERP, BD_PASS_SERP, BRIGHT_DATA_HOST
+from ..config import BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BD_USER_SERP, BD_PASS_SERP, BRIGHT_DATA_HOST
 
 try:
     import knowledge.etl.transform.cleaner as cleaner
@@ -160,21 +159,75 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
                            timeout=120):
     """
     HTTP GET matching notebook's request_hybrid_stealth.
-    1. If use_proxy=True, try BrightData session proxy first (120s timeout)
-    2. Fallback to direct request (15s timeout)
+    Highly optimized to save BrightData credits:
+    1. For Google Scholar: Try proxy first (extremely high probability of instant block on direct).
+    2. For other sites:
+       - Try direct request first.
+       - If blocked (403, 503, Cloudflare/anti-bot detected) or fails, escalate to BrightData Web Unlocker proxy.
     """
     headers = _get_headers(referer)
+    is_google_scholar = "scholar.google" in url.lower() if url else False
 
+    # 1. Domain-specific Bypass Check
+    if use_proxy and url:
+        try:
+            parsed_url = urllib.parse.urlparse(url)
+            domain = parsed_url.netloc.lower()
+            if domain.endswith('.id') or '.ac.id' in domain:
+                logger.info(f"[Proxy Bypass] Local Indonesian domain detected: '{domain}'. Forcing direct connection to save credits.")
+                use_proxy = False
+        except Exception as e:
+            logger.debug(f"Error parsing URL for proxy bypass: {e}")
+
+    # 2. Smart Direct connection attempt first for non-Scholar URLs
+    direct_tried = False
+    direct_success = False
+    direct_resp = None
+
+    if use_proxy and not is_google_scholar:
+        direct_tried = True
+        try:
+            logger.info(f"[Smart Direct Check] Trying direct connection first for: {url[:80]}")
+            # Quick DNS/Connection check
+            try:
+                requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
+            except requests.exceptions.ConnectionError:
+                logger.warning("[Smart Direct Check] Connection/DNS Error. Skipping.")
+                return None
+            except requests.exceptions.Timeout:
+                pass
+
+            resp = requests.get(
+                url, headers=headers, verify=False,
+                timeout=15, stream=stream, allow_redirects=True
+            )
+            if resp.status_code == 200:
+                if not stream:
+                    is_blocked, reason = _detect_anti_bot(resp)
+                    if not is_blocked:
+                        logger.info("[Smart Direct Check] Direct connection successful! Saved BrightData credits.")
+                        direct_success = True
+                        direct_resp = resp
+                    else:
+                        logger.warning(f"[Smart Direct Check] Direct connection blocked by {reason}. Escalating to BrightData proxy...")
+                else:
+                    direct_success = True
+                    direct_resp = resp
+            else:
+                logger.warning(f"[Smart Direct Check] Direct returned status {resp.status_code}. Escalating to BrightData proxy...")
+        except Exception as e:
+            logger.warning(f"[Smart Direct Check] Direct connection failed ({e}). Escalating to BrightData proxy...")
+
+    if direct_success:
+        return direct_resp
+
+    # 3. BrightData Proxy Attempt
     if use_proxy:
-        # Determine route based on URL
-        if "scholar.google" in url.lower():
-            proxy_type = "SERP"
-        else:
-            proxy_type = "UNLOCKER"
-
+        proxy_type = "SERP" if is_google_scholar else "UNLOCKER"
         proxies = _build_session_proxy(proxy_type)
         if proxies:
             try:
+                logger.info(f"[BrightData Proxy] Requesting via {proxy_type} proxy for: {url[:80]}...")
                 resp = requests.get(
                     url, proxies=proxies, headers=headers,
                     verify=False, timeout=timeout, stream=stream,
@@ -184,35 +237,35 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
                     if not stream:
                         is_blocked, reason = _detect_anti_bot(resp)
                         if is_blocked:
-                            logger.warning("Proxy blocked (%s). Falling back to direct...", reason)
+                            logger.warning(f"[BrightData Proxy] Proxy was also blocked ({reason}). Falling back to direct...")
                         else:
                             return resp
                     else:
                         return resp
                 else:
-                    logger.warning("Proxy status: %d. Falling back to direct...", resp.status_code)
+                    logger.warning(f"[BrightData Proxy] Proxy returned status {resp.status_code}. Falling back to direct...")
             except Exception as e:
-                logger.error("Proxy error: %s. Falling back to direct...", e)
+                logger.error(f"[BrightData Proxy] Proxy connection error: {e}. Falling back to direct...")
 
-    # 2) Direct request (fallback)
-    try:
-        # Quick DNS/Connection Ping (Fail Fast for dead servers)
+    # 4. Fallback to direct request (if not already tried or for Google Scholar fallback)
+    if not direct_tried:
         try:
-            requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
-        except requests.exceptions.ConnectionError:
-            logger.debug("Server connection failed or DNS error (%s). Skipping.", url[:40])
-            return None
-        except requests.exceptions.Timeout:
-            pass  # Lanjut saja jika cuma head timeout
+            try:
+                requests.head(url, headers=headers, verify=False, timeout=3, allow_redirects=True)
+            except requests.exceptions.ConnectionError:
+                return None
+            except requests.exceptions.Timeout:
+                pass
 
-        resp = requests.get(
-            url, headers=headers, verify=False,
-            timeout=15, stream=stream, allow_redirects=True
-        )
-        if resp.status_code == 200:
-            return resp
-    except Exception:
-        pass
+            resp = requests.get(
+                url, headers=headers, verify=False,
+                timeout=15, stream=stream, allow_redirects=True
+            )
+            if resp.status_code == 200:
+                return resp
+        except Exception:
+            pass
+
     return None
 
 
@@ -283,77 +336,6 @@ def _request_with_proxy(url, headers, timeout=20, stream=False):
     except Exception:
         pass
     return None
-
-
-# ================================================================
-# SERPAPI CITATION RESOLVER
-# ================================================================
-
-def resolve_citation_serpapi(scholar_citation_url, api_key=None):
-    """
-    Use SerpAPI to get structured citation data from Scholar citation URL.
-
-    Returns dict with:
-        title, link (publisher), authors (full), abstract (description),
-        journal, volume, pages, publisher, publication_date, doi,
-        resources (PDF links)
-    """
-    api_key = api_key or SERPAPI_KEY
-
-    # Parse author_id and citation_id from URL
-    parsed = urllib.parse.urlparse(scholar_citation_url)
-    params = urllib.parse.parse_qs(parsed.query)
-
-    author_id = params.get("user", [None])[0]
-    citation_for_view = params.get("citation_for_view", [None])[0]
-
-    if not author_id or not citation_for_view:
-        return None
-
-    # citation_for_view IS the citation_id (e.g. "tzjThtIAAAAJ:u5HHmVD_uO8C")
-    citation_id = citation_for_view
-
-    try:
-        resp = requests.get("https://serpapi.com/search.json", params={
-            "engine": "google_scholar_author",
-            "author_id": author_id,
-            "view_op": "view_citation",
-            "citation_id": citation_id,
-            "api_key": api_key,
-            "hl": "en",
-        }, timeout=30)
-
-        if resp.status_code != 200:
-            logger.warning("[SerpAPI] HTTP %d received.", resp.status_code)
-            return None
-
-        data = resp.json()
-        citation = data.get("citation", {})
-
-        result = {
-            "title": citation.get("title", ""),
-            "link": citation.get("link", ""),
-            "authors_full": citation.get("authors", ""),
-            "abstract": citation.get("description", ""),
-            "journal": citation.get("journal", ""),
-            "volume": citation.get("volume", ""),
-            "pages": citation.get("pages", ""),
-            "publisher": citation.get("publisher", ""),
-            "publication_date": citation.get("publication_date", ""),
-            "resources": citation.get("resources", []),
-        }
-
-        # Try to extract DOI from publisher link
-        if result["link"]:
-            doi = extract_doi(result["link"])
-            if doi:
-                result["doi"] = doi
-
-        return result
-
-    except Exception as e:
-        logger.error("[SerpAPI] Error: %s", e)
-        return None
 
 
 # ================================================================
@@ -784,7 +766,16 @@ def _extract_keywords_impl(html):
         except Exception:
             pass
 
-    # Strategy 1: EBSCO / structured subject links (visible HTML)
+    # Strategy 1: OJS (Open Journal Systems) standard keyword block
+    ojs_kw_block = soup.find('div', class_=re.compile(r'\bitem\s+keywords\b', re.IGNORECASE))
+    if ojs_kw_block:
+        val_span = ojs_kw_block.find('span', class_='value')
+        if val_span:
+            kws = val_span.get_text(strip=True)
+            if kws:
+                return kws
+
+    # Strategy 2: EBSCO / structured subject links (visible HTML)
     # Hanya match elemen label pendek, BUKAN kalimat abstract yang mengandung "subjects"
     for h in soup.find_all(['dt', 'div', 'span'],
                            string=re.compile(r'\bSubjects?\b|\bKeywords?\b', re.IGNORECASE)):
@@ -1204,7 +1195,16 @@ def fetch_pmc_api_keywords(pmc_id):
 def extract_keywords_robust(html):
     if not html: return None
     soup = BeautifulSoup(html, 'html.parser')
-    # 0. EBSCO
+    # 0. OJS (Open Journal Systems)
+    ojs_kw_block = soup.find('div', class_=re.compile(r'\bitem\s+keywords\b', re.IGNORECASE))
+    if ojs_kw_block:
+        val_span = ojs_kw_block.find('span', class_='value')
+        if val_span:
+            kws = val_span.get_text(strip=True)
+            if kws:
+                return kws
+
+    # 1. EBSCO
     for h in soup.find_all(['dt', 'div', 'span'], string=re.compile(r'Subject|Keyword', re.IGNORECASE)):
         sib = h.find_next_sibling(['dd', 'div', 'span'])
         if sib:
@@ -1796,13 +1796,12 @@ def fetch_tldr(doi="", title=""):
 # MAIN ENRICHMENT FUNCTION
 # ================================================================
 
-def enrich_single_paper(scholar_citation_url, api_key=None):
+def enrich_single_paper(scholar_citation_url):
     """
     Enrich a single paper from its Scholar citation URL.
 
     Integrated flow (notebook + API):
-    1.  SerpAPI Citation   abstract, title, publisher link
-    1b. BrightData Scholar Page   publisher/PDF link (fallback)
+    1.  BrightData Scholar Page   abstract, title, publisher/PDF link
     2a. Publisher Page (proxy)   keywords, abstract, DOI
     2b. CrossRef   DOI fallback
     2c. OpenAlex   keyword fallback
@@ -1816,30 +1815,14 @@ def enrich_single_paper(scholar_citation_url, api_key=None):
     pdf_url = ""
     title = ""
 
-    # --- Phase 1: SerpAPI Citation (structured data) ---
-    logger.info("[SerpAPI] Resolving citation structured data...")
-    citation = resolve_citation_serpapi(scholar_citation_url, api_key)
-
-    if citation:
-        result["abstract"] = citation.get("abstract", "")
-        result["doi"] = citation.get("doi", "")
-        publisher_url = citation.get("link", "")
-        title = citation.get("title", "")
-
-        if publisher_url:
-            logger.info(f"[SerpAPI] Publisher: {publisher_url[:60]}...")
-        if result["abstract"]:
-            logger.info(f"[SerpAPI] Abstract: {result['abstract'][:60]}...")
-        if result["doi"]:
-            logger.info(f"[SerpAPI] DOI: {result['doi']}")
-
-    # --- Phase 1b: BrightData Scholar Page (proxy, from notebook) ---
-    # If SerpAPI didn't give publisher link, resolve via proxy
-    if not publisher_url and scholar_citation_url:
+    # --- Phase 1: BrightData Scholar Page (proxy, from notebook) ---
+    if scholar_citation_url:
         resolved = resolve_scholar_citation_proxy(scholar_citation_url)
         if resolved:
             publisher_url = resolved.get("title_link") or ""
             pdf_url = resolved.get("pdf_link") or ""
+            if resolved.get("abstract"):
+                result["abstract"] = resolved["abstract"]
             if not title and resolved.get("title_text"):
                 title = resolved["title_text"]
             if publisher_url:
@@ -1859,7 +1842,7 @@ def enrich_single_paper(scholar_citation_url, api_key=None):
             result["keywords"] = pub_data["keywords"]
             logger.info(f"[Publisher] Keywords: {result['keywords'][:60]}...")
 
-        # Fallback abstract from publisher if SerpAPI didn't have it
+        # Fallback abstract from publisher if Scholar page did not provide it.
         if not result["abstract"] and pub_data["abstract"]:
             result["abstract"] = pub_data["abstract"]
             logger.info(f"[Publisher] Abstract (fallback): {result['abstract'][:60]}...")

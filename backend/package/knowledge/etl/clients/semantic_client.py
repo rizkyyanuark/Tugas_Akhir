@@ -8,18 +8,17 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from ..config import SAVE_DIR
+from ..config import SEMANTIC_SCHOLAR_API_KEY
+from ..utils.logging import log_error, log_event, log_warning
 
 logger = logging.getLogger(__name__)
 
 try:
     from knowledge.etl.transform import cleaner
 except ImportError:
-    logger.warning("Could not import ETL cleaner. Using fallback cleaning.")
+    log_warning(logger, "s2.cleaner_import_failed", action="use_fallback_cleaner")
     cleaner = None
 
-# Free API key (or None)
-API_KEY = "ZWTWpCL5EUX02DYSdts74tkVSEyToXQ6T5Vyak00"
 BASE_URL = "https://api.semanticscholar.org/graph/v1"
 
 
@@ -52,10 +51,12 @@ def _normalize_text(text: str | None) -> str:
 class SemanticScholarClient:
     """Client for interacting with the Semantic Scholar API."""
 
-    def __init__(self, api_key: str | None = API_KEY):
+    def __init__(self, api_key: str | None = None):
         self.base_url = BASE_URL
-        self.headers = {"x-api-key": api_key} if api_key else {}
+        resolved_key = (api_key if api_key is not None else SEMANTIC_SCHOLAR_API_KEY).strip()
+        self.headers = {"x-api-key": resolved_key} if resolved_key else {}
         self.timeout = 15
+        self.rate_limit_sleep_seconds = 5
 
     def search_paper_id(self, title: str) -> str | None:
         """
@@ -72,9 +73,7 @@ class SemanticScholarClient:
         }
 
         try:
-            response = requests.get(
-                url, headers=self.headers, params=params, timeout=self.timeout
-            )
+            response = requests.get(url, headers=self.headers, params=params, timeout=self.timeout)
             if response.status_code == 200:
                 data = response.json().get("data", [])
                 for item in data:
@@ -87,16 +86,37 @@ class SemanticScholarClient:
                             return item["paperId"]
                 
                 if data:
-                    logger.debug(
-                        f"No strict match found in S2. Best: '{data[0].get('title', '')[:50]}...'"
-                    )
+                    logger.debug("s2.search.no_strict_match | best_title=%s", data[0].get("title", "")[:80])
             elif response.status_code == 429:
-                logger.warning("S2 Rate Limit (429). Sleeping 5s...")
-                time.sleep(5)
+                log_event(
+                    logger,
+                    "s2.rate_limited",
+                    endpoint="paper/search",
+                    retry_after_seconds=self.rate_limit_sleep_seconds,
+                )
+                time.sleep(self.rate_limit_sleep_seconds)
+                response = requests.get(url, headers=self.headers, params=params, timeout=self.timeout)
+                if response.status_code == 200:
+                    data = response.json().get("data", [])
+                    for item in data:
+                        returned_title = item.get("title", "")
+                        if returned_title:
+                            similarity = SequenceMatcher(
+                                None, _normalize_text(title), _normalize_text(returned_title)
+                            ).ratio()
+                            if similarity >= 0.85:
+                                return item["paperId"]
+            elif response.status_code == 403 and self.headers:
+                log_error(
+                    logger,
+                    "s2.api_key_rejected",
+                    status_code=response.status_code,
+                    action="check_semantic_scholar_api_key",
+                )
             else:
-                logger.error(f"S2 API error {response.status_code}: {response.text}")
+                log_error(logger, "s2.search.http_error", status_code=response.status_code, body=response.text[:180])
         except Exception as e:
-            logger.error(f"S2 Search Error: {e}")
+            log_error(logger, "s2.search.failed", exc=e)
         
         return None
 
@@ -122,8 +142,13 @@ class SemanticScholarClient:
                     data["abstract"] = _deep_clean_abstract(data["abstract"])
                 return data
             elif response.status_code == 429:
-                logger.warning("S2 Rate Limit (429). Retrying after 5s...")
-                time.sleep(5)
+                log_event(
+                    logger,
+                    "s2.rate_limited",
+                    endpoint="paper/details",
+                    retry_after_seconds=self.rate_limit_sleep_seconds,
+                )
+                time.sleep(self.rate_limit_sleep_seconds)
                 response = requests.get(
                     url, headers=self.headers, params=params, timeout=self.timeout
                 )
@@ -132,8 +157,15 @@ class SemanticScholarClient:
                     if data.get("abstract"):
                         data["abstract"] = _deep_clean_abstract(data["abstract"])
                     return data
+            elif response.status_code == 403 and self.headers:
+                log_error(
+                    logger,
+                    "s2.api_key_rejected",
+                    status_code=response.status_code,
+                    action="check_semantic_scholar_api_key",
+                )
         except Exception as e:
-            logger.error(f"S2 Details Error for {paper_id}: {e}")
+            log_error(logger, "s2.details.failed", exc=e, paper_id=paper_id)
             
         return None
 
@@ -149,8 +181,11 @@ def fetch_s2_details(doi: str | None = None, title: str | None = None) -> dict[s
             resp = requests.get(url, headers=client.headers, params={"fields": "paperId"}, timeout=10)
             if resp.status_code == 200:
                 paper_id = resp.json().get("paperId")
+            elif resp.status_code == 429:
+                log_event(logger, "s2.rate_limited", endpoint="paper/doi", retry_after_seconds=client.rate_limit_sleep_seconds)
+                time.sleep(client.rate_limit_sleep_seconds)
         except Exception as e:
-            logger.debug(f"S2 DOI lookup failed for {doi}: {e}")
+            logger.debug("s2.doi_lookup.failed | doi=%s | error=%s", doi, e)
 
     if not paper_id and title:
         paper_id = client.search_paper_id(title)

@@ -3,37 +3,14 @@ Template: ETL DAG using DockerOperator
 =====================================
 Copy this file into orchestration/dags/ and update:
 - dag_id, schedule, tags
-- ETL_WORKER_IMAGE if needed
-- task list and command suffixes
-- required Airflow Variables
+- task list
 """
 
-import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
-from docker.types import Mount
-
-# --- Constants --------------------------------------------------
-
-ETL_WORKER_IMAGE = os.environ.get(
-    "ETL_WORKER_IMAGE", "tugas-akhir-etl-worker:prod")
-DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "tugas-akhir-network")
-HOST_DATA_DIR = os.environ.get(
-    "HOST_DATA_DIR", "/home/ubuntu/Tugas_Akhir/data").replace("\\", "/")
-
-DATA_MOUNT = Mount(source=HOST_DATA_DIR, target="/app/data", type="bind")
-
-
-def _worker_env() -> dict[str, str]:
-    # Using Jinja templates {{ var.value.VAR_NAME }} for Airflow compatibility
-    return {
-        "SUPABASE_URL": "{{ var.value.SUPABASE_URL_SECRET }}",
-        "SUPABASE_KEY": "{{ var.value.SUPABASE_KEY_SECRET }}",
-        "NOTIFICATION_EMAIL": "{{ var.value.NOTIFICATION_EMAIL_SECRET }}",
-        "DOCKER_ENVIRONMENT": "true",
-    }
+from etl_common import DOCKER_NETWORK, ETL_WORKER_IMAGE, worker_command, worker_env, worker_mounts
 
 
 # --- DAG Configuration ------------------------------------------
@@ -69,16 +46,16 @@ def create_operator(task_id: str, command_suffix: str):
         command=command_suffix,
         docker_url="unix://var/run/docker.sock",
         network_mode=DOCKER_NETWORK,
-        mounts=[DATA_MOUNT],
-        environment=_worker_env(),
+        mounts=worker_mounts(),
+        environment=worker_env(),
         auto_remove="success",
         dag=dag,
     )
 
 
-extract_task = create_operator("extract", "etl_extract")
-transform_task = create_operator("transform", "etl_transform")
-load_task = create_operator("load", "etl_load")
+extract_task = create_operator("extract", worker_command("etl_extract"))
+transform_task = create_operator("transform", worker_command("etl_transform"))
+load_task = create_operator("load", worker_command("etl_load"))
 
 
 # --- DAG Pipeline Flow ------------------------------------------

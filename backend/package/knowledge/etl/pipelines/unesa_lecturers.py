@@ -12,6 +12,7 @@ from ..services.lecturer_paths import (
     SCRAPE_WEB_PATH,
 )
 from ..utils.storage import path_exists, get_modification_time, read_dataframe_csv
+from ..utils.logging import log_event, result_fields, timed_event
 
 logger = logging.getLogger("etl-worker")
 
@@ -50,7 +51,7 @@ def _should_skip_extract(config, label: str, file_path) -> bool:
     """
     # full mode → always run
     if config.is_full:
-        logger.info("%s: Mode=full - forcing extraction", label)
+        log_event(logger, "freshness.force", task=label, reason="mode_full")
         return False
 
     # sample mode → always run (quick test)
@@ -59,7 +60,7 @@ def _should_skip_extract(config, label: str, file_path) -> bool:
 
     # explicit force flag → always run
     if ETL_FORCE_EXTRACT:
-        logger.info("%s: ETL_FORCE_EXTRACT=true - forcing extraction", label)
+        log_event(logger, "freshness.force", task=label, reason="ETL_FORCE_EXTRACT")
         return False
 
     # incremental mode → skip if output file is fresh enough
@@ -71,10 +72,14 @@ def _should_skip_extract(config, label: str, file_path) -> bool:
 
         # Get display name for the file
         fname = file_path.name if hasattr(file_path, 'name') else str(file_path).split("/")[-1]
-        logger.info(
-            "Skip %s: %s is fresh (%.1fh old, threshold: %sh). "
-            "Use --mode full or ETL_FORCE_EXTRACT=true to override.",
-            label, fname, age_hours, ETL_FRESHNESS_HOURS
+        log_event(
+            logger,
+            "freshness.skip",
+            task=label,
+            file=fname,
+            age_hours=f"{age_hours:.1f}",
+            threshold_hours=ETL_FRESHNESS_HOURS,
+            override="--mode full or ETL_FORCE_EXTRACT=true",
         )
         return True
 
@@ -91,8 +96,9 @@ def _lec_extract_web(config):
 
     from knowledge.etl.services.unesa_lecturers import scrape_university_websites
 
-    output = scrape_university_websites(prodi_filter=config.prodi_filter)
-    logger.info("lec_extract_web complete: %s", output)
+    with timed_event(logger, "lecturer.extract_web", prodi_filter=config.prodi_filter):
+        output = scrape_university_websites(prodi_filter=config.prodi_filter)
+    log_event(logger, "lecturer.extract_web.result", **result_fields(output))
 
 
 def _lec_extract_pddikti(config):
@@ -102,8 +108,9 @@ def _lec_extract_pddikti(config):
 
     from knowledge.etl.services.unesa_lecturers import fetch_pddikti_data
 
-    output = fetch_pddikti_data(prodi_filter=config.prodi_filter)
-    logger.info("lec_extract_pddikti complete: %s", output)
+    with timed_event(logger, "lecturer.extract_pddikti", prodi_filter=config.prodi_filter):
+        output = fetch_pddikti_data(prodi_filter=config.prodi_filter)
+    log_event(logger, "lecturer.extract_pddikti.result", **result_fields(output))
 
 
 def _lec_extract_siakadu(config):
@@ -113,15 +120,16 @@ def _lec_extract_siakadu(config):
 
     from knowledge.etl.services.siakadu_identity import fetch_siakadu_data
 
-    output = fetch_siakadu_data(prodi_filter=config.prodi_filter)
-    logger.info("lec_extract_siakadu complete: %s", output)
+    with timed_event(logger, "lecturer.extract_siakadu", prodi_filter=config.prodi_filter):
+        output = fetch_siakadu_data(prodi_filter=config.prodi_filter)
+    log_event(logger, "lecturer.extract_siakadu.result", **result_fields(output))
 
 
 def _read_checkpoint(file_path, label: str, prodi_filter: str | None = None):
     df = read_dataframe_csv(file_path, dtype=ID_COLUMN_TYPES)
     if prodi_filter and "prodi_code" in df.columns:
         df = df[df["prodi_code"].astype(str) == str(prodi_filter)]
-    logger.info("Loaded %s checkpoint from %s (%s records)", label, file_path, len(df))
+    log_event(logger, "checkpoint.loaded", label=label, path=file_path, rows=len(df))
     return df
 
 
@@ -133,7 +141,7 @@ def _load_or_extract_web(config):
         if not df.empty:
             return df
 
-    logger.info("Web checkpoint missing or empty. Running web extraction before merge.")
+    log_event(logger, "checkpoint.miss", label="web", action="extract_before_merge")
     return scrape_university_websites(prodi_filter=config.prodi_filter)
 
 
@@ -145,7 +153,7 @@ def _load_or_extract_pddikti(config):
         if not df.empty:
             return df
 
-    logger.info("PDDIKTI checkpoint missing or empty. Running PDDIKTI extraction before merge.")
+    log_event(logger, "checkpoint.miss", label="pddikti", action="extract_before_merge")
     return fetch_pddikti_data(prodi_filter=config.prodi_filter)
 
 
@@ -156,8 +164,9 @@ def _lec_merge(config):
     df_web = _load_or_extract_web(config)
     df_pddikti = _load_or_extract_pddikti(config)
     
-    output = run_smart_merge(df_web, df_pddikti)
-    logger.info("lec_merge complete: %s", output)
+    with timed_event(logger, "lecturer.merge", web_rows=len(df_web), pddikti_rows=len(df_pddikti)):
+        output = run_smart_merge(df_web, df_pddikti)
+    log_event(logger, "lecturer.merge.result", **result_fields(output))
 
 
 def _lec_enrich(config):
@@ -166,24 +175,27 @@ def _lec_enrich(config):
 
     # In sample mode, limit Scholar API calls to sample_size
     scholar_sample = config.sample_size if config.is_sample else None
-    output = run_enrichment(scholar_sample=scholar_sample)
-    logger.info("lec_enrich complete: %s", output)
+    with timed_event(logger, "lecturer.enrich", scholar_sample=scholar_sample):
+        output = run_enrichment(scholar_sample=scholar_sample)
+    log_event(logger, "lecturer.enrich.result", **result_fields(output))
 
 
 def _lec_transform(config):
     """Final post-processing and cleaning."""
     from knowledge.etl.services.unesa_lecturers import run_post_processing
 
-    output = run_post_processing()
-    logger.info("lec_transform complete: %s", output)
+    with timed_event(logger, "lecturer.transform"):
+        output = run_post_processing()
+    log_event(logger, "lecturer.transform.result", **result_fields(output))
 
 
 def _lec_load(config):
     """UPSERT to Supabase PostgreSQL."""
     from knowledge.etl.services.unesa_lecturers import run_supabase_sync
 
-    synced_count = run_supabase_sync()
-    logger.info("lec_load complete: Synced %s records", synced_count)
+    with timed_event(logger, "lecturer.load"):
+        synced_count = run_supabase_sync()
+    log_event(logger, "lecturer.load.result", synced_records=synced_count)
 
 
 LECTURERS_TASKS = {

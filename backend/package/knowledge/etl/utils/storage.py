@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import logging
 from datetime import datetime
@@ -128,6 +129,86 @@ def read_dataframe_csv(path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
         with fs.open(path_str, "rb") as handle:
             return pd.read_csv(handle, **kwargs)
     return pd.read_csv(path_str, **kwargs)
+
+
+def _path_suffix(path: Union[str, Path]) -> str:
+    return Path(normalize_storage_path(path)).suffix.lower()
+
+
+def write_dataframe_artifact(df: pd.DataFrame, path: Union[str, Path], **kwargs: Any) -> None:
+    """Write tabular artifacts in CSV or Parquet based on the path extension."""
+    if _path_suffix(path) == ".csv":
+        write_dataframe_csv(df, path, **kwargs)
+        return
+
+    if _path_suffix(path) != ".parquet":
+        raise ValueError(f"Unsupported dataframe artifact extension: {path}")
+
+    path_str = normalize_storage_path(path)
+    parquet_kwargs = dict(kwargs)
+    parquet_kwargs.setdefault("index", False)
+    parquet_kwargs.setdefault("compression", "snappy")
+    if is_remote_path(path_str):
+        fs = get_filesystem(path_str)
+        with fs.open(path_str, "wb") as handle:
+            df.to_parquet(handle, **parquet_kwargs)
+        return
+
+    ensure_parent_dir(path_str)
+    df.to_parquet(path_str, **parquet_kwargs)
+
+
+def read_dataframe_artifact(path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
+    """Read tabular CSV or Parquet artifacts from local disk or S3."""
+    if _path_suffix(path) == ".csv":
+        return read_dataframe_csv(path, **kwargs)
+
+    if _path_suffix(path) != ".parquet":
+        raise ValueError(f"Unsupported dataframe artifact extension: {path}")
+
+    path_str = normalize_storage_path(path)
+    parquet_kwargs = dict(kwargs)
+    dtype = parquet_kwargs.pop("dtype", None)
+    usecols = parquet_kwargs.pop("usecols", None)
+    if usecols is not None:
+        parquet_kwargs["columns"] = usecols
+
+    if is_remote_path(path_str):
+        fs = get_filesystem(path_str)
+        with fs.open(path_str, "rb") as handle:
+            df = pd.read_parquet(handle, **parquet_kwargs)
+    else:
+        df = pd.read_parquet(path_str, **parquet_kwargs)
+
+    if dtype is str:
+        return df.astype("string")
+    return df.astype(dtype) if dtype is not None else df
+
+
+def write_json_artifact(payload: Any, path: Union[str, Path]) -> None:
+    """Write small JSON state artifacts to local disk or S3."""
+    path_str = normalize_storage_path(path)
+    if is_remote_path(path_str):
+        fs = get_filesystem(path_str)
+        with fs.open(path_str, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, sort_keys=True)
+        return
+
+    ensure_parent_dir(path_str)
+    with open(path_str, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+
+
+def read_json_artifact(path: Union[str, Path]) -> Any:
+    """Read a small JSON state artifact from local disk or S3."""
+    path_str = normalize_storage_path(path)
+    if is_remote_path(path_str):
+        fs = get_filesystem(path_str)
+        with fs.open(path_str, "r", encoding="utf-8") as handle:
+            return json.load(handle)
+
+    with open(path_str, "r", encoding="utf-8") as handle:
+        return json.load(handle)
 
 
 def get_path_obj(base_dir: Union[str, Path], filename: str) -> Union[str, Path]:

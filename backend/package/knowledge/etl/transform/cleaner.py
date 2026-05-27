@@ -17,6 +17,77 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_MOJIBAKE_MARKERS = (
+    "Ã",
+    "Â",
+    "â€",
+    "â€“",
+    "â€”",
+    "â€™",
+    "â€œ",
+    "â€",
+    "â€¦",
+)
+
+_MOJIBAKE_REPLACEMENTS = {
+    "â€“": "–",
+    "â€”": "—",
+    "â€˜": "‘",
+    "â€™": "’",
+    "â€œ": "“",
+    "â€�": "”",
+    "â€¦": "…",
+    "â€¢": "•",
+    "â„¢": "™",
+    "Â°": "°",
+    "Â±": "±",
+    "Â": "",
+    "Ã—": "×",
+    "ÃƒÂ—": "×",
+    "Ãƒâ€”": "×",
+}
+
+
+def _mojibake_score(text: str) -> int:
+    """Estimate whether text still contains UTF-8/Windows-1252 mojibake."""
+    return sum(text.count(marker) for marker in _MOJIBAKE_MARKERS)
+
+
+def repair_mojibake(text: Any) -> str:
+    """Repair common UTF-8 text decoded through Windows-1252/Latin-1."""
+    if not isinstance(text, str):
+        return ""
+
+    fixed = text
+    if _mojibake_score(fixed) == 0:
+        return fixed
+
+    for _ in range(3):
+        before = fixed
+        best = fixed
+        best_score = _mojibake_score(fixed)
+
+        for encoding in ("cp1252", "latin1"):
+            try:
+                candidate = fixed.encode(encoding).decode("utf-8")
+            except UnicodeError:
+                continue
+
+            candidate_score = _mojibake_score(candidate)
+            if candidate_score < best_score:
+                best = candidate
+                best_score = candidate_score
+
+        fixed = best
+        if fixed == before:
+            break
+
+    for bad, good in _MOJIBAKE_REPLACEMENTS.items():
+        fixed = fixed.replace(bad, good)
+
+    return fixed
+
+
 def clean_text(text: Any) -> str:
     """Apply aggressive regex cleaning to a single string."""
     if not isinstance(text, str) or pd.isna(text):
@@ -25,6 +96,7 @@ def clean_text(text: Any) -> str:
     import html
     # Tolak ukur awal: kembalikan entitas HTML (seperti &#x0D;, &amp;) ke bentuk aslinya
     text = html.unescape(text)
+    text = repair_mojibake(text)
     
     # Remove HTML tags (e.g. <br>, <i>)
     text = re.sub(r'<[^>]+>', ' ', text)

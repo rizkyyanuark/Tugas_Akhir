@@ -13,6 +13,9 @@ x-api-worker-env: &api-worker-env
   LITE_MODE: ${LITE_MODE:-false}
   MODEL_DIR_IN_DOCKER: /models
   # --- Database & Infrastructure (resolved from GLOBAL_PASSWORD) ---
+  SUPABASE_URL: ${SUPABASE_URL}
+  SUPABASE_KEY: ${SUPABASE_KEY}
+  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_KEY:-}}
   POSTGRES_URL: postgresql+asyncpg://postgres:${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}@postgres:5432/postgres
   REDIS_URL: redis://redis:6379/0
   NEO4J_URI: bolt://graph:7687
@@ -20,10 +23,10 @@ x-api-worker-env: &api-worker-env
   NEO4J_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
   NEO4J_DATABASE: neo4j
   MILVUS_URI: http://milvus:19530
-  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-yuxi_know}
+  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-yunesa_know}
   MINIO_URI: http://minio:9000
-  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yunesa}
+  MINIO_ROOT_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
   MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-/minio}
   SANDBOX_ENABLED: ${SANDBOX_ENABLED:-false}
   # --- Non-secret config (hardcoded defaults) ---
@@ -66,20 +69,24 @@ x-airflow-common: &airflow-common
     HOST_PACKAGE_DIR: ${HOST_PACKAGE_DIR:-/home/ubuntu/Tugas_Akhir/backend/package}
     ETL_WORKER_IMAGE: ${ETL_WORKER_IMAGE:-tugas-akhir-etl-worker:prod}
     ETL_WORKER_MOUNT_CODE: "false"
+    ETL_RUN_MODE: ${ETL_RUN_MODE:-incremental}
+    ETL_SAMPLE_SIZE: ${ETL_SAMPLE_SIZE:-50}
+    ETL_ENRICH_MAX_PAPERS_PER_RUN: ${ETL_ENRICH_MAX_PAPERS_PER_RUN:-0}
+    ETL_STORAGE_TYPE: ${ETL_STORAGE_TYPE:-local}
+    ETL_FORCE_EXTRACT: ${ETL_FORCE_EXTRACT:-false}
+    ETL_FRESHNESS_HOURS: ${ETL_FRESHNESS_HOURS:-72}
     # --- Airflow Variables (Auto-injected from .env) ---
     AIRFLOW_VAR_SUPABASE_URL_SECRET: ${SUPABASE_URL}
     AIRFLOW_VAR_SUPABASE_KEY_SECRET: ${SUPABASE_KEY}
+    AIRFLOW_VAR_SUPABASE_SERVICE_ROLE_KEY_SECRET: ${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_KEY:-}}
     AIRFLOW_VAR_SCIVAL_EMAIL_SECRET: ${SCIVAL_EMAIL}
     AIRFLOW_VAR_SCIVAL_PASS_SECRET: ${SCIVAL_PASS}
-    AIRFLOW_VAR_SERPAPI_KEY_SECRET: ${SERPAPI_KEY}
+    AIRFLOW_VAR_SEMANTIC_SCHOLAR_API_KEY_SECRET: ${SEMANTIC_SCHOLAR_API_KEY:-${S2_API_KEY:-}}
     AIRFLOW_VAR_BD_USER_UNLOCKER_SECRET: ${BD_USER_UNLOCKER}
     AIRFLOW_VAR_BD_PASS_UNLOCKER_SECRET: ${BD_PASS_UNLOCKER}
     AIRFLOW_VAR_BD_USER_SERP_SECRET: ${BD_USER_SERP}
     AIRFLOW_VAR_BD_PASS_SERP_SECRET: ${BD_PASS_SERP}
-    AIRFLOW_VAR_BRIGHTDATA_SERP_TOKEN_SECRET: ${BRIGHTDATA_SERP_TOKEN}
-    AIRFLOW_VAR_BRIGHTDATA_SERP_ZONE_SECRET: ${BRIGHTDATA_SERP_ZONE}
     AIRFLOW_VAR_GROQ_API_KEY_SECRET: ${GROQ_API_KEY}
-    AIRFLOW_VAR_NOTIFICATION_EMAIL_SECRET: ${NOTIFICATION_EMAIL:-}
     AIRFLOW_VAR_BRIGHT_DATA_HOST: "brd.superproxy.io:33335"
     # --- Airflow 3 Task Execution API ---
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-webserver:8080/execution/
@@ -175,8 +182,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - "80:80"
     networks:
       - app-network
     # NOTE: Nginx reverse proxy handles /api/ -> api:5050
@@ -236,8 +241,8 @@ services:
     logging: *default-logging
     mem_limit: 256m
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yunesa}
+      MINIO_ROOT_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
     volumes:
       - minio-data:/minio_data
       - minio-config:/root/.minio
@@ -263,8 +268,8 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-yunesa}
+      MINIO_SECRET_ACCESS_KEY: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
       MILVUS_LOG_LEVEL: error
     volumes:
       - milvus-data:/var/lib/milvus
@@ -340,6 +345,12 @@ services:
       <<: *api-worker-env
       PYTHONPATH: /app/package
       PYTHONDONTWRITEBYTECODE: "1"
+      ETL_RUN_MODE: ${ETL_RUN_MODE:-incremental}
+      ETL_SAMPLE_SIZE: ${ETL_SAMPLE_SIZE:-50}
+      ETL_ENRICH_MAX_PAPERS_PER_RUN: ${ETL_ENRICH_MAX_PAPERS_PER_RUN:-0}
+      ETL_STORAGE_TYPE: ${ETL_STORAGE_TYPE:-local}
+      ETL_FORCE_EXTRACT: ${ETL_FORCE_EXTRACT:-false}
+      ETL_FRESHNESS_HOURS: ${ETL_FRESHNESS_HOURS:-72}
     volumes:
       - ./data:/app/data
     depends_on:
@@ -378,8 +389,6 @@ services:
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs
-    ports:
-      - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/public/monitor/health"]
       interval: 30s
@@ -404,6 +413,22 @@ services:
       - airflow-logs:/opt/airflow/logs
       - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare-tunnel
+    restart: always
+    logging: *default-logging
+    networks:
+      - app-network
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    command: tunnel --config /etc/cloudflared/config.yaml run
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
 
 networks:
   app-network:

@@ -27,7 +27,7 @@ def merge_citations(existing: list[dict] | None, new: list[dict] | None) -> list
 
 
 class BaseState(AgentState):
-    """Shared state fields for Yuxi agents."""
+    """Shared state fields for YUNESA agents."""
 
     artifacts: Annotated[list[str], merge_artifacts]
     citations: Annotated[list[dict], merge_citations]

@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 import math
 import logging
-import re
 import numpy as np
 import pandas as pd
 from typing import Any, Dict, List, Optional
-from supabase import create_client, Client
-from ..config import SUPABASE_URL, SUPABASE_KEY
+from supabase import Client
+from .supabase_auth import create_etl_supabase_client
 from ..utils.utils import clean_identifier, enforce_strict_ids
 
 logger = logging.getLogger(__name__)
@@ -20,27 +19,10 @@ class SupabaseClient:
     """
     
     def __init__(self) -> None:
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            raise ValueError("Supabase URL or Key missing in config.py!")
-            
-        # --- DOCKER/SUPABASE-PY PATCH ---
-        # supabase-py > 2.0 strictly validates the key via regex matching JWTs.
-        # We bypass this for modern sb_publishable_ keys.
-        import supabase._sync.client as sc
-        original_match = re.match
-        
-        def mock_match(pattern: str | re.Pattern, string: Any, flags: int = 0) -> Any:
-            if isinstance(string, str) and string.startswith("sb_publishable_"):
-                return True 
-            return original_match(pattern, string, flags)
-            
-        re.match = mock_match
-        try:
-            self.client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        finally:
-            re.match = original_match
-            
-        logger.info(f"Supabase Client Connected to {SUPABASE_URL[:30]}...")
+        self.client, self.key_role = create_etl_supabase_client(
+            require_write=True,
+            logger=logger,
+        )
 
     def _clean_value(self, value: Any) -> Any:
         """
@@ -144,6 +126,7 @@ class SupabaseClient:
                 total_count += len(chunk)
             except Exception as e:
                 logger.error(f"Batch error upserting lecturers at index {i}: {e}")
+                raise RuntimeError("Failed to upsert lecturers to Supabase.") from e
 
         logger.info(f"Successfully upserted {total_count}/{len(records)} lecturers.")
 
@@ -226,6 +209,7 @@ class SupabaseClient:
                 total_upserted += len(chunk)
             except Exception as e:
                 logger.error(f"Paper batch error at index {i}: {e}")
+                raise RuntimeError("Failed to upsert papers to Supabase.") from e
 
         logger.info(f"Successfully upserted {total_upserted} papers.")
 
@@ -285,6 +269,7 @@ class SupabaseClient:
                 total_links += len(chunk)
             except Exception as e:
                 logger.error(f"Link batch error at index {i}: {e}")
+                raise RuntimeError("Failed to upsert lecturer-paper links to Supabase.") from e
                 
         logger.info(f"Successfully inserted {total_links} relationships.")
 

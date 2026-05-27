@@ -54,8 +54,10 @@ class MinIOClient:
     def __init__(self):
         """initialize MinIO client"""
         self.endpoint = os.getenv("MINIO_URI") or "http://minio:9000"
-        self.access_key = os.getenv("MINIO_ROOT_USER") or os.getenv("MINIO_ACCESS_KEY") or "minioadmin"
-        self.secret_key = os.getenv("MINIO_ROOT_PASSWORD") or os.getenv("MINIO_SECRET_KEY") or "minioadmin"
+        self.access_key = os.getenv("MINIO_ROOT_USER") or os.getenv("MINIO_ACCESS_KEY") or "yunesa"
+        self.secret_key = os.getenv("MINIO_ROOT_PASSWORD") or os.getenv("MINIO_SECRET_KEY") or os.getenv("GLOBAL_PASSWORD")
+        if not self.secret_key:
+            raise RuntimeError("MINIO_ROOT_PASSWORD, MINIO_SECRET_KEY, or GLOBAL_PASSWORD must be set")
         self.public_base_url = (os.getenv("MINIO_PUBLIC_BASE_URL") or "").strip().rstrip("/")
         self._client = None
 

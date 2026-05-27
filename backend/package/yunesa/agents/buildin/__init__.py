@@ -46,9 +46,9 @@ class AgentManager(metaclass=SingletonMeta):
         )
 
     def auto_discover_agents(self):
-        """Automatically discover and register all agents under yuxi/agents/buildin/.
+        """Automatically discover and register all agents under yunesa/agents/buildin/.
 
-        Traverse subdirectories under yuxi/agents/buildin/. If a subdirectory contains
+        Traverse subdirectories under yunesa/agents/buildin/. If a subdirectory contains
         an __init__.py file, try importing and registering BaseAgent subclasses
         from that module. (Auto-import supports private agents.)
         """

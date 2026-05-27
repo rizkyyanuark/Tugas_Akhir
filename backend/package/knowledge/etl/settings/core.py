@@ -68,6 +68,12 @@ PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 # Core infrastructure.
 SUPABASE_URL: Final[str] = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY: Final[str] = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY: Final[str] = (
+    os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    or os.environ.get("SUPABASE_SERVICE_KEY")
+    or ""
+)
+SUPABASE_WRITE_KEY: Final[str] = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY
 
 if not SUPABASE_URL:
     logger.warning("ETL Config: SUPABASE_URL is missing.")
@@ -75,7 +81,6 @@ else:
     logger.info("ETL Config: Loaded (Supabase: %s...)", SUPABASE_URL[:30])
 
 # Scraping credentials.
-SERPAPI_KEY: Final[str] = os.environ.get("SERPAPI_KEY", "")
 SCIVAL_EMAIL: Final[str] = os.environ.get("SCIVAL_EMAIL", "")
 SCIVAL_PASS: Final[str] = os.environ.get("SCIVAL_PASS", "")
 
@@ -84,12 +89,15 @@ BD_USER_SERP: Final[str] = os.environ.get("BD_USER_SERP", "")
 BD_PASS_SERP: Final[str] = os.environ.get("BD_PASS_SERP", "")
 BD_USER_UNLOCKER: Final[str] = os.environ.get("BD_USER_UNLOCKER", "")
 BD_PASS_UNLOCKER: Final[str] = os.environ.get("BD_PASS_UNLOCKER", "")
-BRIGHTDATA_SERP_TOKEN: Final[str] = os.environ.get("BRIGHTDATA_SERP_TOKEN", "")
-BRIGHTDATA_SERP_ZONE: Final[str] = os.environ.get("BRIGHTDATA_SERP_ZONE", "serp_api1")
 BRIGHT_DATA_HOST: Final[str] = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")
 
 # AI / LLM.
 GROQ_API_KEY: Final[str] = os.environ.get("GROQ_API_KEY", "")
+SEMANTIC_SCHOLAR_API_KEY: Final[str] = (
+    os.environ.get("SEMANTIC_SCHOLAR_API_KEY")
+    or os.environ.get("S2_API_KEY")
+    or ""
+)
 
 # Non-secret TLDR behavior is intentionally code-owned so .env/GitHub Secrets
 # only need to carry provider keys.
@@ -98,9 +106,6 @@ GROQ_FAST_MODEL: Final[str] = "llama-3.1-8b-instant"
 GROQ_TLDR_MAX_SOURCE_CHARS: Final[int] = 2200
 GROQ_TLDR_SLEEP_SECONDS: Final[float] = 0.4
 GROQ_TLDR_OVERWRITE_EXISTING: Final[bool] = True
-
-# Notification.
-NOTIFICATION_EMAIL: Final[str] = os.environ.get("NOTIFICATION_EMAIL", "")
 
 # Crawler settings.
 CRAWLER_MAX_RETRIES: Final[int] = env_int("ETL_CRAWLER_MAX_RETRIES", 3)
@@ -138,8 +143,9 @@ if LITE_MODE:
 # Run behavior.
 ETL_RUN_MODE: Final[str] = os.getenv("ETL_RUN_MODE", "incremental").lower()
 ETL_SAMPLE_SIZE: Final[int] = env_int("ETL_SAMPLE_SIZE", 50)
+ETL_ENRICH_MAX_PAPERS_PER_RUN: Final[int] = env_int("ETL_ENRICH_MAX_PAPERS_PER_RUN", 0)
 ETL_FORCE_EXTRACT: Final[bool] = env_bool("ETL_FORCE_EXTRACT", False)
-ETL_FRESHNESS_HOURS: Final[int] = env_int("ETL_FRESHNESS_HOURS", 168)
+ETL_FRESHNESS_HOURS: Final[int] = env_int("ETL_FRESHNESS_HOURS", 72)
 
 # Storage bridge.
 ETL_STORAGE_TYPE: Final[str] = os.getenv("ETL_STORAGE_TYPE", "local").lower()

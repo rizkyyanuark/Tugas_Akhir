@@ -12,6 +12,7 @@ from docker.types import Mount
 
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
+VALID_RUN_MODES = {"full", "incremental", "sample"}
 
 
 def _clean_env(key: str, default: str = "") -> str:
@@ -40,6 +41,29 @@ def _default_worker_image() -> str:
     return "tugas-akhir-etl-worker:latest"
 
 
+def _default_run_mode() -> str:
+    environment = _clean_env("ENVIRONMENT", _clean_env("AIRFLOW_ENV", "dev")).lower()
+    if environment in {"prod", "production"}:
+        return "incremental"
+    return "sample"
+
+
+def _run_mode() -> str:
+    mode = _clean_env("ETL_RUN_MODE", _default_run_mode()).lower()
+    if mode in VALID_RUN_MODES:
+        return mode
+    return _default_run_mode()
+
+
+def _sample_size() -> str:
+    value = _clean_env("ETL_SAMPLE_SIZE", "5" if _run_mode() == "sample" else "50")
+    try:
+        size = int(value)
+    except ValueError:
+        return "5" if _run_mode() == "sample" else "50"
+    return str(max(size, 1))
+
+
 def _default_package_dir(host_data_dir: str) -> str:
     data_dir = host_data_dir.rstrip("/")
     if data_dir.endswith("/data"):
@@ -50,6 +74,8 @@ def _default_package_dir(host_data_dir: str) -> str:
 ETL_WORKER_IMAGE = _clean_env("ETL_WORKER_IMAGE", _default_worker_image())
 DOCKER_NETWORK = _clean_env("DOCKER_NETWORK", "tugas-akhir-network")
 HOST_DATA_DIR = _host_path(_clean_env("HOST_DATA_DIR", "/home/ubuntu/Tugas_Akhir/data"))
+ETL_RUN_MODE = _run_mode()
+ETL_SAMPLE_SIZE = _sample_size()
 
 DEFAULT_MOUNT_CODE = _clean_env("AIRFLOW_ENV", "dev").lower() == "dev"
 ETL_WORKER_MOUNT_CODE = _env_bool("ETL_WORKER_MOUNT_CODE", DEFAULT_MOUNT_CODE)
@@ -74,23 +100,32 @@ def worker_mounts() -> list[Mount]:
     return mounts
 
 
+def worker_command(task_name: str) -> str:
+    """Build an ETL worker command from the deployment runtime mode."""
+    command = f"{task_name} --mode {ETL_RUN_MODE}"
+    if ETL_RUN_MODE == "sample":
+        command = f"{command} --sample-size {ETL_SAMPLE_SIZE}"
+    return command
+
+
 def worker_env() -> dict[str, str]:
     return {
         # Credentials
         "SUPABASE_URL": _clean_env("SUPABASE_URL"),
         "SUPABASE_KEY": _clean_env("SUPABASE_KEY"),
+        "SUPABASE_SERVICE_ROLE_KEY": _clean_env(
+            "SUPABASE_SERVICE_ROLE_KEY",
+            _clean_env("SUPABASE_SERVICE_KEY"),
+        ),
         "SCIVAL_EMAIL": _clean_env("SCIVAL_EMAIL"),
         "SCIVAL_PASS": _clean_env("SCIVAL_PASS"),
-        "SERPAPI_KEY": _clean_env("SERPAPI_KEY"),
+        "SEMANTIC_SCHOLAR_API_KEY": _clean_env("SEMANTIC_SCHOLAR_API_KEY", _clean_env("S2_API_KEY")),
         "BRIGHT_DATA_HOST": _clean_env("BRIGHT_DATA_HOST", "brd.superproxy.io:33335"),
         "BD_USER_UNLOCKER": _clean_env("BD_USER_UNLOCKER"),
         "BD_PASS_UNLOCKER": _clean_env("BD_PASS_UNLOCKER"),
         "BD_USER_SERP": _clean_env("BD_USER_SERP"),
         "BD_PASS_SERP": _clean_env("BD_PASS_SERP"),
-        "BRIGHTDATA_SERP_TOKEN": _clean_env("BRIGHTDATA_SERP_TOKEN"),
-        "BRIGHTDATA_SERP_ZONE": _clean_env("BRIGHTDATA_SERP_ZONE", "serp_api1"),
         "GROQ_API_KEY": _clean_env("GROQ_API_KEY"),
-        "NOTIFICATION_EMAIL": _clean_env("NOTIFICATION_EMAIL"),
         # Storage
         "ETL_STORAGE_TYPE": _clean_env("ETL_STORAGE_TYPE", "local"),
         "AWS_S3_BUCKET": _clean_env("AWS_S3_BUCKET"),
@@ -98,10 +133,11 @@ def worker_env() -> dict[str, str]:
         "AWS_ACCESS_KEY_ID": _clean_env("AWS_ACCESS_KEY_ID"),
         "AWS_SECRET_ACCESS_KEY": _clean_env("AWS_SECRET_ACCESS_KEY"),
         # Runtime tuning
-        "ETL_RUN_MODE": _clean_env("ETL_RUN_MODE", "incremental"),
-        "ETL_SAMPLE_SIZE": _clean_env("ETL_SAMPLE_SIZE", "50"),
+        "ETL_RUN_MODE": ETL_RUN_MODE,
+        "ETL_SAMPLE_SIZE": ETL_SAMPLE_SIZE,
+        "ETL_ENRICH_MAX_PAPERS_PER_RUN": _clean_env("ETL_ENRICH_MAX_PAPERS_PER_RUN", "0"),
         "ETL_FORCE_EXTRACT": _clean_env("ETL_FORCE_EXTRACT", "false"),
-        "ETL_FRESHNESS_HOURS": _clean_env("ETL_FRESHNESS_HOURS", "168"),
+        "ETL_FRESHNESS_HOURS": _clean_env("ETL_FRESHNESS_HOURS", "72"),
         "ETL_CRAWLER_MAX_RETRIES": _clean_env("ETL_CRAWLER_MAX_RETRIES", "3"),
         "ETL_CRAWLER_TIMEOUT": _clean_env("ETL_CRAWLER_TIMEOUT", "60"),
         "ETL_CRAWLER_HEADLESS": _clean_env("ETL_CRAWLER_HEADLESS", "true"),

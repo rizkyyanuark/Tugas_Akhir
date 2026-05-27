@@ -169,7 +169,9 @@ class Neo4jConnectionManager:
 
         uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
         username = os.environ.get("NEO4J_USERNAME", "neo4j")
-        password = os.environ.get("NEO4J_PASSWORD", "0123456789")
+        password = os.environ.get("NEO4J_PASSWORD") or os.environ.get("GLOBAL_PASSWORD")
+        if not password:
+            raise RuntimeError("NEO4J_PASSWORD or GLOBAL_PASSWORD must be set for Neo4j access")
 
         try:
             self.driver = GD.driver(uri, auth=(username, password))

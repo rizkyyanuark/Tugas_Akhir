@@ -14,8 +14,8 @@ PAPERS_DAG_COMMANDS = [
     "paper_extract_scopus",
     "paper_extract_scholar",
     "paper_transform",
+    "paper_enrich",
     "paper_load",
-    "paper_notify",
 ]
 
 LECTURERS_DAG_COMMANDS = [
@@ -58,6 +58,8 @@ def test_worker_package_exports_runtime_and_registry():
 
 def test_papers_service_functions_importable():
     from knowledge.etl.services.unesa_papers import (
+        run_paper_enrichment,
+        run_paper_transform,
         run_scopus_processing,
         run_scopus_scraping,
         run_scholar_enrichment,
@@ -65,11 +67,310 @@ def test_papers_service_functions_importable():
         run_supabase_insert,
     )
 
+    assert callable(run_paper_transform)
+    assert callable(run_paper_enrichment)
     assert callable(run_scopus_scraping)
     assert callable(run_scopus_processing)
     assert callable(run_scholar_scraping)
     assert callable(run_scholar_enrichment)
     assert callable(run_supabase_insert)
+
+
+def test_scholar_scraping_requires_brightdata_proxy(monkeypatch):
+    import knowledge.etl.services.unesa_papers as service
+
+    monkeypatch.setattr(service, "PROXY_URL", "")
+    monkeypatch.setattr(
+        service,
+        "_load_lecturers_from_supabase",
+        lambda: (_ for _ in ()).throw(AssertionError("proxy config must fail first")),
+    )
+
+    assert service.run_scholar_scraping(proxy_url="") is None
+
+
+def test_document_type_normalization_for_enrichment():
+    from knowledge.etl.transform.enricher import normalize_document_type
+
+    assert normalize_document_type("") == "article"
+    assert normalize_document_type("Artikel") == "article"
+    assert normalize_document_type("Article") == "article"
+    assert normalize_document_type("journal-article") == "article"
+    assert normalize_document_type("JournalArticle") == "article"
+    assert normalize_document_type("conference") == "conference paper"
+    assert normalize_document_type("conference-paper") == "conference paper"
+    assert normalize_document_type("proceedings-article") == "conference paper"
+    assert normalize_document_type("Book Chapter") == "book chapter"
+
+
+def test_scopus_processing_helper_cleans_and_deduplicates(monkeypatch):
+    import pandas as pd
+    import knowledge.etl.transform.cleaner as cleaner
+    from knowledge.etl.clients.scopus_client import process_scopus_data
+
+    monkeypatch.setattr(cleaner, "_load_lecturer_db", lambda: ({}, {}))
+
+    df = pd.DataFrame(
+        [
+            {
+                "Title": " Sample Paper ",
+                "Year": "2026",
+                "DOI": "10.1/sample",
+                "Authors": "Doe, John",
+                "Author IDs": "123",
+                "Abstract": "Abstract: This is a sample.",
+                "Keywords": "AI",
+            },
+            {
+                "Title": "Sample Paper",
+                "Year": "2026",
+                "DOI": "10.1/sample",
+                "Authors": "Doe, John",
+                "Author IDs": "123",
+            },
+        ]
+    )
+
+    processed = process_scopus_data(df)
+
+    assert len(processed) == 1
+    assert processed.iloc[0]["Title"] == "Sample Paper"
+    assert processed.iloc[0]["source"] == "scopus"
+    assert "TLDR" in processed.columns
+
+
+def test_scopus_processing_skips_empty_raw_csv(monkeypatch, tmp_path):
+    import knowledge.etl.services.unesa_papers as service
+
+    raw_path = tmp_path / "empty_scopus_raw.csv"
+    master_path = tmp_path / "sample_scopus.csv"
+    raw_path.write_text("", encoding="utf-8")
+
+    result = service.run_scopus_processing(
+        input_raw_path=raw_path,
+        output_master_path=master_path,
+    )
+
+    assert result.empty
+    assert not raw_path.exists()
+    assert not master_path.exists()
+
+
+def test_paper_extract_skips_when_checkpoint_is_fresh(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from knowledge.etl.pipelines import unesa_papers as pipeline
+
+    class Config:
+        is_full = False
+        is_sample = False
+
+    monkeypatch.setattr(pipeline, "ETL_FORCE_EXTRACT", False)
+    monkeypatch.setattr(pipeline, "ETL_FRESHNESS_HOURS", 72)
+    monkeypatch.setattr(pipeline, "path_exists", lambda path: path == "scopus.csv")
+    monkeypatch.setattr(
+        pipeline,
+        "get_modification_time",
+        lambda path: datetime.now(timezone.utc) - timedelta(hours=12),
+    )
+
+    assert pipeline._should_skip_extract(
+        Config(),
+        "paper_extract_scopus",
+        ("scopus_raw.csv", "scopus.csv"),
+    ) is True
+
+
+def test_paper_enrichment_resumes_completed_checkpoint(monkeypatch):
+    import pandas as pd
+    import knowledge.etl.services.unesa_papers as service
+
+    input_path = "paper_transformed.csv"
+    output_path = "paper_enriched.csv"
+    transformed = pd.DataFrame(
+        [
+            {"Title": "Completed Paper", "Abstract": "raw completed", "enriched": ""},
+            {"Title": "Pending Paper", "Abstract": "raw pending", "enriched": ""},
+        ]
+    )
+    checkpoint = pd.DataFrame(
+        [
+            {
+                "Title": "Completed Paper",
+                "Abstract": "enriched abstract",
+                "Keywords": "knowledge graph; metadata",
+                "Author IDs": "S123",
+                "TLDR": "Completed TLDR.",
+                "Document Type": "article",
+                "enrichment_status": "complete",
+                "enriched": "True",
+            },
+            {
+                "Title": "Pending Paper",
+                "Abstract": "old pending",
+                "Keywords": "",
+                "Author IDs": "",
+                "TLDR": "",
+                "Document Type": "",
+                "enrichment_status": "partial",
+                "enriched": "",
+            },
+        ]
+    )
+    reads = {input_path: transformed, output_path: checkpoint}
+    written = []
+    enriched_titles = []
+
+    def fake_read(path, **kwargs):
+        return reads[path].copy()
+
+    def fake_write(df, path, **kwargs):
+        written.append((path, df.copy()))
+
+    def fake_enrich(df, batch_size, start_idx=0, allow_paid_proxy=False):
+        pending = df[df["Title"] == "Pending Paper"]
+        enriched_titles.extend(pending["Title"].tolist())
+        for index in pending.index[:batch_size]:
+            df.at[index, "Keywords"] = "pipeline; test"
+            df.at[index, "Author IDs"] = "S456"
+            df.at[index, "TLDR"] = "Pending TLDR."
+            df.at[index, "enrichment_status"] = "complete"
+            df.at[index, "enriched"] = "True"
+        return df
+
+    monkeypatch.setattr(service, "smart_exists", lambda path: path in reads)
+    monkeypatch.setattr(service, "read_dataframe_artifact", fake_read)
+    monkeypatch.setattr(service, "write_dataframe_artifact", fake_write)
+    monkeypatch.setattr(service, "enrich_paper_batch", fake_enrich)
+    monkeypatch.setattr(service, "ETL_ENRICH_MAX_PAPERS_PER_RUN", 0)
+
+    result = service.run_paper_enrichment(
+        input_csv=input_path,
+        output_csv=output_path,
+        allow_paid_proxy=False,
+    )
+
+    assert enriched_titles == ["Pending Paper"]
+    assert result.loc[result["Title"] == "Completed Paper", "TLDR"].item() == "Completed TLDR."
+    assert result.loc[result["Title"] == "Pending Paper", "TLDR"].item() == "Pending TLDR."
+    assert written
+
+
+def test_paper_supabase_insert_combines_scopus_and_scholar(monkeypatch):
+    import pandas as pd
+    import knowledge.etl.load.supabase_loader as loader_module
+    import knowledge.etl.services.unesa_papers as service
+    import knowledge.etl.transform.cleaner as cleaner
+    import knowledge.etl.transform.deduplicator as deduplicator
+
+    captured = {}
+
+    def fake_exists(path):
+        return path in {service.SCOPUS_CSV, service.SCHOLAR_CSV}
+
+    def fake_read(path, **kwargs):
+        if path == service.SCOPUS_CSV:
+            return pd.DataFrame(
+                [{
+                    "Title": "Scopus Paper",
+                    "Year": "2026",
+                    "DOI": "10.1/scopus",
+                    "Abstract": "Scopus abstract",
+                    "Keywords": "scopus; metadata",
+                    "Author IDs": "S1",
+                    "TLDR": "Scopus TLDR.",
+                }]
+            )
+        return pd.DataFrame(
+            [{
+                "Title": "Scholar Paper",
+                "Year": "2026",
+                "DOI": "",
+                "scholar_id": "abc",
+                "Abstract": "Scholar abstract",
+                "Keywords": "scholar; metadata",
+                "Author IDs": "S2",
+                "TLDR": "Scholar TLDR.",
+            }]
+        )
+
+    class FakeLoader:
+        def upsert_papers(self, df):
+            captured["paper_titles"] = set(df["Title"].tolist())
+            return len(df)
+
+        def link_papers_to_lecturers(self, df):
+            captured["link_rows"] = len(df)
+            return len(df)
+
+    monkeypatch.setattr(service, "smart_exists", fake_exists)
+    monkeypatch.setattr(service, "read_dataframe_artifact", fake_read)
+    monkeypatch.setattr(cleaner, "clean_papers_batch", lambda df: df)
+    monkeypatch.setattr(deduplicator, "deduplicate_papers", lambda df: df)
+    monkeypatch.setattr(loader_module, "SupabaseLoader", lambda: FakeLoader())
+
+    result = service.run_supabase_insert()
+
+    assert result == {"papers": 2, "links": 2}
+    assert captured["paper_titles"] == {"Scopus Paper", "Scholar Paper"}
+
+
+def test_paper_supabase_insert_skips_incomplete_rows(monkeypatch):
+    import pandas as pd
+    import knowledge.etl.load.supabase_loader as loader_module
+    import knowledge.etl.services.unesa_papers as service
+    import knowledge.etl.transform.cleaner as cleaner
+    import knowledge.etl.transform.deduplicator as deduplicator
+
+    captured = {"upsert_called": False}
+
+    def fake_read(path, **kwargs):
+        return pd.DataFrame(
+            [{
+                "Title": "Incomplete Paper",
+                "Abstract": "Has abstract",
+                "Keywords": "",
+                "Author IDs": "S1",
+                "TLDR": "Has TLDR.",
+            }]
+        )
+
+    class FakeLoader:
+        def upsert_papers(self, df):
+            captured["upsert_called"] = True
+            return len(df)
+
+        def link_papers_to_lecturers(self, df):
+            return len(df)
+
+    monkeypatch.setattr(service, "smart_exists", lambda path: path == "input.csv")
+    monkeypatch.setattr(service, "read_dataframe_artifact", fake_read)
+    monkeypatch.setattr(cleaner, "clean_papers_batch", lambda df: df)
+    monkeypatch.setattr(deduplicator, "deduplicate_papers", lambda df: df)
+    monkeypatch.setattr(loader_module, "SupabaseLoader", lambda: FakeLoader())
+
+    result = service.run_supabase_insert(input_master_path="input.csv")
+
+    assert result == {"papers": 0, "links": 0}
+    assert captured["upsert_called"] is False
+
+
+def test_deduplicate_papers_merges_author_relationships():
+    import pandas as pd
+    from knowledge.etl.transform.deduplicator import deduplicate_papers
+
+    df = pd.DataFrame(
+        [
+            {"Title": "Same Paper", "Authors": "A", "Author IDs": "S1", "source": "scopus"},
+            {"Title": "Same Paper", "Authors": "B", "Author IDs": "S2", "source": "scholar"},
+        ]
+    )
+
+    result = deduplicate_papers(df)
+
+    assert len(result) == 1
+    assert result.loc[0, "Author IDs"] == "S1; S2"
+    assert result.loc[0, "Authors"] == "A; B"
+    assert result.loc[0, "source"] == "scopus; scholar"
 
 
 def test_lecturers_service_functions_importable():
@@ -99,12 +400,13 @@ def test_siakadu_identity_service_importable():
 
 def test_etl_path_modules_importable():
     from knowledge.etl.services.lecturer_paths import FINAL_CSV, SCRAPE_SIAKADU_PATH
-    from knowledge.etl.services.paper_paths import SCHOLAR_CSV, SCOPUS_CSV
+    from knowledge.etl.services.paper_paths import PAPER_ENRICHMENT_STATE_JSON, SCHOLAR_CSV, SCOPUS_CSV
 
     assert FINAL_CSV is not None
     assert SCRAPE_SIAKADU_PATH is not None
-    assert SCOPUS_CSV is not None
-    assert SCHOLAR_CSV is not None
+    assert str(SCOPUS_CSV).endswith(".parquet")
+    assert str(SCHOLAR_CSV).endswith(".parquet")
+    assert str(PAPER_ENRICHMENT_STATE_JSON).endswith(".json")
 
 
 def test_lecturer_downstream_tasks_do_not_skip_on_fresh_outputs(monkeypatch):
@@ -140,12 +442,17 @@ def test_scholar_verification_compatibility_client_importable():
 
 
 def test_storage_compatibility_helpers_importable(tmp_path):
+    import pandas as pd
     from knowledge.etl.utils.storage import (
         get_path_obj,
         normalize_storage_path,
         path_name,
+        read_dataframe_artifact,
+        read_json_artifact,
         smart_exists,
         smart_unlink,
+        write_dataframe_artifact,
+        write_json_artifact,
     )
 
     target = get_path_obj(tmp_path, "sample.csv")
@@ -155,6 +462,16 @@ def test_storage_compatibility_helpers_importable(tmp_path):
     assert get_path_obj("s3://bucket/prefix", "sample.csv") == "s3://bucket/prefix/sample.csv"
     assert normalize_storage_path("s3:/bucket/prefix/sample.csv") == "s3://bucket/prefix/sample.csv"
     assert path_name("s3://bucket/prefix/sample.csv") == "sample.csv"
+
+    parquet_target = get_path_obj(tmp_path, "sample.parquet")
+    state_target = get_path_obj(tmp_path, "checkpoint.json")
+    write_dataframe_artifact(pd.DataFrame([{"title": "Paper A", "year": "2026"}]), parquet_target)
+    write_json_artifact({"status": "running", "rows": 1}, state_target)
+
+    assert read_dataframe_artifact(parquet_target).to_dict("records") == [
+        {"title": "Paper A", "year": "2026"}
+    ]
+    assert read_json_artifact(state_target) == {"rows": 1, "status": "running"}
 
 
 def test_siakadu_parser_extracts_lecturer_identities_only():

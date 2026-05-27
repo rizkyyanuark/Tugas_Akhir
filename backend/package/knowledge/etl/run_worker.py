@@ -18,13 +18,10 @@ import os
 import sys
 
 from knowledge.etl.config import ETL_RUN_MODE, ETL_SAMPLE_SIZE
+from knowledge.etl.utils.logging import configure_etl_logging, log_event, timed_event
 from knowledge.etl.worker import RunConfig, TASK_CHOICES, TASK_REGISTRY, dispatch_task
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_etl_logging()
 logger = logging.getLogger("etl-worker")
 
 # Backward-compatible alias for older tests/imports.
@@ -80,7 +77,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _resolve_run_config(args: argparse.Namespace) -> RunConfig:
     if args.test_mode and not args.mode:
         mode = "sample"
-        logger.warning("--test-mode is deprecated. Use --mode sample instead.")
+        logger.warning("config.deprecated_flag | flag=--test-mode | replacement=--mode sample")
     elif args.mode:
         mode = args.mode
     else:
@@ -103,12 +100,12 @@ def _run_with_optional_reload(task_name: str, config: RunConfig) -> None:
     try:
         from watchfiles import run_process
     except ImportError:
-        logger.warning("watchfiles not found. Running task once without reload.")
+        logger.warning("reload.unavailable | package=watchfiles | action=run_once")
         dispatch_task(task_name, config)
         return
 
-    logger.info("Hot reload enabled. Watching ETL package for changes.")
     package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    log_event(logger, "reload.enabled", package_dir=package_dir)
     task_func = functools.partial(dispatch_task, task_name, config)
     run_process(package_dir, target=task_func)
 
@@ -123,17 +120,24 @@ def main() -> None:
         sys.exit(0)
 
     config = _resolve_run_config(args)
-    logger.info("Starting task '%s' with %s", args.task, config)
+    log_event(
+        logger,
+        "task.start",
+        task=args.task,
+        mode=config.mode,
+        sample_size=config.sample_size if config.is_sample else None,
+        prodi_filter=config.prodi_filter,
+    )
 
     try:
-        _run_with_optional_reload(args.task, config)
+        with timed_event(logger, "task.run", task=args.task):
+            _run_with_optional_reload(args.task, config)
     except Exception:
-        logger.exception("Task '%s' failed.", args.task)
+        logger.error("task.failed | task=%s", args.task)
         sys.exit(1)
 
-    logger.info("ETL Worker task '%s' finished successfully.", args.task)
+    log_event(logger, "task.success", task=args.task)
 
 
 if __name__ == "__main__":
     main()
-

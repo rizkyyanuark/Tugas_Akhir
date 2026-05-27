@@ -1,33 +1,117 @@
 import logging
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
 
+from knowledge.etl.clients.scholar_client import ScholarClient
 from knowledge.etl.clients.supabase_client import SupabaseClient
 from knowledge.etl.config import (
-    SCIVAL_EMAIL, 
-    SCIVAL_PASS, 
-    BRIGHTDATA_SERP_TOKEN
+    ETL_ENRICH_MAX_PAPERS_PER_RUN,
+    PROXY_URL,
+    SCIVAL_EMAIL,
+    SCIVAL_PASS,
 )
 from knowledge.etl.services.paper_paths import (
+    PAPER_ENRICHED_CSV,
+    PAPER_ENRICHMENT_STATE_JSON,
+    PAPER_MERGED_CSV,
+    PAPER_SAMPLE_MERGED_CSV,
+    PAPER_SAMPLE_TRANSFORMED_CSV,
+    LEGACY_CSV_BY_ARTIFACT,
     SCHOLAR_CSV,
+    SCHOLAR_SAMPLE_CSV,
     SCHOLAR_TEMP_CSV,
     SCOPUS_CSV,
     SCOPUS_RAW_CSV,
+    SCOPUS_SAMPLE_CSV,
+    SCOPUS_SAMPLE_RAW_CSV,
 )
 from knowledge.etl.utils.storage import (
     path_name,
-    read_dataframe_csv,
+    read_dataframe_artifact,
     smart_exists,
     smart_unlink,
-    write_dataframe_csv,
+    write_dataframe_artifact,
+    write_json_artifact,
 )
-from knowledge.etl.transform.enricher import resolve_academic_authors, enrich_paper_batch
+from knowledge.etl.utils.logging import log_error, log_event, log_warning
+from knowledge.etl.transform.enricher import (
+    enrich_paper_batch,
+    missing_required_enrichment_fields,
+    resolve_academic_authors,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _legacy_csv_for_artifact(path: Path | str) -> Path | str | None:
+    return LEGACY_CSV_BY_ARTIFACT.get(str(path))
+
+
+def _artifact_exists(path: Path | str) -> bool:
+    legacy_path = _legacy_csv_for_artifact(path)
+    return smart_exists(path) or bool(legacy_path and smart_exists(legacy_path))
+
+
+def _existing_artifact_path(path: Path | str) -> Path | str:
+    if smart_exists(path):
+        return path
+
+    legacy_path = _legacy_csv_for_artifact(path)
+    if legacy_path and smart_exists(legacy_path):
+        log_event(logger, "artifact.legacy_fallback", requested=path, selected=legacy_path)
+        return legacy_path
+    return path
+
+
+def _unlink_artifact(path: Path | str) -> None:
+    smart_unlink(path)
+    legacy_path = _legacy_csv_for_artifact(path)
+    if legacy_path:
+        smart_unlink(legacy_path)
+
+
+def _read_artifact_or_empty(path: Path | str, **kwargs) -> pd.DataFrame:
+    """Read a CSV/Parquet artifact, returning an empty DataFrame for empty CSVs."""
+    try:
+        return read_dataframe_artifact(_existing_artifact_path(path), **kwargs)
+    except pd.errors.EmptyDataError:
+        log_warning(logger, "artifact.empty", path=path,
+                    action="treat_as_empty_dataframe")
+        return pd.DataFrame()
+
+
+def _limit_mixed_sources(df: pd.DataFrame, limit: Optional[int]) -> pd.DataFrame:
+    """Return up to `limit` rows while preserving source diversity when possible."""
+    if not limit or limit <= 0 or df.empty or len(df) <= limit:
+        return df
+
+    if "source" not in df.columns:
+        return df.head(limit).copy()
+
+    groups = {
+        str(source): group.copy()
+        for source, group in df.groupby(df["source"].fillna("").astype(str), sort=False)
+    }
+    selected_indices: list[int] = []
+    while len(selected_indices) < limit and groups:
+        exhausted: list[str] = []
+        for source, group in groups.items():
+            if group.empty:
+                exhausted.append(source)
+                continue
+            selected_indices.append(group.index[0])
+            groups[source] = group.iloc[1:]
+            if len(selected_indices) >= limit:
+                break
+        for source in exhausted:
+            groups.pop(source, None)
+
+    return df.loc[selected_indices].reset_index(drop=True)
 
 
 def _get_target_ids(df_lecturers: pd.DataFrame, col_name: str) -> List[str]:
@@ -38,46 +122,228 @@ def _get_target_ids(df_lecturers: pd.DataFrame, col_name: str) -> List[str]:
     return [str(x).strip().replace('.0', '') for x in ids if x and str(x).strip().lower() not in ('nan', 'none', '')]
 
 
+def _paper_checkpoint_key(row: pd.Series) -> str:
+    """Build a stable enrichment checkpoint key from title, then DOI."""
+    title = re.sub(r"[^a-z0-9]+", "", str(row.get("Title", "")).lower())
+    if title and title not in {"nan", "none", "null"}:
+        return f"title:{title}"
+
+    doi = str(row.get("DOI", "")).strip().lower()
+    if doi and doi not in {"nan", "none", "null"}:
+        return f"doi:{doi}"
+    return ""
+
+
+def _is_enriched(value) -> bool:
+    return str(value).strip().lower() == "true"
+
+
+def _ensure_enrichment_control_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure checkpoint/load control columns exist for paper enrichment."""
+    for column in [
+        "enriched",
+        "enrichment_status",
+        "missing_required_fields",
+        "metadata_provenance",
+    ]:
+        if column not in df.columns:
+            df[column] = ""
+    return df
+
+
+def _missing_required_fields_for_row(row: pd.Series) -> list[str]:
+    return missing_required_enrichment_fields(
+        abstract=row.get("Abstract", ""),
+        keywords=row.get("Keywords", ""),
+        author_ids=row.get("Author IDs", ""),
+        tldr=row.get("TLDR", ""),
+    )
+
+
+def _is_complete_enrichment_row(row: pd.Series) -> bool:
+    """Return True only when the row is safe to load to the paper KG tables."""
+    missing = _missing_required_fields_for_row(row)
+    status = str(row.get("enrichment_status", "")).strip().lower()
+    return not missing and status != "failed_permanent"
+
+
+def _complete_enrichment_mask(df: pd.DataFrame) -> pd.Series:
+    if df.empty:
+        return pd.Series(dtype=bool)
+    df = _ensure_enrichment_control_columns(df)
+    return df.apply(_is_complete_enrichment_row, axis=1)
+
+
+def _resume_enrichment_checkpoint(df: pd.DataFrame, output_file: Path | str) -> pd.DataFrame:
+    """
+    Overlay checkpointed rows from the enriched checkpoint onto transformed input.
+
+    The transformed dataset stays the source of truth for which papers belong in
+    the run. Rows are restored by title-based checkpoint key so reruns can keep
+    partial metadata and continue from the latest enrichment checkpoint.
+    """
+    if df.empty or not _artifact_exists(output_file):
+        return df
+
+    checkpoint = _read_artifact_or_empty(output_file, dtype=str).fillna("")
+    if checkpoint.empty:
+        return df
+    checkpoint = _ensure_enrichment_control_columns(checkpoint)
+
+    checkpoint_rows: dict[str, pd.Series] = {}
+    complete_rows = 0
+    for _, row in checkpoint.iterrows():
+        key = _paper_checkpoint_key(row)
+        if not key:
+            continue
+        checkpoint_rows[key] = row
+        if _is_complete_enrichment_row(row):
+            complete_rows += 1
+
+    if not checkpoint_rows:
+        log_event(
+            logger,
+            "paper.enrich.checkpoint_loaded",
+            path=output_file,
+            rows=len(checkpoint),
+            restored_rows=0,
+            complete_rows=0,
+        )
+        return df
+
+    resumed = df.copy()
+    for column in checkpoint.columns:
+        if column not in resumed.columns:
+            resumed[column] = ""
+
+    restored_rows = 0
+    for index, row in resumed.iterrows():
+        checkpoint_row = checkpoint_rows.get(_paper_checkpoint_key(row))
+        if checkpoint_row is None:
+            continue
+
+        for column, value in checkpoint_row.items():
+            resumed.at[index, column] = value
+        restored_rows += 1
+
+    log_event(
+        logger,
+        "paper.enrich.checkpoint_loaded",
+        path=output_file,
+        rows=len(checkpoint),
+        restored_rows=restored_rows,
+        complete_rows=complete_rows,
+    )
+    return resumed
+
+
+def _write_enrichment_state(
+    *,
+    input_file: Path | str,
+    output_file: Path | str,
+    df: pd.DataFrame,
+    status: str,
+    batch_rows: int = 0,
+) -> None:
+    """Persist a small state document beside Parquet enrichment checkpoints."""
+    runtime_outputs = {str(PAPER_ENRICHED_CSV), str(PAPER_SAMPLE_MERGED_CSV)}
+    if str(output_file) not in runtime_outputs:
+        return
+
+    df = _ensure_enrichment_control_columns(df)
+    complete_mask = _complete_enrichment_mask(df)
+    enriched_rows = int(complete_mask.sum())
+
+    payload = {
+        "checkpoint_version": 1,
+        "pipeline": "paper_enrichment",
+        "status": status,
+        "input_artifact": str(input_file),
+        "output_artifact": str(output_file),
+        "artifact_format": path_name(output_file).rsplit(".", 1)[-1],
+        "total_rows": int(len(df)),
+        "enriched_rows": enriched_rows,
+        "pending_rows": int(len(df) - enriched_rows),
+        "last_batch_rows": int(batch_rows),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        write_json_artifact(payload, PAPER_ENRICHMENT_STATE_JSON)
+        log_event(
+            logger,
+            "paper.enrich.state_saved",
+            path=PAPER_ENRICHMENT_STATE_JSON,
+            status=status,
+            enriched_rows=enriched_rows,
+            pending_rows=payload["pending_rows"],
+        )
+    except Exception as exc:
+        log_warning(logger, "paper.enrich.state_failed", path=PAPER_ENRICHMENT_STATE_JSON, error=exc)
+
+
 def _load_lecturers_from_supabase() -> pd.DataFrame:
     """Standardized loader for lecturer data from Supabase."""
     try:
         client = SupabaseClient()
         df = client.get_lecturers_df()
         if df.empty:
-            logger.warning("No lecturer data found in Supabase.")
+            log_warning(logger, "supabase.lecturers.empty")
         return df
     except Exception as e:
-        logger.error(f"Failed to load lecturers from Supabase. Error: {e}")
+        log_error(logger, "supabase.lecturers.load_failed", exc=e)
         return pd.DataFrame()
 
 
 # ================================================================
 # STEP 1: SCOPUS SCRAPING
 # ================================================================
-def run_scopus_scraping(df_lecturers: Optional[pd.DataFrame] = None, email: Optional[str] = None, password: Optional[str] = None) -> pd.DataFrame:
+def run_scopus_scraping(
+    df_lecturers: Optional[pd.DataFrame] = None,
+    email: Optional[str] = None,
+    password: Optional[str] = None,
+    run_mode: str = "incremental",
+    sample_size: Optional[int] = None,
+    output_raw_path: Optional[Path] = None,
+) -> pd.DataFrame:
     """Scrape papers from Scopus for all lecturers."""
     email = email or SCIVAL_EMAIL
     password = password or SCIVAL_PASS
     from knowledge.etl.clients.scopus_client import ScopusPaperClient
 
-    logger.info("Starting STEP 1: SCOPUS SCRAPING")
+    log_event(logger, "scopus.extract.start",
+              mode=run_mode, sample_size=sample_size)
 
     if df_lecturers is None:
         df_lecturers = _load_lecturers_from_supabase()
 
     target_ids = _get_target_ids(df_lecturers, 'scopus_id')
-    logger.info(f"Found {len(target_ids)} Scopus IDs to scrape.")
+    log_event(logger, "scopus.extract.targets", target_count=len(target_ids))
 
     if not target_ids:
-        logger.warning("No valid Scopus IDs found. Skipping scraping process.")
+        log_warning(logger, "scopus.extract.no_targets", action="skip")
         return pd.DataFrame()
+
+    if run_mode == "sample":
+        target_ids = target_ids[:1]
+        log_event(logger, "scopus.extract.sample_mode",
+                  author_count=len(target_ids), paper_limit=sample_size)
 
     client = ScopusPaperClient(email, password)
     papers = client.run_scraper(target_ids)
 
     df_new = pd.DataFrame(papers) if papers else pd.DataFrame()
-    write_dataframe_csv(df_new, SCOPUS_RAW_CSV, index=False)
-    logger.info(f"Checkpoint saved: {len(df_new)} papers to {SCOPUS_RAW_CSV}")
+    if run_mode == "sample" and sample_size:
+        df_new = df_new.head(sample_size).copy()
+
+    raw_path = output_raw_path or (
+        SCOPUS_SAMPLE_RAW_CSV if run_mode == "sample" else SCOPUS_RAW_CSV)
+    if df_new.empty:
+        log_warning(logger, "scopus.extract.no_rows", action="skip_empty_checkpoint")
+        return df_new
+
+    write_dataframe_artifact(df_new, raw_path, index=False)
+    log_event(logger, "checkpoint.saved", source="scopus_raw",
+              path=raw_path, rows=len(df_new))
 
     return df_new
 
@@ -89,143 +355,166 @@ def run_scopus_processing(input_raw_path: Optional[Path] = None, output_master_p
     """Process Scopus data: Clean, Deduplicate, and Enrich."""
     from knowledge.etl.clients.scopus_client import process_scopus_data
 
-    logger.info("Starting STEP 2: SCOPUS PROCESSING")
+    log_event(logger, "scopus.process.start",
+              input_path=input_raw_path, output_path=output_master_path)
 
     raw_path = input_raw_path or SCOPUS_RAW_CSV
     master_path = output_master_path or SCOPUS_CSV
 
-    if not smart_exists(raw_path):
-        logger.info(f"Raw data not found at: {raw_path}. Skipping.")
+    if not _artifact_exists(raw_path):
+        log_event(logger, "scopus.process.raw_missing",
+                  path=raw_path, action="skip")
         return pd.DataFrame()
-    
-    df_raw = read_dataframe_csv(raw_path, dtype=str).fillna("")
+
+    df_raw = _read_artifact_or_empty(raw_path, dtype=str).fillna("")
+    if df_raw.empty:
+        log_warning(logger, "scopus.process.raw_empty",
+                    path=raw_path, action="delete_and_skip")
+        _unlink_artifact(raw_path)
+        return pd.DataFrame()
 
     df_master = pd.DataFrame()
-    if smart_exists(master_path):
-        logger.info(f"Loading Master Database: {master_path}")
-        df_master = read_dataframe_csv(master_path, dtype=str).fillna("")
+    if _artifact_exists(master_path):
+        log_event(logger, "scopus.process.master_loaded", path=master_path)
+        df_master = _read_artifact_or_empty(master_path, dtype=str).fillna("")
     else:
-        logger.info("No Master Database found. Starting fresh.")
+        log_event(logger, "scopus.process.master_missing",
+                  action="start_fresh")
 
-    logger.info(f"Merging: New ({len(df_raw)}) + Master ({len(df_master)})")
+    log_event(logger, "scopus.process.merge_input",
+              new_rows=len(df_raw), master_rows=len(df_master))
     df_combined = pd.concat([df_master, df_raw], ignore_index=True)
 
     if df_combined.empty:
-        logger.warning("No paper data available to process.")
+        log_warning(logger, "scopus.process.no_rows", action="skip")
         return pd.DataFrame()
 
     df_processed = process_scopus_data(df_combined)
 
-    write_dataframe_csv(df_processed, master_path, index=False)
-    logger.info(f"Saved {len(df_processed)} papers to {master_path}")
-    
-    smart_unlink(raw_path)
+    write_dataframe_artifact(df_processed, master_path, index=False)
+    log_event(logger, "checkpoint.saved", source="scopus_processed",
+              path=master_path, rows=len(df_processed))
+
+    _unlink_artifact(raw_path)
     return df_processed
 
 
 # ================================================================
 # STEP 3: SUPABASE INSERT (Upsert + Link to Lecturers)
 # ================================================================
-def run_supabase_insert(input_master_path: Optional[Path] = None) -> None:
-    """Upsert papers and link them to lecturers in Supabase."""
-    logger.info("Starting STEP 3: SUPABASE INSERTION")
+def run_supabase_insert(
+    input_master_path: Optional[Path] = None,
+    source_paths: Optional[list[tuple[Path | str, str]]] = None,
+    sample_limit: Optional[int] = None,
+) -> dict[str, int]:
+    """Upsert cleaned Scopus and Scholar papers, then link them to lecturers."""
+    log_event(logger, "paper.load.start",
+              input_path=input_master_path, sample_limit=sample_limit)
 
-    csv_path = input_master_path or SCOPUS_CSV
-    if not smart_exists(csv_path):
-        logger.error(f"Master data not found at: {csv_path}")
-        return
+    if input_master_path:
+        sources = [(input_master_path, "custom")]
+    elif source_paths:
+        sources = source_paths
+    else:
+        sources = [(SCOPUS_CSV, "scopus"), (SCHOLAR_CSV, "scholar")]
 
-    logger.info(f"Loading Cleaned Papers: {csv_path}")
-    df_master = read_dataframe_csv(csv_path, dtype=str)
-    logger.info(f"Total Rows to Sync: {len(df_master)}")
+    frames: list[pd.DataFrame] = []
+    for csv_path, source_name in sources:
+        if not _artifact_exists(csv_path):
+            log_event(logger, "paper.load.source_missing",
+                      path=csv_path, source=source_name, action="skip")
+            continue
+
+        log_event(logger, "paper.load.source_read",
+                  path=csv_path, source=source_name)
+        df_source = _read_artifact_or_empty(csv_path, dtype=str).fillna("")
+        if df_source.empty:
+            log_event(logger, "paper.load.source_empty",
+                      path=csv_path, source=source_name, action="skip")
+            continue
+        if "source" not in df_source.columns:
+            df_source["source"] = source_name
+        else:
+            df_source["source"] = df_source["source"].replace("", source_name)
+        frames.append(df_source)
+
+    if not frames:
+        log_warning(logger, "paper.load.no_sources", action="skip")
+        return {"papers": 0, "links": 0}
+
+    df_master = pd.concat(frames, ignore_index=True)
+    log_event(logger, "paper.load.rows_loaded",
+              rows=len(df_master), sources=len(frames))
 
     try:
-        client = SupabaseClient()
-        logger.info("Syncing papers to 'papers' table...")
-        client.upsert_papers(df_master)
+        from knowledge.etl.load.supabase_loader import SupabaseLoader
+        from knowledge.etl.transform.cleaner import clean_papers_batch
+        from knowledge.etl.transform.deduplicator import deduplicate_papers
 
-        logger.info("Linking papers to authors...")
-        client.link_papers_to_lecturers(df_master)
+        df_master = clean_papers_batch(df_master)
+        df_master = deduplicate_papers(df_master)
+        df_master = _limit_mixed_sources(df_master, sample_limit)
+        df_master = _ensure_enrichment_control_columns(df_master)
+        complete_mask = _complete_enrichment_mask(df_master)
+        skipped_incomplete = int((~complete_mask).sum())
+        if skipped_incomplete:
+            missing_summary = (
+                df_master.loc[~complete_mask]
+                .apply(lambda row: ",".join(_missing_required_fields_for_row(row)) or "unknown", axis=1)
+                .value_counts()
+                .head(5)
+                .to_dict()
+            )
+            log_warning(
+                logger,
+                "paper.load.skip_incomplete",
+                rows=skipped_incomplete,
+                reason="missing_required_enrichment_fields",
+                missing_summary=missing_summary,
+            )
+        df_master = df_master.loc[complete_mask].reset_index(drop=True)
+        log_event(logger, "paper.load.rows_ready", rows=len(df_master), skipped_incomplete=skipped_incomplete)
+        if df_master.empty:
+            log_warning(logger, "paper.load.no_complete_rows", action="skip_supabase_write")
+            return {"papers": 0, "links": 0}
 
-        logger.info("Database sync completed successfully.")
+        loader = SupabaseLoader()
+        log_event(logger, "paper.load.upsert_papers.start",
+                  rows=len(df_master), table="papers")
+        papers_count = loader.upsert_papers(df_master)
+
+        log_event(logger, "paper.load.link_authors.start",
+                  rows=len(df_master), table="lecturer_papers")
+        links_count = loader.link_papers_to_lecturers(df_master)
+
+        log_event(logger, "paper.load.done",
+                  papers=papers_count, links=links_count)
+        return {"papers": papers_count, "links": links_count}
 
     except Exception as e:
-        logger.error(f"Database Operation Failed: {e}")
+        log_error(logger, "paper.load.failed", exc=e)
+        raise
 
 
 # ================================================================
-# STEP 4: GOOGLE SCHOLAR SCRAPING (via SerpAPI)
+# STEP 4: GOOGLE SCHOLAR SCRAPING (via ScholarClient)
 # ================================================================
-
-def _brightdata_fetch_author(api_token: str, scholar_id: str, start: int = 0, num: int = 100) -> tuple[list, bool]:
-    """Fetch author papers via BrightData SERP API."""
-    import requests
-    from bs4 import BeautifulSoup
-    from urllib.parse import urlparse, parse_qs
-    from knowledge.etl.config import BRIGHTDATA_SERP_ZONE
-
-    url_submit = "https://api.brightdata.com/serp/req"
-    target_url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart={start}&pagesize={num}"
-    
-    payload = {"zone": BRIGHTDATA_SERP_ZONE, "url": target_url}
-    headers = {"Authorization": f"Bearer {api_token}", "Content-Type": "application/json"}
-
-    try:
-        response = requests.post(url_submit, json=payload, headers=headers, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            if "response_id" in data:
-                res_id = data["response_id"]
-                url_res = f"https://api.brightdata.com/serp/get_result?response_id={res_id}"
-                
-                for _ in range(10):
-                    res = requests.get(url_res, headers=headers, timeout=30)
-                    if res.status_code == 200:
-                        soup = BeautifulSoup(res.text, "html.parser")
-                        rows = soup.find_all("tr", class_="gsc_a_tr")
-                        articles = []
-                        for row in rows:
-                            title_tag = row.find("a", class_="gsc_a_at")
-                            href = title_tag['href'] if title_tag and 'href' in title_tag.attrs else ""
-                            
-                            cid = ""
-                            if href:
-                                qs = parse_qs(urlparse(href).query)
-                                if 'citation_for_view' in qs: cid = qs['citation_for_view'][0]
-
-                            gray = row.find_all("div", class_="gs_gray")
-                            year_tag = row.find("span", class_="gsc_a_h gsc_a_hc gs_ibl")
-                            
-                            articles.append({
-                                "title": title_tag.text.strip() if title_tag else "",
-                                "year": year_tag.text.strip() if year_tag else "",
-                                "publication": gray[1].text.strip() if len(gray) > 1 else "",
-                                "link": "https://scholar.google.com" + href if href else "",
-                                "authors": gray[0].text.strip() if len(gray) > 0 else "",
-                                "citation_id": cid
-                            })
-                        return articles, len(articles) == num
-                    elif res.status_code == 202:
-                        time.sleep(5)
-                    else:
-                        break
-    except Exception as e:
-        logger.error(f"Scholar Fetch Error: {e}")
-    return [], False
 
 
 def run_scholar_scraping(
-    api_token: Optional[str] = None, 
-    limit_per_author: int = 500, 
+    proxy_url: Optional[str] = None,
+    limit_per_author: int = 500,
     test_target_id: Optional[str] = None,
-    run_mode: str = "incremental", 
-    sample_size: Optional[int] = None
+    run_mode: str = "incremental",
+    sample_size: Optional[int] = None,
+    paper_limit: Optional[int] = None,
+    output_csv: Optional[Path] = None,
 ) -> Optional[pd.DataFrame]:
     """
-    Scrape papers from Google Scholar via Bright Data SERP API.
+    Scrape papers from Google Scholar profile pages via BrightData proxy.
 
     3-Phase Architecture:
-        Phase 1: Pure Scrape - Fetch all papers from SERP API, no filtering.
+        Phase 1: Pure Scrape - Fetch all papers from Scholar profile HTML.
         Phase 2: Batch Dedup - Remove duplicates vs Scopus + cross-lecturer.
         Phase 3: Batch Author Match - Match author names to lecturer database.
 
@@ -234,19 +523,30 @@ def run_scholar_scraping(
         incremental -> Skip lecturers already present in scholar CSV.
         sample      -> Process only `sample_size` lecturers.
     """
-    api_token = api_token or BRIGHTDATA_SERP_TOKEN
-    if not api_token:
-        logger.error("BRIGHTDATA_SERP_TOKEN not configured! Please check your environment.")
+    scholar_proxy_url = proxy_url or PROXY_URL
+    if not scholar_proxy_url:
+        log_error(
+            logger,
+            "scholar.extract.missing_proxy",
+            message="BrightData Scholar proxy is required",
+            required="BD_USER_SERP,BD_PASS_SERP",
+        )
         return None
 
-    logger.info(f"Starting STEP 4: GOOGLE SCHOLAR SCRAPING [Mode: {run_mode.upper()}]")
-
-    from difflib import SequenceMatcher
+    log_event(
+        logger,
+        "scholar.extract.start",
+        mode=run_mode,
+        sample_size=sample_size,
+        limit_per_author=limit_per_author,
+        paper_limit=paper_limit,
+    )
 
     # --- Load Lecturer Data from Supabase ---
     df_lecturers = _load_lecturers_from_supabase()
     if df_lecturers.empty:
-        logger.error("No lecturer data available from Supabase. Aborting.")
+        log_error(logger, "scholar.extract.no_lecturers",
+                  message="No lecturer data available from Supabase")
         return None
 
     targets = []
@@ -257,93 +557,126 @@ def run_scholar_scraping(
 
     # Incremental logic: Skip already-scraped authors
     already_scraped_ids = set()
-    if run_mode == "incremental" and smart_exists(SCHOLAR_CSV):
+    if run_mode == "incremental" and _artifact_exists(SCHOLAR_CSV):
         try:
-            df_existing = read_dataframe_csv(SCHOLAR_CSV, usecols=['scholar_id'])
-            already_scraped_ids = set(df_existing['scholar_id'].unique().astype(str))
-            logger.info(f"Found {len(already_scraped_ids)} already-scraped author IDs in {path_name(SCHOLAR_CSV)}")
+            df_existing = _read_artifact_or_empty(
+                SCHOLAR_CSV, usecols=['scholar_id'])
+            already_scraped_ids = set(
+                df_existing['scholar_id'].unique().astype(str))
+            log_event(
+                logger,
+                "scholar.extract.incremental_state",
+                scraped_authors=len(already_scraped_ids),
+                path=path_name(SCHOLAR_CSV),
+            )
         except Exception as e:
-            logger.warning(f"Could not read existing CSV for incremental check: {e}")
+            log_warning(
+                logger, "scholar.extract.incremental_state_failed", error=e)
 
     if test_target_id:
         targets = [t for t in targets if t['id'] == test_target_id]
-        logger.info(f"TEST MODE: Processing single ID: {test_target_id}")
+        log_event(logger, "scholar.extract.test_target",
+                  scholar_id=test_target_id)
     elif run_mode == "incremental" and already_scraped_ids:
         total_before = len(targets)
         targets = [t for t in targets if t["id"] not in already_scraped_ids]
         skipped = total_before - len(targets)
-        logger.info(f"Incremental mode: Skipping {skipped} authors. {len(targets)} to process.")
+        log_event(logger, "scholar.extract.incremental_filter",
+                  skipped_authors=skipped, target_authors=len(targets))
         if not targets:
-            logger.info("All authors already scraped. Use 'full' mode to re-scrape.")
+            log_event(logger, "scholar.extract.all_authors_scraped",
+                      override="--mode full")
             return None
     elif run_mode == "sample" and sample_size:
         targets = targets[:sample_size]
-        logger.info(f"Sample mode: Processing {len(targets)} authors.")
+        log_event(logger, "scholar.extract.sample_mode",
+                  target_authors=len(targets))
 
     # ------------------------------------------------------------------
     # PHASE 1: PURE SCRAPE (No Filter, Auto-Save)
     # ------------------------------------------------------------------
-    logger.info("PHASE 1: PURE SCRAPE")
+    log_event(logger, "scholar.extract.phase", phase="scrape")
     scraped_ids = set()
     all_raw_papers = []
-    if smart_exists(SCHOLAR_TEMP_CSV) and not test_target_id:
+    if run_mode != "sample" and _artifact_exists(SCHOLAR_TEMP_CSV) and not test_target_id:
         try:
-            df_temp = read_dataframe_csv(SCHOLAR_TEMP_CSV, dtype=str).fillna("")
+            df_temp = _read_artifact_or_empty(
+                SCHOLAR_TEMP_CSV, dtype=str).fillna("")
             all_raw_papers = df_temp.to_dict('records')
             scraped_ids = set(df_temp['scholar_id'].unique())
-            logger.info(f"Resume: Loaded {len(all_raw_papers)} papers from temp file.")
+            log_event(logger, "scholar.extract.resume", rows=len(
+                all_raw_papers), path=SCHOLAR_TEMP_CSV)
         except Exception:
             pass
 
     total_api_calls = 0
     newly_scraped = 0
 
+    client = ScholarClient(proxy_url=scholar_proxy_url)
+    from urllib.parse import urlparse, parse_qs
+
     for i, target in enumerate(targets):
         if target['id'] in scraped_ids:
-            logger.info(f"[{i+1}/{len(targets)}] {target['name']} ({target['id']}) - Already processed.")
+            log_event(
+                logger,
+                "scholar.extract.author_skip",
+                index=i + 1,
+                total=len(targets),
+                scholar_id=target["id"],
+                reason="already_processed",
+            )
             continue
 
-        logger.info(f"[{i+1}/{len(targets)}] Scraping: {target['name']} ({target['id']})")
-        start = 0
-        author_count = 0
+        log_event(
+            logger,
+            "scholar.extract.author_start",
+            index=i + 1,
+            total=len(targets),
+            lecturer=target["name"],
+            scholar_id=target["id"],
+        )
 
-        while author_count < limit_per_author:
-            articles, has_next = _brightdata_fetch_author(api_token, target["id"], start=start, num=100)
-            total_api_calls += 1
+        articles = client.get_papers(target["id"], limit=limit_per_author)
+        total_api_calls += max(1, len(articles) // 100)
 
-            if not articles:
-                break
+        for art in articles:
+            # Reconstruct citation ID (if available in link) or use link hash
+            link = art.get("link", "")
+            cid = ""
+            if link:
+                qs = parse_qs(urlparse(link).query)
+                if 'citation_for_view' in qs:
+                    cid = qs['citation_for_view'][0]
 
-            for art in articles:
-                all_raw_papers.append({
-                    "Title": art.get('title', ''),
-                    "Year": str(art.get("year", "")),
-                    "Journal": art.get("publication", ""),
-                    "Link": art.get("link", ""),
-                    "Authors_raw": art.get("authors", ""),
-                    "citation_id": art.get("citation_id", ""),
-                    "scholar_id": target["id"],
-                    "lecturer_name": target["name"],
-                    "source": "scholar",
-                })
-                author_count += 1
+            all_raw_papers.append({
+                "Title": art.get('title', ''),
+                "Year": str(art.get("year", "")),
+                "Journal": art.get("journal", ""),
+                "Link": link,
+                "Authors_raw": art.get("authors", ""),
+                "citation_id": cid,
+                "scholar_id": target["id"],
+                "lecturer_name": target["name"],
+                "source": "scholar",
+            })
 
-            if not has_next or len(articles) < 100:
-                break 
-            start += 100
-            time.sleep(0.3)
-
-        logger.info(f"Fetched {author_count} papers.")
+        log_event(logger, "scholar.extract.author_done",
+                  scholar_id=target["id"], rows=len(articles))
         newly_scraped += 1
 
         if not test_target_id and newly_scraped % 5 == 0:
-            write_dataframe_csv(pd.DataFrame(all_raw_papers), SCHOLAR_TEMP_CSV, index=False)
-            logger.info(f"Auto-save checkpoint: {len(all_raw_papers)} papers saved to temporary file.")
+            write_dataframe_artifact(
+                pd.DataFrame(all_raw_papers),
+                SCHOLAR_TEMP_CSV,
+                index=False,
+            )
+            log_event(logger, "checkpoint.saved", source="scholar_temp",
+                      path=SCHOLAR_TEMP_CSV, rows=len(all_raw_papers))
 
         time.sleep(0.5)
 
     if not all_raw_papers:
-        logger.warning("No papers found for the selected targets.")
+        log_warning(logger, "scholar.extract.no_papers", action="skip")
         return None
 
     df_raw = pd.DataFrame(all_raw_papers)
@@ -351,46 +684,49 @@ def run_scholar_scraping(
     # ------------------------------------------------------------------
     # PHASE 2: BATCH DEDUP
     # ------------------------------------------------------------------
-    logger.info("PHASE 2: BATCH DEDUPLICATION")
+    log_event(logger, "scholar.extract.phase", phase="deduplicate")
 
     def _normalize_title(text):
-        if pd.isna(text): return ""
+        if pd.isna(text):
+            return ""
         return re.sub(r'[^a-z0-9]', '', str(text).lower())
 
     # Load Scopus for cross-source dedup
     scopus_titles = set()
-    if smart_exists(SCOPUS_CSV):
+    if _artifact_exists(SCOPUS_CSV):
         try:
-            df_scopus = read_dataframe_csv(SCOPUS_CSV)
+            df_scopus = _read_artifact_or_empty(SCOPUS_CSV)
             scopus_titles = set(df_scopus['Title'].apply(_normalize_title))
-            logger.info(f"Loaded {len(scopus_titles)} Scopus titles for deduplication.")
+            log_event(logger, "scholar.extract.scopus_titles_loaded",
+                      titles=len(scopus_titles))
         except Exception:
             pass
 
     df_raw['_norm_title'] = df_raw['Title'].apply(_normalize_title)
-    
-    # Remove Scopus duplicates
-    before = len(df_raw)
-    df_raw = df_raw[~df_raw['_norm_title'].isin(scopus_titles)]
-    logger.info(f"Removed {before - len(df_raw)} papers already present in Scopus.")
 
-    # Remove cross-lecturer duplicates
-    before = len(df_raw)
-    df_raw = df_raw.drop_duplicates(subset='_norm_title', keep='first')
-    logger.info(f"Removed {before - len(df_raw)} duplicate papers across lecturers.")
+    # Keep duplicates at extract time. Transform-level dedup merges author IDs
+    # into one paper node, so dropping here would lose lecturer relationships.
+    df_raw["duplicate_of_scopus"] = df_raw["_norm_title"].isin(scopus_titles)
+    log_event(
+        logger,
+        "scholar.extract.duplicates_preserved",
+        matched_scopus=int(df_raw["duplicate_of_scopus"].sum()),
+        duplicate_title_rows=int(df_raw.duplicated(subset="_norm_title").sum()),
+        action="merge_author_relations_in_transform",
+    )
 
     # ------------------------------------------------------------------
     # PHASE 3: AUTHOR RESOLUTION
     # ------------------------------------------------------------------
-    logger.info("PHASE 3: AUTHOR RESOLUTION & MATCHING")
-    
+    log_event(logger, "scholar.extract.phase", phase="author_resolution")
+
     authors_resolved = []
     ids_resolved = []
-    
+
     for idx, row in df_raw.iterrows():
         raw_authors = str(row.get("Authors_raw", ""))
         paper_sid = str(row.get("scholar_id", ""))
-        
+
         # Use centralized logic from enricher
         final_names, final_ids = resolve_academic_authors(
             authors_str=raw_authors,
@@ -401,7 +737,7 @@ def run_scholar_scraping(
 
     df_raw['Authors'] = authors_resolved
     df_raw['Author IDs'] = ids_resolved
-    
+
     # Cleanup and schema finalization
     df_final = df_raw.drop(columns=['_norm_title'])
     cols_to_add = ["Abstract", "Keywords", "Document Type", "DOI", "TLDR"]
@@ -416,32 +752,191 @@ def run_scholar_scraping(
         "citation_id", "scholar_id", "lecturer_name", "source"
     ]
     df_final = df_final[[c for c in ordered_cols if c in df_final.columns]]
+    if paper_limit:
+        df_final = df_final.head(paper_limit).copy()
 
     # ------------------------------------------------------------------
     # SAVE & OUTPUT
     # ------------------------------------------------------------------
     if test_target_id:
-        logger.info("Test Mode: Results not saved to main CSV.")
+        log_event(logger, "scholar.extract.test_mode_no_save",
+                  rows=len(df_final))
         return df_final
 
-    if run_mode == "incremental" and smart_exists(SCHOLAR_CSV):
-        try:
-            df_existing = read_dataframe_csv(SCHOLAR_CSV)
-            df_combined = pd.concat([df_existing, df_final], ignore_index=True)
-            df_combined = df_combined.drop_duplicates(subset='Title', keep='first') # Basic dedup on merge
-            write_dataframe_csv(df_combined, SCHOLAR_CSV, index=False)
-            logger.info(f"Incremental update: {len(df_combined)} total papers saved.")
-        except Exception as e:
-            logger.error(f"Failed to merge with existing CSV: {e}")
-            write_dataframe_csv(df_final, SCHOLAR_CSV, index=False)
-    else:
-        write_dataframe_csv(df_final, SCHOLAR_CSV, index=False)
-        logger.info(f"Saved {len(df_final)} papers to {SCHOLAR_CSV}")
+    output_file = output_csv or (
+        SCHOLAR_SAMPLE_CSV if run_mode == "sample" else SCHOLAR_CSV)
 
-    smart_unlink(SCHOLAR_TEMP_CSV)
+    if run_mode == "incremental" and output_file == SCHOLAR_CSV and _artifact_exists(SCHOLAR_CSV):
+        try:
+            df_existing = _read_artifact_or_empty(output_file)
+            df_combined = pd.concat([df_existing, df_final], ignore_index=True)
+            df_combined = df_combined.drop_duplicates(
+                subset='Title', keep='first')  # Basic dedup on merge
+            write_dataframe_artifact(df_combined, output_file, index=False)
+            log_event(logger, "checkpoint.saved", source="scholar_incremental",
+                      path=output_file, rows=len(df_combined))
+        except Exception as e:
+            log_error(logger, "scholar.extract.incremental_merge_failed",
+                      exc=e, path=output_file)
+            write_dataframe_artifact(df_final, output_file, index=False)
+    else:
+        write_dataframe_artifact(df_final, output_file, index=False)
+        log_event(logger, "checkpoint.saved", source="scholar",
+                  path=output_file, rows=len(df_final))
+
+    if run_mode != "sample":
+        _unlink_artifact(SCHOLAR_TEMP_CSV)
     return df_final
 
 
+def run_paper_transform(
+    source_paths: Optional[list[tuple[Path | str, str]]] = None,
+    output_csv: Optional[Path | str] = None,
+    sample_limit: Optional[int] = None,
+) -> pd.DataFrame:
+    """Merge, clean, and deduplicate paper sources without external enrichment."""
+    from knowledge.etl.transform.cleaner import clean_papers_batch
+    from knowledge.etl.transform.deduplicator import deduplicate_papers
+
+    frames: list[pd.DataFrame] = []
+    sources = source_paths or [
+        (SCOPUS_CSV, "scopus"), (SCHOLAR_CSV, "scholar")]
+    output_file = output_csv or PAPER_MERGED_CSV
+
+    for csv_path, source_name in sources:
+        if not _artifact_exists(csv_path):
+            log_event(logger, "paper.transform.source_missing",
+                      path=csv_path, source=source_name, action="skip")
+            continue
+        df_source = _read_artifact_or_empty(csv_path, dtype=str).fillna("")
+        if df_source.empty:
+            log_event(logger, "paper.transform.source_empty",
+                      path=csv_path, source=source_name, action="skip")
+            continue
+        if "source" not in df_source.columns:
+            df_source["source"] = source_name
+        else:
+            df_source["source"] = df_source["source"].replace("", source_name)
+        frames.append(df_source)
+
+    if not frames:
+        log_warning(logger, "paper.transform.no_sources", action="skip")
+        return pd.DataFrame()
+
+    df = pd.concat(frames, ignore_index=True)
+    df = clean_papers_batch(df)
+    df = deduplicate_papers(df)
+    df = _limit_mixed_sources(df, sample_limit)
+
+    if df.empty:
+        write_dataframe_artifact(df, output_file, index=False)
+        return df
+
+    df = _ensure_enrichment_control_columns(df)
+
+    write_dataframe_artifact(df, output_file, index=False)
+    log_event(logger, "checkpoint.saved", source="paper_transformed",
+              path=output_file, rows=len(df))
+    return df
+
+
+def run_paper_enrichment(
+    input_csv: Optional[Path | str] = None,
+    output_csv: Optional[Path | str] = None,
+    sample_limit: Optional[int] = None,
+    allow_paid_proxy: bool = True,
+) -> pd.DataFrame:
+    """Enrich transformed paper rows with metadata, KG TLDR, and author IDs."""
+    input_file = input_csv or PAPER_MERGED_CSV
+    output_file = output_csv or PAPER_ENRICHED_CSV
+
+    if not _artifact_exists(input_file):
+        log_error(logger, "paper.enrich.input_missing",
+                  path=input_file, action="skip")
+        return pd.DataFrame()
+
+    df = _read_artifact_or_empty(input_file, dtype=str).fillna("")
+    if df.empty:
+        log_warning(logger, "paper.enrich.input_empty",
+                    path=input_file, action="skip")
+        return pd.DataFrame()
+
+    df = _limit_mixed_sources(df, sample_limit)
+    df = _resume_enrichment_checkpoint(df, output_file)
+    df = _ensure_enrichment_control_columns(df)
+    if "TLDR" not in df.columns:
+        df["TLDR"] = ""
+
+    pending_mask = ~_complete_enrichment_mask(df)
+    pending_count = int(pending_mask.sum())
+    if pending_count == 0:
+        log_event(logger, "paper.enrich.no_pending_rows", action="skip")
+    else:
+        max_per_run = sample_limit or ETL_ENRICH_MAX_PAPERS_PER_RUN
+        target_count = pending_count if max_per_run <= 0 else min(max_per_run, pending_count)
+        complete_before = int((~pending_mask).sum())
+        attempted_count = 0
+
+        log_event(
+            logger,
+            "paper.enrich.target",
+            pending_rows=pending_count,
+            target_rows=target_count,
+            max_per_run=max_per_run,
+        )
+
+        while attempted_count < target_count:
+            batch_size = min(50, target_count - attempted_count)
+            current_complete = int(_complete_enrichment_mask(df).sum())
+            completed_during_run = max(0, current_complete - complete_before)
+            start_idx = max(0, attempted_count - completed_during_run)
+            df = enrich_paper_batch(
+                df,
+                batch_size=batch_size,
+                start_idx=start_idx,
+                allow_paid_proxy=allow_paid_proxy,
+            )
+
+            write_dataframe_artifact(df, output_file, index=False)
+            log_event(logger, "checkpoint.saved", source="paper_enriched_batch", path=output_file, rows=len(df))
+            _write_enrichment_state(
+                input_file=input_file,
+                output_file=output_file,
+                df=df,
+                status="running",
+                batch_rows=batch_size,
+            )
+
+            attempted_count += batch_size
+
+    df = _limit_mixed_sources(df, sample_limit)
+
+    write_dataframe_artifact(df, output_file, index=False)
+    final_pending = int((~_complete_enrichment_mask(df)).sum())
+    _write_enrichment_state(
+        input_file=input_file,
+        output_file=output_file,
+        df=df,
+        status="completed" if final_pending == 0 else "partial",
+    )
+    log_event(logger, "checkpoint.saved", source="paper_enriched",
+              path=output_file, rows=len(df))
+    return df
+
+
+def run_combined_sample_enrichment(sample_limit: int = 5) -> pd.DataFrame:
+    """Backward-compatible sample helper: transform sample sources, then enrich them."""
+    run_paper_transform(
+        source_paths=[(SCOPUS_SAMPLE_CSV, "scopus"),
+                      (SCHOLAR_SAMPLE_CSV, "scholar")],
+        output_csv=PAPER_SAMPLE_TRANSFORMED_CSV,
+        sample_limit=sample_limit,
+    )
+    return run_paper_enrichment(
+        input_csv=PAPER_SAMPLE_TRANSFORMED_CSV,
+        output_csv=PAPER_SAMPLE_MERGED_CSV,
+        sample_limit=sample_limit,
+    )
 
 
 # ================================================================
@@ -449,90 +944,105 @@ def run_scholar_scraping(
 # ================================================================
 
 def run_scholar_enrichment(
-    input_csv: Optional[Path] = None, 
-    output_csv: Optional[Path] = None, 
+    input_csv: Optional[Path] = None,
+    output_csv: Optional[Path] = None,
     test_limit: Optional[int] = None
 ) -> pd.DataFrame:
     """
     Enrich papers with Keywords, Abstract, DOI, TLDR, and Author IDs.
     Uses the centralized enrich_paper_batch service for multi-source enrichment.
-    
+
     Args:
         input_csv: Path to input CSV (default: SCHOLAR_CSV)
         output_csv: Path to output CSV (default: SCHOLAR_CSV)
         test_limit: Max number of papers to enrich in this run.
     """
-    logger.info("Starting STEP 5: SCHOLAR ENRICHMENT")
-    
+    log_event(logger, "scholar.enrich.start", input_path=input_csv,
+              output_path=output_csv, test_limit=test_limit)
+
     input_file = input_csv or SCHOLAR_CSV
     output_file = output_csv or SCHOLAR_CSV
 
-    if not smart_exists(input_file):
-        logger.error(f"Input file not found: {input_file}. Run Scholar Scraping first.")
+    if not _artifact_exists(input_file):
+        log_error(logger, "scholar.enrich.input_missing",
+                  path=input_file, action="skip")
         return pd.DataFrame()
 
     try:
-        df = read_dataframe_csv(input_file, dtype=str).fillna("")
+        df = _read_artifact_or_empty(input_file, dtype=str).fillna("")
     except Exception as e:
-        logger.error(f"Failed to read input file {input_file}: {e}")
+        log_error(logger, "scholar.enrich.read_failed", exc=e, path=input_file)
         return pd.DataFrame()
 
     # Migration: Handle legacy 'Scraped_By_Pipeline' flag
     if 'Scraped_By_Pipeline' in df.columns and 'enriched' not in df.columns:
         df = df.rename(columns={'Scraped_By_Pipeline': 'enriched'})
-        logger.info("Migrated legacy 'Scraped_By_Pipeline' column to 'enriched'")
+        log_event(logger, "scholar.enrich.legacy_column_migrated",
+                  from_column="Scraped_By_Pipeline", to_column="enriched")
 
     total_papers = len(df)
-    already_enriched = len(df[df.get("enriched", "").astype(str).lower() == "true"])
+    enriched_mask = df.get("enriched", "").astype(str).str.lower() == "true"
+    already_enriched = len(df[enriched_mask])
     remaining = total_papers - already_enriched
 
-    logger.info(f"Pipeline Status: {already_enriched}/{total_papers} enriched, {remaining} remaining.")
-    
+    log_event(
+        logger,
+        "scholar.enrich.status",
+        total_rows=total_papers,
+        enriched_rows=already_enriched,
+        pending_rows=remaining,
+    )
+
     if remaining == 0:
-        logger.info("All papers already enriched. Skipping.")
+        log_event(logger, "scholar.enrich.no_pending_rows", action="skip")
         return df
 
     # We process in batches of 50 for resilience and checkpointing
     # If test_limit is provided, we respect it.
     target_process_count = test_limit if test_limit else remaining
     processed_so_far = 0
-    
-    logger.info(f"Targeting {target_process_count} papers for enrichment.")
+
+    log_event(logger, "scholar.enrich.target", rows=target_process_count)
 
     while processed_so_far < target_process_count:
         batch_size = min(50, target_process_count - processed_so_far)
-        
+
         # enrich_paper_batch handles internal skipping of already enriched rows
         # based on the 'enriched' column.
-        df = enrich_paper_batch(df, batch_size=batch_size, allow_paid_proxy=True)
-        
+        df = enrich_paper_batch(
+            df, batch_size=batch_size, allow_paid_proxy=True)
+
         # Incremental save
         try:
-            write_dataframe_csv(df, output_file, index=False)
-            logger.info(f"Checkpoint saved to {path_name(output_file)}")
+            write_dataframe_artifact(df, output_file, index=False)
+            log_event(logger, "checkpoint.saved", source="scholar_enrichment",
+                      path=path_name(output_file), rows=len(df))
         except Exception as e:
-            logger.error(f"Failed to save checkpoint: {e}")
+            log_error(logger, "scholar.enrich.checkpoint_failed",
+                      exc=e, path=output_file)
 
         # Check how many were actually added/updated in this loop
-        current_enriched = len(df[df.get("enriched", "").astype(str).lower() == "true"])
+        enriched_mask = df.get("enriched", "").astype(
+            str).str.lower() == "true"
+        current_enriched = len(df[enriched_mask])
         newly_done = current_enriched - already_enriched
-        
+
         if newly_done >= target_process_count:
             break
-            
+
         processed_so_far = newly_done
-        
+
         # Stop if no more papers can be enriched (remaining count doesn't move)
         if remaining == (total_papers - current_enriched):
-            logger.warning("No progress made in last batch. Potential API limits or no matches found.")
+            log_warning(logger, "scholar.enrich.no_progress",
+                        action="stop", possible_causes="api_limits_or_no_matches")
             break
         remaining = total_papers - current_enriched
         if remaining <= 0:
             break
 
-    logger.info(f"ENRICHMENT COMPLETED: {len(df[df.get('enriched', '').astype(str).lower() == 'true'])}/{total_papers} total enriched.")
+    enriched_mask = df.get("enriched", "").astype(str).str.lower() == "true"
+    log_event(logger, "scholar.enrich.done", enriched_rows=len(
+        df[enriched_mask]), total_rows=total_papers)
 
     return df
-
-
-

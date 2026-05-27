@@ -88,7 +88,9 @@ class LightRagKB(KnowledgeBase):
         if not LITE_MODE and Neo4jGraphDatabase:
             neo4j_uri = os.getenv("NEO4J_URI") or "bolt://localhost:7687"
             neo4j_username = os.getenv("NEO4J_USERNAME") or "neo4j"
-            neo4j_password = os.getenv("NEO4J_PASSWORD") or "0123456789"
+            neo4j_password = os.getenv("NEO4J_PASSWORD") or os.getenv("GLOBAL_PASSWORD")
+            if not neo4j_password:
+                raise RuntimeError("NEO4J_PASSWORD or GLOBAL_PASSWORD must be set for Neo4j access")
 
             try:
                 driver = Neo4jGraphDatabase.driver(neo4j_uri, auth=(neo4j_username, neo4j_password))

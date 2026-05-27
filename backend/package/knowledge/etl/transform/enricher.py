@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import os
 import re
 import time
@@ -18,6 +19,7 @@ from knowledge.etl.config import (
 from knowledge.etl.transform.cleaner import clean_abstract_text, clean_text
 from knowledge.etl.extract.semantic_scholar import extract_s2_metadata
 from knowledge.etl.extract.openalex import extract_openalex_metadata
+from knowledge.etl.utils.logging import log_event, log_warning
 
 if TYPE_CHECKING:
     from groq import Groq
@@ -36,21 +38,153 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+REQUIRED_ENRICHMENT_FIELDS = ("Abstract", "Keywords", "Author IDs", "TLDR")
+
+
+def normalize_document_type(value: Any) -> str:
+    """Canonicalize publication document type for downstream KG/database use."""
+    doc_type = clean_text(value).lower()
+    doc_type = re.sub(r"[-_/]+", " ", doc_type)
+    doc_type = re.sub(r"\s+", " ", doc_type).strip()
+    compact = re.sub(r"[^a-z0-9]+", "", doc_type)
+
+    if not doc_type or compact in {"", "nan", "none", "null", "na"}:
+        return "article"
+
+    if "conference" in doc_type or "conference" in compact or "proceedings" in doc_type:
+        return "conference paper"
+
+    article_aliases = {
+        "artikel",
+        "article",
+        "journal",
+        "journal article",
+        "journalarticle",
+        "research article",
+        "original article",
+    }
+    if doc_type in article_aliases or compact in article_aliases:
+        return "article"
+
+    return doc_type
+
+
+def _has_enrichment_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, float) and pd.isna(value):
+        return False
+    text = str(value).strip()
+    return bool(text) and text.lower() not in {"nan", "none", "null", "na"}
+
+
+def missing_required_enrichment_fields(
+    *,
+    abstract: Any = "",
+    keywords: Any = "",
+    author_ids: Any = "",
+    tldr: Any = "",
+) -> list[str]:
+    """Return missing fields required before a paper can be loaded to KG tables."""
+    values = {
+        "Abstract": abstract,
+        "Keywords": keywords,
+        "Author IDs": author_ids,
+        "TLDR": tldr,
+    }
+    return [field for field, value in values.items() if not _has_enrichment_value(value)]
+
+
+def enrichment_status_from_fields(
+    *,
+    abstract: Any = "",
+    keywords: Any = "",
+    author_ids: Any = "",
+    tldr: Any = "",
+) -> str:
+    return "complete" if not missing_required_enrichment_fields(
+        abstract=abstract,
+        keywords=keywords,
+        author_ids=author_ids,
+        tldr=tldr,
+    ) else "partial"
+
+
+def _first_source_for(source_contributions: dict[str, list[str]], field: str) -> str:
+    field_l = field.lower()
+    for source, contributions in source_contributions.items():
+        for contribution in contributions:
+            if contribution.lower().startswith(field_l):
+                return source
+    return ""
+
+
+def _provenance_payload(
+    *,
+    source_contributions: dict[str, list[str]],
+    missing_fields: list[str],
+) -> str:
+    payload = {
+        "field_sources": {
+            "abstract": _first_source_for(source_contributions, "Abstract"),
+            "keywords": _first_source_for(source_contributions, "Keywords"),
+            "doi": _first_source_for(source_contributions, "DOI"),
+            "document_type": _first_source_for(source_contributions, "DocType"),
+            "tldr": _first_source_for(source_contributions, "TLDR"),
+            "authors": _first_source_for(source_contributions, "Authors"),
+            "author_ids": _first_source_for(source_contributions, "Author IDs"),
+        },
+        "sources": {
+            source: values
+            for source, values in source_contributions.items()
+            if values
+        },
+        "missing_required_fields": missing_fields,
+    }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
 
 # ─── Groq API Client ──────────────────────────────────────────
 
 _groq_client: Optional[Groq] = None
+_groq_disabled = False
+
+
+def _read_secret_env(*names: str) -> str:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value.strip()
+    return ""
+
+
+def _is_groq_auth_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "401" in message or "invalid_api_key" in message or "invalid api key" in message
+
+
+def _disable_groq_for_run(reason: str) -> None:
+    global _groq_client, _groq_disabled
+    _groq_client = None
+    _groq_disabled = True
+    log_warning(logger, "groq.disabled", reason=reason)
 
 
 def _get_groq_client() -> Optional[Groq]:
     """Initialize and return the Groq API client."""
     global _groq_client
+    if _groq_disabled:
+        return None
     if _groq_client is not None:
         return _groq_client
     
     try:
         from groq import Groq
-        groq_api_key = os.environ.get("GROQ_API_KEY")
+        groq_api_key = _read_secret_env(
+            "GROQ_API_KEY",
+            "AIRFLOW_VAR_GROQ_API_KEY",
+            "AIRFLOW_VAR_GROQ_API_KEY_SECRET",
+        )
         
         # Fallback: Check Airflow Variables (highest priority)
         if not groq_api_key:
@@ -58,19 +192,19 @@ def _get_groq_client() -> Optional[Groq]:
                 from airflow.models import Variable
                 groq_api_key = Variable.get("GROQ_API_KEY", default_var=None)
                 if groq_api_key:
-                    logger.info("GROQ_API_KEY loaded from Airflow Variables.")
+                    log_event(logger, "groq.key_loaded", source="airflow_variable")
             except (ImportError, Exception):
                 pass  # Not running in Airflow or variable not found
         
         if not groq_api_key:
-            logger.warning("GROQ_API_KEY is not set in environment or Airflow Variables.")
+            log_warning(logger, "groq.key_missing", action="skip_llm_generation")
             return None
             
         _groq_client = Groq(api_key=groq_api_key)
-        logger.info("Groq API Client initialized successfully.")
+        log_event(logger, "groq.client_ready")
         return _groq_client
     except Exception as e:
-        logger.warning(f"Failed to initialize Groq client: {e}")
+        log_warning(logger, "groq.client_init_failed", error=e)
         return None
 
 
@@ -136,11 +270,17 @@ def generate_tldr_via_ai(title: str, abstract: str) -> str:
         "Output exactly one natural-language sentence, max 55 words, no JSON. "
         "Preserve only facts from the title/abstract. Prioritize ontology entities: "
         "Problem/Task, Field/Domain, Method, Model, Dataset/Data Source, Metric/Result, Tool, Innovation. "
+        "If the source is Indonesian, write the TLDR in English while preserving exact technical names, "
+        "dataset names, model names, institution/system names, and metric values. "
+        "Translate ordinary Indonesian task, domain, and result phrases into English. "
         "When present, include data modality or application domain such as medical image analysis, text mining, "
         "education, social media, or software engineering. Prefer this compact pattern: "
         "'This paper addresses <task/problem> in <domain> using <dataset/source> and <method/model>, achieving <metric/result>.' "
-        "If results name a best-performing model variant, include the exact variant. "
-        "Keep technical names and metric values exact; avoid vague claims."
+        "Use 'achieving' only when a concrete metric or stated result exists. "
+        "If multiple model variants are tested, use the variant tied to the main or best result when stated. "
+        "Do not replace specific variants with generic method families. "
+        "Keep technical names and metric values exact; avoid vague claims such as optimal, effective, or efficient "
+        "unless the source states them with evidence."
     )
 
     user_prompt = f"Title: {source_title}\nAbstract: {source_abstract}\nTLDR:"
@@ -171,9 +311,12 @@ def generate_tldr_via_ai(title: str, abstract: str) -> str:
                 f"Title: {source_title}\nAbstract: {source_abstract}\n"
                 "Rewrite the TLDR as exactly one English sentence with at most 55 words. TLDR:"
             )
-            logger.debug("Retrying Groq TLDR generation; invalid output on attempt %s.", attempt)
+            logger.debug("groq.tldr.retry | reason=invalid_output | attempt=%s", attempt)
         except Exception as e:
-            logger.warning("TLDR generation error with Groq model %s: %s", GROQ_TLDR_MODEL, e)
+            if _is_groq_auth_error(e):
+                _disable_groq_for_run("invalid GROQ_API_KEY received by worker container")
+            else:
+                log_warning(logger, "groq.tldr.failed", model=GROQ_TLDR_MODEL, error=e)
             return ""
 
     return _truncate_tldr(last_tldr) if last_tldr else ""
@@ -225,10 +368,19 @@ def extract_metadata_via_llm(title: str, raw_text: str) -> Dict[str, str]:
             if extracted.get("abstract"): res["abstract"] = extracted["abstract"]
             if extracted.get("keywords"): res["keywords"] = extracted["keywords"]
             if extracted.get("doi"): res["doi"] = extracted["doi"]
-            logger.info(f"Agentic AI extraction successful: {len(res['abstract'])} characters of abstract retrieved.")
+            log_event(
+                logger,
+                "groq.metadata_extract.done",
+                abstract_chars=len(res["abstract"]),
+                has_keywords=bool(res["keywords"]),
+                has_doi=bool(res["doi"]),
+            )
             
     except Exception as e:
-        logger.warning(f"Agentic Extraction error (Groq): {e}")
+            if _is_groq_auth_error(e):
+                _disable_groq_for_run("invalid GROQ_API_KEY received by worker container")
+            else:
+                log_warning(logger, "groq.metadata_extract.failed", error=e)
         
     return res
 
@@ -271,7 +423,10 @@ STRICT RULES:
         time.sleep(3)  # Rate Limit Cooldown (30 RPM limit on free tier)
         return kw
     except Exception as e:
-        logger.warning(f"Keyword generation error (Groq Llama-3.1-8B): {e}")
+        if _is_groq_auth_error(e):
+            _disable_groq_for_run("invalid GROQ_API_KEY received by worker container")
+        else:
+            log_warning(logger, "groq.keywords.failed", model=GROQ_FAST_MODEL, error=e)
         return ""
 
 
@@ -302,7 +457,7 @@ def resolve_academic_authors(
     from knowledge.etl.transform.cleaner import (
         _load_lecturer_db, 
         _normalize_name_for_matching, 
-        _flip_author_name,
+        flip_author_name,
         is_abbreviation_match
     )
     
@@ -333,7 +488,7 @@ def resolve_academic_authors(
             continue
         
         matched_entry = None
-        current_name_norm = _normalize_name_for_matching(_flip_author_name(raw_name))
+        current_name_norm = _normalize_name_for_matching(flip_author_name(raw_name))
         
         if current_name_norm:
             # 1. Check against profile owner
@@ -370,6 +525,69 @@ def resolve_academic_authors(
     return "; ".join(final_names), "; ".join(final_ids)
 
 
+def _scrape_metadata_links(
+    links: list[tuple[str, str, bool]],
+    *,
+    row_index: int,
+    phase: str,
+    title: str,
+    abstract: str,
+    keywords: str,
+    doi: str,
+    doc_type: str,
+) -> tuple[str, str, str, str, list[str]]:
+    """Scrape publisher/PDF/DOI links for missing paper metadata."""
+    contributions: list[str] = []
+    if not scrape_publisher_page or not links:
+        return abstract, keywords, doi, doc_type, contributions
+
+    seen_urls: set[str] = set()
+    for link_type, url, force_proxy in links:
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        log_event(
+            logger,
+            "paper.enrich_row.publisher_fetch",
+            index=row_index,
+            phase=phase,
+            link_type=link_type,
+            proxy=force_proxy,
+            url=url[:120],
+        )
+        scrape_result = scrape_publisher_page(url, force_proxy=force_proxy)
+        if not scrape_result:
+            continue
+
+        if (not scrape_result.get("keywords") or not scrape_result.get("abstract")) and scrape_result.get("raw_content"):
+            log_event(logger, "paper.enrich_row.llm_extract", index=row_index, phase=phase)
+            llm_res = extract_metadata_via_llm(title, scrape_result["raw_content"])
+            if llm_res.get("abstract") and not scrape_result.get("abstract"):
+                scrape_result["abstract"] = llm_res["abstract"]
+            if llm_res.get("keywords") and not scrape_result.get("keywords"):
+                scrape_result["keywords"] = llm_res["keywords"]
+            if llm_res.get("doi") and not scrape_result.get("doi"):
+                scrape_result["doi"] = llm_res["doi"]
+
+        if scrape_result.get("keywords") and not keywords:
+            keywords = scrape_result["keywords"]
+            contributions.append(f"Keywords({link_type})")
+        if scrape_result.get("abstract") and not abstract:
+            abstract = clean_abstract_text(scrape_result["abstract"])
+            contributions.append(f"Abstract({link_type})")
+        if scrape_result.get("doi") and not doi:
+            doi = scrape_result["doi"]
+            contributions.append(f"DOI({link_type})")
+        if scrape_result.get("doc_type") and not doc_type:
+            doc_type = scrape_result["doc_type"]
+            contributions.append(f"DocType({link_type})")
+
+        if keywords and abstract:
+            break
+
+    return abstract, keywords, doi, doc_type, contributions
+
+
 # ─── Main Enrichment ────────────────────────────────────────────
 
 def enrich_paper_batch(
@@ -391,134 +609,284 @@ def enrich_paper_batch(
         Enriched DataFrame (same length, updated in-place).
     """
     # Ensure columns exist
-    for col in ["Abstract", "Keywords", "DOI", "TLDR", "Document Type", "Authors", "Author IDs", "enriched"]:
+    for col in [
+        "Abstract",
+        "Keywords",
+        "DOI",
+        "TLDR",
+        "Document Type",
+        "Authors",
+        "Author IDs",
+        "enriched",
+        "enrichment_status",
+        "missing_required_fields",
+        "metadata_provenance",
+        "abstract_source",
+        "keywords_source",
+        "doi_source",
+        "document_type_source",
+        "tldr_source",
+        "author_ids_source",
+    ]:
         if col not in df.columns:
             df[col] = ""
 
-    # Filter un-enriched papers
-    mask = df["enriched"].astype(str).str.lower() != "true"
+    # A paper is complete only when all required KG enrichment inputs exist.
+    # The legacy boolean column is kept for compatibility with old artifacts.
+    def _row_complete(row: pd.Series) -> bool:
+        missing = missing_required_enrichment_fields(
+            abstract=row.get("Abstract", ""),
+            keywords=row.get("Keywords", ""),
+            author_ids=row.get("Author IDs", ""),
+            tldr=row.get("TLDR", ""),
+        )
+        status = str(row.get("enrichment_status", "")).strip().lower()
+        return not missing and status != "failed_permanent"
+
+    mask = ~df.apply(_row_complete, axis=1)
     pending_indices = df[mask].index.tolist()
 
     if start_idx >= len(pending_indices):
-        logger.info("   All papers already enriched!")
+        log_event(logger, "paper.enrich_batch.no_pending_rows")
         return df
 
     batch_indices = pending_indices[start_idx:start_idx + batch_size]
     total = len(batch_indices)
 
-    logger.info(f"ENRICHMENT: Processing batch of {total} papers (indices {start_idx} to {start_idx + total})")
+    log_event(
+        logger,
+        "paper.enrich_batch.start",
+        batch_size=total,
+        start_idx=start_idx,
+        end_idx=start_idx + total,
+    )
 
     stats = {"s2": 0, "oa": 0, "abs": 0, "kw": 0, "doi": 0, "tldr": 0, "tldr_local": 0, "auth_resolved": 0}
     t_start = time.time()
 
     for count, i in enumerate(batch_indices, 1):
         row = df.loc[i]
-        title = str(row.get("Title", "")).strip()
-        abstract = str(row.get("Abstract", "")).strip()
-        keywords = str(row.get("Keywords", "")).strip()
-        doi = str(row.get("DOI", "")).strip()
-        tldr = str(row.get("TLDR", "")).strip()
-        doc_type = str(row.get("Document Type", "")).strip()
-        journal = str(row.get("Journal", "")).strip()
-        year = str(row.get("Year", "")).strip()
-        authors = str(row.get("Authors", "")).strip()
+        title = clean_text(row.get("Title", ""))
+        abstract = clean_abstract_text(row.get("Abstract", ""))
+        keywords = clean_text(row.get("Keywords", ""))
+        doi = clean_text(row.get("DOI", ""))
+        tldr = clean_text(row.get("TLDR", ""))
+        doc_type = clean_text(row.get("Document Type", ""))
+        journal = clean_text(row.get("Journal", ""))
+        year = clean_text(row.get("Year", ""))
+        authors = clean_text(row.get("Authors", ""))
         author_ids = str(row.get("Author IDs", "")).strip()
 
-        logger.info(f"[{count}/{total}] {title[:60]}...")
+        log_event(logger, "paper.enrich_row.start", index=count, total=total, title=title[:80])
         
         # Track author IDs collected throughout different phases for final resolution
         collected_author_ids = []
 
         time.sleep(0.5)  # Rate limiting
 
+        pdf_link = ""
+        oa_keywords_fallback = ""
+        source_contributions = {
+            "input": [],
+            "s2": [],
+            "s2_web": [],
+            "oa": [],
+            "oa_web": [],
+            "bd": [],
+            "groq": [],
+            "keyword_ai": [],
+            "resolver": [],
+        }
+        if abstract:
+            source_contributions["input"].append("Abstract")
+        if keywords:
+            source_contributions["input"].append("Keywords")
+        if doi:
+            source_contributions["input"].append("DOI")
+        if doc_type:
+            source_contributions["input"].append("DocType")
+        if tldr:
+            source_contributions["input"].append("TLDR")
+        if authors:
+            source_contributions["input"].append("Authors")
+        if author_ids:
+            source_contributions["input"].append("Author IDs")
+
         # ── Phase 1: Semantic Scholar ──
-        logger.info(f"   [Phase 1] Semantic Scholar...")
+        log_event(logger, "paper.enrich_row.phase", index=count, phase="semantic_scholar")
         s2 = extract_s2_metadata(doi=doi if doi else None, title=title)
         if s2:
             stats["s2"] += 1
             if not tldr and s2.get('tldr'):
                 tldr = str(s2['tldr'].get('text', '')) if isinstance(s2['tldr'], dict) else str(s2['tldr'])
+                if tldr:
+                    source_contributions["s2"].append("TLDR")
             if not abstract and s2.get('abstract'):
                 abstract = clean_abstract_text(s2['abstract'])
+                source_contributions["s2"].append("Abstract")
             if not doi and s2.get('externalIds', {}).get('DOI'):
                 doi = s2['externalIds']['DOI']
+                source_contributions["s2"].append("DOI")
             if not year and s2.get('year'):
                 year = str(s2['year'])
+                source_contributions["s2"].append("Year")
             if not journal and s2.get('venue'):
                 journal = str(s2['venue'])
+                source_contributions["s2"].append("Journal")
             if not doc_type and s2.get('publicationTypes'):
                 doc_type = ", ".join(s2['publicationTypes'])
+                source_contributions["s2"].append("DocType")
+            if s2.get("openAccessPdf") and s2["openAccessPdf"].get("url"):
+                pdf_link = s2["openAccessPdf"]["url"]
+                source_contributions["s2"].append("PDF-Link")
                 
             # Collect S2 author IDs
             if s2.get('authors'):
                 for auth in s2['authors']:
                     if auth.get('authorId'): collected_author_ids.append(auth['authorId'])
         else:
-            logger.debug(f"Title '{title[:30]}...' not found in Semantic Scholar.")
-        logger.info(f"   [Phase 2] OpenAlex...")
+            logger.debug("semantic_scholar.no_match | title=%s", title[:80])
+
+        if (not keywords or not abstract) and (pdf_link or doi):
+            links: list[tuple[str, str, bool]] = []
+            if pdf_link:
+                links.append(("S2-PDF", pdf_link, False))
+            if doi:
+                links.append(("DOI", f"https://doi.org/{doi}", False))
+            abstract, keywords, doi, doc_type, contributions = _scrape_metadata_links(
+                links,
+                row_index=count,
+                phase="semantic_scholar_web",
+                title=title,
+                abstract=abstract,
+                keywords=keywords,
+                doi=doi,
+                doc_type=doc_type,
+            )
+            source_contributions["s2_web"].extend(contributions)
+
+        log_event(logger, "paper.enrich_row.phase", index=count, phase="openalex")
         oa = extract_openalex_metadata(doi=doi if doi else None, title=title)
         if oa:
             stats["oa"] += 1
-            if not keywords and oa.get('keywords'):
-                keywords = oa['keywords']
+            if oa.get('keywords'):
+                oa_keywords_fallback = oa['keywords']
             if not doc_type and oa.get('doc_type'):
                 doc_type = oa['doc_type']
+                source_contributions["oa"].append("DocType")
             if not year and oa.get('publication_year'):
                 year = str(oa['publication_year'])
+                source_contributions["oa"].append("Year")
             if not doi and oa.get('doi'):
                 doi = oa['doi']
+                source_contributions["oa"].append("DOI")
             if not abstract and oa.get('abstract'):
                 abstract = clean_abstract_text(oa['abstract'])
+                source_contributions["oa"].append("Abstract")
             loc = oa.get('primary_location') or {}
             if not journal and loc.get('source'):
                 journal = str(loc['source'].get('display_name', ''))
+                if journal:
+                    source_contributions["oa"].append("Journal")
+            if not authors and oa.get("author_names"):
+                authors = "; ".join(name for name in oa["author_names"] if name)
+                if authors:
+                    source_contributions["oa"].append("Authors")
                 
             # Collect OpenAlex author IDs
-            if oa.get('authorships'):
-                for auth in oa['authorships']:
-                    if auth.get('author', {}).get('id'):
-                        aid = auth['author']['id'].split('/')[-1]
-                        if aid not in collected_author_ids: collected_author_ids.append(aid)
+            for aid in oa.get("author_ids_openalex") or []:
+                aid = str(aid).split("/")[-1]
+                if aid and aid not in collected_author_ids:
+                    collected_author_ids.append(aid)
+
+            if not keywords:
+                links = []
+                if oa.get("oa_pdf_url"):
+                    links.append(("OA-PDF", oa["oa_pdf_url"], False))
+                if oa.get("oa_landing_url"):
+                    links.append(("OA-Landing", oa["oa_landing_url"], False))
+                if doi:
+                    links.append(("DOI", f"https://doi.org/{doi}", False))
+                abstract, keywords, doi, doc_type, contributions = _scrape_metadata_links(
+                    links,
+                    row_index=count,
+                    phase="openalex_web",
+                    title=title,
+                    abstract=abstract,
+                    keywords=keywords,
+                    doi=doi,
+                    doc_type=doc_type,
+                )
+                source_contributions["oa_web"].extend(contributions)
+
+            if not keywords and oa_keywords_fallback:
+                keywords = oa_keywords_fallback
+                source_contributions["oa"].append("Keywords(OpenAlex concepts)")
         else:
-            logger.debug(f"Title '{title[:30]}...' not found in OpenAlex.")
+            logger.debug("openalex.no_match | title=%s", title[:80])
 
         # ── Phase 2.5: BrightData Google Scholar (PAID) ──
         if allow_paid_proxy and search_scholar_proxy_query and (not abstract or not keywords or not doi):
-            logger.info(f"   [Phase 2.5] BrightData Scholar (PAID Proxy)...")
+            missing_fields = ",".join(
+                field for field, value in (("Abstract", abstract), ("Keywords", keywords), ("DOI", doi)) if not value
+            )
+            log_event(logger, "paper.enrich_row.phase", index=count, phase="brightdata_scholar", missing=missing_fields)
             try:
                 bd = search_scholar_proxy_query(title)
                 if bd:
-                    if not keywords and bd.get("keywords"): keywords = bd["keywords"]
-                    if not year and bd.get("year"): year = str(bd["year"])
-                    if not journal and bd.get("journal"): journal = str(bd["journal"])
+                    if not keywords and bd.get("keywords"):
+                        keywords = bd["keywords"]
+                        source_contributions["bd"].append("Keywords")
+                    if not year and bd.get("year"):
+                        year = str(bd["year"])
+                        source_contributions["bd"].append("Year")
+                    if not journal and bd.get("journal"):
+                        journal = str(bd["journal"])
+                        source_contributions["bd"].append("Journal")
                     
                     # Collect Scholar IDs
                     if bd.get("author_ids"):
                         for aid in bd["author_ids"]:
                             if aid not in collected_author_ids: collected_author_ids.append(aid)
                     
-                    # Scholar -> Web scraping fallback (Proxy)
-                    if (not keywords or not abstract) and bd.get("title_link"):
-                        logger.info(f"Scholar-Web (Proxy): {bd['title_link'][:40]}...")
-                        scrape_res = scrape_publisher_page(bd["title_link"], force_proxy=True)
-                        if scrape_res:
-                            if scrape_res.get("keywords") and not keywords: keywords = scrape_res["keywords"]
-                            if scrape_res.get("abstract") and not abstract: abstract = clean_abstract_text(scrape_res["abstract"])
-                            if scrape_res.get("doi") and not doi: doi = scrape_res["doi"]
-                            
-                            # Agentic AI Fallback (LLM-based)
-                            if (not abstract or not keywords) and scrape_res.get("raw_content"):
-                                logger.info(f"   [Phase 2.6] Agentic AI Fallback (Qwen-Extract)...")
-                                ai_res = extract_metadata_via_llm(title, scrape_res["raw_content"])
-                                if not abstract and ai_res.get("abstract"): abstract = clean_abstract_text(ai_res["abstract"])
-                                if not keywords and ai_res.get("keywords"): keywords = ai_res["keywords"]
+                    # Scholar -> Web scraping fallback (paid proxy only when needed)
+                    scholar_links = []
+                    if bd.get("title_link"):
+                        scholar_links.append(("Scholar-Pub", bd["title_link"], True))
+                    if bd.get("pdf_link"):
+                        scholar_links.append(("Scholar-PDF", bd["pdf_link"], True))
+                    if bd.get("html_direct"):
+                        scholar_links.append(("Scholar-HTML", bd["html_direct"], True))
+                    if bd.get("cached_html"):
+                        scholar_links.append(("Scholar-Cache", bd["cached_html"], True))
+                    if (not keywords or not abstract) and scholar_links:
+                        abstract, keywords, doi, doc_type, contributions = _scrape_metadata_links(
+                            scholar_links,
+                            row_index=count,
+                            phase="brightdata_web",
+                            title=title,
+                            abstract=abstract,
+                            keywords=keywords,
+                            doi=doi,
+                            doc_type=doc_type,
+                        )
+                        source_contributions["bd"].extend(contributions)
                     
-                    if not abstract and bd.get("snippet"): abstract = clean_abstract_text(bd["snippet"])
-                    logger.info("BD fallback performed successfully.")
+                    if not abstract and bd.get("snippet"):
+                        abstract = clean_abstract_text(bd["snippet"])
+                        source_contributions["bd"].append("Abstract(snippet)")
+                    log_event(
+                        logger,
+                        "paper.enrich_row.brightdata_done",
+                        index=count,
+                        contributions=",".join(source_contributions["bd"]) or "none",
+                    )
                 else:
-                    logger.info("No data found in BrightData Scholar.")
+                    log_event(logger, "paper.enrich_row.brightdata_empty", index=count)
             except Exception as e:
-                logger.warning(f"BD Fallback error: {e}")
+                log_warning(logger, "paper.enrich_row.brightdata_failed", index=count, error=e)
+        else:
+            logger.debug("brightdata.skipped | index=%s | reason=metadata_complete_or_disabled", count)
 
         # ── Phase 3: KG-oriented TLDR Generation (Groq) ──
         should_generate_tldr = (
@@ -527,26 +895,28 @@ def enrich_paper_batch(
             and (GROQ_TLDR_OVERWRITE_EXISTING or not tldr)
         )
         if should_generate_tldr:
-            logger.info("   [Phase 3] KG TLDR generation (Groq %s)...", GROQ_TLDR_MODEL)
+            log_event(logger, "paper.enrich_row.phase", index=count, phase="groq_tldr", model=GROQ_TLDR_MODEL)
             ai_tldr = generate_tldr_via_ai(title, abstract)
             if ai_tldr:
                 tldr = ai_tldr
+                source_contributions["groq"].append("TLDR")
                 stats["tldr_local"] += 1
-                logger.info("Generated KG TLDR: %s...", tldr[:60])
+                log_event(logger, "paper.enrich_row.tldr_done", index=count, words=_word_count(tldr))
 
         # ── Phase 3.5: AI Keyword Generation Fallback ──
         if not keywords and abstract and len(abstract) > 30:
-            logger.info(f"   [Phase 3.5] AI Keyword Generation (Groq)...")
+            log_event(logger, "paper.enrich_row.phase", index=count, phase="groq_keywords", model=GROQ_FAST_MODEL)
             ai_keywords = generate_keywords_from_abstract(abstract)
             if ai_keywords:
                 keywords = ai_keywords
-                logger.info(f"Generated AI Keywords: {keywords}")
+                source_contributions["keyword_ai"].append("Keywords")
+                log_event(logger, "paper.enrich_row.keywords_done", index=count, keywords=keywords)
 
         # ── Phase 4: Scholar ID-Based Author Resolution (using data from Phase 2.5) ──
         paper_sid = str(row.get("scholar_id", "")).strip()
         paper_dosen = str(row.get("dosen", "")).strip()
         
-        logger.info(f"   [Phase 4] Author Resolution (ID Matching)...")
+        log_event(logger, "paper.enrich_row.phase", index=count, phase="author_resolution")
         resolved_authors, resolved_ids = resolve_academic_authors(
             authors, paper_sid,
             existing_author_ids=collected_author_ids
@@ -555,15 +925,30 @@ def enrich_paper_batch(
         if resolved_authors != authors or resolved_ids != author_ids:
             authors = resolved_authors
             author_ids = resolved_ids
+            source_contributions["resolver"].extend(["Authors", "Author IDs"])
             stats["auth_resolved"] += 1
         else:
-            logger.debug("Author resolution resulted in no changes.")
+            logger.debug("author_resolution.no_change | index=%s", count)
 
         # ── Fallback defaults ──
         if not doc_type:
-            doc_type = "Artikel"
+            doc_type = "article"
+            source_contributions["input"].append("DocType(default)")
+        doc_type = normalize_document_type(doc_type)
+        missing_required = missing_required_enrichment_fields(
+            abstract=abstract,
+            keywords=keywords,
+            author_ids=author_ids,
+            tldr=tldr,
+        )
+        enrichment_status = "complete" if not missing_required else "partial"
+        provenance = _provenance_payload(
+            source_contributions=source_contributions,
+            missing_fields=missing_required,
+        )
 
         # ── Update DataFrame ──
+        df.at[i, "Title"] = title
         df.at[i, "Abstract"] = abstract
         df.at[i, "Keywords"] = keywords
         df.at[i, "DOI"] = doi
@@ -573,7 +958,16 @@ def enrich_paper_batch(
         df.at[i, "Year"] = year
         df.at[i, "Authors"] = authors
         df.at[i, "Author IDs"] = author_ids
-        df.at[i, "enriched"] = "True"
+        df.at[i, "enrichment_status"] = enrichment_status
+        df.at[i, "missing_required_fields"] = "; ".join(missing_required)
+        df.at[i, "metadata_provenance"] = provenance
+        df.at[i, "abstract_source"] = _first_source_for(source_contributions, "Abstract")
+        df.at[i, "keywords_source"] = _first_source_for(source_contributions, "Keywords")
+        df.at[i, "doi_source"] = _first_source_for(source_contributions, "DOI")
+        df.at[i, "document_type_source"] = _first_source_for(source_contributions, "DocType")
+        df.at[i, "tldr_source"] = _first_source_for(source_contributions, "TLDR")
+        df.at[i, "author_ids_source"] = _first_source_for(source_contributions, "Author IDs")
+        df.at[i, "enriched"] = "True" if enrichment_status == "complete" else "False"
 
         # Stats
         if abstract: stats["abs"] += 1
@@ -584,16 +978,28 @@ def enrich_paper_batch(
         elapsed = time.time() - t_start
         avg = elapsed / count
         eta = ((total - count) * avg) / 60
-        logger.info(f"Progress: [{count}/{total}] ETA: {eta:.1f} min")
+        log_event(
+            logger,
+            "paper.enrich_row.done",
+            index=count,
+            total=total,
+            status=enrichment_status,
+            missing=",".join(missing_required) or "none",
+            eta_minutes=f"{eta:.1f}",
+        )
 
-    logger.info(f"ENRICHMENT BATCH COMPLETED - {total} papers processed")
-    logger.info(f"Summary Statistics:")
-    logger.info(f"  - Semantic Scholar hits : {stats['s2']}/{total}")
-    logger.info(f"  - OpenAlex hits         : {stats['oa']}/{total}")
-    logger.info(f"  - Abstracts retrieved   : {stats['abs']}/{total}")
-    logger.info(f"  - Keywords retrieved    : {stats['kw']}/{total}")
-    logger.info(f"  - DOI matches           : {stats['doi']}/{total}")
-    logger.info(f"  - TLDRs generated       : {stats['tldr']}/{total} (AI-based: {stats['tldr_local']})")
-    logger.info(f"  - Authors resolved      : {stats['auth_resolved']}/{total}")
+    log_event(
+        logger,
+        "paper.enrich_batch.done",
+        rows=total,
+        semantic_scholar_hits=stats["s2"],
+        openalex_hits=stats["oa"],
+        abstracts=stats["abs"],
+        keywords=stats["kw"],
+        dois=stats["doi"],
+        tldrs=stats["tldr"],
+        tldrs_groq=stats["tldr_local"],
+        authors_resolved=stats["auth_resolved"],
+    )
 
     return df
