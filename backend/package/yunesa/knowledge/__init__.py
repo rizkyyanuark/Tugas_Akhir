@@ -9,7 +9,7 @@ _LITE_MODE = os.environ.get("LITE_MODE", "").lower() in ("true", "1")
 _SKIP_APP_INIT = os.environ.get("YUNESA_SKIP_APP_INIT") == "1"
 
 if not _LITE_MODE:
-    from .graphs.upload_graph_service import UploadGraphService
+    from .graphs.core_graph_service import CoreGraphService
     from .implementations.lightrag import LightRagKB
     from .implementations.milvus import MilvusKB
 
@@ -52,8 +52,8 @@ if _LITE_MODE or _SKIP_APP_INIT:
         logger.info(
             "YUNESA_SKIP_APP_INIT enabled, knowledge graph services disabled for current process")
 else:
-    graph_base = UploadGraphService()
-    # Backward compatibility: make GraphDatabase point to UploadGraphService
-    GraphDatabase = UploadGraphService
+    graph_base = CoreGraphService()
+    # Backward compatibility: make GraphDatabase point to CoreGraphService
+    GraphDatabase = CoreGraphService
 
 __all__ = ["GraphDatabase", "knowledge_base", "graph_base"]

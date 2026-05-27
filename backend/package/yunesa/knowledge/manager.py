@@ -35,6 +35,20 @@ class KnowledgeBaseManager:
         # data
         self._metadata_lock = asyncio.Lock()
 
+    async def index_text(self, db_id: str, text: str, metadata: dict | None = None, operator_id: str | None = None) -> dict:
+        """Index direct text content into the knowledge base."""
+        kb_instance = await self._get_kb_for_database(db_id)
+        return await kb_instance.index_text(db_id, text, metadata, operator_id)
+
+    async def delete_record(self, db_id: str, record_id: str) -> None:
+        """Delete a record from the knowledge base."""
+        kb_instance = await self._get_kb_for_database(db_id)
+        if hasattr(kb_instance, "delete_record"):
+            await kb_instance.delete_record(db_id, record_id)
+        else:
+            # Fallback for other KB types if needed
+            logger.warning(f"KB instance {type(kb_instance)} does not support delete_record")
+
     async def initialize(self):
         """initialize"""
         # initializealready existsknowledge base
@@ -403,17 +417,17 @@ class KnowledgeBaseManager:
             logger.warning(f"Database {db_id} not found during deletion: {e}")
             return {"message": "deletesuccessful"}
 
-    async def add_file_record(
-        self, db_id: str, item: str, params: dict | None = None, operator_id: str | None = None
+    async def add_text_record(
+        self, db_id: str, content: str, title: str, params: dict | None = None, operator_id: str | None = None
     ) -> dict:
-        """Add file record to metadata"""
+        """Add text record to metadata"""
         kb_instance = await self._get_kb_for_database(db_id)
-        return await kb_instance.add_file_record(db_id, item, params, operator_id)
+        return await kb_instance.add_text_record(db_id, content, title, params, operator_id)
 
-    async def parse_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
-        """Parse file to Markdown"""
+    async def parse_record(self, db_id: str, record_id: str, operator_id: str | None = None) -> dict:
+        """Parse (prepare) text record"""
         kb_instance = await self._get_kb_for_database(db_id)
-        return await kb_instance.parse_file(db_id, file_id, operator_id)
+        return await kb_instance.parse_record(db_id, record_id, operator_id)
 
     async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
         """Index parsed file"""

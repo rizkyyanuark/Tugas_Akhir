@@ -3,17 +3,19 @@ Datetime helper utilities for consistent timezone handling.
 
 The backend stores timestamps in UTC and exposes ISO 8601 strings with an
 explicit timezone designator. For user-facing displays we typically convert to
-Asia/Shanghai.
+the application-local timezone.
 """
 
 from __future__ import annotations
 
 import datetime as dt
+import os
 from collections.abc import Iterable
 from zoneinfo import ZoneInfo
 
 UTC = dt.UTC
-SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
+LOCAL_TZ = ZoneInfo(os.getenv("APP_TIMEZONE", "Asia/Jakarta"))
+SHANGHAI_TZ = LOCAL_TZ  # Backward-compatible alias for older call sites.
 _ISO_Z_SUFFIX = "+00:00"
 
 
@@ -27,31 +29,37 @@ def utc_now_naive() -> dt.datetime:
     return dt.datetime.now(UTC).replace(tzinfo=None)
 
 
+def local_now() -> dt.datetime:
+    """Return the current application-local time as an aware datetime."""
+    return utc_now().astimezone(LOCAL_TZ)
+
+
 def shanghai_now() -> dt.datetime:
-    """Return the current Asia/Shanghai time as an aware datetime."""
-    return utc_now().astimezone(SHANGHAI_TZ)
+    """Backward-compatible alias for local_now()."""
+    return local_now()
 
 
 def ensure_utc(value: dt.datetime) -> dt.datetime:
     """
     Convert a datetime to UTC.
 
-    Naive values are assumed to be in Asia/Shanghai to preserve legacy data.
+    Naive values are assumed to be in the application-local timezone.
     """
     if value.tzinfo is None:
-        value = value.replace(tzinfo=SHANGHAI_TZ)
+        value = value.replace(tzinfo=LOCAL_TZ)
     return value.astimezone(UTC)
 
 
-def ensure_shanghai(value: dt.datetime) -> dt.datetime:
-    """
-    Convert a datetime to Asia/Shanghai.
-
-    Naive values are assumed to be in Asia/Shanghai (legacy behaviour).
-    """
+def ensure_local(value: dt.datetime) -> dt.datetime:
+    """Convert a datetime to the application-local timezone."""
     if value.tzinfo is None:
-        value = value.replace(tzinfo=SHANGHAI_TZ)
-    return value.astimezone(SHANGHAI_TZ)
+        value = value.replace(tzinfo=LOCAL_TZ)
+    return value.astimezone(LOCAL_TZ)
+
+
+def ensure_shanghai(value: dt.datetime) -> dt.datetime:
+    """Backward-compatible alias for ensure_local()."""
+    return ensure_local(value)
 
 
 def utc_isoformat(value: dt.datetime | None = None) -> str:
@@ -63,10 +71,15 @@ def utc_isoformat(value: dt.datetime | None = None) -> str:
     return iso_string
 
 
-def shanghai_isoformat(value: dt.datetime | None = None) -> str:
-    """Return an ISO 8601 string in Asia/Shanghai timezone."""
-    value = ensure_shanghai(value or shanghai_now())
+def local_isoformat(value: dt.datetime | None = None) -> str:
+    """Return an ISO 8601 string in the application-local timezone."""
+    value = ensure_local(value or local_now())
     return value.isoformat()
+
+
+def shanghai_isoformat(value: dt.datetime | None = None) -> str:
+    """Backward-compatible alias for local_isoformat()."""
+    return local_isoformat(value)
 
 
 def coerce_datetime(value: dt.datetime | None) -> dt.datetime | None:
@@ -136,13 +149,17 @@ def utc_isoformat_from_timestamp(timestamp: float | int | None) -> str | None:
 
 __all__ = [
     "UTC",
+    "LOCAL_TZ",
     "SHANGHAI_TZ",
+    "local_now",
     "utc_now",
     "utc_now_naive",
     "shanghai_now",
     "ensure_utc",
+    "ensure_local",
     "ensure_shanghai",
     "utc_isoformat",
+    "local_isoformat",
     "shanghai_isoformat",
     "coerce_datetime",
     "coerce_any_to_utc_datetime",

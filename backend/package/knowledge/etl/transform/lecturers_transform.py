@@ -4,9 +4,12 @@ Transform: Lecturers Data Cleaning & ID Formatting
 Ensures that all ID columns (NIP, NIDN, scopus_id, scholar_id, sinta_id)
 are consistently formatted as clean strings — never floats, never rounded.
 """
+import logging
 import re
 import pandas as pd
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 # ─── ID Columns ─────────────────────────────────────────────────
@@ -42,14 +45,13 @@ def format_id_columns(df: pd.DataFrame) -> pd.DataFrame:
     Apply ID formatting to all known ID columns.
     Ensures NIP/NIDN/scopus_id/scholar_id/sinta_id are clean strings.
     """
-    print("🔢 Formatting ID columns...")
+    logger.info("Formatting ID columns...")
     for col in ID_COLUMNS:
         if col in df.columns:
-            before_empty = (df[col].astype(str).str.strip().isin(["", "nan", "None"])).sum()
             df[col] = clean_id_column(df[col])
             after_empty = (df[col] == "").sum()
             non_empty = len(df) - after_empty
-            print(f"   {col}: {non_empty} valid IDs, {after_empty} empty")
+            logger.info(f"   {col}: {non_empty} valid IDs, {after_empty} empty")
     return df
 
 
@@ -62,7 +64,7 @@ def clean_lecturer_names(df: pd.DataFrame) -> pd.DataFrame:
     - Ensure title case for nama_dosen
     - Clean nama_norm (lowercase, no titles)
     """
-    print("👤 Cleaning lecturer names...")
+    logger.info("Cleaning lecturer names...")
 
     if "nama_dosen" in df.columns:
         df["nama_dosen"] = df["nama_dosen"].astype(str).str.strip()
@@ -84,7 +86,7 @@ def validate_lecturer_schema(df: pd.DataFrame) -> pd.DataFrame:
     Ensure all required columns exist. Add missing ones as empty.
     Drop rows without a valid nama_dosen.
     """
-    print("📋 Validating lecturer schema...")
+    logger.info("Validating lecturer schema...")
     
     # Add missing columns
     all_expected = [
@@ -94,16 +96,16 @@ def validate_lecturer_schema(df: pd.DataFrame) -> pd.DataFrame:
     for col in all_expected:
         if col not in df.columns:
             df[col] = ""
-            print(f"   Added missing column: {col}")
+            logger.info(f"   Added missing column: {col}")
 
     # Drop rows without nama_dosen
     before = len(df)
     df = df[df["nama_dosen"].astype(str).str.strip() != ""].reset_index(drop=True)
     dropped = before - len(df)
     if dropped > 0:
-        print(f"   ⚠️ Dropped {dropped} rows without nama_dosen")
+        logger.warning(f"   Dropped {dropped} rows without nama_dosen")
 
-    print(f"   ✅ Schema valid: {len(df)} lecturers")
+    logger.info(f"   Schema valid: {len(df)} lecturers")
     return df
 
 
@@ -116,12 +118,11 @@ def transform_lecturers(df: pd.DataFrame) -> pd.DataFrame:
     2. Clean names
     3. Validate schema
     """
-    print("\n🔧 TRANSFORM: Lecturer Data")
-    print("=" * 50)
+    logger.info("TRANSFORM: Lecturer Data")
 
     df = format_id_columns(df)
     df = clean_lecturer_names(df)
     df = validate_lecturer_schema(df)
 
-    print(f"\n✅ Transform complete: {len(df)} clean lecturer records")
+    logger.info(f"Transform complete: {len(df)} clean lecturer records")
     return df

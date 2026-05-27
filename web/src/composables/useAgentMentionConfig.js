@@ -1,9 +1,6 @@
 import { computed } from 'vue'
 
 export function useAgentMentionConfig({
-  currentAgentState,
-  currentThreadFiles,
-  currentThreadAttachments,
   configurableItems,
   agentConfig,
   availableKnowledgeBases,
@@ -11,69 +8,6 @@ export function useAgentMentionConfig({
   availableSkills
 }) {
   const mentionConfig = computed(() => {
-    const rawFiles = currentAgentState.value?.files || {}
-    const files = []
-    const seenPaths = new Set()
-    const workspaceFiles = Array.isArray(currentThreadFiles?.value) ? currentThreadFiles.value : []
-
-    const pushFile = (entry) => {
-      const path = entry?.path || ''
-      if (!path || seenPaths.has(path)) return
-      seenPaths.add(path)
-      files.push(entry)
-    }
-
-    // Handle files - support both dictionary format {"/path/file": {content: [...]}} and the legacy array format
-    if (typeof rawFiles === 'object' && !Array.isArray(rawFiles) && rawFiles !== null) {
-      // New format: dictionary format {"/attachments/xxx/file.md": {...}}
-      Object.entries(rawFiles).forEach(([filePath, fileData]) => {
-        pushFile({
-          path: filePath,
-          ...fileData
-        })
-      })
-    } else if (Array.isArray(rawFiles)) {
-      // Legacy format: array format
-      rawFiles.forEach((item) => {
-        if (typeof item === 'object' && item !== null) {
-          Object.entries(item).forEach(([filePath, fileData]) => {
-            pushFile({
-              path: filePath,
-              ...fileData
-            })
-          })
-        }
-      })
-    }
-
-    const attachments = Array.isArray(currentThreadAttachments?.value)
-      ? currentThreadAttachments.value
-      : []
-    attachments.forEach((attachment) => {
-      const path = attachment?.path || ''
-      if (!path) return
-      pushFile({
-        path,
-        size: attachment.file_size,
-        modified_at: attachment.uploaded_at,
-        artifact_url: attachment.artifact_url,
-        file_name: attachment.file_name,
-        status: attachment.status
-      })
-    })
-
-    workspaceFiles.forEach((entry) => {
-      const path = entry?.path || ''
-      if (!path.startsWith('/home/gem/user-data/workspace/') || entry?.is_dir) return
-      pushFile({
-        path,
-        size: entry.size,
-        modified_at: entry.modified_at,
-        artifact_url: entry.artifact_url,
-        file_name: entry.name
-      })
-    })
-
     const configItems = configurableItems.value || {}
     const currentConfig = agentConfig.value || {}
     const allowedKbNames = new Set()
@@ -137,7 +71,6 @@ export function useAgentMentionConfig({
       )
 
     if (
-      !files.length &&
       !knowledgeBases.length &&
       !mcps.length &&
       !skills.length &&
@@ -146,7 +79,6 @@ export function useAgentMentionConfig({
       return null
 
     return {
-      files,
       knowledgeBases,
       mcps,
       skills,

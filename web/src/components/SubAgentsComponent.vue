@@ -714,6 +714,8 @@ defineExpose({
 
 .detail-section-container {
   padding: 24px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .detail-section {
@@ -857,5 +859,9 @@ defineExpose({
 
 .panel-content-wrapper {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>

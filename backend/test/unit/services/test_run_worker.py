@@ -43,7 +43,6 @@ def _build_run() -> SimpleNamespace:
             "query": "hello",
             "config": {"thread_id": "thread-1"},
             "agent_id": "ChatbotAgent",
-            "image_content": None,
             "user_id": "1",
             "request_id": "req-1",
         },

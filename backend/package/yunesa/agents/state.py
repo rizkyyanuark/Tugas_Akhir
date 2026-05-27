@@ -16,10 +16,21 @@ def merge_artifacts(existing: list[str] | None, new: list[str] | None) -> list[s
     return list(dict.fromkeys(existing + new))
 
 
+def merge_citations(existing: list[dict] | None, new: list[dict] | None) -> list[dict]:
+    """Merge citations list."""
+    if existing is None:
+        return new or []
+    if new is None:
+        return existing
+    # Simple append for now, could be de-duplicated by ID later
+    return existing + (new or [])
+
+
 class BaseState(AgentState):
-    """Shared state fields for Yuxi agents."""
+    """Shared state fields for YUNESA agents."""
 
     artifacts: Annotated[list[str], merge_artifacts]
+    citations: Annotated[list[dict], merge_citations]
 
 
 class AgentStatePayload(TypedDict):
@@ -28,3 +39,4 @@ class AgentStatePayload(TypedDict):
     todos: list
     files: dict
     artifacts: list[str]
+    citations: list[dict]

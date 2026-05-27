@@ -25,7 +25,6 @@ from yunesa.knowledge.chunking.ragflow_like.dispatcher import chunk_markdown
 from yunesa.knowledge.chunking.ragflow_like.presets import resolve_chunk_processing_params
 from yunesa.knowledge.utils.kb_utils import get_embedding_config
 from yunesa.models.embed import OtherEmbedding
-from yunesa.plugins.parser.unified import Parser
 from yunesa.utils import hashstr, logger
 from yunesa.utils.datetime_utils import utc_isoformat
 
@@ -55,7 +54,7 @@ class MilvusKB(KnowledgeBase):
         # self.milvus_port = kwargs.get('milvus_port', int(os.getenv('MILVUS_PORT', '19530')))
         self.milvus_token = kwargs.get("milvus_token", os.getenv("MILVUS_TOKEN") or "")
         self.milvus_uri = kwargs.get("milvus_uri", os.getenv("MILVUS_URI") or "http://localhost:19530")
-        self.milvus_db = kwargs.get("milvus_db") or "yuxi_know"
+        self.milvus_db = kwargs.get("milvus_db") or os.getenv("MILVUS_DB_NAME") or "yunesa_know"
 
         # connectname
         self.connection_alias = f"milvus_{hashstr(work_dir, 6)}"
@@ -284,6 +283,113 @@ class MilvusKB(KnowledgeBase):
         """split"""
         return chunk_markdown(text, file_id, filename, params)
 
+    async def index_text(
+        self,
+        db_id: str,
+        text: str,
+        metadata: dict | None = None,
+        operator_id: str | None = None,
+    ) -> dict:
+        """Index direct text content into Milvus without upload or document parsing."""
+        if db_id not in self.databases_meta:
+            raise ValueError(f"Database {db_id} not found")
+
+        normalized_text = (text or "").strip()
+        if not normalized_text:
+            raise ValueError("Text content cannot be empty")
+
+        collection = await self._get_milvus_collection(db_id)
+        if not collection:
+            raise ValueError(f"Failed to get Milvus collection for {db_id}")
+
+        import uuid
+
+        record_meta = dict(metadata or {})
+        record_id = str(uuid.uuid4())
+        title = str(record_meta.get("title") or f"Text Query Context {record_id[:8]}").strip()
+        processing_params = resolve_chunk_processing_params(
+            kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
+            file_processing_params=record_meta.get("processing_params"),
+        )
+
+        self.files_meta[record_id] = {
+            "file_id": record_id,
+            "filename": title,
+            "database_id": db_id,
+            "status": FileStatus.INDEXING,
+            "created_at": utc_isoformat(),
+            "updated_at": utc_isoformat(),
+            "file_type": "text",
+            "content_type": "text/plain",
+            "size": len(normalized_text.encode("utf-8")),
+            "metadata": record_meta,
+            "processing_params": processing_params,
+        }
+        if operator_id:
+            self.files_meta[record_id]["created_by"] = operator_id
+            self.files_meta[record_id]["updated_by"] = operator_id
+
+        await self._persist_file(record_id)
+        self._add_to_processing_queue(record_id)
+
+        try:
+            embed_info = self.databases_meta[db_id].get("embed_info", {})
+            embedding_function = self._get_async_embedding_function(embed_info)
+
+            chunks = self._split_text_into_chunks(normalized_text, record_id, title, processing_params)
+            if not chunks:
+                chunks = [
+                    {
+                        "id": f"{record_id}_0",
+                        "content": normalized_text,
+                        "source": title,
+                        "chunk_id": f"{record_id}_0",
+                        "file_id": record_id,
+                        "chunk_index": 0,
+                    }
+                ]
+
+            texts = [chunk["content"] for chunk in chunks]
+            embeddings = await embedding_function(texts)
+            entities = [
+                [chunk["id"] for chunk in chunks],
+                [chunk["content"] for chunk in chunks],
+                [chunk["source"] for chunk in chunks],
+                [chunk["chunk_id"] for chunk in chunks],
+                [chunk["file_id"] for chunk in chunks],
+                [chunk["chunk_index"] for chunk in chunks],
+                embeddings,
+            ]
+
+            def _insert_records():
+                collection.insert(entities)
+                collection.flush()
+
+            await asyncio.to_thread(_insert_records)
+
+            self.files_meta[record_id]["status"] = FileStatus.INDEXED
+            self.files_meta[record_id]["updated_at"] = utc_isoformat()
+            await self._persist_file(record_id)
+            return self.files_meta[record_id]
+        except Exception as e:
+            logger.error(f"Text indexing failed for {db_id}: {e}, {traceback.format_exc()}")
+            self.files_meta[record_id]["status"] = FileStatus.ERROR
+            self.files_meta[record_id]["error"] = str(e)
+            self.files_meta[record_id]["updated_at"] = utc_isoformat()
+            await self._persist_file(record_id)
+            raise
+        finally:
+            self._remove_from_processing_queue(record_id)
+
+    async def delete_record(self, db_id: str, record_id: str) -> None:
+        """Delete one direct text record from Milvus and metadata."""
+        await self.delete_file_chunks_only(db_id, record_id)
+        if record_id in self.files_meta:
+            del self.files_meta[record_id]
+            from yunesa.repositories.knowledge_file_repository import KnowledgeFileRepository
+
+            await KnowledgeFileRepository().delete(record_id)
+
     async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
         """
         Index parsed file (Status: INDEXING -> INDEXED/ERROR_INDEXING)
@@ -465,6 +571,8 @@ class MilvusKB(KnowledgeBase):
                     await self._persist_file(file_id)
 
                 # parsefile markdown
+                from yunesa.plugins.parser.unified import Parser
+
                 params["image_bucket"] = "public"
                 params["image_prefix"] = f"{db_id}/kb-images"
                 markdown_content = await Parser.aparse(source=file_path, params=params)

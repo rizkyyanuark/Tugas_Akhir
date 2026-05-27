@@ -1,27 +1,13 @@
-# knowledge/etl/scraping/pipeline.py
-"""
-Pipeline Scraping Dosen Infokom UNESA v4
-=========================================
-Industry-grade modular pipeline for lecturer data acquisition.
+import logging
+from pathlib import Path
+from typing import List, Optional, Tuple, Dict, Any, Set
+from difflib import SequenceMatcher
 
-Pipeline Flow:
-    Step 1: run_web_step()            -> raw_web_data.csv       (Source of Truth)
-    Step 2: run_pddikti_step()        -> raw_pddikti_data.csv   (Enrichment Source)
-    Step 3: run_smart_merge()         -> dosen_infokom_merged.csv (Web-First + Dedup)
-    Step 4: run_enrichment()          -> dosen_infokom_final.csv  (SimCV+Sinta+SciVal+Scholar)
-    Step 5: run_post_processing()     -> dosen_infokom_final.csv  (Final Clean)
-    Step 6: run_supabase_sync()       -> Supabase DB
-
-Each step reads from the previous step's output and produces its own output.
-All saves go through save_final_csv() for consistent ID enforcement + QUOTE_ALL.
-"""
 import pandas as pd
 import re
-from pathlib import Path
+
 from ..config import (
-    SAVE_DIR, PRODI_WEB_CONFIG, TARGET_PRODI_NAMES,
-    SINTA_DEPTS, HEADERS, ENABLE_SCIVAL, ID_COLUMN_TYPES,
-    SCIVAL_EMAIL, SCIVAL_PASS,
+    SINTA_DEPTS, ENABLE_SCIVAL, ID_COLUMN_TYPES,
 )
 from ..clients.pddikti_client import PddiktiClient
 from ..clients.simcv_client import SimCVClient
@@ -30,318 +16,277 @@ from ..clients.scholar_client import ScholarVerificationClient
 from ..clients.scival_client import SciValClient
 from ..clients.parsers import PARSER_MAP
 from ..utils.utils import (
-    clean_name_expert, enforce_strict_types, save_final_csv, normalize_name,
+    clean_lecturer_name, enforce_strict_ids, save_final_csv,
 )
-from difflib import SequenceMatcher
+from ..utils.storage import read_dataframe_csv
+from ..utils.identity import (
+    clean_optional as _clean_optional,
+    has_value as _has_value,
+    merge_missing_fields as _merge_missing_fields,
+)
+from .lecturer_paths import (
+    FINAL_CSV,
+    ID_FIELDS,
+    MERGED_CSV,
+    SCRAPE_PDDIKTI_PATH,
+    SCRAPE_WEB_PATH,
+    filter_active_configs,
+)
+from .siakadu_identity import enrich_with_siakadu
 
-# --- ACTIVE CONFIG ---
-ACTIVE_CONFIGS = [
-    cfg for cfg in PRODI_WEB_CONFIG if cfg[1] in TARGET_PRODI_NAMES
-]
-
-# --- FILE PATHS (Single Source of Truth) ---
-RAW_WEB_CSV       = SAVE_DIR / "raw_web_data.csv"
-RAW_PDDIKTI_CSV   = SAVE_DIR / "raw_pddikti_data.csv"
-MERGED_CSV         = SAVE_DIR / "dosen_infokom_merged.csv"
-FINAL_CSV          = SAVE_DIR / "dosen_infokom_final.csv"
+logger = logging.getLogger(__name__)
 
 
-# ================================================================
-# STEP 1: WEB SCRAPING (Source of Truth)
-# ================================================================
-def run_web_step():
-    """Scrape lecturer data from 10+ prodi websites. Source of Truth."""
-    print("\n--- STEP 1: WEB SCRAPER ---")
-    
+def _looks_like_noisy_web_name(name: Any) -> bool:
+    if not _has_value(name):
+        return True
+    return str(name).strip().lower().endswith("dosen")
+
+# Step 1: University Web Scraping
+
+def scrape_university_websites(prodi_filter: str | None = None) -> pd.DataFrame:
+    """
+    Scrape lecturer data from university department websites.
+    """
     from ..clients.web_scraper import WebProdiScraper
+    
+    logger.info("[STEP 1] UNIVERSITY WEB SCRAPING")
+    
+    configs = filter_active_configs(prodi_filter)
+    if prodi_filter:
+        if not configs:
+            logger.warning(f"No active config found for prodi filter: {prodi_filter}")
+        else:
+            logger.info(f"Filtering enabled: Only processing {prodi_filter}")
+
     scraper = WebProdiScraper(PARSER_MAP)
-    all_records = scraper.scrape(ACTIVE_CONFIGS)
+    all_records = scraper.scrape(configs)
 
-    df = pd.DataFrame(all_records)
-    save_final_csv(df, RAW_WEB_CSV, label="Step 1: Web Scraping")
-    print(f"   Total Web records: {len(df)}")
-    return RAW_WEB_CSV
+    df_web = pd.DataFrame(all_records)
+    
+    # Save checkpoint
+    save_final_csv(df_web, SCRAPE_WEB_PATH, label="Step 1: Web Scraping")
+    logger.info(f"Success: Scraped {len(df_web)} records.")
+    
+    return df_web
 
 
-# ================================================================
-# STEP 2: PDDIKTI COLLECTION (Enrichment Source)
-# ================================================================
-def run_pddikti_step():
-    """Fetch lecturer data from PDDIKTI API. Used for enrichment only."""
-    print(f"\n--- STEP 2: PDDIKTI COLLECTION for {len(ACTIVE_CONFIGS)} Active Configs ---")
+# Step 2: PDDIKTI Collection
+
+def fetch_pddikti_data(prodi_filter: str | None = None) -> pd.DataFrame:
+    """
+    Fetch lecturer data from the PDDIKTI API for enrichment purposes.
+    """
+    logger.info("[STEP 2] PDDIKTI DATA COLLECTION")
+    
+    configs = filter_active_configs(prodi_filter)
+    if prodi_filter:
+        if not configs:
+            logger.warning(f"No active config found for prodi filter: {prodi_filter}")
+        else:
+            logger.info(f"Filtering enabled: Only processing {prodi_filter}")
+
+    logger.info(f"Targeting {len(configs)} departments...")
     
     client = PddiktiClient()
-    all_records = client.search_lecturers(ACTIVE_CONFIGS)
+    all_records = client.search_lecturers(configs)
     
-    df = pd.DataFrame(all_records)
-    save_final_csv(df, RAW_PDDIKTI_CSV, label="Step 2: PDDIKTI")
-    print(f"   Total PDDIKTI records: {len(df)}")
-    return RAW_PDDIKTI_CSV
+    df_pddikti = pd.DataFrame(all_records)
+    
+    # Save checkpoint
+    save_final_csv(df_pddikti, SCRAPE_PDDIKTI_PATH, label="Step 2: PDDIKTI")
+    logger.info(f"Success: Fetched {len(df_pddikti)} records from PDDIKTI.")
+    
+    return df_pddikti
 
 
-# ================================================================
-# STEP 3: SMART MERGE (Web-First, PDDIKTI Enrichment)
-# ================================================================
+# Step 3: Smart Merge
 
-def _find_pddikti_match(pddikti_norm, pddikti_nidn, pddikti_prodi, web_data):
+def _find_source_match(
+    norm_name: str, 
+    nidn: str, 
+    prodi_name: str, 
+    reference_data: Dict[str, Any]
+) -> Tuple[Optional[str], float]:
     """
-    Match a PDDIKTI record against Web data (strict).
-    Strategy: exact -> NIDN -> substring -> fuzzy (>=0.85).
-    Returns (match_key, score) or (None, 0).
+    Find matching record in reference data using prioritized strategy.
+    Strategy: Exact -> NIDN -> Substring -> Fuzzy.
     """
     # 1. Exact name match
-    if pddikti_norm in web_data:
-        return pddikti_norm, 1.0
+    if norm_name in reference_data:
+        return norm_name, 1.0
 
-    # 2. NIDN-based match (very reliable)
-    if pddikti_nidn and str(pddikti_nidn).strip() and str(pddikti_nidn).strip() != 'nan':
-        for k, rec in web_data.items():
-            if rec.get('nidn') and str(rec['nidn']).strip() == str(pddikti_nidn).strip():
-                return k, 1.0
+    # 2. NIDN-based match
+    if nidn and str(nidn).strip().lower() not in ('nan', 'none', ''):
+        clean_nidn = str(nidn).strip()
+        for key, rec in reference_data.items():
+            if rec.get('nidn') == clean_nidn:
+                return key, 1.0
 
-    # 3. Substring match (same prodi only, min 3 tokens)
-    for k, rec in web_data.items():
-        if rec.get('prodi') != pddikti_prodi:
+    # 3. Substring match (constrained by department)
+    for key, rec in reference_data.items():
+        if rec.get('prodi') == prodi_name:
+            if key.startswith(norm_name) or norm_name.startswith(key):
+                if min(len(key.split()), len(norm_name.split())) >= 3:
+                    return key, 0.95
+
+    # 4. Fuzzy match (Strict threshold)
+    best_match, best_score = None, 0.0
+    for key in reference_data:
+        if not key or not norm_name or key[0] != norm_name[0]:
             continue
-        if k.startswith(pddikti_norm) or pddikti_norm.startswith(k):
-            shorter = min(len(k.split()), len(pddikti_norm.split()))
-            if shorter >= 3:
-                return k, 0.95
+        score = SequenceMatcher(None, key, norm_name).ratio()
+        if score > best_score:
+            best_score, best_match = score, key
 
-    # 4. Fuzzy match (strict: >=0.85)
-    best_key = None
-    best_s = 0
-    for k in web_data:
-        if not k or not pddikti_norm:
-            continue
-        if k[0] != pddikti_norm[0]:
-            continue
-        s = SequenceMatcher(None, k, pddikti_norm).ratio()
-        if s > best_s:
-            best_s = s
-            best_key = k
-
-    if best_s >= 0.85:
-        return best_key, best_s
-
-    return None, 0
+    return (best_match, best_score) if best_score >= 0.85 else (None, 0.0)
 
 
-def _enrich_from_pddikti(rec, pddikti_row):
-    """Enrich a Web record with PDDIKTI data (NIDN, NIP, prodi)."""
-    # NIDN from PDDIKTI (authoritative source)
-    if pd.notna(pddikti_row.get('nidn')) and str(pddikti_row['nidn']).strip() not in ('', 'nan'):
-        rec['nidn'] = str(pddikti_row['nidn']).strip()
-    # NIP from PDDIKTI (if web doesn't have it)
-    if pd.isna(rec.get('nip')) and pd.notna(pddikti_row.get('nip')):
-        rec['nip'] = pddikti_row['nip']
-    # Prodi from PDDIKTI (more accurate than web   e.g. Teknik Elektro vs Pend. Teknik Elektro)
-    pddikti_prodi = pddikti_row.get('prodi_pddikti')
-    if pd.notna(pddikti_prodi) and str(pddikti_prodi).strip():
-        rec['prodi'] = _normalize_prodi_name(str(pddikti_prodi).strip())
+def _normalize_prodi_name(pddikti_prodi: str) -> str:
+    """Standardize departmental names from PDDIKTI to University format."""
+    PRODI_MAP = {
+        'TEKNIK INFORMATIKA': 'S1 Teknik Informatika',
+        'SISTEM INFORMASI': 'S1 Sistem Informasi',
+        'PENDIDIKAN TEKNOLOGI INFORMASI': 'S1 Pendidikan Teknologi Informasi',
+        'TEKNIK ELEKTRO': 'S1 Teknik Elektro',
+        'PENDIDIKAN TEKNIK ELEKTRO': 'S1 Pendidikan Teknik Elektro',
+        'KECERDASAN ARTIFISIAL': 'S1 Kecerdasan Artifisial',
+        'SAINS DATA': 'S1 Sains Data',
+        'BISNIS DIGITAL': 'S1 Bisnis Digital',
+        'MANAJEMEN INFORMATIKA': 'D4 Manajemen Informatika',
+        'INFORMATIKA': 'S2 Informatika',
+        'PENDIDIKAN TEKNOLOGI INFORMASI (S2)': 'S2 Pendidikan Teknologi Informasi',
+    }
+    upper_name = str(pddikti_prodi).upper().strip()
+    return PRODI_MAP.get(upper_name, upper_name.title())
 
 
-# Mapping PDDIKTI prodi names (uppercase) to standardized display names
-_PRODI_NAME_MAP = {
-    'TEKNIK INFORMATIKA': 'S1 Teknik Informatika',
-    'SISTEM INFORMASI': 'S1 Sistem Informasi',
-    'PENDIDIKAN TEKNOLOGI INFORMASI': 'S1 Pendidikan Teknologi Informasi',
-    'TEKNIK ELEKTRO': 'S1 Teknik Elektro',
-    'PENDIDIKAN TEKNIK ELEKTRO': 'S1 Pendidikan Teknik Elektro',
-    'KECERDASAN ARTIFISIAL': 'S1 Kecerdasan Artifisial',
-    'SAINS DATA': 'S1 Sains Data',
-    'BISNIS DIGITAL': 'S1 Bisnis Digital',
-    'MANAJEMEN INFORMATIKA': 'D4 Manajemen Informatika',
-    'INFORMATIKA': 'S2 Informatika',
-    # Campus variants (PDDIKTI sometimes includes campus location)
-    'INFORMATIKA (KAMPUS KABUPATEN MAGETAN)': 'S2 Informatika',
-    # S2 programs
-    'PENDIDIKAN TEKNOLOGI INFORMASI (S2)': 'S2 Pendidikan Teknologi Informasi',
-}
-
-def _normalize_prodi_name(pddikti_prodi):
-    """Convert PDDIKTI uppercase prodi to standardized display name."""
-    upper = pddikti_prodi.upper().strip()
-    if upper in _PRODI_NAME_MAP:
-        return _PRODI_NAME_MAP[upper]
-    # Fallback: Title case
-    return pddikti_prodi.title()
-
-
-# Known INFOKOM prodi names   only these are accepted for SimCV prodi update
-_KNOWN_INFOKOM_PRODIS = {
-    'S1 Teknik Informatika', 'S1 Sistem Informasi',
-    'S1 Pendidikan Teknologi Informasi', 'S1 Teknik Elektro',
-    'S1 Pendidikan Teknik Elektro', 'S1 Kecerdasan Artifisial',
-    'S1 Sains Data', 'S1 Bisnis Digital',
-    'D4 Manajemen Informatika',
-    'S2 Informatika', 'S2 Pendidikan Teknologi Informasi',
-}
-
-
-def _dedup_within_prodi(df):
+def _deduplicate_lecturers(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Comprehensive deduplication within the same prodi.
-    Strategies: fuzzy name (>=0.75), same scholar_id, same NIDN.
-    Merges IDs from dropped record into kept record.
+    Professional deduplication within the same department.
+    Merges IDs and preserves the most complete records.
     """
-    ID_COLS = ['nip', 'nidn', 'scholar_id', 'scopus_id', 'sinta_id']
-    drop_indices = set()
+    drop_indices: Set[int] = set()
     
     for prodi in df['prodi'].dropna().unique():
-        prodi_mask = df['prodi'] == prodi
-        prodi_df = df[prodi_mask]
+        prodi_df = df[df['prodi'] == prodi]
         if len(prodi_df) < 2:
             continue
         
-        norms = prodi_df['nama_norm'].tolist()
         indices = prodi_df.index.tolist()
+        names = prodi_df['nama_norm'].tolist()
         
-        for i in range(len(norms)):
-            if indices[i] in drop_indices:
+        for i in range(len(names)):
+            idx_i = indices[i]
+            if idx_i in drop_indices:
                 continue
-            for j in range(i + 1, len(norms)):
-                if indices[j] in drop_indices:
+            for j in range(i + 1, len(names)):
+                idx_j = indices[j]
+                if idx_j in drop_indices:
                     continue
                 
-                a = str(norms[i]).lower()
-                b = str(norms[j]).lower()
+                # Deduplication logic (Name Similarity or ID overlap)
+                is_dup = SequenceMatcher(None, str(names[i]), str(names[j])).ratio() >= 0.75
                 
-                # Strategy 1: Fuzzy name similarity >= 0.75
-                is_dup = SequenceMatcher(None, a, b).ratio() >= 0.75
-                
-                # Strategy 2: Same scholar_id = same person
                 if not is_dup:
-                    sid_i = df.at[indices[i], 'scholar_id'] if 'scholar_id' in df.columns else None
-                    sid_j = df.at[indices[j], 'scholar_id'] if 'scholar_id' in df.columns else None
-                    if pd.notna(sid_i) and pd.notna(sid_j) and sid_i == sid_j:
-                        is_dup = True
-                
-                # Strategy 3: Same NIDN = same person
-                if not is_dup:
-                    nidn_i = df.at[indices[i], 'nidn'] if 'nidn' in df.columns else None
-                    nidn_j = df.at[indices[j], 'nidn'] if 'nidn' in df.columns else None
-                    if pd.notna(nidn_i) and pd.notna(nidn_j) and nidn_i == nidn_j:
-                        is_dup = True
+                    # Check for ID overlap if names aren't similar enough
+                    for col in ['scholar_id', 'nidn']:
+                        val_i, val_j = df.at[idx_i, col], df.at[idx_j, col]
+                        if _has_value(val_i) and _has_value(val_j) and str(val_i) == str(val_j):
+                            is_dup = True
+                            break
                 
                 if is_dup:
-                    # Keep the row with more filled IDs
-                    count_i = sum(1 for c in ID_COLS if c in df.columns and pd.notna(df.at[indices[i], c]))
-                    count_j = sum(1 for c in ID_COLS if c in df.columns and pd.notna(df.at[indices[j], c]))
-                    keep = indices[i] if count_i >= count_j else indices[j]
-                    drop = indices[j] if keep == indices[i] else indices[i]
+                    # Keep the record with more data
+                    score_i = sum(1 for c in ID_FIELDS if _has_value(df.at[idx_i, c]))
+                    score_j = sum(1 for c in ID_FIELDS if _has_value(df.at[idx_j, c]))
+                    keep, drop = (idx_i, idx_j) if score_i >= score_j else (idx_j, idx_i)
                     
-                    # Absorb IDs from dropped into kept
-                    for c in ID_COLS:
-                        if c in df.columns and pd.isna(df.at[keep, c]) and pd.notna(df.at[drop, c]):
+                    # Merge data before dropping
+                    for c in ID_FIELDS:
+                        if not _has_value(df.at[keep, c]) and _has_value(df.at[drop, c]):
                             df.at[keep, c] = df.at[drop, c]
                     
-                    # Keep longest name
-                    if len(str(df.at[drop, 'nama_dosen'])) > len(str(df.at[keep, 'nama_dosen'])):
-                        df.at[keep, 'nama_dosen'] = df.at[drop, 'nama_dosen']
-                    
                     drop_indices.add(drop)
-    
-    if drop_indices:
-        print(f"   Dedup: removed {len(drop_indices)} duplicate(s)")
-        df = df.drop(index=list(drop_indices)).reset_index(drop=True)
-    
-    return df
+                    
+    return df.drop(index=list(drop_indices))
 
 
-def run_smart_merge():
+def run_smart_merge(df_web: pd.DataFrame, df_pddikti: pd.DataFrame) -> Path:
     """
-    WEB-FIRST Smart Merge.
-    - Web data = source of truth (base records)
-    - PDDIKTI data = enrichment only (NIDN, NIP)
-    - PDDIKTI-only records are EXCLUDED
-    - Includes comprehensive deduplication
+    Merge web-scraped data with PDDIKTI enrichment.
     """
-    print("\n--- STEP 3: SMART MERGE ---")
-    print("   (WEB-FIRST)...")
-    try:
-        df_web = pd.read_csv(RAW_WEB_CSV, dtype=ID_COLUMN_TYPES)
-    except (FileNotFoundError, pd.errors.EmptyDataError):
-        print("   Web Data missing/empty. Run Step 1 first.")
-        return None
-        
-    try:
-        df_pddikti = pd.read_csv(RAW_PDDIKTI_CSV, dtype=ID_COLUMN_TYPES)
-    except (FileNotFoundError, pd.errors.EmptyDataError):
-        print("   PDDIKTI Data empty. Proceeding without PDDIKTI enrichment.")
-        df_pddikti = pd.DataFrame(columns=['nama_norm', 'nidn', 'prodi_name', 'nip'])
-        
-    # A. PRE-LOAD EXISTING IDS (Persistence/Resume)
-    existing_ids = {}
-    if FINAL_CSV.exists():
-        try:
-            df_existing = pd.read_csv(FINAL_CSV, dtype=ID_COLUMN_TYPES)
-            for _, row in df_existing.iterrows():
-                norm = str(row['nama_norm']).strip().lower()
-                if norm:
-                    # Collect all useful IDs to preserve them
-                    existing_ids[norm] = {
-                        'scholar_id': row.get('scholar_id') if pd.notna(row.get('scholar_id')) else None,
-                        'scopus_id': row.get('scopus_id') if pd.notna(row.get('scopus_id')) else None,
-                        'sinta_id': row.get('sinta_id') if pd.notna(row.get('sinta_id')) else None,
-                        'nip': row.get('nip') if pd.notna(row.get('nip')) else None,
-                        'nidn': row.get('nidn') if pd.notna(row.get('nidn')) else None,
-                    }
-            print(f"   (INFO) Loaded persistence data for {len(existing_ids)} lecturers from {FINAL_CSV.name}")
-        except Exception as e:
-            print(f"   Could not load existing FINAL_CSV for persistence: {e}")
-
-    # B. BASE: Web Data (source of truth)
-    web_data = {}
+    logger.info("SMART MERGE: Starting merge process")
+    
+    web_data: Dict[str, Any] = {}
+    
+    # A. Load Web Data as Base
+    duplicate_web_rows = 0
     for _, row in df_web.iterrows():
         key = str(row['nama_norm']).strip().lower()
         if not key or key == 'nan':
             continue
-            
-        # Initialize record
-        rec = {
-            'nama_dosen': row['nama_dosen'],
-            'nama_norm': row['nama_norm'],
-            'nip': row['nip'] if pd.notna(row.get('nip')) else None,
-            'nidn': str(row['nidn']) if pd.notna(row.get('nidn')) else None,
-            'prodi': row.get('prodi_name'),
+
+        incoming = {
+            'nama_dosen': _clean_optional(row.get('nama_dosen')),
+            'nama_norm': _clean_optional(row.get('nama_norm')),
+            'nip': _clean_optional(row.get('nip')),
+            'nidn': _clean_optional(row.get('nidn')),
+            'prodi': _clean_optional(row.get('prodi_name')),
             'affiliation': 'UNIVERSITAS NEGERI SURABAYA',
-            'scholar_id': row['scholar_id'] if pd.notna(row.get('scholar_id')) else None,
+            'scholar_id': _clean_optional(row.get('scholar_id')),
             'scopus_id': None,
             'sinta_id': None,
             'source': 'WEB',
         }
+
+        if key in web_data:
+            duplicate_web_rows += 1
+            rec = web_data[key]
+            _merge_missing_fields(rec, incoming, ID_FIELDS)
+            _merge_missing_fields(rec, incoming, ['nama_dosen', 'nama_norm', 'prodi', 'affiliation'])
+
+            if (
+                _looks_like_noisy_web_name(rec.get('nama_dosen'))
+                and _has_value(incoming.get('nama_dosen'))
+                and not _looks_like_noisy_web_name(incoming.get('nama_dosen'))
+            ):
+                rec['nama_dosen'] = incoming['nama_dosen']
+
+            continue
+
+        web_data[key] = incoming
+    
+    logger.info(f"Web Base Records: {len(web_data)}")
+    logger.info(
+        "Merged %s duplicate web rows by nama_norm while preserving non-empty identifiers.",
+        duplicate_web_rows,
+    )
         
-        # Merge persistence data if available
-        if key in existing_ids:
-            p = existing_ids[key]
-            for field in ['scholar_id', 'scopus_id', 'sinta_id', 'nip', 'nidn']:
-                if pd.isna(rec.get(field)) and p.get(field):
-                    rec[field] = p[field]
-                    if 'RESUME' not in rec['source']:
-                        rec['source'] += '+RESUME'
-        
-        web_data[key] = rec
-    print(f"   (STATS) Web Base Records: {len(web_data)}")
-        
-    # C. ENRICH with PDDIKTI (strict match)
-    print("   Matching PDDIKTI -> Web (exact -> NIDN -> substring -> fuzzy >=0.85)...")
+    # B. Enrich with PDDIKTI
     count_enriched = 0
     count_skipped = 0
     
-    for _, pddikti_row in df_pddikti.iterrows():
-        pddikti_norm = str(pddikti_row['nama_norm']).strip().lower()
-        if not pddikti_norm or pddikti_norm == 'nan':
+    for _, p_row in df_pddikti.iterrows():
+        p_norm = str(p_row['nama_norm']).strip().lower()
+        if not p_norm or p_norm == 'nan':
             continue
         
-        pddikti_nidn = pddikti_row.get('nidn')
-        pddikti_prodi = pddikti_row.get('prodi_name')
+        p_nidn = p_row.get('nidn')
+        p_prodi = p_row.get('prodi_name')
         
-        match_key, score = _find_pddikti_match(pddikti_norm, pddikti_nidn, pddikti_prodi, web_data)
+        match_key, _ = _find_source_match(p_norm, p_nidn, p_prodi, web_data)
         
         if match_key:
             rec = web_data[match_key]
-            _enrich_from_pddikti(rec, pddikti_row)
+            # Update missing fields
+            for field in ['nip', 'nidn', 'scholar_id']:
+                if not _has_value(rec.get(field)) and _has_value(p_row.get(field)):
+                    rec[field] = _clean_optional(p_row.get(field))
+
+            if _looks_like_noisy_web_name(rec.get('nama_dosen')) and _has_value(p_row.get('nama_dosen')):
+                rec['nama_dosen'] = _clean_optional(p_row.get('nama_dosen'))
+            
             if '+PDDIKTI' not in rec['source']:
                 rec['source'] += '+PDDIKTI'
             count_enriched += 1
@@ -350,33 +295,23 @@ def run_smart_merge():
             
     # C. Build DataFrame
     df_merged = pd.DataFrame(web_data.values())
-    cols = ['nama_dosen', 'nama_norm', 'nip', 'nidn', 'prodi', 'scholar_id', 'scopus_id', 'sinta_id', 'source']
-    valid_cols = [c for c in cols if c in df_merged.columns]
-    df_merged = df_merged[valid_cols]
+    df_merged = _deduplicate_lecturers(df_merged)
     
-    # D. Comprehensive deduplication
-    print("   Running deduplication...")
-    df_merged = _dedup_within_prodi(df_merged)
-    
-    # E. Save
+    # D. Save
     save_final_csv(df_merged, MERGED_CSV, label="Step 3: Smart Merge")
-    print(f"   PDDIKTI Enriched: {count_enriched} | Skipped: {count_skipped}")
-    print(f"   Final Merged: {len(df_merged)} records")
+    logger.info(f"PDDIKTI Enriched: {count_enriched} | Skipped: {count_skipped}")
+    logger.info(f"Final Merged: {len(df_merged)} records")
+    
     return MERGED_CSV
 
 
-# ================================================================
-# STEP 4: ENRICHMENT (SimCV + Sinta + SciVal + Scholar)
-# ================================================================
+# Step 4: Enrichment
 
-
-# SimCV namasatker format: "Teknik Informatika S1" -> "S1 Teknik Informatika"
-def _normalize_simcv_prodi(namasatker):
+def _normalize_simcv_prodi(namasatker: Any) -> Optional[str]:
     """Convert SimCV namasatker to standardized prodi name."""
     if not namasatker or str(namasatker).strip() in ('', 'None', 'nan'):
         return None
     s = str(namasatker).strip()
-    # Extract jenjang suffix (S1, S2, S3, D3, D4)
     m = re.match(r'^(.+?)\s+(S[123]|D[34])$', s)
     if m:
         name_part = m.group(1).strip()
@@ -385,19 +320,14 @@ def _normalize_simcv_prodi(namasatker):
     return s
 
 
-def _run_simcv(df):
-    """Enrich NIP/NIDN, nama_dosen, and prodi from SimCV API."""
-    print("\n   [4a] Enriching NIP/NIDN + nama_dosen + prodi from SimCV...")
+def _run_simcv(df: pd.DataFrame) -> pd.DataFrame:
+    """Enrich data from SimCV API."""
+    logger.info("Enriching from SimCV...")
     
     client = SimCVClient()
     count = 0
-    skipped = 0
-    searched = 0
     
     for idx, row in df.iterrows():
-        # Search ALL records (SimCV provides clean nama_dosen and prodi)
-        
-        searched += 1
         queries = [row['nama_norm'], row['nama_dosen']]
         best_cand = None
         best_s = 0
@@ -406,7 +336,7 @@ def _run_simcv(df):
             res = client.search(q)
             for r in res:
                 cv_raw = str(r.get('namalengkap', ''))
-                cv_norm = clean_name_expert(cv_raw).lower()
+                cv_norm = clean_lecturer_name(cv_raw).lower()
                 our_norm = str(row['nama_norm']).lower()
                 
                 s = SequenceMatcher(None, our_norm, cv_norm).ratio()
@@ -418,49 +348,40 @@ def _run_simcv(df):
         
         if best_cand:
             updated = False
-            # Enrich NIP
-            if pd.isna(row['nip']) and best_cand.get('nip'):
-                nip_val = str(best_cand.get('nip')).strip()
-                if nip_val and nip_val != 'None':
-                    df.at[idx, 'nip'] = nip_val
-                    updated = True
-            # Enrich NIDN
-            if pd.isna(row['nidn']) and best_cand.get('nidn'):
-                nidn_val = str(best_cand.get('nidn')).strip()
-                if nidn_val and nidn_val != 'None':
-                    df.at[idx, 'nidn'] = nidn_val
-                    updated = True
-            # Always update nama_dosen from SimCV (cleaner source)
-            cv_fullname = str(best_cand.get('namalengkap', '')).strip()
-            if cv_fullname and cv_fullname != 'None' and len(cv_fullname) > 3:
-                df.at[idx, 'nama_dosen'] = cv_fullname
+            if not _has_value(row.get('nip')) and best_cand.get('nip'):
+                df.at[idx, 'nip'] = str(best_cand.get('nip')).strip()
                 updated = True
-            # Always update prodi from SimCV (authoritative source)
+            if not _has_value(row.get('nidn')) and best_cand.get('nidn'):
+                df.at[idx, 'nidn'] = str(best_cand.get('nidn')).strip()
+                updated = True
+            
+            fullname = str(best_cand.get('namalengkap', '')).strip()
+            if len(fullname) > 3:
+                df.at[idx, 'nama_dosen'] = fullname
+                updated = True
+                
             cv_prodi = _normalize_simcv_prodi(best_cand.get('namasatker'))
             if cv_prodi:
                 df.at[idx, 'prodi'] = cv_prodi
                 updated = True
+                
             if updated:
                 count += 1
     
-    print(f"      Searched: {searched}, Skipped: {skipped}, Enriched: {count}")
+    logger.info(f"SimCV Enriched: {count} records")
     return df
 
 
-def _run_sinta(df):
-    """Enrich Sinta IDs from SINTA website."""
-    print("\n   [4b] Enriching Sinta IDs...")
+def _run_sinta(df: pd.DataFrame) -> pd.DataFrame:
+    """Enrich Sinta IDs."""
+    logger.info("Enriching Sinta IDs...")
     
     crawler = SintaCrawler()
-    cache = []
+    cache: List[Dict[str, Any]] = []
     
-    active_prodis = df['prodi'].unique()
-    for p in active_prodis:
-        if pd.isna(p):
-            continue
-        cache.extend(crawler.crawl_dept(p))
-    
-    print(f"      Cached {len(cache)} Sinta Profiles.")
+    for p in df['prodi'].unique():
+        if pd.notna(p):
+            cache.extend(crawler.crawl_dept(str(p)))
     
     count = 0
     for idx, row in df.iterrows():
@@ -474,43 +395,36 @@ def _run_sinta(df):
                 count += 1
                 break
     
-    print(f"      Enriched: {count} Sinta IDs")
+    logger.info(f"Sinta Enriched: {count} IDs")
     return df
 
 
-def _run_scival(df):
-    """Enrich Scopus IDs via SciVal automation."""
+def _run_scival(df: pd.DataFrame) -> pd.DataFrame:
+    """Enrich Scopus IDs via SciVal."""
     if not ENABLE_SCIVAL:
-        print("\n   [4c] SciVal: DISABLED in config. Skipping.")
+        logger.info("[4c] SciVal: DISABLED. Skipping.")
         return df
     
-    print("\n[4a] SimCV Automation...")
+    logger.info("SciVal Automation...")
     client = SciValClient()
     df_updated = client.run_automation(df)
     
-    if df_updated is not None:
-        return df_updated
-    return df
+    return df_updated if df_updated is not None else df
 
 
-def _run_scholar(df, sample_size=None):
-    """
-    Verify/Search Google Scholar IDs via Bright Data in parallel.
-    """
-    print("\n   [4d] Scholar Verification & Search (Parallel / Bright Data)...")
+def _run_scholar(df: pd.DataFrame, sample_size: Optional[int] = None) -> pd.DataFrame:
+    """Verify/Search Google Scholar IDs."""
+    logger.info("Scholar Verification and Search...")
     
     if 'scholar_id' not in df.columns:
         df['scholar_id'] = None
     
     client = ScholarVerificationClient()
     if not client.proxies:
-        print("      Skipping Scholar Step (No Proxy Configured)")
+        logger.warning("Skipping Scholar (No Proxy Configured)")
         return df
     
-    # 1. Identify rows needing processing
-    # Filter out lecturers who already have a valid scholar_id (Resume logic)
     to_process = []
-    
     indices = df.index.tolist()
     if sample_size and sample_size < len(indices):
         indices = indices[:sample_size]
@@ -520,173 +434,91 @@ def _run_scholar(df, sample_size=None):
         sid = str(row.get('scholar_id', '')).strip() if pd.notna(row.get('scholar_id')) else ''
         name = str(row['nama_norm']) if pd.notna(row['nama_norm']) else str(row['nama_dosen'])
         
-        # If no ID, we need to search
         if not sid or sid.lower() == 'nan' or len(sid) < 5:
             to_process.append({'index': idx, 'name': name, 'id': None})
         else:
-            # We HAVE an ID, but we should verify it if it hasn't been verified this run
-            # For efficiency, if it came from +RESUME in Step 3, we TRUST it.
             source = str(row.get('source', ''))
-            if 'RESUME' in source or 'SCHOLAR' in source:
-                continue # Skip already verified IDs
-            else:
+            if 'RESUME' not in source and 'SCHOLAR' not in source:
                 to_process.append({'index': idx, 'name': name, 'id': sid})
 
     if not to_process:
-        print("      No lecturers need Scholar processing/verification.")
         return df
 
-    print(f"      (EXEC) Processing {len(to_process)} lecturers in parallel...")
-    
-    # 2. Execute Batch
     results = client.verify_batch(to_process)
-    
-    # 3. Apply Results
-    new_found = 0
-    verified = 0
-    invalidated = 0
     
     for res in results:
         idx = res['index']
         if res['valid'] and res['id']:
-            if df.at[idx, 'scholar_id'] != res['id']:
-                new_found += 1
-            else:
-                verified += 1
             df.at[idx, 'scholar_id'] = res['id']
-            # Add marker
             source = str(df.at[idx, 'source'])
             if 'SCHOLAR' not in source:
                 df.at[idx, 'source'] = source + '+SCHOLAR'
         else:
-            if pd.notna(df.at[idx, 'scholar_id']):
-                invalidated += 1
             df.at[idx, 'scholar_id'] = None
 
-    print(f"      (DONE) Results: {new_found} New, {verified} Verified, {invalidated} Invalidated")
     return df
 
 
-def run_enrichment(scholar_sample=None):
-    """
-    Combined enrichment pipeline: SimCV -> Sinta -> SciVal -> Scholar.
-    Reads from merged CSV, enriches progressively, saves to final CSV.
-    
-    Args:
-        scholar_sample: If set, only process this many Scholar records (saves API credits)
-    """
-    print("\n" + "=" * 60)
-    print("\n--- STEP 4: ENRICHMENT PIPELINE ---")
-    print("=" * 60)
+def run_enrichment(scholar_sample: Optional[int] = None) -> Optional[Path]:
+    """Combined enrichment pipeline."""
+    logger.info("--- STEP 4: ENRICHMENT PIPELINE ---")
     
     try:
-        df = pd.read_csv(MERGED_CSV, dtype=ID_COLUMN_TYPES)
+        df = read_dataframe_csv(MERGED_CSV, dtype=ID_COLUMN_TYPES)
     except FileNotFoundError:
-        print("   Merged file not found. Run Step 3 first.")
+        logger.error("Merged file not found. Run Step 3 first.")
         return None
     
-    print(f"     Input: {len(df)} records from {MERGED_CSV.name}")
-    
-    # 4a. SimCV (NIP/NIDN)
+    df = enrich_with_siakadu(df)
     df = _run_simcv(df)
-    save_final_csv(df, FINAL_CSV, label="After SimCV")
-    
-    # 4b. Sinta (Sinta IDs)
     df = _run_sinta(df)
-    save_final_csv(df, FINAL_CSV, label="After Sinta")
-    
-    # 4c. SciVal (Scopus IDs)
     df = _run_scival(df)
-    save_final_csv(df, FINAL_CSV, label="After SciVal")
-    
-    # 4d. Scholar (Google Scholar IDs)
     df = _run_scholar(df, sample_size=scholar_sample)
-    save_final_csv(df, FINAL_CSV, label="After Scholar")
     
-    print(f"\n   Enrichment Complete: {len(df)} records")
+    save_final_csv(df, FINAL_CSV, label="Step 4: Enrichment Complete")
     return FINAL_CSV
 
 
-# ================================================================
-# STEP 5: POST-PROCESSING (Final Clean + Dedup)
-# ================================================================
-def run_post_processing():
-    """
-    Final pipeline step before Supabase sync.
-    - Re-runs deduplication (catches any dups introduced by enrichment)
-    - Enforces strict types on all ID columns
-    - Saves with QUOTE_ALL for clean text
-    """
-    print("\n--- STEP 2: PDDIKTI API ---")
-    print("POST-PROCESSING...")
+# Step 5: Post-Processing
+
+def run_post_processing() -> Optional[Path]:
+    """Final pipeline cleanup."""
+    logger.info("--- STEP 5: POST-PROCESSING ---")
     
     try:
-        df = pd.read_csv(FINAL_CSV, dtype=ID_COLUMN_TYPES)
+        df = read_dataframe_csv(FINAL_CSV, dtype=ID_COLUMN_TYPES)
     except FileNotFoundError:
-        print("   Final file not found. Run Step 4 first.")
+        logger.error("Final file not found. Run Step 4 first.")
         return None
     
-    print(f"   Input: {len(df)} records")
-    
-    # 1. Final deduplication
-    df = _dedup_within_prodi(df)
-    
-    # 2. Drop any remaining exact duplicates
-    before = len(df)
+    df = _deduplicate_lecturers(df)
     df = df.drop_duplicates(subset=['nama_norm'], keep='first')
-    if len(df) < before:
-        print(f"   Removed {before - len(df)} exact duplicate(s)")
     
-    # 3. Save (enforce_strict_types + QUOTE_ALL handled by save_final_csv)
-    df = save_final_csv(df, FINAL_CSV, label="Post-Processing")
+    # Final save handles enforce_strict_ids
+    save_final_csv(df, FINAL_CSV, label="Step 5: Post-Processing Complete")
     
-    # 4. Summary statistics
-    id_cols = ['nip', 'nidn', 'scholar_id', 'scopus_id', 'sinta_id']
-    print(f"\n   FINAL DATASET: {len(df)} records")
-    for col in id_cols:
-        if col in df.columns:
-            filled = df[col].notna().sum()
-            pct = (filled / len(df) * 100) if len(df) > 0 else 0
-            print(f"      {col}: {filled}/{len(df)} ({pct:.1f}%)")
-    
+    logger.info(f"Final dataset: {len(df)} records")
     return FINAL_CSV
 
 
-# ================================================================
-# STEP 6: SUPABASE SYNC
-# ================================================================
-def run_supabase_sync():
-    """
-    Upload final data to Supabase. Last step of the pipeline.
-    Reads from FINAL_CSV, validates IDs, and upserts to 'lecturers' table.
-    """
+# Step 6: Supabase Sync
+
+def run_supabase_sync() -> int:
+    """Sync final data to Supabase."""
     from ..clients.supabase_client import SupabaseClient
     
-    print("\n--- STEP 6: SUPABASE SYNC ---")
-    print("SYNCHRONIZATION")
-    print("=" * 50)
+    logger.info("SUPABASE SYNC: Starting sync process")
     
     try:
-        df = pd.read_csv(FINAL_CSV, dtype=str)  # Always read as string for DB ops
+        df = read_dataframe_csv(FINAL_CSV, dtype=str)
     except FileNotFoundError:
-        print("   Final file not found. Run previous steps first.")
-        return None
+        logger.error("Final file not found. Run previous steps first.")
+        return 0
     
-    df = enforce_strict_types(df)
-    print(f"     Loaded {len(df)} rows from {FINAL_CSV.name}")
-    
-    # Sanity check: no .0 suffixes
-    id_cols = ['nip', 'nidn', 'scholar_id', 'scopus_id', 'sinta_id']
-    for col in id_cols:
-        if col in df.columns:
-            has_dot = df[col].dropna().str.contains(r'\.0$', regex=True).any()
-            if has_dot:
-                print(f"      {col} still has .0 suffix! Data quality issue.")
-    
-    # Upsert
+    df = enforce_strict_ids(df)
     supabase = SupabaseClient()
     supabase.upsert_lecturers(df)
     
-    print(f"\n     Done! {len(df)} lecturers synced to Supabase.")
+    logger.info(f"Done: {len(df)} lecturers synced to Supabase.")
     return len(df)
 

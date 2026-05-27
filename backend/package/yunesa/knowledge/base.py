@@ -13,16 +13,22 @@ from yunesa.utils.datetime_utils import coerce_any_to_utc_datetime, utc_isoforma
 
 
 class FileStatus:
+    # Text-only runtime states.
+    PENDING = "pending"
+    PROCESSING = "processing"
+    INDEXED = "indexed"
+    ERROR = "error"
+
+    # Legacy document-ingestion states kept as aliases so older metadata and
+    # disabled document endpoints fail gracefully instead of raising AttributeError.
     UPLOADED = "uploaded"
     PARSING = "parsing"
     PARSED = "parsed"
     ERROR_PARSING = "error_parsing"
     INDEXING = "indexing"
-    INDEXED = "indexed"
     ERROR_INDEXING = "error_indexing"
-    # Legacy status mapping
-    DONE = "done"  # Map to INDEXED
-    FAILED = "failed"  # Generic failure
+    DONE = "done"
+    FAILED = "failed"
 
 
 class KnowledgeBaseException(Exception):
@@ -189,138 +195,69 @@ class KnowledgeBase(ABC):
         """
         pass
 
-    async def add_file_record(
-        self, db_id: str, item: str, params: dict | None = None, operator_id: str | None = None
+    async def add_text_record(
+        self, db_id: str, content: str, title: str, params: dict | None = None, operator_id: str | None = None
     ) -> dict:
         """
-        Add a file record to metadata (Status: UPLOADED)
+        Add a text record to metadata (direct text input)
 
         Args:
             db_id: Database ID
-            item: File path or URL
+            content: Text content
+            title: Title for the content
             params: Parameters
-            operator_id: Operator ID who created the file
+            operator_id: Operator ID who created the record
 
         Returns:
-            File metadata record
+            Record metadata
         """
-        from yunesa.knowledge.utils.kb_utils import prepare_item_metadata
+        import uuid
+        from yunesa.knowledge.utils.kb_utils import resolve_chunk_processing_params
 
         params = params or {}
-        content_type = params.get("content_type", "file")
+        record_id = str(uuid.uuid4())
 
-        # Prepare metadata
-        metadata = await prepare_item_metadata(item, content_type, db_id, params=params)
-        file_id = metadata["file_id"]
         kb_additional_params = self.databases_meta.get(db_id, {}).get("metadata") or {}
-        metadata["processing_params"] = resolve_chunk_processing_params(
-            kb_additional_params=kb_additional_params,
-            file_processing_params=metadata.get("processing_params"),
-        )
 
-        # Initial status
-        metadata["status"] = FileStatus.UPLOADED
-        metadata["created_at"] = utc_isoformat()
+        metadata = {
+            "file_id": record_id,
+            "filename": title,
+            "content": content,
+            "database_id": db_id,
+            "status": FileStatus.PENDING,
+            "created_at": utc_isoformat(),
+            "file_type": "text",
+            "processing_params": resolve_chunk_processing_params(
+                kb_additional_params=kb_additional_params,
+                file_processing_params=params.get("processing_params"),
+            )
+        }
+
         if operator_id:
             metadata["created_by"] = operator_id
 
         # Save to metadata
-        self.files_meta[file_id] = metadata
-        await self._persist_file(file_id)
+        self.files_meta[record_id] = metadata
+        await self._persist_file(record_id)
 
         return metadata
 
-    async def parse_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
+    async def parse_record(self, db_id: str, record_id: str, operator_id: str | None = None) -> dict:
         """
-        Parse file to Markdown and save to MinIO (Status: PARSING -> PARSED/ERROR_PARSING)
-
-        Args:
-            db_id: Database ID
-            file_id: File ID
-            operator_id: ID of the user performing the operation
-
-        Returns:
-            Updated file metadata
+        Simulate parsing for direct text records (Status: PROCESSING -> INDEXED)
         """
-        if file_id not in self.files_meta:
-            raise ValueError(f"File {file_id} not found")
+        if record_id not in self.files_meta:
+            raise ValueError(f"Record {record_id} not found")
 
-        file_meta = self.files_meta[file_id]
-        current_status = file_meta.get("status")
+        self.files_meta[record_id]["status"] = FileStatus.PROCESSING
+        self.files_meta[record_id]["updated_at"] = utc_isoformat()
+        await self._persist_file(record_id)
 
-        # Validate current status - only allow parsing from these states
-        allowed_statuses = {
-            FileStatus.UPLOADED,
-            FileStatus.ERROR_PARSING,
-            "failed",  # Legacy status
-        }
+        # For direct text, parsing is just setting status to INDEXED
+        self.files_meta[record_id]["status"] = FileStatus.INDEXED
+        await self._persist_file(record_id)
 
-        if current_status not in allowed_statuses:
-            raise ValueError(
-                f"Cannot parse file with status '{current_status}'. "
-                f"File must be in one of these states: {', '.join(allowed_statuses)}"
-            )
-
-        file_path = file_meta.get("path")
-        if not file_path:
-            raise ValueError(f"File {file_id} has no valid path in metadata")
-
-        # Clear previous error if any
-        if "error" in file_meta:
-            self.files_meta[file_id].pop("error", None)
-
-        # Update status to PARSING and add to processing queue
-        self.files_meta[file_id]["status"] = FileStatus.PARSING
-        self.files_meta[file_id]["updated_at"] = utc_isoformat()
-        if operator_id:
-            self.files_meta[file_id]["updated_by"] = operator_id
-        await self._persist_file(file_id)
-
-        # Add to processing queue
-        self._add_to_processing_queue(file_id)
-
-        try:
-            from yunesa.plugins.parser.unified import Parser
-
-            # Prepare params
-            params = file_meta.get("processing_params", {}) or {}
-            params["image_bucket"] = "public"
-            params["image_prefix"] = f"{db_id}/kb-images"
-
-            markdown_content = await Parser.aparse(
-                source=file_path,
-                params=params,
-            )
-
-            # Save Markdown to MinIO
-            markdown_file_path = await self._save_markdown_to_minio(db_id, file_id, markdown_content)
-
-            # Update metadata
-            self.files_meta[file_id]["status"] = FileStatus.PARSED
-            self.files_meta[file_id]["markdown_file"] = markdown_file_path
-            self.files_meta[file_id]["updated_at"] = utc_isoformat()
-            if operator_id:
-                self.files_meta[file_id]["updated_by"] = operator_id
-            await self._persist_file(file_id)
-
-            return self.files_meta[file_id]
-
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Failed to parse file {file_id}: {error_msg}")
-
-            self.files_meta[file_id]["status"] = FileStatus.ERROR_PARSING
-            self.files_meta[file_id]["error"] = error_msg
-            self.files_meta[file_id]["updated_at"] = utc_isoformat()
-            if operator_id:
-                self.files_meta[file_id]["updated_by"] = operator_id
-            await self._persist_file(file_id)
-
-            raise
-
-        finally:
-            # Remove from processing queue
-            self._remove_from_processing_queue(file_id)
+        return self.files_meta[record_id]
 
     async def update_file_params(self, db_id: str, file_id: str, params: dict, operator_id: str | None = None) -> None:
         """Update file processing params"""
@@ -351,39 +288,7 @@ class KnowledgeBase(ABC):
 
         await self._persist_file(file_id)
 
-    async def _save_markdown_to_minio(self, db_id: str, file_id: str, content: str) -> str:
-        """Save markdown content to MinIO and return HTTP URL"""
-        from yunesa.storage.minio import get_minio_client
-
-        minio_client = get_minio_client()
-        bucket_name = minio_client.KB_BUCKETS["parsed"]
-        await asyncio.to_thread(minio_client.ensure_bucket_exists, bucket_name)
-
-        object_name = f"{db_id}/parsed/{file_id}.md"
-        data = content.encode("utf-8")
-
-        # Return standard HTTP URL from UploadResult
-        upload_result = await minio_client.aupload_file(
-            bucket_name=bucket_name,
-            object_name=object_name,
-            data=data,
-        )
-
-        return upload_result.url
-
-    async def _read_markdown_from_minio(self, file_path: str) -> str:
-        """Read markdown content from MinIO"""
-        from yunesa.knowledge.utils.kb_utils import parse_minio_url
-        from yunesa.storage.minio import get_minio_client
-
-        if not file_path.startswith(("http://", "https://")):
-            raise ValueError(f"Invalid MinIO path format: {file_path}")
-
-        bucket_name, object_name = parse_minio_url(file_path)
-        minio_client = get_minio_client()
-
-        content_bytes = await minio_client.adownload_file(bucket_name, object_name)
-        return content_bytes.decode("utf-8")
+    # MinIO methods removed as they are no longer needed for text-only interaction
 
     @abstractmethod
     async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:

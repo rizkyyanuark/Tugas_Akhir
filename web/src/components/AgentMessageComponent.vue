@@ -1,10 +1,4 @@
 <template>
-  <div
-    v-if="message.message_type === 'multimodal_image' && message.image_content"
-    class="message-image"
-  >
-    <img :src="`data:image/jpeg;base64,${message.image_content}`" alt="Uploaded image" />
-  </div>
   <div class="message-box" :class="[message.type, customClasses]">
     <!-- User message -->
     <div
@@ -553,20 +547,6 @@ const parsedData = computed(() => {
   }
 }
 
-// Multimodal message styles
-.message-image {
-  border-radius: 12px;
-  overflow: hidden;
-  margin-left: auto;
-  /* max-height: 200px; */
-  border: 1px solid rgba(255, 255, 255, 0.2);
-
-  img {
-    max-width: 100%;
-    max-height: 200px;
-    object-fit: contain;
-  }
-}
 </style>
 
 <style lang="less" scoped>

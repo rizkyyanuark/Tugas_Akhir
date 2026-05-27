@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import traceback
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
@@ -30,11 +30,11 @@ async def _get_graph_adapter(db_id: str) -> GraphAdapter:
     Returns:
         GraphAdapter: Matching graph adapter instance.
     """
-    # Check graph database service status (required only for Upload type).
+    # Check graph database service status.
     if not graph_base.is_running():
         # First detect graph type; allow it if the type does not require graph_base.
         graph_type = await GraphAdapterFactory.detect_graph_type(db_id, knowledge_base)
-        if graph_type == "upload":
+        if graph_type == "core":
             raise HTTPException(
                 status_code=503, detail="Graph database service is not running")
 
@@ -64,21 +64,21 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
     try:
         graphs = []
 
-        # 1. Get default Neo4j graph info (Upload type).
+        # 1. Get default Neo4j graph info (Core type).
         neo4j_info = graph_base.get_graph_info()
         if neo4j_info:
-            # Use default metadata from Upload adapter.
-            from yunesa.knowledge.graphs.adapters.upload import UploadGraphAdapter
+            # Use default metadata from Core adapter.
+            from yunesa.knowledge.graphs.adapters.core import CoreGraphAdapter
 
             capabilities = _get_capabilities_from_metadata(
-                UploadGraphAdapter._get_metadata(None))
+                CoreGraphAdapter._get_metadata(None))
 
             graphs.append(
                 {
                     "id": "neo4j",
-                    "name": "default graph",
-                    "type": "upload",
-                    "description": "Default graph database for uploaded documents",
+                    "name": "Core Citation Graph",
+                    "type": "core",
+                    "description": "Main graph database for real-time citations and entity relationships",
                     "status": neo4j_info.get("status", "unknown"),
                     "created_at": neo4j_info.get("last_updated"),
                     "node_count": neo4j_info.get("entity_count", 0),
@@ -104,7 +104,7 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
                     "name": db.get("name"),
                     "type": "lightrag",
                     "description": db.get("description"),
-                    "status": "active",  # LightRAG DBs are usually active if listed
+                    "status": "active",
                     "created_at": db.get("created_at"),
                     "metadata": db,
                     "capabilities": capabilities,
@@ -131,12 +131,6 @@ async def get_subgraph(
 ):
     """
     Unified subgraph query endpoint.
-
-    Args:
-        db_id: Graph ID (LightRAG DB ID or "neo4j").
-        node_label: Query keyword or label.
-        max_depth: Traversal depth.
-        max_nodes: Maximum number of returned nodes.
     """
     try:
         logger.info(f"Querying subgraph - db_id: {db_id}, label: {node_label}")
@@ -210,8 +204,6 @@ async def get_graph_stats(
                 "data": {
                     "total_nodes": info.get("entity_count", 0),
                     "total_edges": info.get("relationship_count", 0),
-                    # Neo4j info currently returns 'labels' list, not counts per label.
-                    # Improving this would require updating GraphDatabase.get_graph_info
                     "entity_types": [{"type": label, "count": "N/A"} for label in info.get("labels", [])],
                 },
             }
@@ -220,27 +212,6 @@ async def get_graph_stats(
         logger.error(f"Failed to get stats: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to get stats: {str(e)}")
-
-
-@graph.get("/neo4j/nodes")
-async def get_neo4j_nodes(
-    kgdb_name: str = Query(..., description="knowledge graphdatabasename"),
-    num: int = Query(100, description="nodecount", ge=1, le=1000),
-    current_user: User = Depends(get_admin_user),
-):
-    """(Deprecated) Use /graph/subgraph instead"""
-    response = await get_subgraph(db_id=kgdb_name, node_label="*", max_nodes=num, current_user=current_user)
-    return {"success": True, "result": response["data"], "message": "success"}
-
-
-@graph.get("/neo4j/node")
-async def get_neo4j_node(
-    entity_name: str = Query(..., description="entityname"), current_user: User = Depends(get_admin_user)
-):
-    """(Deprecated) Use /graph/subgraph instead"""
-    # neo4j/node uses query_nodes(keyword=entity_name)
-    response = await get_subgraph(db_id="neo4j", node_label=entity_name, current_user=current_user)
-    return {"success": True, "result": response["data"], "message": "success"}
 
 
 @graph.get("/neo4j/info")
@@ -279,30 +250,4 @@ async def index_neo4j_entities(data: dict = Body(default={}), current_user: User
         logger.error(f"Failed to index nodes: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to index nodes: {str(e)}")
-
-
-@graph.post("/neo4j/add-entities")
-async def add_neo4j_entities(
-    file_path: str = Body(...),
-    kgdb_name: str | None = Body(None),
-    embed_model_name: str | None = Body(None),
-    batch_size: int | None = Body(None),
-    current_user: User = Depends(get_admin_user),
-):
-    """Add graph entities to Neo4j from a JSONL file (MinIO URL only)."""
-    try:
-        # Service layer validates URL and downloads file from MinIO.
-        await graph_base.jsonl_file_add_entity(file_path, kgdb_name, embed_model_name, batch_size)
-        return {"success": True, "message": "Entities added successfully", "status": "success"}
-    except StorageError as e:
-        # MinIO validation or download error.
-        raise HTTPException(status_code=400, detail=str(e))
-    except ValueError as e:
-        # Local path rejected.
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Failed to add entities: {e}, {traceback.format_exc()}")
-        return {"success": False, "message": f"Failed to add entities: {e}", "status": "failed"}
-
-
 

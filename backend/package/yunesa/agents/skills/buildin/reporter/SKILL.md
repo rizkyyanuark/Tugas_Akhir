@@ -1,28 +1,30 @@
 ---
 name: reporter
-description: "generate SQL query报table并generate可视化图table。当user需要querydatabase并以报table形式展示result时使用此skill，包括：statistics销售data、分析userrow为、generate业务报table、query业务指标等。"
+description: "Membantu membuat laporan berbasis SQL, merangkum hasil query database, dan menyajikan visualisasi data bila tool pendukung tersedia."
 ---
 
-# SQL 报tableskill
+# SQL Reporter Skill
 
-根据user的指令，使用databasetool和图table绘制tool，build SQL queryreport。
+Gunakan skill ini ketika pengguna meminta laporan berbasis data dari database relasional, terutama ketika perlu membuat query SQL, membaca hasilnya, lalu menyusun ringkasan atau visualisasi.
 
-## operationworkflow
+## Alur Kerja
 
-1. 理解user的指令，明确报table的需求和目标
-2. 使用 MySQL toolgenerate正确的 SQL query
-3. Execute query并getresult
-4. 使用 Charts MCP generate图table
-5. 将图table以 markdown 图片formatembedding报table
+1. Pahami pertanyaan pengguna dan tentukan metrik atau data yang dibutuhkan.
+2. Identifikasi tabel, kolom, dan relasi yang relevan.
+3. Buat query SQL yang jelas, efisien, dan sesuai konteks.
+4. Jalankan query menggunakan tool database yang tersedia.
+5. Ringkas hasil query dalam bentuk laporan yang mudah dibaca.
+6. Buat visualisasi data bila tool chart tersedia dan memang membantu pemahaman.
 
-## 关键约束
+## Batasan
 
-- generate的 SQL query必须正确且高效，避免全table扫描
-- 图tablegeneratetool的returnresult不会default渲染，必须在最终报table中以 `![description](图片URL)` formatembedding
-- 只return报tablerelated的结论，不要return原始 SQL query语句
+- Hindari query yang terlalu luas atau melakukan full table scan tanpa alasan kuat.
+- Jangan mengubah data kecuali pengguna secara eksplisit meminta operasi tulis.
+- Jangan menampilkan SQL mentah jika pengguna hanya meminta insight akhir.
+- Jelaskan keterbatasan data jika hasil query tidak cukup mendukung kesimpulan.
 
-## 允许的tool
+## Tool Yang Dapat Digunakan
 
-- MySQL tool：execute SQL query
-- Charts MCP：generate可视化图table
-- 网络retrievaltool：必要时补充背景信息
+- MySQL tool untuk menjalankan query SQL.
+- Charts MCP untuk membuat visualisasi data.
+- Retrieval tool bila perlu melengkapi konteks laporan.

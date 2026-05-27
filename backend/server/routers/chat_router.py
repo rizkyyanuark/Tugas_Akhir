@@ -1,10 +1,9 @@
 import traceback
 import uuid
 from typing import Any
-from mimetypes import guess_type
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile, File
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,40 +24,17 @@ from yunesa.services.agent_run_service import (
 from yunesa.repositories.conversation_repository import ConversationRepository
 from yunesa.services.conversation_service import (
     create_thread_view,
-    delete_thread_attachment_view,
     delete_thread_view,
     get_thread_history_view,
-    list_thread_attachments_view,
     list_threads_view,
     update_thread_view,
-    upload_thread_attachment_view,
-)
-from yunesa.services.thread_files_service import (
-    list_thread_files_view,
-    read_thread_file_content_view,
-    resolve_thread_artifact_view,
-    save_thread_artifact_to_workspace_view,
 )
 from yunesa.services.feedback_service import get_message_feedback_view, submit_message_feedback_view
 from yunesa.repositories.agent_config_repository import AgentConfigRepository
 from yunesa.utils.logging_config import logger
-from yunesa.utils.image_processor import process_uploaded_image
-from yunesa.utils.paths import VIRTUAL_PATH_PREFIX
 
 
 # TODO: This file currently has too many responsibilities and mixed route labels.
-
-# Image upload response model
-class ImageUploadResponse(BaseModel):
-    success: bool
-    image_content: str | None = None
-    thumbnail_content: str | None = None
-    width: int | None = None
-    height: int | None = None
-    format: str | None = None
-    mime_type: str | None = None
-    size_bytes: int | None = None
-    error: str | None = None
 
 
 class AgentConfigCreate(BaseModel):
@@ -87,8 +63,6 @@ class AgentRunCreate(BaseModel):
     thread_id: str = Field(..., description="Session thread ID")
     meta: dict = Field(default_factory=dict,
                        description="Optional request tracing metadata, such as request_id")
-    image_content: str | None = Field(
-        None, description="Optional base64 image content")
 
 
 class AgentChatRequest(BaseModel):
@@ -99,8 +73,6 @@ class AgentChatRequest(BaseModel):
         None, description="Optional session thread ID; auto-created when omitted")
     meta: dict = Field(default_factory=dict,
                        description="Optional request tracing metadata, such as request_id")
-    image_content: str | None = Field(
-        None, description="Optional base64 image content")
 
 
 chat = APIRouter(prefix="/chat", tags=["chat"])
@@ -373,19 +345,12 @@ async def chat_agent(
     logger.info(
         f"query: {payload.query}, agent_config_id: {payload.agent_config_id}, meta: {payload.meta}")
 
-    # Inspect image content.
-    logger.info(f"image_content present: {payload.image_content is not None}")
-    if payload.image_content:
-        logger.info(f"image_content length: {len(payload.image_content)}")
-        logger.info(f"image_content preview: {payload.image_content[:50]}...")
-
     return StreamingResponse(
         stream_agent_chat(
             query=payload.query,
             agent_config_id=payload.agent_config_id,
             thread_id=payload.thread_id,
             meta=dict(payload.meta or {}),
-            image_content=payload.image_content,
             current_user=current_user,
             db=db,
         ),
@@ -402,18 +367,12 @@ async def chat_agent_sync(
     """Use a specific agent for non-streaming conversation (login required)."""
     logger.info(
         f"[sync] query: {payload.query}, agent_config_id: {payload.agent_config_id}, meta: {payload.meta}")
-    logger.info(
-        f"[sync] image_content present: {payload.image_content is not None}")
-    if payload.image_content:
-        logger.info(
-            f"[sync] image_content length: {len(payload.image_content)}")
 
     return await agent_chat(
         query=payload.query,
         agent_config_id=payload.agent_config_id,
         thread_id=payload.thread_id,
         meta=dict(payload.meta or {}),
-        image_content=payload.image_content,
         current_user=current_user,
         db=db,
     )
@@ -431,7 +390,6 @@ async def create_agent_run(
         agent_config_id=payload.agent_config_id,
         thread_id=payload.thread_id,
         meta=dict(payload.meta or {}),
-        image_content=payload.image_content,
         current_user_id=str(current_user.id),
         db=db,
     )
@@ -681,64 +639,6 @@ class ThreadResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
-class AttachmentResponse(BaseModel):
-    file_id: str
-    file_name: str
-    file_type: str | None = None
-    file_size: int
-    status: str
-    uploaded_at: str
-    path: str
-    artifact_url: str | None = None
-    original_path: str | None = None
-    original_artifact_url: str | None = None
-    minio_url: str | None = None
-
-
-class AttachmentLimits(BaseModel):
-    allowed_extensions: list[str]
-    max_size_bytes: int
-
-
-class AttachmentListResponse(BaseModel):
-    attachments: list[AttachmentResponse]
-    limits: AttachmentLimits
-
-
-class ThreadFileEntry(BaseModel):
-    path: str
-    name: str
-    is_dir: bool
-    size: int
-    modified_at: str | None = None
-    artifact_url: str | None = None
-
-
-class ThreadFileListResponse(BaseModel):
-    path: str
-    files: list[ThreadFileEntry]
-
-
-class ThreadFileContentResponse(BaseModel):
-    path: str
-    content: list[str]
-    offset: int
-    limit: int
-    total_lines: int
-    artifact_url: str
-
-
-class SaveThreadArtifactRequest(BaseModel):
-    path: str
-
-
-class SaveThreadArtifactResponse(BaseModel):
-    name: str
-    source_path: str
-    saved_path: str
-    saved_artifact_url: str
-
-
 # =============================================================================
 # > === sessionmanagementgroup ===
 # =============================================================================
@@ -802,133 +702,6 @@ async def update_thread(
     )
 
 
-# ================================
-# > === Attachment Management Group ===
-# ================================
-
-
-@chat.post("/thread/{thread_id}/attachments", response_model=AttachmentResponse)
-async def upload_thread_attachment(
-    thread_id: str,
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """Upload a raw attachment and associate it with the specified conversation thread."""
-    return await upload_thread_attachment_view(
-        thread_id=thread_id,
-        file=file,
-        db=db,
-        current_user_id=str(current_user.id),
-    )
-
-
-@chat.get("/thread/{thread_id}/attachments", response_model=AttachmentListResponse)
-async def list_thread_attachments(
-    thread_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """List metadata for all attachments in the current conversation thread."""
-    return await list_thread_attachments_view(
-        thread_id=thread_id,
-        db=db,
-        current_user_id=str(current_user.id),
-    )
-
-
-@chat.delete("/thread/{thread_id}/attachments/{file_id}")
-async def delete_thread_attachment(
-    thread_id: str,
-    file_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """Remove the specified attachment."""
-    return await delete_thread_attachment_view(
-        thread_id=thread_id,
-        file_id=file_id,
-        db=db,
-        current_user_id=str(current_user.id),
-    )
-
-
-@chat.get("/thread/{thread_id}/files", response_model=ThreadFileListResponse)
-async def list_thread_files(
-    thread_id: str,
-    path: str = Query(f"{VIRTUAL_PATH_PREFIX}"),
-    recursive: bool = Query(False),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """List the thread file directory."""
-    return await list_thread_files_view(
-        thread_id=thread_id,
-        current_user_id=str(current_user.id),
-        db=db,
-        path=path,
-        recursive=recursive,
-    )
-
-
-@chat.get("/thread/{thread_id}/files/content", response_model=ThreadFileContentResponse)
-async def read_thread_file_content(
-    thread_id: str,
-    path: str = Query(...),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(2000, ge=1, le=5000),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """Read a thread text file (line-based pagination)."""
-    return await read_thread_file_content_view(
-        thread_id=thread_id,
-        current_user_id=str(current_user.id),
-        db=db,
-        path=path,
-        offset=offset,
-        limit=limit,
-    )
-
-
-@chat.get("/thread/{thread_id}/artifacts/{path:path}")
-async def get_thread_artifact(
-    thread_id: str,
-    path: str,
-    download: bool = Query(False),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """Download or preview a thread file."""
-    file_path = await resolve_thread_artifact_view(
-        thread_id=thread_id,
-        current_user_id=str(current_user.id),
-        db=db,
-        path=path,
-    )
-
-    media_type = guess_type(file_path.name)[0] or "application/octet-stream"
-    headers = {
-        "Content-Disposition": f'attachment; filename="{file_path.name}"'} if download else None
-    return FileResponse(path=file_path, media_type=media_type, headers=headers)
-
-
-@chat.post("/thread/{thread_id}/artifacts/save", response_model=SaveThreadArtifactResponse)
-async def save_thread_artifact_to_workspace(
-    thread_id: str,
-    request: SaveThreadArtifactRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_required_user),
-):
-    """Save artifact to the shared workspace/saved_artifacts directory."""
-    return await save_thread_artifact_to_workspace_view(
-        thread_id=thread_id,
-        current_user_id=str(current_user.id),
-        db=db,
-        path=request.path,
-    )
-
-
 # =============================================================================
 # > === messagefeedbackgroup ===
 # =============================================================================
@@ -977,52 +750,3 @@ async def get_message_feedback(
         db=db,
         current_user_id=str(current_user.id),
     )
-
-
-# =============================================================================
-# > === Multimodal Image Support Group ===
-# =============================================================================
-
-
-@chat.post("/image/upload", response_model=ImageUploadResponse)
-async def upload_image(file: UploadFile = File(...), current_user: User = Depends(get_required_user)):
-    """
-    Upload and process an image, returning base64-encoded image data.
-    """
-    try:
-        # Validate file type.
-        if not file.content_type or not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400, detail="Only image file uploads are supported")
-
-        # Read file content.
-        image_data = await file.read()
-
-        # Check file size (10MB limit).
-        if len(image_data) > 10 * 1024 * 1024:
-            raise HTTPException(
-                status_code=400, detail="Image file is too large, please upload an image smaller than 10MB")
-
-        # Process image.
-        result = process_uploaded_image(image_data, file.filename)
-
-        if not result["success"]:
-            raise HTTPException(
-                status_code=400, detail=f"Image processing failed: {result['error']}")
-
-        logger.info(
-            f"user {current_user.id} successfully uploaded image: {file.filename}, "
-            f"dimensions: {result['width']}x{result['height']}, "
-            f"format: {result['format']}, "
-            f"size: {result['size_bytes']} bytes"
-        )
-
-        return ImageUploadResponse(**result)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"Image upload processing failed: {str(e)}, {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500, detail=f"Image processing failed: {str(e)}")

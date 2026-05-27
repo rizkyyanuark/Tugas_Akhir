@@ -1,10 +1,14 @@
 """Knowledge base toolkit module."""
 
+import asyncio
 import inspect
-from typing import Any
+import json
+from typing import Annotated, Any
 
-from langchain_core.tools import tool
+from langchain_core.messages import ToolMessage
+from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.prebuilt.tool_node import ToolRuntime
+from langgraph.types import Command
 from pydantic import BaseModel, Field
 
 from yunesa import knowledge_base
@@ -163,6 +167,10 @@ class QueryKBInput(BaseModel):
             "for fuzzy matching.\nUse only when retrieval results are too broad and need narrowing."
         ),
     )
+    include_graph: bool = Field(
+        default=False,
+        description="Whether to include graph entities and relationships in the result for visualization.",
+    )
 
 
 async def _resolve_visible_knowledge_bases_for_query(runtime: ToolRuntime | None) -> list[dict[str, Any]]:
@@ -214,8 +222,41 @@ def _find_query_target(
     return None, None, f"knowledge base '{kb_name}' does not exist"
 
 
+async def _query_core_graph_context(query_text: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Retrieve Neo4j graph context for text-only KB questions."""
+    try:
+        from yunesa import graph_base
+
+        if hasattr(graph_base, "start") and not graph_base.is_running():
+            graph_base.start()
+        if not graph_base.is_running():
+            return {"nodes": [], "edges": [], "triples": [], "status": "unavailable"}
+
+        threshold = float(kwargs.get("graph_threshold", 0.65))
+        hops = int(kwargs.get("graph_hops", 2))
+        max_entities = int(kwargs.get("graph_max_entities", 8))
+        return await asyncio.to_thread(
+            graph_base.query_node,
+            query_text,
+            threshold=threshold,
+            hops=hops,
+            max_entities=max_entities,
+            return_format="graph",
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Neo4j graph context retrieval failed: {exc}")
+        return {"nodes": [], "edges": [], "triples": [], "status": "error", "message": str(exc)}
+
+
 @tool(args_schema=QueryKBInput)
-async def query_kb(kb_name: str, query_text: str, file_name: str | None = None, runtime: ToolRuntime = None) -> Any:
+async def query_kb(
+    kb_name: str,
+    query_text: str,
+    file_name: str | None = None,
+    include_graph: bool = False,
+    runtime: ToolRuntime = None,
+    tool_call_id: Annotated[str, InjectedToolCallId] = None,
+) -> Any:
     """Retrieve content from a specified knowledge base.
 
     Use this tool when the user needs specific content retrieval. It retrieves
@@ -271,12 +312,41 @@ async def query_kb(kb_name: str, query_text: str, file_name: str | None = None, 
         from yunesa.agents.backends.knowledge_base_backend import inject_filepaths_into_retrieval_result
 
         # Only Milvus result file_ids map to local filesystem paths and can be enriched.
-        return await inject_filepaths_into_retrieval_result(
+        enriched_result = await inject_filepaths_into_retrieval_result(
             retrieval_chunks=result,
             visible_kbs=visible_kbs,
             target_db_id=target_db_id,
             target_kb_name=kb_name,
         )
+
+        if include_graph:
+            graph_context = await _query_core_graph_context(query_text, kwargs)
+            payload = {
+                "chunks": enriched_result,
+                "graph": graph_context,
+            }
+            if not tool_call_id:
+                return payload
+
+            citations = {
+                "entities": graph_context.get("nodes", []),
+                "relationships": graph_context.get("edges", []),
+                "query": query_text,
+                "kb_name": kb_name,
+            }
+            return Command(
+                update={
+                    "citations": [citations],
+                    "messages": [
+                        ToolMessage(
+                            content=json.dumps(payload, ensure_ascii=False, default=str),
+                            tool_call_id=tool_call_id,
+                        )
+                    ],
+                }
+            )
+
+        return enriched_result
 
     except Exception as e:
         logger.error(f"retrievalfailed: {e}")

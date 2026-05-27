@@ -1,4 +1,3 @@
-from deepagents.middleware.filesystem import FilesystemMiddleware
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.subagents import SubAgentMiddleware
 from langchain.agents import create_agent
@@ -9,7 +8,6 @@ from yunesa.agents.backends import create_agent_composite_backend
 from yunesa.agents.middlewares import (
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
-    save_attachments_to_fs,
 )
 from yunesa.agents.middlewares.knowledge_base_middleware import KnowledgeBaseMiddleware
 from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
@@ -40,47 +38,41 @@ async def _build_middlewares(context):
         if not sa.get("model"):
             sa["model"] = sub_model
 
-    subagents_middleware = SubAgentMiddleware(
-        subagents=subagents,
-        general_purpose_agent=True,
-        default_middleware=[
-            # Filesystem backend
-            FilesystemMiddleware(backend=create_agent_composite_backend),
-            PatchToolCallsMiddleware(),
-            summary_middleware,
-        ],
-    )
     # all middlewares
     middlewares = [
-        # Filesystem backend
-        FilesystemMiddleware(backend=create_agent_composite_backend),
-        save_attachments_to_fs,  # Inject attachment context into prompt
         KnowledgeBaseMiddleware(),  # Knowledge-base tools
         # Apply runtime config (model/tools/MCP/prompt)
         RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
         # Skills middleware (prompt injection, dependency expansion, dynamic activation)
         SkillsMiddleware(),
-        subagents_middleware,
         summary_middleware,
         # Todo-list middleware
         TodoListMiddleware(system_prompt=TODO_MID_PROMPT),
         PatchToolCallsMiddleware(),
         ModelRetryMiddleware(),  # Model retry middleware
     ]
+    if subagents:
+        middlewares.insert(
+            3,
+            SubAgentMiddleware(
+                backend=create_agent_composite_backend,
+                subagents=subagents,
+            ),
+        )
 
     return middlewares
 
 
 class ChatbotAgent(BaseAgent):
     name = "Smart Assistant"
-    description = "A basic conversational agent that answers questions and supports configurable tools."
-    capabilities = ["file_upload", "files"]  # Supports file upload capability
+    description = "A conversational agent that answers text questions with knowledge-base retrieval."
+    capabilities = ["knowledge_base"]
     metadata = {
         "examples": [
-            "Hello, please introduce yourself",
-            "Help me write a business email",
-            "Explain what machine learning is",
-            "Create a Python bubble sort and save the result",
+            "Apa topik riset yang paling sering muncul di knowledge graph?",
+            "Jelaskan relasi antara dosen, publikasi, dan program studi",
+            "Cari konteks akademik yang relevan dari knowledge base",
+            "Ringkas jawaban berdasarkan Neo4j graph dan Milvus vector retrieval",
         ]
     }
 

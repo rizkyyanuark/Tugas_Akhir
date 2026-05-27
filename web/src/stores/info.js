@@ -13,7 +13,7 @@ export const useInfoStore = defineStore('info', () => {
   const organization = computed(
     () =>
       infoConfig.value.organization || {
-        name: 'Yunesa',
+        name: 'YUnesa',
         logo: '',
         avatar: ''
       }
@@ -23,10 +23,10 @@ export const useInfoStore = defineStore('info', () => {
   const branding = computed(
     () =>
       infoConfig.value.branding || {
-        name: 'Yunesa',
-        title: 'Yunesa Knowledge Engine',
-        subtitle: 'Intelligent Agent & Knowledge Management Platform',
-        subtitles: ['Yunesa Agent Terminal', 'Strategic Knowledge Management']
+        name: 'YUnesa',
+        title: 'YUnesa Knowledge Engine',
+        subtitle: 'Text-first academic knowledge assistant powered by graph and vector retrieval',
+        subtitles: ['YUnesa Knowledge Engine', 'Neo4j graph context and Milvus vector search']
       }
   )
 

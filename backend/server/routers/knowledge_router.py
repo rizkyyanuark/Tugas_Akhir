@@ -17,7 +17,6 @@ from yunesa.services.task_service import TaskContext, tasker
 from server.utils.auth_middleware import get_admin_user, get_required_user
 from yunesa import config, graph_base, knowledge_base
 from yunesa.knowledge.chunking.ragflow_like.presets import ensure_chunk_defaults_in_additional_params
-from yunesa.plugins.parser import Parser, SUPPORTED_FILE_EXTENSIONS, is_supported_file_extension
 from yunesa.knowledge.utils import calculate_content_hash
 from yunesa.knowledge.utils.kb_utils import parse_minio_url
 from yunesa.models.embed import test_all_embedding_models_status, test_embedding_model_status
@@ -63,6 +62,23 @@ media_types = {
     ".h": "text/x-chdr",
     ".hpp": "text/x-c++hdr",
 }
+
+TEXT_QUERY_ONLY_DETAIL = (
+    "Knowledge base runtime is configured for text-question retrieval only. "
+    "Document upload, file parsing, URL fetching, Markdown preprocessing, and structured ingestion are disabled."
+)
+
+
+def _reject_document_runtime(feature: str) -> None:
+    raise HTTPException(
+        status_code=410,
+        detail=f"{feature} is disabled. {TEXT_QUERY_ONLY_DETAIL}",
+    )
+
+
+def is_supported_file_extension(file_name: str | os.PathLike[str]) -> bool:
+    """Document upload is disabled; keep old route code import-light."""
+    return False
 
 
 def _coerce_mapping_keys(mapping: dict, key: str, defaults: list[str]) -> list[str]:
@@ -498,6 +514,54 @@ async def export_database(
             status_code=500, detail=f"exportdatabasefailed: {e}")
 
 
+
+# =============================================================================
+# === Knowledge Base Text Ingestion Group ===
+# =============================================================================
+
+
+@knowledge.post("/databases/{db_id}/index_text")
+async def index_text(
+    db_id: str,
+    text: str = Body(..., embed=True),
+    title: str | None = Body(None, embed=True),
+    metadata: dict | None = Body(None),
+    current_user: User = Depends(get_admin_user),
+):
+    """Index direct text content into knowledge base."""
+    _reject_document_runtime("Text indexing")
+    await _ensure_database_not_dify(db_id, "text indexing")
+
+    meta = metadata or {}
+    if title:
+        meta["title"] = title
+
+    try:
+        record = await knowledge_base.index_text(
+            db_id, text, metadata=meta, operator_id=current_user.user_id
+        )
+        return {"message": "Text indexed successfully", "record": record}
+    except Exception as e:
+        logger.error(f"index_text failed: {e}, {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Indexing failed: {str(e)}")
+
+
+@knowledge.delete("/databases/{db_id}/records/{record_id}")
+async def delete_record(
+    db_id: str,
+    record_id: str,
+    current_user: User = Depends(get_admin_user),
+):
+    """Delete a specific record from knowledge base."""
+    await _ensure_database_not_dify(db_id, "record deletion")
+    try:
+        await knowledge_base.delete_record(db_id, record_id)
+        return {"message": f"Record {record_id} deleted successfully"}
+    except Exception as e:
+        logger.error(f"delete_record failed: {e}, {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+
+
 # =============================================================================
 # === Knowledge Base Document Management Group ===
 # =============================================================================
@@ -508,6 +572,7 @@ async def add_documents(
     db_id: str, items: list[str] = Body(...), params: dict = Body(...), current_user: User = Depends(get_admin_user)
 ):
     """Add documents to knowledge base (upload -> parse -> optional indexing)."""
+    _reject_document_runtime("Document ingestion")
     logger.debug(f"Add documents for db_id {db_id}: {items} {params=}")
     await _ensure_database_not_dify(db_id, "document add/parse/index")
 
@@ -714,6 +779,7 @@ async def add_documents(
 @knowledge.post("/databases/{db_id}/documents/parse")
 async def parse_documents(db_id: str, file_ids: list[str] = Body(...), current_user: User = Depends(get_admin_user)):
     """Manually trigger document parsing."""
+    _reject_document_runtime("Document parsing")
     logger.debug(f"Parse documents for db_id {db_id}: {file_ids}")
     await _ensure_database_not_dify(db_id, "document parse")
 
@@ -769,6 +835,7 @@ async def index_documents(
     current_user: User = Depends(get_admin_user),
 ):
     """Manually trigger document indexing, supports updating parameters."""
+    _reject_document_runtime("Document indexing")
     logger.debug(f"Index documents for db_id {db_id}: {file_ids} {params=}")
     await _ensure_database_not_dify(db_id, "document indexing")
 
@@ -850,6 +917,7 @@ async def scival_ingest(
     current_user: User = Depends(get_admin_user),
 ):
     """Ingest structured JSON/CSV academic data directly into graph storage."""
+    _reject_document_runtime("Structured graph ingestion")
     await _ensure_database_not_dify(db_id, "structured data indexing")
 
     if not hasattr(graph_base, "txt_add_vector_entity"):
@@ -933,6 +1001,7 @@ async def scival_ingest(
 @knowledge.get("/databases/{db_id}/documents/{doc_id}")
 async def get_document_info(db_id: str, doc_id: str, current_user: User = Depends(get_admin_user)):
     """Get document details (including basic info and content info)."""
+    _reject_document_runtime("Document detail")
     logger.debug(f"GET document {doc_id} info in {db_id}")
     await _ensure_database_not_dify(db_id, "document view")
 
@@ -948,6 +1017,7 @@ async def get_document_info(db_id: str, doc_id: str, current_user: User = Depend
 @knowledge.get("/databases/{db_id}/documents/{doc_id}/basic")
 async def get_document_basic_info(db_id: str, doc_id: str, current_user: User = Depends(get_admin_user)):
     """Get document basic info (metadata only)."""
+    _reject_document_runtime("Document detail")
     logger.debug(f"GET document {doc_id} basic info in {db_id}")
     await _ensure_database_not_dify(db_id, "document view")
 
@@ -963,6 +1033,7 @@ async def get_document_basic_info(db_id: str, doc_id: str, current_user: User = 
 @knowledge.get("/databases/{db_id}/documents/{doc_id}/content")
 async def get_document_content(db_id: str, doc_id: str, current_user: User = Depends(get_admin_user)):
     """Get document content info (chunks and lines)."""
+    _reject_document_runtime("Document content")
     logger.debug(f"GET document {doc_id} content in {db_id}")
     await _ensure_database_not_dify(db_id, "document view")
 
@@ -980,6 +1051,7 @@ async def batch_delete_documents(
     db_id: str, file_ids: list[str] = Body(...), current_user: User = Depends(get_admin_user)
 ):
     """Batch delete documents or folders."""
+    _reject_document_runtime("Document deletion")
     logger.debug(f"BATCH DELETE documents {file_ids} in {db_id}")
     await _ensure_database_not_dify(db_id, "batch document deletion")
 
@@ -1036,6 +1108,7 @@ async def batch_delete_documents(
 @knowledge.delete("/databases/{db_id}/documents/{doc_id}")
 async def delete_document(db_id: str, doc_id: str, current_user: User = Depends(get_admin_user)):
     """Delete a document or folder."""
+    _reject_document_runtime("Document deletion")
     logger.debug(f"DELETE document {doc_id} info in {db_id}")
     await _ensure_database_not_dify(db_id, "document deletion")
     try:
@@ -1072,6 +1145,7 @@ async def delete_document(db_id: str, doc_id: str, current_user: User = Depends(
 @knowledge.get("/databases/{db_id}/documents/{doc_id}/download")
 async def download_document(db_id: str, doc_id: str, request: Request, current_user: User = Depends(get_admin_user)):
     """Download original file - choose local or MinIO download by path type."""
+    _reject_document_runtime("Document download")
     logger.debug(f"Download document {doc_id} from {db_id}")
     await _ensure_database_not_dify(db_id, "document download")
     try:
@@ -1326,14 +1400,14 @@ def _merge_saved_options(params: dict, saved_options: dict) -> dict:
 
 SAMPLE_QUESTIONS_SYSTEM_PROMPT = """You are a professional expert in knowledge base Q&A testing.
 
-Your task is to generate valuable test questions based on the knowledge base file list.
+Your task is to generate valuable test questions from the knowledge base name and description.
 
 Requirements:
-1. Questions should be specific and targeted, inferred from filenames and file types.
+1. Questions should be specific and targeted to the knowledge base domain.
 2. Questions should cover different aspects and difficulty levels.
 3. Questions should be concise and suitable for retrieval testing.
 4. Questions should be diverse, including factual queries, concept explanations, and operational guidance.
-5. Keep question length around 10-30 Chinese characters or equivalent concise phrasing.
+5. Keep question length concise.
 6. Return only a JSON array format, with no extra commentary.
 
 Return format:
@@ -1380,47 +1454,20 @@ async def generate_sample_questions(
         count = request_body.get("count", 10)
 
         db_name = db_info.get("name", "")
-        all_files = db_info.get("files", {})
-
-        if not all_files:
-            raise HTTPException(
-                status_code=400, detail="No files found in knowledge base")
-
-        # Collect file info.
-        files_info = []
-        for file_id, file_info in all_files.items():
-            files_info.append(
-                {
-                    "filename": file_info.get("filename", ""),
-                    "type": file_info.get("type", ""),
-                }
-            )
-
         # Build AI prompt.
         system_prompt = SAMPLE_QUESTIONS_SYSTEM_PROMPT
 
-        # Build user message.
-        files_text = "\n".join(
-            [
-                f"- {f['filename']} ({f['type']})"
-                for f in files_info[:20]  # At most list 20 files.
-            ]
-        )
-
-        file_count_text = f"(total {len(files_info)} files)" if len(
-            files_info) > 20 else ""
-
         user_message = textwrap.dedent(f"""Please generate {count} test questions for knowledge base "{db_name}".
 
-            Knowledge base file list {file_count_text}:
-            {files_text}
+            Knowledge base description:
+            {db_info.get("description") or "No description provided."}
 
-            Based on these filenames and types, generate {count} valuable test questions.""")
+            Based on this domain context, generate {count} valuable test questions.""")
 
         # Call AI generation.
         logger.info(
             f"Start generating knowledge base questions, knowledge base: {db_name}, "
-            f"file count: {len(files_info)}, question count: {count}"
+            f"question count: {count}"
         )
 
         # Select model and call.
@@ -1538,6 +1585,7 @@ async def create_folder(
     current_user: User = Depends(get_admin_user),
 ):
     """Create folder."""
+    _reject_document_runtime("Folder management")
     try:
         await _ensure_database_not_dify(db_id, "folder creation")
         return await knowledge_base.create_folder(db_id, folder_name, parent_id)
@@ -1554,6 +1602,7 @@ async def move_document(
     current_user: User = Depends(get_admin_user),
 ):
     """Move file or folder."""
+    _reject_document_runtime("Document move")
     logger.debug(f"Move document {doc_id} to {new_parent_id} in {db_id}")
     try:
         await _ensure_database_not_dify(db_id, "file move")
@@ -1572,6 +1621,7 @@ async def fetch_url(
     current_user: User = Depends(get_admin_user),
 ):
     """Fetch URL content and upload it to MinIO."""
+    _reject_document_runtime("URL fetching")
     logger.debug(f"Fetching URL: {url} for db_id: {db_id}")
     try:
         from yunesa.knowledge.utils.url_fetcher import fetch_url_content
@@ -1647,6 +1697,7 @@ async def upload_file(
     current_user: User = Depends(get_admin_user),
 ):
     """Upload file."""
+    _reject_document_runtime("File upload")
     if not file.filename:
         raise HTTPException(status_code=400, detail="No selected file")
 
@@ -1715,12 +1766,13 @@ async def upload_file(
 @knowledge.get("/files/supported-types")
 async def get_supported_file_types(current_user: User = Depends(get_admin_user)):
     """Get currently supported file types."""
-    return {"message": "success", "file_types": sorted(SUPPORTED_FILE_EXTENSIONS)}
+    _reject_document_runtime("File type listing")
 
 
 @knowledge.post("/files/markdown")
 async def mark_it_down(file: UploadFile = File(...), current_user: User = Depends(get_admin_user)):
     """Parse file to markdown using unified Parser (admin permission required)."""
+    _reject_document_runtime("Markdown preprocessing")
     import tempfile
 
     if not file.filename:

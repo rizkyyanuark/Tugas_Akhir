@@ -9,10 +9,13 @@ Uses paginated author listing pages from sinta.kemdiktisaintek.go.id.
 """
 
 import time
+import logging
 import requests
 from bs4 import BeautifulSoup
 
 from ..config import HEADERS, SINTA_DEPTS, CRAWLER_TIMEOUT
+
+logger = logging.getLogger(__name__)
 
 
 class SintaCrawler:
@@ -39,7 +42,7 @@ class SintaCrawler:
             return []
 
         profiles: list[dict] = []
-        print(f"     Sinta Crawl: {prodi_name}")
+        logger.info("Starting Sinta crawl for department: %s", prodi_name)
 
         for page in range(1, self.MAX_PAGES + 1):
             try:
@@ -75,7 +78,7 @@ class SintaCrawler:
                 time.sleep(0.5)
 
             except Exception as e:
-                print(f"        Error page {page}: {e}")
+                logger.error("Error fetching Sinta page %d: %s", page, e)
                 break
 
         return profiles

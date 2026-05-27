@@ -1,22 +1,94 @@
-"""
-Transform: String Cleaner
-=========================
-Aggressively cleans string fields (Abstract, Keywords, Title, etc.) from dirty
-web scraping artifacts (HTML tags, excess whitespace, zero-width spaces, newlines).
-Also provides ID-safe column handling for Author IDs, DOI, etc.
-Includes author name normalization (Scopus "Last, First" → "First Last").
-"""
-import pandas as pd
-import numpy as np
+from __future__ import annotations
+
 import logging
 import re
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+
+import numpy as np
+import pandas as pd
 from pathlib import Path
 from difflib import SequenceMatcher
+
+from ..config import PREFIX_TITLES
+
+if TYPE_CHECKING:
+    from knowledge.etl.load.supabase_loader import SupabaseLoader
 
 logger = logging.getLogger(__name__)
 
 
-def clean_text(text: str) -> str:
+_MOJIBAKE_MARKERS = (
+    "Ã",
+    "Â",
+    "â€",
+    "â€“",
+    "â€”",
+    "â€™",
+    "â€œ",
+    "â€",
+    "â€¦",
+)
+
+_MOJIBAKE_REPLACEMENTS = {
+    "â€“": "–",
+    "â€”": "—",
+    "â€˜": "‘",
+    "â€™": "’",
+    "â€œ": "“",
+    "â€�": "”",
+    "â€¦": "…",
+    "â€¢": "•",
+    "â„¢": "™",
+    "Â°": "°",
+    "Â±": "±",
+    "Â": "",
+    "Ã—": "×",
+    "ÃƒÂ—": "×",
+    "Ãƒâ€”": "×",
+}
+
+
+def _mojibake_score(text: str) -> int:
+    """Estimate whether text still contains UTF-8/Windows-1252 mojibake."""
+    return sum(text.count(marker) for marker in _MOJIBAKE_MARKERS)
+
+
+def repair_mojibake(text: Any) -> str:
+    """Repair common UTF-8 text decoded through Windows-1252/Latin-1."""
+    if not isinstance(text, str):
+        return ""
+
+    fixed = text
+    if _mojibake_score(fixed) == 0:
+        return fixed
+
+    for _ in range(3):
+        before = fixed
+        best = fixed
+        best_score = _mojibake_score(fixed)
+
+        for encoding in ("cp1252", "latin1"):
+            try:
+                candidate = fixed.encode(encoding).decode("utf-8")
+            except UnicodeError:
+                continue
+
+            candidate_score = _mojibake_score(candidate)
+            if candidate_score < best_score:
+                best = candidate
+                best_score = candidate_score
+
+        fixed = best
+        if fixed == before:
+            break
+
+    for bad, good in _MOJIBAKE_REPLACEMENTS.items():
+        fixed = fixed.replace(bad, good)
+
+    return fixed
+
+
+def clean_text(text: Any) -> str:
     """Apply aggressive regex cleaning to a single string."""
     if not isinstance(text, str) or pd.isna(text):
         return ""
@@ -24,6 +96,7 @@ def clean_text(text: str) -> str:
     import html
     # Tolak ukur awal: kembalikan entitas HTML (seperti &#x0D;, &amp;) ke bentuk aslinya
     text = html.unescape(text)
+    text = repair_mojibake(text)
     
     # Remove HTML tags (e.g. <br>, <i>)
     text = re.sub(r'<[^>]+>', ' ', text)
@@ -39,11 +112,13 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def clean_abstract_text(text: str) -> str:
+def clean_abstract_text(text: Any) -> str:
     """Apply deep noise removal specifically for abstracts (removes Abstrak-, trailing keywords)."""
-    if not text: return ""
+    if not text or pd.isna(text):
+        return ""
+    
     c = str(text)
-    # 1. Hapus noise awalan
+    # 1. Hapus noise awalan (Case insensitive)
     c = re.sub(r'^\s*(?i:abstract|abstrak)[\s\-—–:.]+[\s]*', '', c)
     # 2. Hapus keyword di ekor
     c = re.sub(r'(?i)\s*(?:kata\s+kunci|keywords?|key\s+words?|subject\s+terms?|index\s+terms?)[\s:\-—–\.].*$', '', c, flags=re.DOTALL)
@@ -51,7 +126,7 @@ def clean_abstract_text(text: str) -> str:
     return clean_text(c)
 
 
-def clean_id_value(val) -> str:
+def clean_id_value(val: Any) -> str:
     """
     Clean a single ID value for consistency:
     - Strip '.0' suffix (from float casting by pandas)
@@ -70,9 +145,9 @@ def clean_id_value(val) -> str:
     return s
 
 
-# ─── Author Name Normalization ──────────────────────────────────
+# --- Author Name Normalization ---
 
-def _flip_author_name(name: str) -> str:
+def flip_author_name(name: str) -> str:
     """Convert Scopus 'Last, First Middle' → 'First Middle Last'.
     If no comma detected, returns the name as-is (already in natural order).
     """
@@ -85,33 +160,129 @@ def _flip_author_name(name: str) -> str:
 
 def _normalize_name_for_matching(name: str) -> str:
     """Normalize name for fuzzy matching (removes titles, periods, commas)."""
-    if not name:
+    if not name or pd.isna(name):
         return ""
-    name = str(name).strip().lower()
-    # Remove Indonesian academic titles
-    titles = [
-        r'\bprof\.?\b', r'\bdr\.?\b', r'\bir\.?\b', r'\bdrs\.?\b',
-        r'\bs\.?t\.?\b', r'\bs\.?kom\.?\b', r'\bs\.?pd\.?\b', r'\bs\.?si\.?\b',
-        r'\bm\.?t\.?\b', r'\bm\.?kom\.?\b', r'\bm\.?pd\.?\b', r'\bm\.?si\.?\b',
-        r'\bm\.?eng\.?\b', r'\bm\.?sc\.?\b', r'\bph\.?d\.?\b',
-        r'\bm\.?m\.?\b', r'\bs\.?e\.?\b', r'\bm\.?a\.?\b',
-        r',', r'\.',
-    ]
-    for t in titles:
-        name = re.sub(t, ' ', name)
+    
+    # 1. Basic cleanup
+    name_str = str(name).strip('"\'').strip()
+    
+    # 2. Suffix Removal (Degrees like M.Kom, Ph.D)
+    if ',' in name_str:
+        name_str = name_str.split(',')[0].strip()
+        
+    # 3. Prefix Removal (Titles like Prof, Dr)
+    tokens = name_str.split()
+    while tokens:
+        first_word = tokens[0]
+        check_word = first_word.replace('.', '').lower()
+        if check_word in PREFIX_TITLES:
+            tokens.pop(0) 
+        else:
+            break 
+    
+    name = " ".join(tokens).strip().lower()
+    
+    # 4. Standardize Noise
+    name = re.sub(r"[''`]", '', name)
+    name = re.sub(r'[.,;()\[\]]', ' ', name)
     name = re.sub(r'\s+', ' ', name).strip()
+    
     return name
 
+def is_abbreviation_match(serp_name: str, dosen_name: str) -> bool:
+    """
+    Advanced abbreviation matching logic (e.g., 'EM Imah' -> 'Elly Matul Imah').
+    Ported from unesa_papers.py for centralization.
+    """
+    if not serp_name or not dosen_name:
+        return False
+        
+    serp_name = serp_name.lower().strip()
+    dosen_name = dosen_name.lower().strip()
+    
+    if serp_name == dosen_name: return True
+    if serp_name.replace(' ', '') == dosen_name.replace(' ', ''): return True
+    if SequenceMatcher(None, serp_name, dosen_name).ratio() > 0.85: return True
+    
+    s_tokens = serp_name.split()
+    d_tokens = dosen_name.split()
+    if not s_tokens or not d_tokens: return False
+    
+    def get_signature(tokens):
+        sig = ''
+        for t in tokens:
+            if len(t) <= 3: sig += t
+            else: sig += t[0]
+        return sig
+    
+    s_sig_sorted = ''.join(sorted(get_signature(s_tokens)))
+    d_sig_sorted = ''.join(sorted(get_signature(d_tokens)))
+    
+    if s_sig_sorted == d_sig_sorted:
+        last_s = s_tokens[-1]
+        last_d = d_tokens[-1]
+        if len(last_s) > 2 and len(last_d) > 2:
+            last_ratio = SequenceMatcher(None, last_s, last_d).ratio()
+            if last_ratio < 0.5 and not last_s.startswith(last_d) and not last_d.startswith(last_s):
+                pass
+            else: return True
+        else: return True
+        
+    serp_surname = s_tokens[-1]
+    dosen_surname = d_tokens[-1]
+    
+    surname_ok = False
+    if serp_surname == dosen_surname:
+        surname_ok = True
+    elif len(serp_surname) <= 2 or len(dosen_surname) <= 2:
+        longer = serp_surname if len(serp_surname) > len(dosen_surname) else dosen_surname
+        shorter = dosen_surname if len(serp_surname) > len(dosen_surname) else serp_surname
+        if longer.startswith(shorter):
+            if len(shorter) == 1:
+                if s_tokens[0][0] == d_tokens[0][0] and len(s_tokens) >= 2 and len(d_tokens) >= 2 and len(longer) <= 4:
+                    surname_ok = True
+            else:
+                surname_ok = True
+    elif len(serp_surname) > 3 and serp_surname in d_tokens:
+        if s_tokens[0][0] == d_tokens[0][0]:
+            surname_ok = True
+    
+    if not surname_ok: return False
+        
+    serp_initials = [t[0] for t in s_tokens[:-1]]
+    
+    if serp_surname == dosen_surname:
+        dosen_pre_surname = d_tokens[:-1]
+    elif serp_surname in d_tokens:
+        idx = d_tokens.index(serp_surname)
+        dosen_pre_surname = d_tokens[:idx] + d_tokens[idx+1:]
+    else:
+        dosen_pre_surname = d_tokens[:-1]
+    
+    dosen_initials = [t[0] for t in dosen_pre_surname]
+    
+    di_copy = list(dosen_initials)
+    all_found = True
+    for si in serp_initials:
+        if si in di_copy:
+            di_copy.remove(si)
+        else:
+            all_found = False
+            break
+    
+    return all_found
 
-# ─── Dual-Indexed Lecturer Database ──────────────────────────────
+
+# --- Dual-Indexed Lecturer Database ---
 # Two singletons:
 #   _lec_by_name:  {normalized_name: entry}  → for name-based matching
 #   _lec_by_sid:   {scholar_id: entry}       → for ID-based matching
-_lec_by_name = None
-_lec_by_sid = None
+_lec_by_name: Dict[str, Dict[str, str]] | None = None
+_lec_by_sid: Dict[str, Dict[str, str]] | None = None
 
-def _load_lecturer_db():
-    "Load lecturer data into dual-indexed maps. Fetches from Supabase DB."
+
+def _load_lecturer_db() -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
+    """Load lecturer data into dual-indexed maps. Fetches from Supabase DB."""
     global _lec_by_name, _lec_by_sid
     if _lec_by_name is not None:
         return _lec_by_name, _lec_by_sid
@@ -151,9 +322,9 @@ def _load_lecturer_db():
             if scopus_id and scopus_id != 'nan':
                 _lec_by_sid[scopus_id] = entry
                 
-        logger.info(f"✅ Lecturer DB loaded from Supabase: {len(_lec_by_name)} names, {len(_lec_by_sid)} IDs")
+        logger.info(f"Lecturer DB loaded from Supabase: {len(_lec_by_name)} names, {len(_lec_by_sid)} IDs")
     except Exception as e:
-        logger.warning(f"⚠️ Could not load lecturer DB from Supabase: {e}")
+        logger.warning(f"Could not load lecturer DB from Supabase: {e}")
     
     return _lec_by_name, _lec_by_sid
 
@@ -164,7 +335,7 @@ def _load_cleaner_lecturer_map() -> dict:
     return name_map
 
 
-def _match_name_to_lecturer(author_name: str, threshold: float = 0.75) -> dict:
+def _match_name_to_lecturer(author_name: str, threshold: float = 0.75) -> Dict[str, Any]:
     """Match a single author name against known lecturers.
     
     Priority order:
@@ -178,7 +349,7 @@ def _match_name_to_lecturer(author_name: str, threshold: float = 0.75) -> dict:
     if not lec_map:
         return {'name': author_name, 'matched': False}
     
-    flipped = _flip_author_name(author_name)
+    flipped = flip_author_name(author_name)
     norm = _normalize_name_for_matching(flipped)
     
     if not norm:
@@ -190,36 +361,21 @@ def _match_name_to_lecturer(author_name: str, threshold: float = 0.75) -> dict:
         return {'name': entry['nama_norm'], 'scopus_id': entry['scopus_id'],
                 'scholar_id': entry['scholar_id'], 'matched': True}
     
-    # Strategy 2: Initial + Surname matching (e.g. "rdi puspitasari" -> "ratih dian i p")
-    abbr_parts = norm.split()
-    if len(abbr_parts) >= 2:
-        abbr_last = abbr_parts[-1]
-        abbr_inits = "".join(abbr_parts[:-1]).replace(".", "")
-        
-        # Cari kecocokan di seluruh database dosen
-        for db_norm, entry in lec_map.items():
-            db_parts = db_norm.split()
-            if len(db_parts) >= 2:
-                db_last = db_parts[-1]
-                # Ambil huruf pertama dari setiap kata (kecuali kata terakhir) sebagai inisial
-                db_inits = "".join([p[0] for p in db_parts[:-1]])
-                
-                # Check last name: exact match or abbreviation (e.g. "p" vs "puspitasari")
-                last_name_match = (
-                    (db_last == abbr_last) or 
-                    (len(db_last) == 1 and abbr_last.startswith(db_last)) or
-                    (len(abbr_last) == 1 and db_last.startswith(abbr_last))
-                )
-                
-                if last_name_match and (db_inits.startswith(abbr_inits) or abbr_inits.startswith(db_inits)):
-                    return {'name': entry['nama_norm'], 'scopus_id': entry['scopus_id'],
-                            'scholar_id': entry['scholar_id'], 'matched': True}
+    # Strategy 2: Abbreviation matching
+    for db_norm, entry in lec_map.items():
+        if is_abbreviation_match(norm, db_norm):
+            return {
+                'name': entry['nama_norm'], 
+                'scopus_id': entry['scopus_id'],
+                'scholar_id': entry['scholar_id'], 
+                'matched': True
+            }
 
     return {'name': flipped, 'matched': False}
 
 
 def _normalize_authors_and_ids(authors_str: str, author_ids_str: str, 
-                                paper_scholar_id: str = "", paper_dosen: str = "") -> tuple:
+                                paper_scholar_id: str = "", paper_dosen: str = "") -> Tuple[str, str]:
     """
     Hybrid Author Matching System.
     
@@ -276,28 +432,11 @@ def _normalize_authors_and_ids(authors_str: str, author_ids_str: str,
         # directly assign the owner (we KNOW they authored this paper since it's on their profile)
         if owner_entry:
             owner_norm = _normalize_name_for_matching(owner_entry['nama_norm'])
-            abbr_norm = _normalize_name_for_matching(_flip_author_name(raw_name))
+            abbr_norm = _normalize_name_for_matching(flip_author_name(raw_name))
             
             if owner_norm and abbr_norm:
-                # Check if abbreviated name matches owner via initials
-                abbr_parts = abbr_norm.split()
-                owner_parts = owner_norm.split()
-                
-                if abbr_norm == owner_norm:
+                if is_abbreviation_match(abbr_norm, owner_norm):
                     matched_entry = owner_entry
-                elif len(abbr_parts) >= 2 and len(owner_parts) >= 2:
-                    abbr_last = abbr_parts[-1]
-                    abbr_inits = "".join(abbr_parts[:-1]).replace(".", "")
-                    owner_inits = "".join([p[0] for p in owner_parts[:-1]])
-                    
-                    last_name_match_owner = (
-                        (owner_parts[-1] == abbr_last) or 
-                        (len(owner_parts[-1]) == 1 and abbr_last.startswith(owner_parts[-1])) or
-                        (len(abbr_last) == 1 and owner_parts[-1].startswith(abbr_last))
-                    )
-                    
-                    if last_name_match_owner and (owner_inits.startswith(abbr_inits) or abbr_inits.startswith(owner_inits)):
-                        matched_entry = owner_entry
         
         # Priority 2: General name-based matching against ALL lecturers
         if not matched_entry:
@@ -333,7 +472,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
     Also applies ID-safe cleaning to Author IDs and DOI.
     Includes author name normalization and multi-ID enrichment.
     """
-    logger.info(f"🧹 Starting data cleaning for {len(df)} records...")
+    logger.info(f"Starting data cleaning for {len(df)} records...")
     
     dirty_columns = ['Title', 'Abstract', 'Keywords', 'Journal', 'TLDR']
     
@@ -349,7 +488,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
             
             after_empty = (df[col] == '').sum()
             if after_empty > before_empty:
-                logger.info(f"   🧼 Column {col}: cleaned {after_empty - before_empty} trash entries into empty strings.")
+                logger.info(f"Column {col}: cleaned {after_empty - before_empty} trash entries into empty strings.")
 
     # Specific formatting rules:
     # 0. Abstract: Deep Clean Noise (Abstrak—, trailing Keywords)
@@ -370,7 +509,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
 
     # 3. AUTHORS NORMALIZATION: Flip names + match to lecturers + enrich IDs
     if 'Authors' in df.columns:
-        logger.info("👩‍🏫 Normalizing author names & enriching Author IDs...")
+        logger.info("Normalizing author names and enriching Author IDs...")
         matched_count = 0
         total_authors = 0
         
@@ -400,8 +539,8 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
                 if old != new:
                     matched_count += 1
         
-        logger.info(f"   ✅ Normalized {matched_count}/{total_authors} author names to canonical lecturer names")
+        logger.info(f"Normalized {matched_count}/{total_authors} authors to canonical lecturer names")
 
-    logger.info("✅ Data cleaning complete. No more messy whitespaces/newlines.")
+    logger.info("Data cleaning complete.")
     return df
 

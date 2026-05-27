@@ -11,36 +11,45 @@ Adapted from Strwythura's EntityStore pattern with lemma-key dedup.
 
 import re
 import logging
+import json
 from collections import OrderedDict
 from typing import Dict, List, Optional, Tuple
 
-from gliner import GLiNER
-
-from .config import GLINER_MODEL_NAME, GLINER_THRESHOLD
-from .ontology import ONTOLOGY, map_ner_label
-from .utils import make_lemma_key, truncate
-
-logger = logging.getLogger(__name__)
-
-# ══════════════════════════════════════════════════════════════
-# Auto-load GLiNER model at module level
-# ══════════════════════════════════════════════════════════════
-logger.info(f"Loading GLiNER model: {GLINER_MODEL_NAME}...")
-gliner_model = GLiNER.from_pretrained(
-    GLINER_MODEL_NAME,
-    load_tokenizer=True,
-    resize_token_embeddings=True,
+from .config import (
+    GLINER_THRESHOLD,
+    LLM_MODEL,
+    GROQ_API_KEY,
 )
-logger.info(f"✅ GLiNER model loaded: {GLINER_MODEL_NAME}")
+from .utils import (
+    make_lemma_key,
+    truncate,
+    logger,
+)
+from .ontology import map_ner_label
+from .llm_client import GroqClient
 
 # Source priority constants (lower = higher priority)
-SRC_NER = 0        # GLiNER NER (highest)
+SRC_NER = 0        # LLM NER (highest)
 SRC_TITLE = 1      # Title regex patterns
 SRC_CSV = 2        # CSV keywords (lowest)
 
-# GLiNER label sets (split to avoid context window issues)
-GLINER_SET1 = ["method", "metric", "dataset", "task"]
-GLINER_SET2 = ["problem", "model", "results", "innovation"]
+# Global LLM client for NER
+_ner_client: Optional[GroqClient] = None
+
+def get_ner_client() -> Optional[GroqClient]:
+    """Lazy loader for GroqClient used in NER."""
+    global _ner_client
+    if _ner_client is None:
+        try:
+            if not GROQ_API_KEY:
+                logger.warning("GROQ_API_KEY not found. LLM NER will be skipped.")
+                return None
+            _ner_client = GroqClient()
+            logger.info("✅ LLM NER Client (Groq) initialised.")
+        except Exception as e:
+            logger.error(f"Failed to initialise GroqClient for NER: {e}")
+            return None
+    return _ner_client
 
 
 class EntityStore:
@@ -49,14 +58,6 @@ class EntityStore:
     Adapted from Strwythura's EntityStore pattern.
     Entities are keyed by POS-lemma normalisation, ensuring that
     'CNN' and 'Convolutional Neural Network' can be merged later.
-
-    Each entity has:
-      - uid: unique integer ID
-      - text: original surface text
-      - label: mapped Neo4j label (e.g. 'Method')
-      - count: occurrence count
-      - source: source priority (0=NER, 1=Title, 2=CSV)
-      - description: LLM-generated description (filled in curation)
     """
 
     def __init__(self):
@@ -70,20 +71,7 @@ class EntityStore:
         label: str,
         source_priority: int,
     ) -> Optional[str]:
-        """Register an entity in the store. Deduplicates by lemma_key.
-
-        If the entity already exists:
-          - If new source has higher priority, update text/label/source
-          - Always increment count
-
-        Args:
-            text: Entity surface text.
-            label: Raw NER label (e.g. 'method', 'model').
-            source_priority: 0=NER, 1=Title, 2=CSV.
-
-        Returns:
-            lemma_key if registered, None if rejected (too short).
-        """
+        """Register an entity in the store. Deduplicates by lemma_key."""
         lemma_key = make_lemma_key(text)
         if not lemma_key or len(lemma_key) < 3:
             return None
@@ -162,19 +150,9 @@ def extract_entities_from_paper(
 ) -> Tuple[EntityStore, List[str]]:
     """Extract entities from a single paper using 3-pass NER.
 
-    Pass 1: GLiNER zero-shot NER on TLDR/abstract text
+    Pass 1: LLM-based NER on TLDR/abstract text (via Groq)
     Pass 2: Title regex (acronyms, CamelCase multi-word)
     Pass 3: CSV keywords (author-assigned)
-
-    Args:
-        title: Paper title.
-        text: TLDR or abstract text (preferably English TLDR).
-        csv_keywords: Comma/semicolon separated keywords string.
-        entity_store: Existing EntityStore to add to (creates new if None).
-        threshold: GLiNER confidence threshold.
-
-    Returns:
-        Tuple of (entity_store, list of lemma_keys found in this paper).
     """
     if entity_store is None:
         entity_store = EntityStore()
@@ -182,21 +160,42 @@ def extract_entities_from_paper(
     paper_lemma_keys: List[str] = []
     full_text = f"{title}. {text}"
     input_text = truncate(full_text, 2000)
-    gliner_errors = 0
 
-    # ── Pass 1: GLiNER NER ──
-    for label_set in [GLINER_SET1, GLINER_SET2]:
+    # ── Pass 1: LLM NER (Replacing GLiNER) ──
+    client = get_ner_client()
+    if client:
+        prompt = f"""
+You are an expert academic NER system. Extract scientific entities from the text.
+Categories:
+- method: Algorithms, research methods, techniques.
+- model: Specific ML/AI model architectures.
+- metric: Evaluation metrics, performance measures.
+- dataset: Datasets used or proposed.
+- problem: The research problem or gap being addressed.
+- task: The computational or research task being performed.
+- innovation: Specific novel contributions.
+
+Input Text: {input_text}
+
+Respond ONLY with a JSON object:
+{{
+  "entities": [
+    {{"text": "Entity Name", "label": "method"}},
+    ...
+  ]
+}}
+"""
         try:
-            ents = gliner_model.predict_entities(
-                input_text, label_set, threshold=threshold
-            )
-            for e in ents:
-                lk = entity_store.register(e["text"], e["label"], SRC_NER)
-                if lk:
-                    paper_lemma_keys.append(lk)
+            res = client.call(prompt)
+            if "entities" in res:
+                for e in res["entities"]:
+                    # Basic validation of extracted entity
+                    if "text" in e and "label" in e:
+                        lk = entity_store.register(e["text"], e["label"], SRC_NER)
+                        if lk:
+                            paper_lemma_keys.append(lk)
         except Exception as ex:
-            gliner_errors += 1
-            logger.debug(f"GLiNER error: {type(ex).__name__}: {ex}")
+            logger.warning(f"LLM NER error: {ex}")
 
     # ── Pass 2: Title regex (acronyms + CamelCase) ──
     for term in re.findall(r"[A-Z]{2,}[0-9]*", title):

@@ -18,15 +18,20 @@
 
     <!-- Normal Content -->
     <template v-else>
-      <div class="hero-section">
+      <div
+        class="hero-section"
+        :style="heroSceneStyle"
+        @pointermove="handleHeroPointerMove"
+        @pointerleave="resetHeroPointer"
+      >
         <div class="glass-header">
           <div class="logo">
             <img
               :src="infoStore.organization.logo"
-              :alt="infoStore.organization.name"
+              :alt="displayOrganizationName"
               class="logo-img"
             />
-            <span class="logo-text">{{ infoStore.organization.name }}</span>
+            <span class="logo-text">{{ displayOrganizationName }}</span>
           </div>
           <div class="header-actions">
             <div class="github-link">
@@ -60,35 +65,85 @@
               </template>
               <template v-else>{{ typedBadge }}</template>
             </p>
-            <h1 class="title reveal-up delay-1">{{ infoStore.branding.title }}</h1>
+            <h1 class="title reveal-up delay-1">{{ productTitle }}</h1>
             <Transition name="subtitle-switch" mode="out-in">
               <p v-if="currentSubtitle" class="subtitle" :key="currentSubtitle">
                 {{ currentSubtitle }}
               </p>
             </Transition>
+            <p class="hero-summary">
+              YUnesa menghubungkan query teks pengguna dengan knowledge graph Neo4j dan vector
+              search Milvus untuk membantu eksplorasi pengetahuan akademik secara terarah.
+            </p>
             <div class="hero-actions">
-              <button class="button-base primary" @click="goToChat">Get Started</button>
+              <button class="button-base primary" @click="goToChat">Mulai Bertanya</button>
               <a class="doc-text-link" href="https://github.com/rizkyyanuark/Tugas_Akhir" target="_blank"
-                >View Documentation</a
+                >Lihat Repository</a
               >
             </div>
           </div>
-          <div class="insight-panel" v-if="featureCards.length">
-            <div
-              class="stat-card"
-              v-for="(card, index) in featureCards"
-              :key="card.label"
-              :style="{ '--card-stagger': `${index}` }"
-            >
-              <div class="stat-headline">
-                <span class="stat-icon" v-if="card.icon">
-                  <component :is="card.icon" />
-                </span>
-                <p class="stat-value">{{ card.value }}</p>
-              </div>
-              <p class="stat-label">{{ card.label }}</p>
-              <p class="stat-description">{{ card.description }}</p>
+          <div class="graph-stage reveal-up delay-2" aria-label="YUnesa connected knowledge graph">
+            <div class="graph-stage-header">
+              <span class="stage-dot"></span>
+              <span>Connected Knowledge</span>
             </div>
+            <div class="globe-shell">
+              <div class="globe-grid" aria-hidden="true">
+                <span class="globe-ring ring-main"></span>
+                <span class="globe-ring ring-tilt-a"></span>
+                <span class="globe-ring ring-tilt-b"></span>
+                <span class="globe-ring ring-flat-a"></span>
+                <span class="globe-ring ring-flat-b"></span>
+              </div>
+              <svg class="graph-links" viewBox="0 0 520 520" aria-hidden="true">
+                <path
+                  v-for="(link, index) in graphLinks"
+                  :key="index"
+                  :d="link"
+                  :style="{ '--link-delay': `${index * 120}ms` }"
+                />
+              </svg>
+              <div
+                v-for="node in graphNodes"
+                :key="node.label"
+                class="knowledge-node"
+                :class="node.kind"
+                :style="{ left: node.x, top: node.y, '--node-delay': node.delay }"
+                :title="node.label"
+              >
+                <span class="node-pulse"></span>
+                <span class="node-label">{{ node.label }}</span>
+              </div>
+              <div class="globe-core">
+                <span>YUnesa</span>
+              </div>
+            </div>
+            <div class="flow-legend">
+              <span>Text Query</span>
+              <span>Milvus Vector</span>
+              <span>Neo4j Graph</span>
+              <span>Grounded Answer</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section proof-section" v-if="featureCards.length">
+        <div class="proof-grid">
+          <div
+            class="stat-card"
+            v-for="(card, index) in featureCards"
+            :key="card.label"
+            :style="{ '--card-stagger': `${index}` }"
+          >
+            <div class="stat-headline">
+              <span class="stat-icon" v-if="card.icon">
+                <component :is="card.icon" />
+              </span>
+              <p class="stat-value">{{ card.value }}</p>
+            </div>
+            <p class="stat-label">{{ card.label }}</p>
+            <p class="stat-description">{{ card.description }}</p>
           </div>
         </div>
       </div>
@@ -116,7 +171,7 @@
 
       <footer class="footer">
         <div class="footer-content">
-          <p class="copyright">{{ infoStore.footer?.copyright || '© 2026 Informatics Department, Yunesa' }}</p>
+          <p class="copyright">{{ infoStore.footer?.copyright || '(C) 2026 YUnesa Knowledge Engine' }}</p>
         </div>
       </footer>
     </template>
@@ -149,6 +204,63 @@ const infoStore = useInfoStore()
 const agentStore = useAgentStore()
 const repoUrl = 'https://github.com/rizkyyanuark/Tugas_Akhir'
 const faqUrl = 'https://github.com/rizkyyanuark/Tugas_Akhir'
+
+const displayOrganizationName = computed(() => {
+  const name = (infoStore.organization?.name || '').trim()
+  return /informatics department/i.test(name) ? 'YUnesa' : name || 'YUnesa'
+})
+
+const productTitle = computed(() => {
+  const title = (infoStore.branding?.title || '').trim()
+  return /informatics/i.test(title) || !title ? 'YUnesa Knowledge Engine' : title
+})
+
+const graphLinks = [
+  'M260 260 C190 190 155 144 104 120',
+  'M260 260 C330 180 372 146 424 126',
+  'M260 260 C176 270 128 300 84 356',
+  'M260 260 C344 276 396 314 446 382',
+  'M104 120 C188 96 320 94 424 126',
+  'M84 356 C206 430 322 428 446 382',
+  'M154 204 C216 154 308 150 372 206',
+  'M154 318 C228 364 310 364 372 318',
+  'M260 260 C254 176 252 110 260 74',
+  'M260 260 C266 342 268 404 260 452'
+]
+
+const graphNodes = [
+  { label: 'Query', x: '49%', y: '12%', kind: 'query', delay: '0ms' },
+  { label: 'Neo4j', x: '18%', y: '23%', kind: 'graph', delay: '120ms' },
+  { label: 'Milvus', x: '74%', y: '24%', kind: 'vector', delay: '240ms' },
+  { label: 'Dosen', x: '28%', y: '51%', kind: 'entity', delay: '360ms' },
+  { label: 'Publikasi', x: '68%', y: '52%', kind: 'entity', delay: '480ms' },
+  { label: 'Prodi', x: '16%', y: '72%', kind: 'entity', delay: '600ms' },
+  { label: 'Jawaban', x: '74%', y: '76%', kind: 'answer', delay: '720ms' },
+  { label: 'Riset', x: '49%', y: '84%', kind: 'entity', delay: '840ms' }
+]
+
+const heroPointer = ref({ x: 0, y: 0 })
+
+const heroSceneStyle = computed(() => ({
+  '--tilt-x': `${heroPointer.value.y * -7}deg`,
+  '--tilt-y': `${heroPointer.value.x * 9}deg`,
+  '--cursor-x': `${50 + heroPointer.value.x * 12}%`,
+  '--cursor-y': `${50 + heroPointer.value.y * 10}%`
+}))
+
+const handleHeroPointerMove = (event) => {
+  const rect = event.currentTarget.getBoundingClientRect()
+  const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2
+  const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2
+  heroPointer.value = {
+    x: Math.max(-1, Math.min(1, x)),
+    y: Math.max(-1, Math.min(1, y))
+  }
+}
+
+const resetHeroPointer = () => {
+  heroPointer.value = { x: 0, y: 0 }
+}
 
 // Loading state
 const isLoading = ref(true)
@@ -566,7 +678,7 @@ const actionLinks = computed(() => {
     fill: currentColor;
   }
 
-  // 暗色模式样式
+  // Dark mode styles
   :global(.dark) & {
     color: var(--gray-400);
 
@@ -895,6 +1007,525 @@ const actionLinks = computed(() => {
   }
   50% {
     opacity: 0;
+  }
+}
+
+.home-container {
+  color: #10231e;
+  background:
+    linear-gradient(90deg, rgba(16, 111, 99, 0.08), transparent 38%),
+    linear-gradient(180deg, #f7fbf8 0%, #eef6f2 100%);
+}
+
+.home-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(29, 83, 70, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 83, 70, 0.06) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+.home-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-header {
+  padding: 0.75rem 2rem;
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid rgba(39, 83, 70, 0.12);
+  box-shadow: none;
+}
+
+.logo {
+  color: #16362d;
+}
+
+.logo-text {
+  font-size: 1.15rem;
+  letter-spacing: 0;
+}
+
+.github-link a {
+  color: #47645b;
+}
+
+.hero-section {
+  min-height: 100vh;
+  padding: 6rem 2rem 2.5rem;
+  justify-content: center;
+}
+
+.hero-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+  max-width: 1180px;
+  gap: 3rem;
+  padding-top: 0;
+}
+
+.hero-content {
+  max-width: 640px;
+  gap: 1.1rem;
+}
+
+.reveal-up.delay-2 {
+  animation-delay: 180ms;
+}
+
+.hero-badge {
+  width: fit-content;
+  padding: 0.45rem 0.7rem;
+  color: #245e50;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(36, 94, 80, 0.16);
+  border-radius: 8px;
+  font-size: 0.86rem;
+  letter-spacing: 0;
+}
+
+.title {
+  max-width: 680px;
+  color: #10231e;
+  background: none;
+  font-size: 4rem;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  max-width: 620px;
+  min-height: 2.8em;
+  color: #2c5147;
+  font-size: 1.28rem;
+  font-weight: 650;
+}
+
+.hero-summary {
+  max-width: 620px;
+  margin: 0;
+  color: #526b62;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.hero-actions {
+  margin-top: 0.4rem;
+}
+
+.button-base {
+  border-radius: 8px;
+  min-height: 48px;
+  padding: 0.55rem 1.45rem;
+  font-size: 1rem;
+}
+
+.button-base.primary {
+  background: #167567;
+  box-shadow: 0 14px 30px rgba(22, 117, 103, 0.2);
+}
+
+.button-base.primary:hover {
+  background: #0f5f54;
+  transform: translateY(-1px);
+}
+
+.doc-text-link {
+  color: #7a5a14;
+  border-bottom-color: rgba(122, 90, 20, 0.32);
+}
+
+.doc-text-link:hover {
+  color: #4f3b0f;
+  border-color: #9d741c;
+}
+
+.graph-stage {
+  width: 100%;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(39, 83, 70, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 249, 246, 0.9)),
+    #f7fbf8;
+  box-shadow: 0 24px 70px rgba(26, 54, 45, 0.1);
+}
+
+.graph-stage-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #2d5148;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.stage-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #d99a25;
+  box-shadow: 0 0 0 5px rgba(217, 154, 37, 0.14);
+}
+
+.globe-shell {
+  position: relative;
+  width: min(100%, 500px);
+  aspect-ratio: 1;
+  margin: 0.6rem auto 0;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease;
+}
+
+.globe-grid,
+.graph-links,
+.globe-ring,
+.knowledge-node,
+.globe-core {
+  position: absolute;
+}
+
+.globe-grid {
+  inset: 8%;
+  border: 1px solid rgba(23, 89, 78, 0.32);
+  border-radius: 999px;
+  background:
+    linear-gradient(140deg, rgba(22, 117, 103, 0.08), transparent 54%),
+    rgba(255, 255, 255, 0.38);
+  box-shadow: inset 0 0 34px rgba(22, 117, 103, 0.1);
+  animation: globeBreath 5s ease-in-out infinite;
+}
+
+.globe-ring {
+  inset: 8%;
+  border: 1px solid rgba(22, 117, 103, 0.18);
+  border-radius: 999px;
+}
+
+.ring-main {
+  inset: 0;
+  border-color: rgba(22, 117, 103, 0.28);
+}
+
+.ring-tilt-a {
+  transform: rotate(34deg) scaleX(0.56);
+}
+
+.ring-tilt-b {
+  transform: rotate(-34deg) scaleX(0.56);
+}
+
+.ring-flat-a {
+  transform: scaleY(0.44);
+}
+
+.ring-flat-b {
+  transform: scaleY(0.72);
+}
+
+.graph-links {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  transform: translateZ(22px);
+}
+
+.graph-links path {
+  stroke: rgba(22, 117, 103, 0.42);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 460;
+  stroke-dashoffset: 460;
+  animation: drawLink 1.8s ease forwards, linkPulse 4.6s ease-in-out infinite;
+  animation-delay: var(--link-delay), calc(1.8s + var(--link-delay));
+}
+
+.knowledge-node {
+  width: 4.4rem;
+  height: 4.4rem;
+  margin: -2.2rem 0 0 -2.2rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(35, 80, 69, 0.18);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #173a32;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: default;
+  transform: translateZ(46px);
+  box-shadow: 0 12px 28px rgba(19, 54, 45, 0.12);
+  animation: nodeFloat 4.8s ease-in-out infinite;
+  animation-delay: var(--node-delay);
+}
+
+.knowledge-node.vector {
+  border-color: rgba(31, 107, 178, 0.24);
+  color: #1d5c86;
+}
+
+.knowledge-node.graph {
+  border-color: rgba(217, 154, 37, 0.32);
+  color: #7a5a14;
+}
+
+.knowledge-node.answer {
+  border-color: rgba(19, 126, 89, 0.3);
+  color: #137e59;
+}
+
+.node-pulse {
+  position: absolute;
+  inset: -0.35rem;
+  border: 1px solid currentColor;
+  border-radius: inherit;
+  opacity: 0.16;
+  animation: nodePulse 2.8s ease-out infinite;
+  animation-delay: var(--node-delay);
+}
+
+.node-label {
+  position: relative;
+  z-index: 1;
+  max-width: 4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globe-core {
+  inset: 38%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(22, 117, 103, 0.22);
+  border-radius: 999px;
+  background: #16362d;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  transform: translateZ(68px);
+  box-shadow: 0 18px 36px rgba(13, 47, 39, 0.28);
+}
+
+.flow-legend {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.flow-legend span {
+  min-height: 2.2rem;
+  display: grid;
+  place-items: center;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid rgba(39, 83, 70, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #456359;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.section {
+  padding: 2.4rem 2rem;
+}
+
+.proof-section {
+  padding-top: 0;
+}
+
+.proof-grid,
+.action-grid {
+  max-width: 1180px;
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0 auto;
+}
+
+.stat-card,
+.action-card {
+  border-radius: 8px;
+  border-color: rgba(39, 83, 70, 0.13);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 42px rgba(26, 54, 45, 0.07);
+}
+
+.stat-card {
+  padding: 1.15rem;
+}
+
+.stat-card:hover,
+.action-card:hover {
+  border-color: rgba(22, 117, 103, 0.35);
+  box-shadow: 0 20px 46px rgba(26, 54, 45, 0.11);
+}
+
+.stat-icon,
+.stat-value {
+  color: #167567;
+}
+
+.stat-label,
+.stat-description {
+  color: #5d746c;
+}
+
+.action-card {
+  padding: 1.2rem;
+}
+
+.action-card .action-icon {
+  border-radius: 8px;
+  background: #edf6f2;
+  color: #167567;
+}
+
+.action-card:hover .action-icon {
+  background: #167567;
+}
+
+.footer {
+  padding: 2.5rem 2rem;
+  border-color: rgba(39, 83, 70, 0.12);
+}
+
+@keyframes drawLink {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes linkPulse {
+  0%,
+  100% {
+    opacity: 0.48;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes nodeFloat {
+  0%,
+  100% {
+    transform: translateZ(46px) translateY(0);
+  }
+  50% {
+    transform: translateZ(46px) translateY(-8px);
+  }
+}
+
+@keyframes nodePulse {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1.42);
+    opacity: 0;
+  }
+}
+
+@keyframes globeBreath {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.015);
+  }
+}
+
+@media (max-width: 1080px) {
+  .hero-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .graph-stage {
+    max-width: 620px;
+  }
+
+  .proof-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .glass-header {
+    padding: 0.7rem 1rem;
+  }
+
+  .logo-text {
+    font-size: 1rem;
+  }
+
+  .github-link {
+    display: none;
+  }
+
+  .hero-section {
+    padding: 5.4rem 1rem 2rem;
+  }
+
+  .title {
+    font-size: 2.75rem;
+  }
+
+  .subtitle {
+    font-size: 1.08rem;
+  }
+
+  .hero-summary {
+    font-size: 0.95rem;
+  }
+
+  .graph-stage {
+    padding: 0.8rem;
+  }
+
+  .knowledge-node {
+    width: 3.7rem;
+    height: 3.7rem;
+    margin: -1.85rem 0 0 -1.85rem;
+    font-size: 0.64rem;
+  }
+
+  .flow-legend,
+  .proof-grid,
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 1.5rem 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-up,
+  .graph-links path,
+  .knowledge-node,
+  .node-pulse,
+  .globe-grid {
+    animation: none;
+  }
+
+  .globe-shell {
+    transform: none;
   }
 }
 </style>

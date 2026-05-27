@@ -1,5 +1,10 @@
+import logging
 import modal
 from pydantic import BaseModel
+
+# --- Logging Setup ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # --- Setup Modal App & Image ---
 app = modal.App("scitldr-api")
@@ -26,7 +31,7 @@ class SciTLDRModel:
         from transformers import AutoModelForCausalLM, AutoTokenizer
         from peft import PeftModel
         
-        print("Loading base model Qwen2.5-0.5B-Instruct...")
+        logger.info("Loading base model Qwen2.5-0.5B-Instruct...")
         base_model_id = "Qwen/Qwen2.5-0.5B-Instruct"
         adapter_id = "tcy93/scitldr-qwen2.5-0.5b-summarizer"
         
@@ -40,18 +45,18 @@ class SciTLDRModel:
         )
         
         # Load adapter
-        print(f"Loading adapter {adapter_id}...")
+        logger.info(f"Loading adapter {adapter_id}...")
         self.model = PeftModel.from_pretrained(base_model, adapter_id)
         self.model.eval()
         
         # Merge adapter for faster inference
-        print("Merging adapter...")
+        logger.info("Merging adapter...")
         self.model = self.model.merge_and_unload()
-        print("✅ Model loaded successfully!")
+        logger.info("Model loaded successfully.")
 
     @modal.fastapi_endpoint(method="POST")
     def generate(self, req: TLDRRequest):
-        print(f"Generating TLDR for: {req.title[:50]}")
+        logger.info(f"Generating TLDR for: {req.title[:50]}")
         
         if not req.abstract or len(req.abstract.strip()) < 30:
             return {"tldr": "", "status": "error_abstract_too_short"}
@@ -107,7 +112,7 @@ STRICT RULES:
 
     @modal.fastapi_endpoint(method="POST")
     def extract_keywords(self, req: KeywordRequest):
-        print("Extracting keywords...")
+        logger.info("Extracting keywords...")
         
         if not req.abstract or len(req.abstract.strip()) < 30:
             return {"keywords": "", "status": "error_abstract_too_short"}

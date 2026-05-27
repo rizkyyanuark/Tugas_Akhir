@@ -1,16 +1,7 @@
-# ══════════════════════════════════════════════════════════════
-# Production Deployment (CD) — GitHub Actions
-# ══════════════════════════════════════════════════════════════
-# Triggers: Push to master, or manual dispatch from GitHub UI.
-#
-# Required GitHub Secrets (individual):
-#   Infrastructure: REMOTE_HOST, REMOTE_USER, SSH_PRIVATE_KEY
-#   Config Files:   AIRFLOW_VARIABLES, CLOUDFLARE_CONFIG, CLOUDFLARE_CREDENTIALS
-#   Credentials:    GLOBAL_PASSWORD, SUPABASE_URL, SUPABASE_KEY, etc.
-#   (See "Generate .env" step in deploy script for the full list)
-# ══════════════════════════════════════════════════════════════
+# Production deployment through GitHub Actions.
+# Push development work to dev. Push release-ready code to master to deploy.
 
-name: 🚀 Production Deployment
+name: Production Deployment
 
 on:
   push:
@@ -35,7 +26,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install test dependencies
-        run: python -m pip install --upgrade pip pytest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e backend/package pytest
 
       - name: Run ETL dispatch tests
         env:
@@ -49,27 +42,25 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: 📦 Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🚀 Deploy via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2
         env:
-          # --- Config files (multi-line) ---
           CF_CONFIG: ${{ secrets.CLOUDFLARE_CONFIG }}
           CF_CREDS: ${{ secrets.CLOUDFLARE_CREDENTIALS }}
-          # --- Individual secrets for .env generation ---
           S_GLOBAL_PASSWORD: ${{ secrets.GLOBAL_PASSWORD }}
           S_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           S_SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          S_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           S_SCIVAL_EMAIL: ${{ secrets.SCIVAL_EMAIL }}
           S_SCIVAL_PASS: ${{ secrets.SCIVAL_PASS }}
-          S_SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          S_SEMANTIC_SCHOLAR_API_KEY: ${{ secrets.SEMANTIC_SCHOLAR_API_KEY }}
           S_BD_USER_SERP: ${{ secrets.BD_USER_SERP }}
           S_BD_PASS_SERP: ${{ secrets.BD_PASS_SERP }}
           S_BD_USER_UNLOCKER: ${{ secrets.BD_USER_UNLOCKER }}
           S_BD_PASS_UNLOCKER: ${{ secrets.BD_PASS_UNLOCKER }}
-          S_BRIGHTDATA_SERP_TOKEN: ${{ secrets.BRIGHTDATA_SERP_TOKEN }}
           S_GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           S_SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           S_OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -88,10 +79,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: >-
             CF_CONFIG,CF_CREDS,
-            S_GLOBAL_PASSWORD,S_SUPABASE_URL,S_SUPABASE_KEY,
-            S_SCIVAL_EMAIL,S_SCIVAL_PASS,S_SERPAPI_KEY,
+            S_GLOBAL_PASSWORD,S_SUPABASE_URL,S_SUPABASE_KEY,S_SUPABASE_SERVICE_ROLE_KEY,
+            S_SCIVAL_EMAIL,S_SCIVAL_PASS,S_SEMANTIC_SCHOLAR_API_KEY,
             S_BD_USER_SERP,S_BD_PASS_SERP,S_BD_USER_UNLOCKER,S_BD_PASS_UNLOCKER,
-            S_BRIGHTDATA_SERP_TOKEN,
             S_GROQ_API_KEY,S_SILICONFLOW_API_KEY,S_OPENROUTER_API_KEY,
             S_HF_TOKEN,S_TAVILY_API_KEY,
             S_OPIK_API_KEY,S_TELEGRAM_BOT_TOKEN,
@@ -101,42 +91,41 @@ jobs:
           script: |
             set -e
 
-            echo "═══════════════════════════════════════"
-            echo "  🚀 Starting Production Deployment"
-            echo "═══════════════════════════════════════"
+            echo "== Production deployment started =="
 
-            # --- 0. Ensure repo exists ---
             if [ ! -d ~/Tugas_Akhir ]; then
-              echo "📥 First-time setup: cloning repository..."
               git clone https://github.com/rizkyyanuark/Tugas_Akhir.git ~/Tugas_Akhir
             fi
 
             cd ~/Tugas_Akhir
             mkdir -p cloudflared data
 
-            # --- 1. Pull latest code ---
-            echo ""
-            echo "📥 [1/7] Syncing code..."
+            echo "[1/7] Syncing origin/master"
             git stash --quiet 2>/dev/null || true
             git fetch origin master
-            git checkout master
+            git checkout -B master origin/master
             git reset --hard origin/master
 
-            # --- 2. Generate .env from individual secrets ---
-            echo "🔑 [2/7] Generating .env from secrets..."
+            echo "[2/7] Generating .env from GitHub Secrets"
+            : "${S_GLOBAL_PASSWORD:?Missing GitHub Secret GLOBAL_PASSWORD}"
+            : "${S_SUPABASE_URL:?Missing GitHub Secret SUPABASE_URL}"
+            : "${S_SUPABASE_KEY:?Missing GitHub Secret SUPABASE_KEY}"
+            : "${S_SUPABASE_SERVICE_ROLE_KEY:?Missing GitHub Secret SUPABASE_SERVICE_ROLE_KEY}"
+            : "${CF_CONFIG:?Missing GitHub Secret CLOUDFLARE_CONFIG}"
+            : "${CF_CREDS:?Missing GitHub Secret CLOUDFLARE_CREDENTIALS}"
             cat > .env << ENVEOF
-            # Auto-generated by GitHub Actions — DO NOT EDIT MANUALLY
+            # Auto-generated by GitHub Actions. Do not edit on the server.
             GLOBAL_PASSWORD=${S_GLOBAL_PASSWORD}
             SUPABASE_URL=${S_SUPABASE_URL}
             SUPABASE_KEY=${S_SUPABASE_KEY}
+            SUPABASE_SERVICE_ROLE_KEY=${S_SUPABASE_SERVICE_ROLE_KEY}
             SCIVAL_EMAIL=${S_SCIVAL_EMAIL}
             SCIVAL_PASS=${S_SCIVAL_PASS}
-            SERPAPI_KEY=${S_SERPAPI_KEY}
+            SEMANTIC_SCHOLAR_API_KEY=${S_SEMANTIC_SCHOLAR_API_KEY}
             BD_USER_SERP=${S_BD_USER_SERP}
             BD_PASS_SERP=${S_BD_PASS_SERP}
             BD_USER_UNLOCKER=${S_BD_USER_UNLOCKER}
             BD_PASS_UNLOCKER=${S_BD_PASS_UNLOCKER}
-            BRIGHTDATA_SERP_TOKEN=${S_BRIGHTDATA_SERP_TOKEN}
             GROQ_API_KEY=${S_GROQ_API_KEY}
             SILICONFLOW_API_KEY=${S_SILICONFLOW_API_KEY}
             OPENROUTER_API_KEY=${S_OPENROUTER_API_KEY}
@@ -150,64 +139,57 @@ jobs:
             AWS_ACCESS_KEY_ID=${S_AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY=${S_AWS_SECRET_ACCESS_KEY}
             ENVEOF
-            # Strip leading whitespace from heredoc indentation
             sed -i 's/^[[:space:]]*//' .env
-            echo "  ✅ .env generated (23 secrets)"
+            chmod 600 .env
 
-            # --- 3. Inject other config files ---
+            echo "[3/7] Writing Cloudflare Tunnel runtime files"
             printf '%s\n' "$CF_CONFIG" > cloudflared/config.yaml
             printf '%s\n' "$CF_CREDS" > cloudflared/credentials.json
+            chmod 600 cloudflared/credentials.json
 
-            # --- 4. Run server setup (swap, dirs, IP detection) ---
-            # --- 5. Initial Server Setup ---
+            echo "[4/7] Preparing EC2 host"
             chmod +x scripts/setup-server.sh
             bash scripts/setup-server.sh
-
-            echo "📊 [4/7] Disk diagnostics..."
             df -h /
 
-            echo "🧹 [5/7] Cleaning old artifacts..."
+            echo "[5/7] Removing old Docker build artifacts"
             docker system prune -af --filter "until=168h" || true
             docker builder prune -af --filter "until=168h" || true
             sudo apt-get clean || true
 
-            echo "🐳 [6/7] Building Docker images..."
+            echo "[6/7] Building and starting services"
             docker compose -f docker-compose.prod.yml --profile etl build
-
-            echo "🚀 [6.5/7] Starting services..."
             docker compose -f docker-compose.prod.yml --profile etl up -d --remove-orphans
 
-            echo "🏥 [6.7/7] Waiting for services..."
+            echo "[6.5/7] Waiting for service health"
             api_status="unknown"
             for i in $(seq 1 24); do
               api_status=$(docker inspect -f '{{.State.Health.Status}}' api-prod 2>/dev/null || echo "unknown")
               if [ "$api_status" = "healthy" ]; then break; fi
-              echo "  Waiting for API... status=$api_status"
+              echo "api_status=$api_status"
               sleep 5
             done
             if [ "$api_status" != "healthy" ]; then
-              echo "❌ API did not become healthy"; docker logs --tail=200 api-prod || true; exit 1
+              docker logs --tail=200 api-prod || true
+              exit 1
             fi
 
             airflow_status="unknown"
             for i in $(seq 1 24); do
               airflow_status=$(docker inspect -f '{{.State.Health.Status}}' airflow-webserver-prod 2>/dev/null || echo "unknown")
               if [ "$airflow_status" = "healthy" ]; then break; fi
-              echo "  Waiting for Airflow... status=$airflow_status"
+              echo "airflow_status=$airflow_status"
               sleep 5
             done
             if [ "$airflow_status" != "healthy" ]; then
-              echo "❌ Airflow did not become healthy"; docker logs --tail=200 airflow-webserver-prod || true; exit 1
+              docker logs --tail=200 airflow-webserver-prod || true
+              exit 1
             fi
 
-            # --- 7. Final Cleanup ---
-            echo "🧹 [7/7] Final cleanup..."
+            echo "[7/7] Removing old unused images"
             docker image prune -af --filter "until=168h"
 
-            echo ""
-            echo "═══════════════════════════════════════"
-            echo "  ✅ Deployment Complete!"
-            SERVER_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'SERVER')
-            echo "  🌐 Frontend : http://$SERVER_IP"
-            echo "  📊 Airflow  : http://$SERVER_IP:8080"
-            echo "═══════════════════════════════════════"
+            echo "Production deployment complete"
+            echo "frontend https://app.tugasakhir.space"
+            echo "api      https://api.tugasakhir.space"
+            echo "airflow  https://airflow.tugasakhir.space"

@@ -73,6 +73,10 @@
 import {
   Network,
   BookOpen,
+  Activity,
+  Users,
+  BarChart3,
+  Heart,
   TrendingUp,
   TrendingDown
 } from 'lucide-vue-next'

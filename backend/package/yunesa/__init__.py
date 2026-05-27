@@ -19,7 +19,7 @@ executor = ThreadPoolExecutor()  # noqa: E402
 
 
 def get_version():
-    """Return the Yuxi version."""
+    """Return the YUNESA version."""
     return __version__
 
 

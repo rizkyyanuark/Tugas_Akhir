@@ -11,28 +11,6 @@
     @send="handleSend"
     @keydown="handleKeyDown"
   >
-    <template #top>
-      <div v-if="currentImage" class="input-top-stack">
-        <ImagePreviewComponent
-          :image-data="currentImage"
-          @remove="handleImageRemoved"
-          class="image-preview-wrapper"
-        />
-      </div>
-    </template>
-    <template #options-left>
-      <div v-if="isIngestionLocked" class="ingestion-locked-indicator" title="Data Ingestion Locked (Final Engineering Directive)">
-        <Lock :size="16" class="lock-icon" />
-        <span class="lock-text">Ingestion Locked</span>
-      </div>
-      <AttachmentOptionsComponent
-        v-else-if="supportsFileUpload"
-        :disabled="disabled"
-        @upload="handleAttachmentUpload"
-        @upload-image="handleImageUpload"
-        @upload-image-success="handleImageUploadSuccess"
-      />
-    </template>
     <template #actions-left>
       <div class="input-actions-left">
         <a-popover
@@ -91,16 +69,6 @@
     </template>
     <template #actions-right>
       <div class="input-actions-right">
-        <button
-          v-if="hasActiveThread"
-          class="input-action-btn"
-          :class="{ active: isPanelOpen }"
-          @click.stop="$emit('toggle-panel')"
-          title="View Files"
-        >
-          <FolderCode :size="18" />
-          <span>Files</span>
-        </button>
         <slot name="actions-left-extra"></slot>
       </div>
     </template>
@@ -110,9 +78,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import MessageInputComponent from '@/components/MessageInputComponent.vue'
-import ImagePreviewComponent from '@/components/ImagePreviewComponent.vue'
-import AttachmentOptionsComponent from '@/components/AttachmentOptionsComponent.vue'
-import { FolderCode, SquareCheck, Lock } from 'lucide-vue-next'
+import { SquareCheck } from 'lucide-vue-next'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -127,9 +93,6 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   sendButtonDisabled: { type: Boolean, default: false },
   mention: { type: Object, default: () => null },
-  supportsFileUpload: { type: Boolean, default: false },
-  isPanelOpen: { type: Boolean, default: false },
-  isIngestionLocked: { type: Boolean, default: false },
   hasActiveThread: { type: Boolean, default: true },
   todos: {
     type: Array,
@@ -140,13 +103,10 @@ const props = defineProps({
 const emit = defineEmits([
   'update:modelValue',
   'send',
-  'keydown',
-  'upload-attachment',
-  'toggle-panel'
+  'keydown'
 ])
 
 const inputRef = ref(null)
-const currentImage = ref(null)
 const todoPopoverOpen = ref(false)
 const placeholder = 'Ask anything... use @ to mention resources'
 
@@ -170,30 +130,8 @@ const updateValue = (val) => {
   emit('update:modelValue', val)
 }
 
-const handleAttachmentUpload = (files) => {
-  if (!files?.length) return
-  emit('upload-attachment', files)
-}
-
-const handleImageUpload = (imageData) => {
-  if (imageData && imageData.success) {
-    currentImage.value = imageData
-  }
-}
-
-const handleImageUploadSuccess = () => {
-  if (inputRef.value) {
-    inputRef.value.closeOptions()
-  }
-}
-
-const handleImageRemoved = () => {
-  currentImage.value = null
-}
-
 const handleSend = () => {
-  emit('send', { image: currentImage.value })
-  currentImage.value = null
+  emit('send')
   todoPopoverOpen.value = false
 }
 
@@ -239,45 +177,6 @@ const getTodoStatusLabel = (status) => {
   align-items: center;
   margin-right: 8px;
   gap: 2px;
-}
-
-.input-top-stack {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-// Shared styles for input action buttons (applied through slot content)
-.ingestion-locked-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(255, 77, 79, 0.1);
-  border: 1px solid rgba(255, 77, 79, 0.2);
-  color: #ff4d4f;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: default;
-  user-select: none;
-  animation: pulse-red 2s infinite ease-in-out;
-
-  .lock-icon {
-    flex-shrink: 0;
-  }
-
-  .lock-text {
-    white-space: nowrap;
-  }
-}
-
-@keyframes pulse-red {
-  0% { opacity: 0.8; }
-  50% { opacity: 1; border-color: rgba(255, 77, 79, 0.4); background: rgba(255, 77, 79, 0.15); }
-  100% { opacity: 0.8; }
 }
 
 :deep(.input-action-btn) {
@@ -456,11 +355,6 @@ const getTodoStatusLabel = (status) => {
 }
 
 @media (max-width: 768px) {
-  .input-top-stack {
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
   .todo-popover-card {
     width: min(320px, calc(100vw - 24px));
     padding: 12px;

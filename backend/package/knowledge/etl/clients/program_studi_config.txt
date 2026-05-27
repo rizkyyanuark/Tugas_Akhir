@@ -1,52 +1,18 @@
-# KONFIGURASI PROGRAM STUDI - PDDIKTI SCRAPER
+# KONFIGURASI PROGRAM STUDI - UNESA ETL
 # ================================================
-# 
-# FILE INI BERISI DAFTAR PROGRAM STUDI YANG AKAN DI-SCRAPE DATA DOSENNYA
-# 
-# TUJUAN FILE:
-# - Memudahkan konfigurasi tanpa edit notebook
-# - Memungkinkan developer lain untuk dengan mudah menambah/mengurangi program studi
-# - Menyimpan history program studi yang pernah di-scrape
-# - Memisahkan konfigurasi dari logic code
+# Format: kode_prodi,nama_prodi,web_url,pddikti_keyword,parser_key,sinta_url,siakadu_url,enabled
 #
-# CARA PENGGUNAAN:
-# 1. Satu baris = satu program studi
-# 2. Baris yang dimulai dengan # akan diabaikan (komentar)
-# 3. Baris kosong akan diabaikan
-# 4. Gunakan nama program studi yang sesuai dengan data PDDIKTI
-# 5. Pastikan nama exact match dengan database PDDIKTI
+# enabled: 1 (active), 0 (inactive)
 #
-# FORMAT: 
-# [Nama Program Studi]
-#
-# CONTOH:
-# Sains Data
-# Kecerdasan Artifisial
-# Teknik Informatika
-# Sistem Informasi
-#
-# ================================================
-
-# PROGRAM STUDI AKTIF (UNCOMMENT UNTUK AKTIFKAN)
-Sains Data
-Kecerdasan Artifisial
-Teknik Elektro
-Sistem Informasi
-Pendidikan Teknologi Informasi
-Teknik Informatika
-Bisnis Digital
-D4 Manajemen Informatika
-
-
-
-# ================================================
-# CATATAN DEVELOPER:
-# 
-# - Sebelum menambah program studi baru, cek dulu ketersediaan data di PDDIKTI
-# - Beberapa program studi mungkin tidak memiliki data dosen yang lengkap
-# - Program studi dengan nama yang mirip mungkin menghasilkan data duplikat
-# - Untuk program studi baru, disarankan test dengan sample kecil terlebih dahulu
-# 
-# LAST UPDATED: 2025-09-24
-# TOTAL ACTIVE PRODI: 2
-# ================================================
+kode_prodi,nama_prodi,web_url,pddikti_keyword,parser_key,sinta_url,siakadu_url,enabled
+55202,S1 Teknik Informatika,https://ti.ft.unesa.ac.id/page/dosen,Teknik Informatika,table,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/EEE0451E-BD6B-4742-9DDC-37443E9727D8,https://siakadu.unesa.ac.id/prodi/teknik-informatika,1
+57201,S1 Sistem Informasi,https://si.ft.unesa.ac.id/page/dosen,Sistem Informasi,table,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/F4017FD4-886E-439F-99D5-058257BCD267,https://siakadu.unesa.ac.id/prodi/sistem-informasi,1
+83207,S1 Pendidikan Teknologi Informasi,https://pendidikan-ti.ft.unesa.ac.id/page/dosen,Pendidikan Teknologi Informasi,pendti,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/3D55C562-55DC-4630-9E8A-B85ADDBD8095,https://siakadu.unesa.ac.id/prodi/pendidikan-teknologi-informasi,1
+20201,S1 Teknik Elektro,https://teknikelektro.ft.unesa.ac.id/page/dosen,Teknik Elektro,te,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/D07FD88A-19E6-4E4D-9068-950E10F52E7D,https://siakadu.unesa.ac.id/prodi/teknik-elektro,1
+20202,S1 Pendidikan Teknik Elektro,https://pendidikan-teknik-elektro.ft.unesa.ac.id/page/dosen,Pendidikan Teknik Elektro,te,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/D07FD88A-19E6-4E4D-9068-950E10F52E7D,https://siakadu.unesa.ac.id/prodi/pendidikan-teknik-elektro,0
+55283,S1 Kecerdasan Artifisial,https://ai.fmipa.unesa.ac.id/page/dosen-s1-kecerdasan-artifisial,Kecerdasan Artifisial,simcv,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/C4A6FE46-5A60-487F-BBEF-7532B2CD4AB3,https://siakadu.unesa.ac.id/prodi/kecerdasan-artifisial,1
+49202,S1 Sains Data,https://datascience.fmipa.unesa.ac.id//page/dosen,Sains Data,sains,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/B56D9BB7-704D-45F0-A2A7-58F53B8AE40B,https://siakadu.unesa.ac.id/prodi/sains-data,1
+61209,S1 Bisnis Digital,https://bisnisdigital.feb.unesa.ac.id/page/dosen,Bisnis Digital,bisdig,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/75C862EC-7303-4397-A9A4-297036464C36,https://siakadu.unesa.ac.id/prodi/bisnis-digital,1
+57301,D4 Manajemen Informatika,https://terapan-ti.vokasi.unesa.ac.id/page/dosen,Manajemen Informatika,simcv,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/A5BFB6F6-E36A-429A-A7CC-6E7E85A590ED,https://siakadu.unesa.ac.id/prodi/manajemen-informatika,1
+55100,S2 Informatika,https://s2if.ft.unesa.ac.id/page/dosen,Informatika,s2if,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/9710C241-0910-44C9-A7DD-22C249778B97,https://siakadu.unesa.ac.id/prodi/informatika,1
+83215,S2 Pendidikan Teknologi Informasi,https://s2tp.pasca.unesa.ac.id/page/dosen,Pendidikan Teknologi Informasi,s2pti,https://sinta.kemdiktisaintek.go.id/departments/authors/499/CB1154B4-10BA-4712-B916-36051BA7C32F/E1D6EE47-FA34-4CAA-AFD6-80ED1B9C03FF,https://siakadu.unesa.ac.id/prodi/pendidikan-teknologi-informasi,1

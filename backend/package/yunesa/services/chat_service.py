@@ -3,7 +3,6 @@ import json
 import traceback
 import uuid
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
 from typing import Any
 
 from langchain.messages import AIMessage, AIMessageChunk, HumanMessage
@@ -29,41 +28,6 @@ from yunesa.utils.question_utils import (
 from yunesa.utils.question_utils import (
     normalize_questions as _normalize_interrupt_questions,
 )
-
-
-def _build_state_files(attachments: list[dict]) -> dict:
-    """Convert attachment list into a StateBackend-compatible files dict.
-
-    Expected StateBackend format:
-    {
-        "/attachments/file.md": {
-            "content": ["line1", "line2", ...],
-            "created_at": "...",
-            "modified_at": "...",
-        }
-    }
-    """
-    files = {}
-    for attachment in attachments:
-        if attachment.get("status") != "parsed":
-            continue
-
-        file_path = attachment.get("file_path")
-        markdown = attachment.get("markdown")
-
-        if not file_path or not markdown:
-            continue
-
-        now = datetime.now(UTC).isoformat()
-        # Split markdown content by line.
-        content_lines = markdown.split("\n")
-        files[file_path] = {
-            "content": content_lines,
-            "created_at": attachment.get("uploaded_at", now),
-            "modified_at": attachment.get("uploaded_at", now),
-        }
-
-    return files
 
 
 async def _get_langgraph_messages(agent_instance, config_dict):
@@ -109,10 +73,12 @@ def extract_agent_state(values: dict) -> AgentStatePayload:
     # Access directly and trust the state payload structure.
     todos = values.get("todos")
     artifacts = values.get("artifacts")
+    citations = values.get("citations")
     result: AgentStatePayload = {
         "todos": list(todos)[:20] if todos else [],
         "files": values.get("files") or {},
         "artifacts": list(artifacts) if artifacts else [],
+        "citations": list(citations) if citations else [],
     }
 
     return result
@@ -472,25 +438,14 @@ async def agent_chat(
     agent_config_id: int,
     thread_id: str | None,
     meta: dict,
-    image_content: str | None,
     current_user,
     db,
 ) -> dict:
     """Non-streaming conversation endpoint that returns a full response."""
     start_time = asyncio.get_event_loop().time()
 
-    if image_content:
-        human_message = HumanMessage(
-            content=[
-                {"type": "text", "text": query},
-                {"type": "image_url", "image_url": {
-                    "url": f"data:image/jpeg;base64,{image_content}"}},
-            ]
-        )
-        message_type = "multimodal_image"
-    else:
-        human_message = HumanMessage(content=query)
-        message_type = "text"
+    human_message = HumanMessage(content=query)
+    message_type = "text"
 
     if conf.enable_content_guard and await content_guard.check(query):
         return {
@@ -533,7 +488,6 @@ async def agent_chat(
             "server_model_name": agent_id,
             "thread_id": thread_id,
             "user_id": current_user.id,
-            "has_image": bool(image_content),
         }
     )
 
@@ -585,7 +539,6 @@ async def agent_chat(
                 role="user",
                 content=query,
                 message_type=message_type,
-                image_content=image_content,
                 extra_metadata={"raw_message": human_message.model_dump()},
             )
         except Exception as e:
@@ -673,7 +626,6 @@ async def stream_agent_chat(
     agent_config_id: int,
     thread_id: str | None,
     meta: dict,
-    image_content: str | None,
     current_user,
     db,
 ) -> AsyncIterator[bytes]:
@@ -687,25 +639,11 @@ async def stream_agent_chat(
             + b"\n"
         )
 
-    if image_content:
-        human_message = HumanMessage(
-            content=[
-                {"type": "text", "text": query},
-                {"type": "image_url", "image_url": {
-                    "url": f"data:image/jpeg;base64,{image_content}"}},
-            ]
-        )
-        message_type = "multimodal_image"
-    else:
-        human_message = HumanMessage(content=query)
-        message_type = "text"
+    human_message = HumanMessage(content=query)
+    message_type = "text"
 
     init_msg = {"role": "user", "content": query, "type": "human"}
-    if image_content:
-        init_msg["message_type"] = "multimodal_image"
-        init_msg["image_content"] = image_content
-    else:
-        init_msg["message_type"] = "text"
+    init_msg["message_type"] = "text"
 
     yield make_chunk(status="init", meta=meta, msg=init_msg)
 
@@ -745,7 +683,6 @@ async def stream_agent_chat(
             "server_model_name": agent_id,
             "thread_id": thread_id,
             "user_id": current_user.id,
-            "has_image": bool(image_content),
         }
     )
 
@@ -801,7 +738,6 @@ async def stream_agent_chat(
                 role="user",
                 content=query,
                 message_type=message_type,
-                image_content=image_content,
                 extra_metadata={"raw_message": human_message.model_dump()},
             )
         except Exception as e:

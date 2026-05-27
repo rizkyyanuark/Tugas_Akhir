@@ -1,17 +1,19 @@
-"""
-Load: Supabase PostgreSQL Loader
-=================================
-Handles batch UPSERT of papers and lecturers to Supabase.
-Implements idempotency via ON CONFLICT DO UPDATE.
-"""
-import math
+from __future__ import annotations
+
 import json
 import logging
-import pandas as pd
-import numpy as np
-from supabase import create_client, Client
+import math
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
-from ..config import SUPABASE_URL, SUPABASE_KEY
+import numpy as np
+import pandas as pd
+from supabase import Client
+
+from knowledge.etl.clients.supabase_auth import create_etl_supabase_client
+from knowledge.etl.utils.logging import log_error, log_event, log_warning
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -25,39 +27,18 @@ class SupabaseLoader:
     - Junction table linking (paper_lecturers)
     """
 
-    def __init__(self, url: str = None, key: str = None):
-        self.url = url or SUPABASE_URL
-        self.key = key or SUPABASE_KEY
-        if not self.url or not self.key:
-            raise ValueError("❌ SUPABASE_URL or SUPABASE_KEY missing!")
-            
-        # --- DOCKER/SUPABASE-PY PATCH ---
-        # supabase-py > 2.0 strictly validates the key via regex matching JWTs.
-        # However, some modern Supabase keys use the `sb_publishable_...` format.
-        # We temporarily disable the regex check.
-        import re
-        import supabase._sync.client as sc
-        original_match = re.match
-        
-        def mock_match(pattern, string, flags=0):
-            # If it's the JWT regex check coming from supabase client, bypass it
-            if isinstance(string, str) and string.startswith("sb_publishable_"):
-                return True # Pretend it matches
-            return original_match(pattern, string, flags)
-            
-        re.match = mock_match
-        try:
-            self.client: Client = create_client(self.url, self.key)
-        finally:
-            re.match = original_match # Restore
-        # --- END PATCH ---
-        
-        logger.info(f"✅ SupabaseLoader connected to {self.url}")
+    def __init__(self, url: Optional[str] = None, key: Optional[str] = None):
+        self.client, self.key_role = create_etl_supabase_client(
+            url=url,
+            key=key,
+            require_write=True,
+            logger=logger,
+        )
 
-    # ─── Value Cleaning ──────────────────────────────────────────────
+    # --- Value Cleaning ---
 
     @staticmethod
-    def _clean_value(value):
+    def _clean_value(value: Any) -> Any:
         """Clean a single value for JSON/SQL compliance."""
         if value is None:
             return None
@@ -84,7 +65,7 @@ class SupabaseLoader:
             return v
         return value
 
-    # ─── Lecturers ───────────────────────────────────────────────────
+    # --- Lecturers ---
 
     def upsert_lecturers(self, df: pd.DataFrame) -> int:
         """
@@ -92,7 +73,7 @@ class SupabaseLoader:
         """
         count = 0
         total = len(df)
-        logger.info(f"\n👨‍🏫 Upserting {total} lecturers...")
+        log_event(logger, "supabase.lecturers.upsert_start", rows=total)
 
         # Prepare records
         records = []
@@ -115,7 +96,7 @@ class SupabaseLoader:
                 "sinta_id": self._clean_value(row.get('sinta_id')),
             })
 
-        logger.info(f"   📋 Valid records to upsert: {len(records)}/{total}")
+        log_event(logger, "supabase.lecturers.validated", valid_rows=len(records), input_rows=total)
         
         # Batch insert
         for i in range(0, len(records), 100):
@@ -128,20 +109,21 @@ class SupabaseLoader:
                 ).execute()
                 count += len(chunk)
             except Exception as e:
-                logger.error(f"   ⚠️ Error upserting lecturer batch at {i}: {e}")
+                log_error(logger, "supabase.lecturers.batch_failed", exc=e, offset=i, batch_size=len(chunk))
+                raise RuntimeError("Failed to upsert lecturers to Supabase.") from e
 
-        logger.info(f"   ✅ Upserted {count}/{total} lecturers via NIP")
+        log_event(logger, "supabase.lecturers.upsert_done", upserted=count, input_rows=total)
         return count
 
-    # ─── Papers ──────────────────────────────────────────────────────
+    # --- Papers ---
 
     def upsert_papers(self, df: pd.DataFrame, chunk_size: int = 100) -> int:
         """
         Batch upsert papers to 'papers' table using deterministic `paper_id` as PK.
         Papers missing DOI are now gracefully handled via Title+Year hashes.
         """
-        from ..utils.hasher import generate_paper_id
-        records = []
+        from knowledge.etl.utils.hasher import generate_paper_id
+        records: List[Dict[str, Any]] = []
         skipped = 0
 
         for _, row in df.iterrows():
@@ -178,7 +160,7 @@ class SupabaseLoader:
                 "tldr": self._clean_value(row.get('TLDR') or row.get('tldr')),
             })
 
-        logger.info(f"\n📄 Upserting {len(records)} papers using MD5 Hashes (chunk={chunk_size})...")
+        log_event(logger, "supabase.papers.upsert_start", rows=len(records), skipped_no_title=skipped, chunk_size=chunk_size)
 
         total_upserted = 0
         for i in range(0, len(records), chunk_size):
@@ -188,20 +170,26 @@ class SupabaseLoader:
                     chunk, on_conflict="paper_id"
                 ).execute()
                 total_upserted += len(chunk)
-                logger.info(f"   ✅ Batch {i // chunk_size + 1}: {len(chunk)} papers")
+                log_event(
+                    logger,
+                    "supabase.papers.batch_done",
+                    batch=i // chunk_size + 1,
+                    rows=len(chunk),
+                )
             except Exception as e:
-                logger.error(f"   ❌ Batch error at {i}: {e}")
+                log_error(logger, "supabase.papers.batch_failed", exc=e, offset=i, batch_size=len(chunk))
+                raise RuntimeError("Failed to upsert papers to Supabase.") from e
 
-        logger.info(f"   ✅ Total: {total_upserted} upserted, {skipped} skipped (no title)")
+        log_event(logger, "supabase.papers.upsert_done", upserted=total_upserted, skipped_no_title=skipped)
         return total_upserted
 
-    # ─── Junction Table ──────────────────────────────────────────────
+    # --- Junction Table ---
 
     def link_papers_to_lecturers(self, df: pd.DataFrame) -> int:
         """
         Populate paper_lecturers junction table. (M:M relasi menggunakan paper_id dan nip).
         """
-        from ..utils.hasher import generate_paper_id
+        from knowledge.etl.utils.hasher import generate_paper_id
         
         # 1. Get lecturer mapping: lookup NIP using scopus_id & scholar_id
         res = self.client.table("lecturers").select("nip, scopus_id, scholar_id").execute()
@@ -241,14 +229,14 @@ class SupabaseLoader:
                     links.add((paper_id, id_to_nip[aid]))
 
         if not links:
-            logger.warning("   ⚠️ No lecturer-paper links to insert.")
+            log_warning(logger, "supabase.paper_links.empty", action="skip")
             return 0
 
         # 3. Batch Upsert to Junction Table
         link_data = [{"paper_id": p, "nip": n} for p, n in links]
         total = 0
 
-        logger.info(f"\n🔗 Linking {len(link_data)} paper-lecturer relationships (Hash <-> NIP)...")
+        log_event(logger, "supabase.paper_links.upsert_start", rows=len(link_data), conflict_key="paper_id,nip")
         for i in range(0, len(link_data), 500):
             chunk = link_data[i:i + 500]
             try:
@@ -258,7 +246,8 @@ class SupabaseLoader:
                 ).execute()
                 total += len(chunk)
             except Exception as e:
-                logger.error(f"   ❌ Link batch error: {e}")
+                log_error(logger, "supabase.paper_links.batch_failed", exc=e, batch_size=len(chunk))
+                raise RuntimeError("Failed to upsert paper-lecturer links to Supabase.") from e
 
-        logger.info(f"   ✅ Linked {total} relationships")
+        log_event(logger, "supabase.paper_links.upsert_done", rows=total)
         return total

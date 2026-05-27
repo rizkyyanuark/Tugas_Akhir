@@ -13,8 +13,6 @@ from server.routers.system_router import system
 from server.routers.task_router import tasks
 from server.routers.tool_router import tools
 from server.routers.apikey_router import apikey_router
-from server.routers.filesystem_router import filesystem_router
-from server.routers.kg_router import kg_router
 
 _LITE_MODE = os.environ.get("LITE_MODE", "").lower() in ("true", "1")
 
@@ -34,7 +32,6 @@ router.include_router(skills)  # /api/system/skills/* Skills management
 router.include_router(subagents_router)  # /api/system/subagents/* 子agentmanagement
 router.include_router(tools)  # /api/system/tools/* toollist与configure
 router.include_router(apikey_router)  # /api/apikey/* API Key management
-router.include_router(filesystem_router)  # /api/viewer/filesystem/* 工作台filesystem视图
 
 if not _LITE_MODE:
     from server.routers.graph_router import graph
@@ -47,4 +44,3 @@ if not _LITE_MODE:
     router.include_router(evaluation)  # /api/evaluation/* knowledge baseevaluation
     router.include_router(mindmap)  # /api/mindmap/* 思维导图generate与query
     router.include_router(graph)  # /api/graph/* graphquery与management
-    router.include_router(kg_router)  # /api/graph/kg/* Northern KG construction

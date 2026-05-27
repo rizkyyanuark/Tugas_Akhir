@@ -18,12 +18,12 @@ from .provider import (
     shutdown_sandbox_provider,
 )
 
-# Compatibility aliases for legacy imports.
+# Compatibility aliases for shared sandbox abstractions.
 SandboxBackend = ProvisionerSandboxBackend
-YuxiSandboxBackend = ProvisionerSandboxBackend
+YunesaSandboxBackend = ProvisionerSandboxBackend
 LocalContainerBackend = ProvisionerSandboxBackend
 RemoteSandboxBackend = ProvisionerSandboxBackend
-YuxiSandboxProvider = ProvisionerSandboxProvider
+YunesaSandboxProvider = ProvisionerSandboxProvider
 SandboxInfo = SandboxConnection
 
 # Sandbox-visible paths for viewer/filesystem services.
@@ -45,8 +45,8 @@ __all__ = [
     "SandboxBackend",
     "SandboxInfo",
     "THREADS_DIR",
-    "YuxiSandboxBackend",
-    "YuxiSandboxProvider",
+    "YunesaSandboxBackend",
+    "YunesaSandboxProvider",
     "ProvisionerSandboxBackend",
     "ProvisionerSandboxProvider",
     "VIRTUAL_PATH_PREFIX",

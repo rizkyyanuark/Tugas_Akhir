@@ -45,24 +45,6 @@
       :style="mentionDropdownStyle"
     >
       <div class="mention-popup">
-        <!-- File list -->
-        <div v-if="mentionItems.files.length > 0 || showFileSearchPrompt" class="mention-group">
-          <div class="mention-group-title">Files</div>
-          <div v-if="showFileSearchPrompt" class="mention-search-placeholder">
-            Type to search files
-          </div>
-          <template v-else>
-            <div
-              v-for="(item, index) in mentionItems.files"
-              :key="'file-' + item.value"
-              :class="['mention-item', { active: isItemSelected('file', index) }]"
-              @click="insertMention(item)"
-            >
-              {{ item.label }}
-            </div>
-          </template>
-        </div>
-
         <!-- Knowledge base list -->
         <div v-if="mentionItems.knowledgeBases.length > 0" class="mention-group">
           <div class="mention-group-title">Knowledge Bases</div>
@@ -204,9 +186,8 @@ const slots = useSlots()
 // Whether @ mention is enabled.
 const mentionEnabled = computed(() => {
   if (!props.mention) return false
-  const { files, knowledgeBases, mcps, skills, subagents } = props.mention
+  const { knowledgeBases, mcps, skills, subagents } = props.mention
   return (
-    (Array.isArray(files) && files.length > 0) ||
     (Array.isArray(knowledgeBases) && knowledgeBases.length > 0) ||
     (Array.isArray(mcps) && mcps.length > 0) ||
     (Array.isArray(skills) && skills.length > 0) ||
@@ -215,7 +196,6 @@ const mentionEnabled = computed(() => {
 })
 
 const mentionTypePrefixMap = {
-  file: 'file',
   knowledge: 'knowledge',
   mcp: 'mcp',
   skill: 'skill',
@@ -251,12 +231,12 @@ const checkMentionTrigger = (textarea) => {
 // Update mention candidates.
 const updateMentionItems = (query = '') => {
   if (!props.mention) {
-    mentionItems.value = { files: [], knowledgeBases: [], mcps: [], skills: [], subagents: [] }
+    mentionItems.value = { knowledgeBases: [], mcps: [], skills: [], subagents: [] }
     return
   }
 
   const lowerQuery = query.toLowerCase()
-  const { files = [], knowledgeBases = [], mcps = [], skills = [], subagents = [] } = props.mention
+  const { knowledgeBases = [], mcps = [], skills = [], subagents = [] } = props.mention
 
   const filterItems = (list) =>
     list.filter((item) => {
@@ -274,26 +254,6 @@ const updateMentionItems = (query = '') => {
           .includes(lowerQuery)
       )
     })
-
-  const filterFileItems = (list) => {
-    if (!query) {
-      return []
-    }
-    return filterItems(list)
-  }
-
-  const fileItems = files.map((f) => {
-    const path = f.path || ''
-    const fileName = path.split('/').pop() || path
-    return {
-      value: path,
-      label: fileName,
-      type: 'file',
-      insertValue: path || fileName,
-      tokenLabel: formatMentionToken('file', fileName),
-      description: path
-    }
-  })
 
   const knowledgeItems = knowledgeBases.map((kb) => {
     const kbName = kb.name || ''
@@ -345,7 +305,6 @@ const updateMentionItems = (query = '') => {
   })
 
   mentionItems.value = {
-    files: filterFileItems(fileItems),
     knowledgeBases: filterItems(knowledgeItems),
     mcps: filterItems(mcpItems),
     skills: filterItems(skillItems),
@@ -357,34 +316,24 @@ const updateMentionItems = (query = '') => {
 const isItemSelected = (type, index) => {
   if (mentionSelectedIndex.value < 0) return false
 
-  const filesLen = mentionItems.value.files.length
   const kbLen = mentionItems.value.knowledgeBases.length
   const mcpLen = mentionItems.value.mcps.length
   const skillsLen = mentionItems.value.skills.length
 
-  if (type === 'file') {
+  if (type === 'knowledge') {
     return mentionSelectedIndex.value === index
-  } else if (type === 'knowledge') {
-    return mentionSelectedIndex.value === filesLen + index
   } else if (type === 'mcp') {
-    return mentionSelectedIndex.value === filesLen + kbLen + index
+    return mentionSelectedIndex.value === kbLen + index
   } else if (type === 'skill') {
-    return mentionSelectedIndex.value === filesLen + kbLen + mcpLen + index
+    return mentionSelectedIndex.value === kbLen + mcpLen + index
   } else {
-    return mentionSelectedIndex.value === filesLen + kbLen + mcpLen + skillsLen + index
+    return mentionSelectedIndex.value === kbLen + mcpLen + skillsLen + index
   }
 }
-
-// Whether any candidate item exists.
-const showFileSearchPrompt = computed(() => {
-  return Boolean(props.mention?.files?.length) && !mentionQuery.value
-})
 
 const hasAnyItems = computed(() => {
   const items = mentionItems.value
   return (
-    showFileSearchPrompt.value ||
-    items.files.length > 0 ||
     items.knowledgeBases.length > 0 ||
     items.mcps.length > 0 ||
     items.skills.length > 0 ||
@@ -463,7 +412,6 @@ const handleMentionNavigation = (e) => {
   if (!mentionPopupVisible.value) return
 
   const allItems = [
-    ...mentionItems.value.files,
     ...mentionItems.value.knowledgeBases,
     ...mentionItems.value.mcps,
     ...mentionItems.value.skills,
@@ -574,7 +522,7 @@ const handleSendOrStop = () => {
 // @ mention state.
 const mentionPopupVisible = ref(false)
 const mentionQuery = ref('')
-const mentionItems = ref({ files: [], knowledgeBases: [], mcps: [], skills: [], subagents: [] })
+const mentionItems = ref({ knowledgeBases: [], mcps: [], skills: [], subagents: [] })
 const mentionSelectedIndex = ref(0)
 
 const adjustTextareaHeight = () => {

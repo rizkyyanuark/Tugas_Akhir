@@ -3,39 +3,38 @@
 
 # Organization information
 organization:
-  name: "Informatics Department, Yunesa" # Full organization name
+  name: "YUnesa" # Full organization name
   logo: "/favicon.svg" # Logo file path (in web/public)
   avatar: "/avatar.jpg" # Avatar file path (in web/public)
   login_bg: "/login-bg.jpg" # Login background image path (in web/public)
 
 # Project information
 branding:
-  name: "Yunesa"
-  title: "Informatics Agent Platform" # System title
-  subtitle: "Open-source agent platform suite designed for academic and project orchestration" # Used when subtitles is empty
+  name: "YUnesa"
+  title: "YUnesa Knowledge Engine" # System title
+  subtitle: "Text-first academic knowledge assistant powered by Neo4j graph context and Milvus vector search" # Used when subtitles is empty
   subtitles:
-    - "Open-source agent platform suite designed for academic and project orchestration"
-    - "Unified orchestration for agents, knowledge bases, and Informatics toolchains"
-    - "Build agents, connect knowledge, and make decisions verifiable"
-    - "Deploy agents, orchestrate workflows, and scale collaboration"
-    - "Accumulate data, reuse capabilities, and evolve systems"
+    - "Ask text questions over connected academic knowledge"
+    - "Ground answers with Neo4j graph context and Milvus vector retrieval"
+    - "Explore lecturer, publication, and institutional relationships"
+    - "Keep the thesis scope focused: query, retrieve, reason, answer"
 
 features:
   - label: "GitHub Stars"
     value: "0+"
-    description: "New open-source project in development"
+    description: "Student thesis project in active development"
     icon: "stars"
   - label: "Active Project"
     value: "V0.6.0"
-    description: "Continuous improvement and student-led development"
+    description: "Dockerized API, web, ETL, Airflow, Neo4j, and Milvus stack"
     icon: "issues"
   - label: "Total Commits"
     value: "100+"
-    description: "Active development iterations and feature updates"
+    description: "Focused iterations toward graph and vector knowledge retrieval"
     icon: "commits"
   - label: "Open-Source License"
     value: "MIT License"
-    description: "Completely free and ready for educational use"
+    description: "Readable foundation for academic review and demonstration"
     icon: "license"
 
 actions:
@@ -51,6 +50,6 @@ actions:
 
 # Footer information
 footer:
-  copyright: "(C) Informatics Department, Yunesa 2026 v0.6.0"
+  copyright: "(C) YUnesa Knowledge Engine 2026 v0.6.0"
   user_agreement_url: "/protocols/user-agreement.template.html"
   privacy_policy_url: "/protocols/privacy-policy.template.html"

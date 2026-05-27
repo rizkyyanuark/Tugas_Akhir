@@ -1,21 +1,15 @@
 import os
 import traceback
 import uuid
-from pathlib import Path
 from typing import Annotated, Any
 
 import requests
-from langchain.tools import InjectedToolCallId
-from langchain_core.messages import ToolMessage
-from langgraph.prebuilt.tool_node import ToolRuntime
-from langgraph.types import Command, interrupt
-from pydantic import BaseModel, Field
+from langgraph.types import interrupt
 
 from yunesa import config, graph_base
 from yunesa.agents.toolkits.registry import ToolExtraMetadata, _all_tool_instances, _extra_registry, tool
 from yunesa.storage.minio import aupload_file_to_minio
 from yunesa.utils import logger
-from yunesa.utils.paths import VIRTUAL_PATH_OUTPUTS
 from yunesa.utils.question_utils import normalize_questions
 
 # Lazy initialization for TavilySearch (only when API key is available)
@@ -64,58 +58,6 @@ if config.enable_web_search:
         logger.warning(f"Failed to register TavilySearch tool: {e}")
 
 
-class PresentArtifactsInput(BaseModel):
-    """Expose artifact files to the frontend after the agent finishes."""
-
-    filepaths: list[str] = Field(
-        description=f"Absolute file paths to present to the user. Only files under {VIRTUAL_PATH_OUTPUTS} are allowed"
-    )
-
-
-def _normalize_presented_artifact_path(filepath: str, runtime: ToolRuntime) -> str:
-    from yunesa.agents.backends.sandbox.paths import (
-        VIRTUAL_PATH_PREFIX,
-        ensure_thread_dirs,
-        resolve_virtual_path,
-        sandbox_outputs_dir,
-    )
-
-    outputs_virtual_prefix = f"{VIRTUAL_PATH_PREFIX}/outputs"
-    runtime_context = runtime.context
-    thread_id = getattr(runtime_context, "thread_id", None)
-    if not thread_id:
-        raise ValueError("thread_id is missing in current runtime")
-    user_id = getattr(runtime_context, "user_id", None)
-    if not user_id:
-        raise ValueError("user_id is missing in current runtime")
-
-    ensure_thread_dirs(thread_id, str(user_id))
-    outputs_dir = sandbox_outputs_dir(thread_id).resolve()
-    normalized_input = str(filepath or "").strip()
-    if not normalized_input:
-        raise ValueError("filepathcannot be empty")
-
-    stripped = normalized_input.lstrip("/")
-    virtual_prefix = VIRTUAL_PATH_PREFIX.lstrip("/")
-    if stripped == virtual_prefix or stripped.startswith(f"{virtual_prefix}/"):
-        actual_path = resolve_virtual_path(
-            thread_id, normalized_input, user_id=str(user_id))
-    else:
-        actual_path = Path(normalized_input).expanduser().resolve()
-
-    if not actual_path.exists() or not actual_path.is_file():
-        raise ValueError(
-            f"File does not exist or is not a regular file: {normalized_input}")
-
-    try:
-        relative_path = actual_path.relative_to(outputs_dir)
-    except ValueError as exc:
-        raise ValueError(
-            f"Only files under {outputs_virtual_prefix}/ can be presented: {normalized_input}") from exc
-
-    return f"{outputs_virtual_prefix}/{relative_path.as_posix()}"
-
-
 @tool(category="buildin", tags=["calculate"], display_name="Calculator")
 def calculator(a: float, b: float, operation: str) -> float:
     """Calculator: perform basic arithmetic operations on two numbers."""
@@ -136,48 +78,6 @@ def calculator(a: float, b: float, operation: str) -> float:
     except Exception as e:
         logger.error(f"Calculator error: {e}")
         raise
-
-
-PRESENT_ARTIFACTS_DESCRIPTION = f"""
-Present generated result files to the user.
-
-Use this tool when:
-1. You have already written final result files under `{VIRTUAL_PATH_OUTPUTS}`
-2. You want the frontend to show these files after the conversation ends
-3. The files should be downloadable or previewable
-
-Notes:
-1. Only files under `{VIRTUAL_PATH_OUTPUTS}` are allowed
-2. Do not pass intermediate files; only pass final deliverables meant for the user
-3. You can pass multiple files at once
-"""
-
-
-@tool(
-    category="buildin",
-    tags=["file", "artifact"],
-    display_name="Present Artifacts",
-    description=PRESENT_ARTIFACTS_DESCRIPTION,
-    args_schema=PresentArtifactsInput,
-)
-def present_artifacts(
-    filepaths: list[str],
-    runtime: ToolRuntime,
-    tool_call_id: Annotated[str, InjectedToolCallId],
-) -> Command:
-    """Register output artifacts for this thread so the frontend can show them after conversation ends."""
-    try:
-        normalized_paths = [_normalize_presented_artifact_path(
-            filepath, runtime) for filepath in filepaths]
-    except ValueError as exc:
-        return Command(update={"messages": [ToolMessage(content=f"Error: {exc}", tool_call_id=tool_call_id)]})
-
-    return Command(
-        update={
-            "artifacts": normalized_paths,
-            "messages": [ToolMessage(content="Artifacts have been presented to the user", tool_call_id=tool_call_id)],
-        }
-    )
 
 
 ASK_USER_QUESTION_DESCRIPTION = """

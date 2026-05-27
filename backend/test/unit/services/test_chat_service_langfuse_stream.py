@@ -23,7 +23,6 @@ class _FakeConvRepo:
         content: str,
         message_type: str = "text",
         extra_metadata: dict | None = None,
-        image_content: str | None = None,
     ):
         self.saved_messages.append(
             {
@@ -32,7 +31,6 @@ class _FakeConvRepo:
                 "content": content,
                 "message_type": message_type,
                 "extra_metadata": extra_metadata,
-                "image_content": image_content,
             }
         )
         return SimpleNamespace(id=1)
@@ -131,7 +129,6 @@ async def test_stream_agent_chat_passes_langfuse_callbacks_and_persists_trace_in
         agent_config_id=123,
         thread_id="thread-1",
         meta={"request_id": "req-1"},
-        image_content=None,
         current_user=SimpleNamespace(id="user-1", department_id="dept-1"),
         db=object(),
     ):
@@ -209,7 +206,6 @@ async def test_stream_agent_chat_emits_realtime_agent_state_from_values(monkeypa
         agent_config_id=123,
         thread_id="thread-1",
         meta={"request_id": "req-1"},
-        image_content=None,
         current_user=SimpleNamespace(id="user-1", department_id="dept-1"),
         db=object(),
     ):
