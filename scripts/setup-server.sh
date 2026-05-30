@@ -62,7 +62,12 @@ test -s cloudflared/credentials.json || {
     echo "      missing cloudflared/credentials.json"
     exit 1
 }
-chmod 600 cloudflared/credentials.json
+# The official cloudflared image runs as non-root 65532:65532. Keep the
+# credential file private, but make its owner match the container user so the
+# tunnel can read it after GitHub Actions regenerates the runtime files.
+chmod 644 cloudflared/config.yaml
+sudo chown 65532:65532 cloudflared/credentials.json
+sudo chmod 600 cloudflared/credentials.json
 SECRET_COUNT=$(grep -c '^[A-Z]' .env || echo 0)
 echo "      env_variables=$SECRET_COUNT cloudflare_tunnel_config=ready"
 

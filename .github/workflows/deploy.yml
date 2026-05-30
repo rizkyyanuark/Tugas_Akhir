@@ -143,9 +143,12 @@ jobs:
             chmod 600 .env
 
             echo "[3/7] Writing Cloudflare Tunnel runtime files"
+            sudo chown -R "$(id -u):$(id -g)" cloudflared || true
             printf '%s\n' "$CF_CONFIG" > cloudflared/config.yaml
             printf '%s\n' "$CF_CREDS" > cloudflared/credentials.json
-            chmod 600 cloudflared/credentials.json
+            chmod 644 cloudflared/config.yaml
+            sudo chown 65532:65532 cloudflared/credentials.json
+            sudo chmod 600 cloudflared/credentials.json
 
             echo "[4/7] Preparing EC2 host"
             chmod +x scripts/setup-server.sh
