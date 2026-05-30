@@ -6,6 +6,7 @@
 **/node_modules
 **/.venv
 **/.uv-cache
+**/.hf_cache
 **/__pycache__
 **/.pytest_cache
 **/.ruff_cache
@@ -22,10 +23,15 @@ data
 logs
 saves
 saves_dev
+models
+**/lancedb_store
+**/test_lancedb
+**/*.lance
 
 # IDE & OS
 .vscode
 .idea
+.antigravitycli
 *.swp
 *.swo
 Thumbs.db
@@ -58,3 +64,5 @@ key_base64_for_gitlab.txt
 *.pem
 credentials.json
 credentials_new.json
+cloudflared
+AWS

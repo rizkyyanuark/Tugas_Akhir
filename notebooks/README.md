@@ -13,13 +13,17 @@ uv sync --project notebooks
 Untuk Google Colab:
 
 1. Buka `build-graph/yunesa_academic_kg_construction.ipynb` di Colab.
-2. Jalankan cell pertama. Cell tersebut akan clone atau refresh repo dan install dependency minimal bila berjalan di Colab.
-3. Simpan secret berikut di Colab Secrets, bukan di notebook:
+2. Jika tidak ingin clone GitHub dari runtime Colab, sinkronkan folder repo ke Google Drive:
+   `MyDrive/Tugas_Akhir`.
+3. Jalankan cell pertama. Cell tersebut akan mencari source code di Google Drive atau
+   path `YUNESA_PROJECT_DIR`, lalu install dependency minimal bila berjalan di Colab.
+4. Simpan secret berikut di Colab Secrets, bukan di notebook:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY` atau `SUPABASE_KEY`
-4. Default branch yang dipakai di Colab adalah `master`. Jika ingin mencoba branch lain,
+5. Clone GitHub hanya dipakai jika kamu set `YUNESA_USE_GIT_CLONE=1`. Default-nya tidak clone.
+6. Default branch untuk mode clone adalah `master`. Jika ingin mencoba branch lain,
    set environment variable `YUNESA_REPO_BRANCH` sebelum cell bootstrap dijalankan.
-5. GPU Colab belum wajib untuk versi ini karena concept extraction masih deterministik berbasis
+7. GPU Colab belum wajib untuk versi ini karena concept extraction masih deterministik berbasis
    IEEE taxonomy/thesaurus, keyword, dan regex. GPU baru berguna jika nanti ditambah GLiNER,
    sentence-transformers, atau model NER lain.
 

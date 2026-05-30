@@ -43,6 +43,8 @@ WORKDIR /app
 # ── LAYER 2: Application Code ───────────────────────────────
 COPY backend/package /app/package
 COPY README.md /app/package/README.md
+RUN mkdir -p /app/package/knowledge/etl/resources
+COPY notebooks/build-graph/ieee-thesaurus.ttl /app/package/knowledge/etl/resources/ieee-thesaurus.ttl
 ARG ETL_INSTALL_TEST_DEPS=true
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system -e /app/package && \

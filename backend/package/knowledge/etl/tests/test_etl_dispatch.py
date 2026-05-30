@@ -554,6 +554,36 @@ def test_keyword_scraper_importable():
     assert callable(keyword_scraper.enrich_single_paper)
 
 
+def test_ieee_keyword_fallback_uses_controlled_vocabulary():
+    from knowledge.etl.transform.ieee_keywords import (
+        IeeeKeywordTerm,
+        generate_ieee_keywords,
+    )
+
+    terms = (
+        IeeeKeywordTerm(
+            canonical="Knowledge graphs",
+            aliases=("knowledge graph", "knowledge graphs"),
+        ),
+        IeeeKeywordTerm(
+            canonical="Natural language processing",
+            aliases=("natural language processing", "NLP"),
+        ),
+        IeeeKeywordTerm(
+            canonical="Computer vision",
+            aliases=("computer vision",),
+        ),
+    )
+
+    keywords = generate_ieee_keywords(
+        title="Academic knowledge graph construction",
+        abstract="This study uses NLP for academic knowledge graph enrichment.",
+        terms=terms,
+    )
+
+    assert keywords == "Knowledge graphs, Natural language processing"
+
+
 def test_config_module_loads():
     from knowledge.etl.config import (
         PROCESSED_DATA_DIR,

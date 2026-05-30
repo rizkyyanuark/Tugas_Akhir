@@ -616,6 +616,16 @@ def run_scholar_scraping(
     from urllib.parse import urlparse, parse_qs
 
     for i, target in enumerate(targets):
+        if paper_limit and len(all_raw_papers) >= paper_limit:
+            log_event(
+                logger,
+                "scholar.extract.paper_limit_reached",
+                paper_limit=paper_limit,
+                rows=len(all_raw_papers),
+                action="stop_scraping",
+            )
+            break
+
         if target['id'] in scraped_ids:
             log_event(
                 logger,
@@ -640,6 +650,9 @@ def run_scholar_scraping(
         total_api_calls += max(1, len(articles) // 100)
 
         for art in articles:
+            if paper_limit and len(all_raw_papers) >= paper_limit:
+                break
+
             # Reconstruct citation ID (if available in link) or use link hash
             link = art.get("link", "")
             cid = ""

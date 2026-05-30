@@ -11,11 +11,15 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from etl_common import (
     DOCKER_NETWORK,
     ETL_RUN_MODE,
+    ETL_SAMPLE_SIZE,
     ETL_WORKER_IMAGE,
-    worker_command,
     worker_env,
     worker_mounts,
 )
+
+
+RUN_MODE_TEMPLATE = "{{ dag_run.conf.get('mode', params.default_mode) if dag_run else params.default_mode }}"
+SAMPLE_SIZE_TEMPLATE = "{{ dag_run.conf.get('sample_size', params.default_sample_size) if dag_run else params.default_sample_size }}"
 
 
 default_args = {
@@ -36,7 +40,27 @@ dag = DAG(
     catchup=False,
     tags=["unesa", "papers", "etl", "supabase", f"mode:{ETL_RUN_MODE}"],
     max_active_runs=1,
+    params={
+        "default_mode": ETL_RUN_MODE,
+        "default_sample_size": ETL_SAMPLE_SIZE,
+    },
 )
+
+dag.doc_md = """
+### Manual production test
+
+Default production mode stays `incremental`. For a bounded production trial,
+trigger this DAG manually with:
+
+```json
+{
+  "mode": "sample",
+  "sample_size": 100
+}
+```
+
+This runs extract, transform, enrich, and load for a bounded 100-paper sample.
+"""
 
 
 def create_operator(task_id: str, command_suffix: str):
@@ -51,6 +75,16 @@ def create_operator(task_id: str, command_suffix: str):
         auto_remove="success",
         mount_tmp_dir=False,
         dag=dag,
+    )
+
+
+def worker_command(task_name: str) -> str:
+    return (
+        "{% set resolved_mode = dag_run.conf.get('mode', params.default_mode) if dag_run else params.default_mode %}"
+        f"{task_name} --mode {{{{ resolved_mode }}}}"
+        "{% if resolved_mode == 'sample' %}"
+        f" --sample-size {SAMPLE_SIZE_TEMPLATE}"
+        "{% endif %}"
     )
 
 
