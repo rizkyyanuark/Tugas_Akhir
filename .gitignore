@@ -7,6 +7,7 @@ __pycache__/
 *.py[oc]
 *.egg-info/
 .venv/
+.uv-cache/
 .ruff_cache
 .pytest_cache/
 .hf_cache
@@ -59,6 +60,7 @@ key_base64_for_gitlab.txt
 .cache
 cache
 tmp
+.tmp.driveupload/
 *.tmp
 *.temp
 .backup
@@ -94,9 +96,16 @@ graphrag/
 
 # Notebook outputs and generated scraping artifacts
 .ipynb_checkpoints/
+notebooks/.venv/
 notebooks/scraping/pipeline_cells/
 notebooks/scraping/rps_pdfs/
 notebooks/scraping/tldr_results.json
+notebooks/build-graph/kg_export.json
+notebooks/build-graph/lancedb_store/
+notebooks/build-graph/test_lancedb/
+**/lancedb_store/
+**/test_lancedb/
+*.lance/
 
 # External/cloned repositories
 academicRAG/
@@ -125,6 +134,7 @@ neo4j_import/
 .cursor/
 .trae/
 .codex/
+.antigravitycli/
 .cursorrules
 *.swp
 *.swo

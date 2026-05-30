@@ -17,6 +17,7 @@ from knowledge.etl.config import (
     GROQ_TLDR_SLEEP_SECONDS,
 )
 from knowledge.etl.transform.cleaner import clean_abstract_text, clean_text
+from knowledge.etl.transform.ieee_keywords import generate_ieee_keywords
 from knowledge.etl.extract.semantic_scholar import extract_s2_metadata
 from knowledge.etl.extract.openalex import extract_openalex_metadata
 from knowledge.etl.utils.logging import log_event, log_warning
@@ -385,51 +386,6 @@ def extract_metadata_via_llm(title: str, raw_text: str) -> Dict[str, str]:
     return res
 
 
-def generate_keywords_from_abstract(abstract_text: str) -> str:
-    """
-    Generate exactly 4-5 academic keywords from an abstract using Groq (llama-3.1-8b-instant).
-    """
-    if not abstract_text or len(abstract_text.strip()) < 30:
-        return ""
-        
-    client = _get_groq_client()
-    if client is None:
-        return ""
-    
-    system_prompt = """You are an AI assistant specializing in academic data extraction.
-Your Task: Read the following journal abstract and extract EXACTLY 4 to 5 highly relevant academic keywords.
-
-STRICT RULES:
-- Output ONLY the keywords separated by commas.
-- Do NOT output any conversational text.
-- Do NOT output bullet points or numbers.
-- The keywords MUST be in the EXACT same language as the abstract."""
-
-    try:
-        completion = client.chat.completions.create(
-            model=GROQ_FAST_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"ABSTRACT:\n{abstract_text}\n\nKEYWORDS:"}
-            ],
-            temperature=0.1,
-            max_tokens=64,
-            stream=False
-        )
-        
-        kw = completion.choices[0].message.content.strip()
-        # Clean trailing punctuation
-        kw = kw.strip('"').strip("'").strip('.')
-        time.sleep(3)  # Rate Limit Cooldown (30 RPM limit on free tier)
-        return kw
-    except Exception as e:
-        if _is_groq_auth_error(e):
-            _disable_groq_for_run("invalid GROQ_API_KEY received by worker container")
-        else:
-            log_warning(logger, "groq.keywords.failed", model=GROQ_FAST_MODEL, error=e)
-        return ""
-
-
 # ─── Scholar ID-Based Author Resolution (like old paper_pipeline.py) ────
 
 def resolve_academic_authors(
@@ -694,7 +650,7 @@ def enrich_paper_batch(
             "oa_web": [],
             "bd": [],
             "groq": [],
-            "keyword_ai": [],
+            "ieee": [],
             "resolver": [],
         }
         if abstract:
@@ -903,13 +859,19 @@ def enrich_paper_batch(
                 stats["tldr_local"] += 1
                 log_event(logger, "paper.enrich_row.tldr_done", index=count, words=_word_count(tldr))
 
-        # ── Phase 3.5: AI Keyword Generation Fallback ──
+        # ── Phase 3.5: IEEE-Controlled Keyword Fallback ──
         if not keywords and abstract and len(abstract) > 30:
-            log_event(logger, "paper.enrich_row.phase", index=count, phase="groq_keywords", model=GROQ_FAST_MODEL)
-            ai_keywords = generate_keywords_from_abstract(abstract)
-            if ai_keywords:
-                keywords = ai_keywords
-                source_contributions["keyword_ai"].append("Keywords")
+            log_event(logger, "paper.enrich_row.phase", index=count, phase="ieee_keywords")
+            keyword_basis = tldr if tldr and len(tldr) > 30 else abstract
+            controlled_keywords = generate_ieee_keywords(
+                title=title,
+                abstract=keyword_basis,
+                min_keywords=3,
+                max_keywords=3,
+            )
+            if controlled_keywords:
+                keywords = controlled_keywords
+                source_contributions["ieee"].append("Keywords")
                 log_event(logger, "paper.enrich_row.keywords_done", index=count, keywords=keywords)
 
         # ── Phase 4: Scholar ID-Based Author Resolution (using data from Phase 2.5) ──

@@ -93,7 +93,7 @@ def _paper_extract_scholar(config):
     with timed_event(logger, "paper.extract_scholar", mode=config.mode):
         result = run_scholar_scraping(
             run_mode=config.mode,
-            sample_size=1 if config.is_sample else None,
+            sample_size=config.sample_size if config.is_sample else None,
             limit_per_author=config.sample_size if config.is_sample else 500,
             paper_limit=config.sample_size if config.is_sample else None,
         )
