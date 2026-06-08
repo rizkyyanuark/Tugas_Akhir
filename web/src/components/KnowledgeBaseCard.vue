@@ -263,7 +263,7 @@ const copyDatabaseId = async () => {
 
 // Return to database list
 const backToDatabase = () => {
-  router.push('/database')
+  router.push('/graph')
 }
 
 // Edit logic (reused from DatabaseHeader)

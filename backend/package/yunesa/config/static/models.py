@@ -78,8 +78,8 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
     ),
     "siliconflow": ChatModelProvider(
         name="SiliconFlow",
-        url="https://cloud.siliconflow.cn/models",
-        base_url="https://api.siliconflow.cn/v1",
+        url="https://cloud.siliconflow.com/models",
+        base_url="https://api.siliconflow.com/v1",
         default="Pro/deepseek-ai/DeepSeek-V3.2",
         env="SILICONFLOW_API_KEY",
         models=[
@@ -147,6 +147,19 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
             "x-ai/grok-4",
         ],
     ),
+    "groq": ChatModelProvider(
+        name="Groq",
+        url="https://console.groq.com/docs/models",
+        base_url="https://api.groq.com/openai/v1",
+        default="llama-3.3-70b-versatile",
+        env="GROQ_API_KEY",
+        models=[
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "qwen/qwen3-32b",
+            "gemma2-9b-it",
+        ],
+    ),
     # "moonshot": ChatModelProvider(
     #     name="Moonshot AI",
     #     url="https://platform.moonshot.cn/docs/overview",
@@ -180,21 +193,35 @@ DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
         model_id="siliconflow/BAAI/bge-m3",
         name="BAAI/bge-m3",
         dimension=1024,
-        base_url="https://api.siliconflow.cn/v1/embeddings",
+        base_url="https://api.siliconflow.com/v1/embeddings",
         api_key="SILICONFLOW_API_KEY",
     ),
     "siliconflow/Pro/BAAI/bge-m3": EmbedModelInfo(
         model_id="siliconflow/Pro/BAAI/bge-m3",
         name="Pro/BAAI/bge-m3",
         dimension=1024,
-        base_url="https://api.siliconflow.cn/v1/embeddings",
+        base_url="https://api.siliconflow.com/v1/embeddings",
         api_key="SILICONFLOW_API_KEY",
     ),
     "siliconflow/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
         model_id="siliconflow/Qwen/Qwen3-Embedding-0.6B",
         name="Qwen/Qwen3-Embedding-0.6B",
         dimension=1024,
-        base_url="https://api.siliconflow.cn/v1/embeddings",
+        base_url="https://api.siliconflow.com/v1/embeddings",
+        api_key="SILICONFLOW_API_KEY",
+    ),
+    "siliconflow/Qwen/Qwen3-Embedding-4B": EmbedModelInfo(
+        model_id="siliconflow/Qwen/Qwen3-Embedding-4B",
+        name="Qwen/Qwen3-Embedding-4B",
+        dimension=2560,
+        base_url="https://api.siliconflow.com/v1/embeddings",
+        api_key="SILICONFLOW_API_KEY",
+    ),
+    "siliconflow/Qwen/Qwen3-Embedding-8B": EmbedModelInfo(
+        model_id="siliconflow/Qwen/Qwen3-Embedding-8B",
+        name="Qwen/Qwen3-Embedding-8B",
+        dimension=4096,
+        base_url="https://api.siliconflow.com/v1/embeddings",
         api_key="SILICONFLOW_API_KEY",
     ),
     "vllm/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
@@ -236,12 +263,27 @@ DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
 DEFAULT_RERANKERS: dict[str, RerankerInfo] = {
     "siliconflow/BAAI/bge-reranker-v2-m3": RerankerInfo(
         name="BAAI/bge-reranker-v2-m3",
-        base_url="https://api.siliconflow.cn/v1/rerank",
+        base_url="https://api.siliconflow.com/v1/rerank",
         api_key="SILICONFLOW_API_KEY",
     ),
     "siliconflow/Pro/BAAI/bge-reranker-v2-m3": RerankerInfo(
         name="Pro/BAAI/bge-reranker-v2-m3",
-        base_url="https://api.siliconflow.cn/v1/rerank",
+        base_url="https://api.siliconflow.com/v1/rerank",
+        api_key="SILICONFLOW_API_KEY",
+    ),
+    "siliconflow/Qwen/Qwen3-Reranker-0.6B": RerankerInfo(
+        name="Qwen/Qwen3-Reranker-0.6B",
+        base_url="https://api.siliconflow.com/v1/rerank",
+        api_key="SILICONFLOW_API_KEY",
+    ),
+    "siliconflow/Qwen/Qwen3-Reranker-4B": RerankerInfo(
+        name="Qwen/Qwen3-Reranker-4B",
+        base_url="https://api.siliconflow.com/v1/rerank",
+        api_key="SILICONFLOW_API_KEY",
+    ),
+    "siliconflow/Qwen/Qwen3-Reranker-8B": RerankerInfo(
+        name="Qwen/Qwen3-Reranker-8B",
+        base_url="https://api.siliconflow.com/v1/rerank",
         api_key="SILICONFLOW_API_KEY",
     ),
     "dashscope/gte-rerank-v2": RerankerInfo(

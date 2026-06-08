@@ -10,6 +10,7 @@ Uses Pydantic BaseModel to implement configuration management, supporting:
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -487,6 +488,17 @@ class Config(BaseModel):
                 if isinstance(env_value, str) and env_value.startswith("${") and env_value.endswith("}"):
                     provider_data["env"] = env_value[2:-1]
 
+            # Validate that env is a proper environment variable name, not a raw API key.
+            env_name = provider_data.get("env", "")
+            if env_name and not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", env_name):
+                raise ValueError(
+                    "Invalid environment variable name for 'env'. "
+                    "It must contain only letters, numbers, and underscores, "
+                    "and start with a letter or underscore. "
+                    "Do not enter the API key directly — define it in your .env file "
+                    "and enter only the variable name here (e.g., MY_API_KEY)."
+                )
+
             # Ensure it is marked as a custom provider.
             provider_data["custom"] = True
 
@@ -527,6 +539,17 @@ class Config(BaseModel):
                 env_value = provider_data["env"]
                 if isinstance(env_value, str) and env_value.startswith("${") and env_value.endswith("}"):
                     provider_data["env"] = env_value[2:-1]
+
+            # Validate that env is a proper environment variable name, not a raw API key.
+            env_name = provider_data.get("env", "")
+            if env_name and not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", env_name):
+                raise ValueError(
+                    "Invalid environment variable name for 'env'. "
+                    "It must contain only letters, numbers, and underscores, "
+                    "and start with a letter or underscore. "
+                    "Do not enter the API key directly — define it in your .env file "
+                    "and enter only the variable name here (e.g., MY_API_KEY)."
+                )
 
             # Check whether provider exists and is custom.
             if provider_id not in self.model_names:

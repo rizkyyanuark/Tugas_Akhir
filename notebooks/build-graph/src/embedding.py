@@ -11,6 +11,7 @@ Provides vector search interface for GraphRAG retrieval.
 import os
 import logging
 import json
+import warnings
 from typing import List, Dict, Any, Optional, Tuple
 from collections import defaultdict
 
@@ -18,6 +19,14 @@ import numpy as np
 import networkx as nx
 
 logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "notebooks.build-graph.src.embedding is legacy. "
+    "Use yunesa_academic_kg.write_vector_index_to_milvus() and "
+    "the Zilliz/Milvus collections instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class EmbeddingEngine:

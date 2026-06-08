@@ -82,18 +82,23 @@ class MilvusKB(KnowledgeBase):
     def _init_connection(self):
         """initialize Milvus connect"""
         try:
-            # connect Milvus
-            connections.connect(alias=self.connection_alias, uri=self.milvus_uri, token=self.milvus_token)
+            # connect Milvus/Zilliz to the configured database explicitly
+            connections.connect(
+                alias=self.connection_alias,
+                uri=self.milvus_uri,
+                token=self.milvus_token,
+                db_name=self.milvus_db,
+            )
 
             # createdatabase（does not exist）
             try:
-                if self.milvus_db not in db.list_database():
-                    db.create_database(self.milvus_db)
-                db.using_database(self.milvus_db)
+                if self.milvus_db not in db.list_database(using=self.connection_alias):
+                    db.create_database(self.milvus_db, using=self.connection_alias)
+                db.using_database(self.milvus_db, using=self.connection_alias)
             except Exception as e:
                 logger.warning(f"Database operation failed, using default: {e}")
 
-            logger.info(f"Connected to Milvus at {self.milvus_uri}")
+            logger.info(f"Connected to Milvus at {self.milvus_uri}, database={self.milvus_db}")
 
         except Exception as e:
             logger.error(f"Failed to connect to Milvus: {e}")

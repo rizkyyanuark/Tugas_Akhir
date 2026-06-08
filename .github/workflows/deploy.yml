@@ -54,6 +54,13 @@ jobs:
           S_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           S_SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           S_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          S_NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          S_NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+          S_NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          S_NEO4J_DATABASE: ${{ secrets.NEO4J_DATABASE }}
+          S_MILVUS_URI: ${{ secrets.MILVUS_URI }}
+          S_MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
+          S_MILVUS_DB_NAME: ${{ secrets.MILVUS_DB_NAME }}
           S_SCIVAL_EMAIL: ${{ secrets.SCIVAL_EMAIL }}
           S_SCIVAL_PASS: ${{ secrets.SCIVAL_PASS }}
           S_SEMANTIC_SCHOLAR_API_KEY: ${{ secrets.SEMANTIC_SCHOLAR_API_KEY }}
@@ -67,6 +74,9 @@ jobs:
           S_HF_TOKEN: ${{ secrets.HF_TOKEN }}
           S_TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           S_OPIK_API_KEY: ${{ secrets.OPIK_API_KEY }}
+          S_OPIK_WORKSPACE: ${{ secrets.OPIK_WORKSPACE }}
+          S_OPIK_PROJECT_NAME: ${{ secrets.OPIK_PROJECT_NAME }}
+          S_OPIK_ENVIRONMENT: ${{ secrets.OPIK_ENVIRONMENT }}
           S_TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           S_AIRFLOW_FERNET_KEY: ${{ secrets.AIRFLOW__CORE__FERNET_KEY }}
           S_AIRFLOW_SECRET_KEY: ${{ secrets.AIRFLOW_SECRET_KEY }}
@@ -80,11 +90,14 @@ jobs:
           envs: >-
             CF_CONFIG,CF_CREDS,
             S_GLOBAL_PASSWORD,S_SUPABASE_URL,S_SUPABASE_KEY,S_SUPABASE_SERVICE_ROLE_KEY,
+            S_NEO4J_URI,S_NEO4J_USERNAME,S_NEO4J_PASSWORD,S_NEO4J_DATABASE,
+            S_MILVUS_URI,S_MILVUS_TOKEN,S_MILVUS_DB_NAME,
             S_SCIVAL_EMAIL,S_SCIVAL_PASS,S_SEMANTIC_SCHOLAR_API_KEY,
             S_BD_USER_SERP,S_BD_PASS_SERP,S_BD_USER_UNLOCKER,S_BD_PASS_UNLOCKER,
             S_GROQ_API_KEY,S_SILICONFLOW_API_KEY,S_OPENROUTER_API_KEY,
             S_HF_TOKEN,S_TAVILY_API_KEY,
-            S_OPIK_API_KEY,S_TELEGRAM_BOT_TOKEN,
+            S_OPIK_API_KEY,S_OPIK_WORKSPACE,S_OPIK_PROJECT_NAME,S_OPIK_ENVIRONMENT,
+            S_TELEGRAM_BOT_TOKEN,
             S_AIRFLOW_FERNET_KEY,S_AIRFLOW_SECRET_KEY,S_AIRFLOW_JWT_SECRET,
             S_AWS_ACCESS_KEY_ID,S_AWS_SECRET_ACCESS_KEY
           command_timeout: 25m
@@ -111,6 +124,17 @@ jobs:
             : "${S_SUPABASE_URL:?Missing GitHub Secret SUPABASE_URL}"
             : "${S_SUPABASE_KEY:?Missing GitHub Secret SUPABASE_KEY}"
             : "${S_SUPABASE_SERVICE_ROLE_KEY:?Missing GitHub Secret SUPABASE_SERVICE_ROLE_KEY}"
+            : "${S_NEO4J_URI:?Missing GitHub Secret NEO4J_URI}"
+            : "${S_NEO4J_USERNAME:?Missing GitHub Secret NEO4J_USERNAME}"
+            : "${S_NEO4J_PASSWORD:?Missing GitHub Secret NEO4J_PASSWORD}"
+            : "${S_NEO4J_DATABASE:?Missing GitHub Secret NEO4J_DATABASE}"
+            : "${S_MILVUS_URI:?Missing GitHub Secret MILVUS_URI}"
+            : "${S_MILVUS_TOKEN:?Missing GitHub Secret MILVUS_TOKEN}"
+            : "${S_MILVUS_DB_NAME:?Missing GitHub Secret MILVUS_DB_NAME}"
+            : "${S_OPIK_API_KEY:?Missing GitHub Secret OPIK_API_KEY}"
+            : "${S_OPIK_WORKSPACE:?Missing GitHub Secret OPIK_WORKSPACE}"
+            : "${S_OPIK_PROJECT_NAME:?Missing GitHub Secret OPIK_PROJECT_NAME}"
+            : "${S_OPIK_ENVIRONMENT:?Missing GitHub Secret OPIK_ENVIRONMENT}"
             : "${CF_CONFIG:?Missing GitHub Secret CLOUDFLARE_CONFIG}"
             : "${CF_CREDS:?Missing GitHub Secret CLOUDFLARE_CREDENTIALS}"
             cat > .env << ENVEOF
@@ -119,6 +143,13 @@ jobs:
             SUPABASE_URL=${S_SUPABASE_URL}
             SUPABASE_KEY=${S_SUPABASE_KEY}
             SUPABASE_SERVICE_ROLE_KEY=${S_SUPABASE_SERVICE_ROLE_KEY}
+            NEO4J_URI=${S_NEO4J_URI}
+            NEO4J_USERNAME=${S_NEO4J_USERNAME}
+            NEO4J_PASSWORD=${S_NEO4J_PASSWORD}
+            NEO4J_DATABASE=${S_NEO4J_DATABASE}
+            MILVUS_URI=${S_MILVUS_URI}
+            MILVUS_TOKEN=${S_MILVUS_TOKEN}
+            MILVUS_DB_NAME=${S_MILVUS_DB_NAME}
             SCIVAL_EMAIL=${S_SCIVAL_EMAIL}
             SCIVAL_PASS=${S_SCIVAL_PASS}
             SEMANTIC_SCHOLAR_API_KEY=${S_SEMANTIC_SCHOLAR_API_KEY}
@@ -131,7 +162,11 @@ jobs:
             OPENROUTER_API_KEY=${S_OPENROUTER_API_KEY}
             HF_TOKEN=${S_HF_TOKEN}
             TAVILY_API_KEY=${S_TAVILY_API_KEY}
+            OPIK_ENABLED=true
             OPIK_API_KEY=${S_OPIK_API_KEY}
+            OPIK_WORKSPACE=${S_OPIK_WORKSPACE}
+            OPIK_PROJECT_NAME=${S_OPIK_PROJECT_NAME}
+            OPIK_ENVIRONMENT=${S_OPIK_ENVIRONMENT}
             TELEGRAM_BOT_TOKEN=${S_TELEGRAM_BOT_TOKEN}
             AIRFLOW__CORE__FERNET_KEY=${S_AIRFLOW_FERNET_KEY}
             AIRFLOW_SECRET_KEY=${S_AIRFLOW_SECRET_KEY}

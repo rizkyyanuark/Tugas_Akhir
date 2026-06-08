@@ -1,5 +1,5 @@
 # ==============================================================================
-# YUNESA Knowledge Graph - Makefile
+# Yunesa Knowledge Graph - Makefile
 # ==============================================================================
 # Shortcut commands for development and deployment.
 # Usage: make <command>

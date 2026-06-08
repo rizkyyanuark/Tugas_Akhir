@@ -76,9 +76,9 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
             graphs.append(
                 {
                     "id": "neo4j",
-                    "name": "Core Citation Graph",
+                    "name": "Yunesa Academic KG",
                     "type": "core",
-                    "description": "Main graph database for real-time citations and entity relationships",
+                    "description": "Academic knowledge graph of lecturers, publications, venues, keywords, and IEEE-grounded concepts",
                     "status": neo4j_info.get("status", "unknown"),
                     "created_at": neo4j_info.get("last_updated"),
                     "node_count": neo4j_info.get("entity_count", 0),
@@ -204,7 +204,8 @@ async def get_graph_stats(
                 "data": {
                     "total_nodes": info.get("entity_count", 0),
                     "total_edges": info.get("relationship_count", 0),
-                    "entity_types": [{"type": label, "count": "N/A"} for label in info.get("labels", [])],
+                    "entity_types": info.get("node_types", []),
+                    "relationship_types": info.get("relationship_types", []),
                 },
             }
 

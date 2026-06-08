@@ -19,6 +19,7 @@ Strategy:
 import re
 import logging
 import json
+import warnings
 from typing import List, Dict, Any, Optional, Tuple
 from collections import Counter
 
@@ -26,6 +27,13 @@ import networkx as nx
 from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "notebooks.build-graph.src.graph_builder is legacy. "
+    "Use yunesa_academic_kg.AcademicKGBuilder for current KG construction.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # ──────────────────────────────────────────────────────────────────────
 # Utility helpers

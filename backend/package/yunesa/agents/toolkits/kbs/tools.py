@@ -1,8 +1,8 @@
 """Knowledge base toolkit module."""
 
-import asyncio
 import inspect
 import json
+import os
 from typing import Annotated, Any
 
 from langchain_core.messages import ToolMessage
@@ -171,6 +171,14 @@ class QueryKBInput(BaseModel):
         default=False,
         description="Whether to include graph entities and relationships in the result for visualization.",
     )
+    retrieval_mode: str = Field(
+        default="mix",
+        description=(
+            "Retrieval mode: vector, keyword, graph, hybrid, or mix. "
+            "Use mix for Academic GraphRAG because it combines Zilliz/Milvus vector evidence "
+            "and Neo4j/AuraDB academic graph evidence."
+        ),
+    )
 
 
 async def _resolve_visible_knowledge_bases_for_query(runtime: ToolRuntime | None) -> list[dict[str, Any]]:
@@ -222,30 +230,79 @@ def _find_query_target(
     return None, None, f"knowledge base '{kb_name}' does not exist"
 
 
-async def _query_core_graph_context(query_text: str, kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Retrieve Neo4j graph context for text-only KB questions."""
-    try:
-        from yunesa import graph_base
+def _is_academic_virtual_kb(kb_name: str) -> bool:
+    normalized = str(kb_name or "").strip().lower().replace("-", "_").replace(" ", "_")
+    allowed = {
+        "yunesa",
+        "academic_kg",
+        "yunesa_academic_kg",
+        "yunesa_academic_graphrag",
+        str(os.getenv("YUNESA_ACADEMIC_KB_NAME") or "").strip().lower().replace("-", "_").replace(" ", "_"),
+    }
+    allowed.discard("")
+    return normalized in allowed
 
-        if hasattr(graph_base, "start") and not graph_base.is_running():
-            graph_base.start()
-        if not graph_base.is_running():
-            return {"nodes": [], "edges": [], "triples": [], "status": "unavailable"}
 
-        threshold = float(kwargs.get("graph_threshold", 0.65))
-        hops = int(kwargs.get("graph_hops", 2))
-        max_entities = int(kwargs.get("graph_max_entities", 8))
-        return await asyncio.to_thread(
-            graph_base.query_node,
-            query_text,
-            threshold=threshold,
-            hops=hops,
-            max_entities=max_entities,
-            return_format="graph",
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(f"Neo4j graph context retrieval failed: {exc}")
-        return {"nodes": [], "edges": [], "triples": [], "status": "error", "message": str(exc)}
+def _academic_tool_response(
+    *,
+    payload: dict[str, Any],
+    query_text: str,
+    kb_name: str,
+    retrieval_mode: str,
+    tool_call_id: str | None,
+) -> Any:
+    if not tool_call_id:
+        return payload
+
+    graph_context = payload.get("graph", {})
+    citations = {
+        "entities": graph_context.get("nodes", []),
+        "relationships": graph_context.get("edges", []),
+        "chunks": payload.get("chunks", []),
+        "academic_retrieval": payload.get("academic_retrieval", {}),
+        "query": query_text,
+        "kb_name": kb_name,
+        "retrieval_mode": retrieval_mode,
+        "storage_layer": payload.get("storage_layer", {}),
+    }
+    return Command(
+        update={
+            "citations": [citations],
+            "messages": [
+                ToolMessage(
+                    content=payload.get("evidence_text") or json.dumps(payload, ensure_ascii=False, default=str),
+                    tool_call_id=tool_call_id,
+                )
+            ],
+        }
+    )
+
+
+async def _build_academic_graphrag_context(
+    *,
+    query_text: str,
+    chunks: list[dict[str, Any]],
+    kb_name: str,
+    collection_id: str | None,
+    retrieval_mode: str,
+    include_graph: bool,
+    kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Retrieve AcademicRAG-style context from Milvus/Zilliz and Neo4j/AuraDB."""
+    from yunesa.knowledge.graphrag import AcademicGraphRAGService
+
+    service = AcademicGraphRAGService()
+    return await service.build_context_package(
+        query_text=query_text,
+        chunks=chunks,
+        kb_name=kb_name,
+        collection_id=collection_id,
+        retrieval_mode=retrieval_mode,
+        include_graph=include_graph,
+        graph_max_depth=int(kwargs.get("graph_max_depth", kwargs.get("graph_hops", 2))),
+        graph_max_nodes=int(kwargs.get("graph_max_nodes", 80)),
+        graph_name=kwargs.get("graph_name"),
+    )
 
 
 @tool(args_schema=QueryKBInput)
@@ -254,6 +311,7 @@ async def query_kb(
     query_text: str,
     file_name: str | None = None,
     include_graph: bool = False,
+    retrieval_mode: str = "mix",
     runtime: ToolRuntime = None,
     tool_call_id: Annotated[str, InjectedToolCallId] = None,
 ) -> Any:
@@ -286,7 +344,31 @@ async def query_kb(
         visible_kbs=visible_kbs,
     )
     if target_error:
-        return target_error
+        if not _is_academic_virtual_kb(kb_name):
+            return target_error
+
+        from yunesa.knowledge.graphrag import AcademicGraphRAGService
+
+        resolved_retrieval_mode = AcademicGraphRAGService.normalize_mode(
+            retrieval_mode,
+            include_graph=True,
+        )
+        payload = await _build_academic_graphrag_context(
+            query_text=query_text,
+            chunks=[],
+            kb_name=kb_name,
+            collection_id=None,
+            retrieval_mode=resolved_retrieval_mode,
+            include_graph=True,
+            kwargs={},
+        )
+        return _academic_tool_response(
+            payload=payload,
+            query_text=query_text,
+            kb_name=kb_name,
+            retrieval_mode=resolved_retrieval_mode,
+            tool_call_id=tool_call_id,
+        )
 
     metadata = target_info.get("metadata") if isinstance(
         target_info, dict) else None
@@ -297,6 +379,17 @@ async def query_kb(
         kwargs = {}
         if file_name:
             kwargs["file_name"] = file_name
+
+        from yunesa.knowledge.graphrag import AcademicGraphRAGService
+
+        resolved_retrieval_mode = AcademicGraphRAGService.normalize_mode(
+            retrieval_mode,
+            include_graph=include_graph,
+        )
+        if kb_type == "milvus":
+            kwargs["search_mode"] = AcademicGraphRAGService.milvus_search_mode(
+                resolved_retrieval_mode
+            )
 
         if inspect.iscoroutinefunction(retriever):
             result = await retriever(query_text, **kwargs)
@@ -319,31 +412,22 @@ async def query_kb(
             target_kb_name=kb_name,
         )
 
-        if include_graph:
-            graph_context = await _query_core_graph_context(query_text, kwargs)
-            payload = {
-                "chunks": enriched_result,
-                "graph": graph_context,
-            }
-            if not tool_call_id:
-                return payload
-
-            citations = {
-                "entities": graph_context.get("nodes", []),
-                "relationships": graph_context.get("edges", []),
-                "query": query_text,
-                "kb_name": kb_name,
-            }
-            return Command(
-                update={
-                    "citations": [citations],
-                    "messages": [
-                        ToolMessage(
-                            content=json.dumps(payload, ensure_ascii=False, default=str),
-                            tool_call_id=tool_call_id,
-                        )
-                    ],
-                }
+        if AcademicGraphRAGService.uses_graph(resolved_retrieval_mode, include_graph=include_graph):
+            payload = await _build_academic_graphrag_context(
+                query_text=query_text,
+                chunks=enriched_result,
+                kb_name=kb_name,
+                collection_id=target_db_id,
+                retrieval_mode=resolved_retrieval_mode,
+                include_graph=True,
+                kwargs=kwargs,
+            )
+            return _academic_tool_response(
+                payload=payload,
+                query_text=query_text,
+                kb_name=kb_name,
+                retrieval_mode=resolved_retrieval_mode,
+                tool_call_id=tool_call_id,
             )
 
         return enriched_result

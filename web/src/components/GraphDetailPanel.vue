@@ -14,6 +14,7 @@
             <a-descriptions :column="1" size="small" :bordered="true">
               <template v-if="type === 'node'">
                 <a-descriptions-item label="Name">{{ item.data?.label }}</a-descriptions-item>
+                <a-descriptions-item label="Type">{{ nodeType }}</a-descriptions-item>
                 <a-descriptions-item label="ID">{{ item.id }}</a-descriptions-item>
 
                 <!-- Original properties -->
@@ -73,6 +74,19 @@ defineEmits(['close'])
 
 const title = computed(() => {
   return props.type === 'node' ? 'Node Details' : 'Relationship Details'
+})
+
+const nodeType = computed(() => {
+  const original = props.item?.data?.original
+  if (!original) return ''
+  return (
+    original.type ||
+    original.properties?.concept_type ||
+    original.properties?.node_type ||
+    original.labels?.find((label) => !['KGNode', 'Entity'].includes(label)) ||
+    original.labels?.[0] ||
+    'Node'
+  )
 })
 
 // Filter edge properties and hide internal fields

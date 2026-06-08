@@ -158,7 +158,7 @@ export const useDatabaseStore = defineStore('database', () => {
         try {
           const data = await databaseApi.deleteDatabase(databaseId.value)
           message.success(data.message || 'Deleted successfully')
-          router.push('/database')
+          router.push('/graph')
         } catch (error) {
           console.error(error)
           message.error(error.message || 'Deletion failed')

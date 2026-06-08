@@ -182,6 +182,22 @@ export const neo4jApi = {
  */
 export const getEntityTypeColor = (entityType) => {
   const colorMap = {
+    Publication: '#2563eb',
+    Lecturer: '#059669',
+    Concept: '#7c3aed',
+    Keyword: '#d97706',
+    Venue: '#0891b2',
+    Year: '#64748b',
+    Institution: '#be123c',
+    Problem: '#dc2626',
+    Task: '#ea580c',
+    Method: '#16a34a',
+    Model: '#9333ea',
+    Dataset: '#0284c7',
+    Metric: '#ca8a04',
+    Results: '#0d9488',
+    Innovation: '#db2777',
+    Field: '#4f46e5',
     person: '#FF6B6B', // Red - people
     organization: '#4ECDC4', // Cyan - organizations
     location: '#45B7D1', // Blue - locations

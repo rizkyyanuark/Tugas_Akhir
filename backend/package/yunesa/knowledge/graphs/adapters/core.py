@@ -1,7 +1,5 @@
 ﻿from typing import TYPE_CHECKING, Any
 
-from yunesa.knowledge.graphs.adapters.base import BaseNeo4jAdapter
-
 from .base import GraphAdapter, GraphMetadata
 
 if TYPE_CHECKING:
@@ -26,9 +24,6 @@ class CoreGraphAdapter(GraphAdapter):
             if not self.service.is_running():
                 self.service.start()
 
-        # Initialize query adapter (pure query operations).
-        self._db = BaseNeo4jAdapter()
-
     def _get_metadata(self) -> GraphMetadata:
         """Get Core graph metadata."""
         return GraphMetadata(
@@ -41,24 +36,11 @@ class CoreGraphAdapter(GraphAdapter):
 
     async def query_nodes(self, keyword: str, **kwargs) -> dict[str, Any]:
         params = self._normalize_query_params(keyword, kwargs)
-
-        # If keyword is "*" or empty, run sampling query.
-        if not params["keyword"] or params["keyword"] == "*":
-            # Use BaseNeo4jAdapter connected subgraph query.
-            num = kwargs.get("max_nodes", 100)
-            raw_results = self._db._get_sample_nodes_with_connections(
-                num=num,
-                label_filter="Entity",
-            )
-        else:
-            # Otherwise execute keyword search via service query method.
-            raw_results = self.service.query_node(
-                keyword=params["keyword"],
-                threshold=params.get("threshold", 0.9),
-                kgdb_name=params.get("kgdb_name", "neo4j"),
-                hops=params.get("hops", 2),
-                return_format="graph",
-            )
+        raw_results = self.service.query_subgraph(
+            keyword=params["keyword"] or "*",
+            max_depth=params.get("hops", 2),
+            max_nodes=kwargs.get("max_nodes", 100),
+        )
 
         return self._format_results(raw_results)
 
@@ -67,14 +49,17 @@ class CoreGraphAdapter(GraphAdapter):
         raw_node expected format: {id: str, name: str, ...}
         """
         node_id = raw_node.get("id")
-        name = raw_node.get("name")
+        name = raw_node.get("name") or raw_node.get("label") or raw_node.get("title") or node_id
+        labels = raw_node.get("labels") or [raw_node.get("type") or "Node"]
+        properties = raw_node.get("properties") or raw_node
+        entity_type = raw_node.get("type") or properties.get("node_type") or labels[0]
 
         return self._create_standard_node(
             node_id=node_id,
             name=name,
-            entity_type="entity",
-            labels=["Entity"],
-            properties=raw_node,
+            entity_type=entity_type,
+            labels=labels,
+            properties=properties,
             source="core",
         )
 
@@ -92,7 +77,7 @@ class CoreGraphAdapter(GraphAdapter):
             source_id=raw_edge.get("source_id"),
             target_id=raw_edge.get("target_id"),
             edge_type=raw_edge.get("type"),
-            properties=raw_edge,
+            properties=raw_edge.get("properties") or raw_edge,
         )
 
     async def get_labels(self) -> list[str]:

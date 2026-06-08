@@ -13,7 +13,7 @@ export const useInfoStore = defineStore('info', () => {
   const organization = computed(
     () =>
       infoConfig.value.organization || {
-        name: 'YUnesa',
+        name: 'Yunesa',
         logo: '',
         avatar: ''
       }
@@ -23,10 +23,16 @@ export const useInfoStore = defineStore('info', () => {
   const branding = computed(
     () =>
       infoConfig.value.branding || {
-        name: 'YUnesa',
-        title: 'YUnesa Knowledge Engine',
-        subtitle: 'Text-first academic knowledge assistant powered by graph and vector retrieval',
-        subtitles: ['YUnesa Knowledge Engine', 'Neo4j graph context and Milvus vector search']
+        name: 'Yunesa',
+        title: 'Yunesa Knowledge Engine',
+        subtitle: 'Text-first academic knowledge assistant powered by Neo4j graph context and Milvus vector search',
+        description: 'Yunesa connects user text queries with a Neo4j knowledge graph and Milvus vector search to enable structured exploration of academic knowledge.',
+        subtitles: [
+          'Ask text questions over connected academic knowledge',
+          'Ground answers with Neo4j graph context and Milvus vector retrieval',
+          'Explore lecturer, publication, and institutional relationships',
+          'Keep the thesis scope focused: query, retrieve, reason, answer'
+        ]
       }
   )
 

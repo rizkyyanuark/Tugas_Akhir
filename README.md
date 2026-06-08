@@ -1,6 +1,6 @@
-# YUNESA
+# Yunesa
 
-YUNESA is an academic knowledge base for UNESA lecturer and publication data. The application combines structured academic ETL, knowledge graph enrichment, graph retrieval, vector retrieval, and a web/API interface for the final user-facing system.
+Yunesa is an academic knowledge base for UNESA lecturer and publication data. The application combines structured academic ETL, knowledge graph enrichment, graph retrieval, vector retrieval, and a web/API interface for the final user-facing system.
 
 ## Architecture
 

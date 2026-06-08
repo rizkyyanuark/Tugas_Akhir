@@ -110,9 +110,9 @@ const mainList = computed(() => {
 
   if (userStore.isAdmin) {
     items.push({
-      name: 'Knowledge Base',
-      path: '/database',
-      activePaths: ['/database', '/graph'],
+      name: 'Knowledge Graph',
+      path: '/graph',
+      activePaths: ['/graph'],
       icon: LibraryBig,
       activeIcon: LibraryBig
     })

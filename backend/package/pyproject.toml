@@ -43,6 +43,7 @@ dependencies = [
     "networkx>=3.5",
     "numpy<2.0.0",
     "openai>=1.109.0",
+    "opik>=1.0.0",
     "pandas>=2.2.3",
     "pddiktipy>=2.0.6",
     "pillow>=10.5.0",

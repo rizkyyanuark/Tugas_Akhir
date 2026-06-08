@@ -8,7 +8,7 @@
   </div>
   <div class="graph-container layout-container" v-else>
     <ViewSwitchHeader
-      title="Knowledge base"
+      title="Yunesa Academic KG"
       :active-key="knowledgeActiveView"
       :items="knowledgeViewItems"
       aria-label="Knowledge base view switch"
@@ -19,7 +19,7 @@
             <div class="status-indicator" :class="graphStatusClass"></div>
             <span class="status-text">{{ graphStatusText }}</span>
           </div>
-          <span class="label">Knowledge Base: </span>
+          <span class="label">Graph: </span>
           <a-select
             v-model:value="state.selectedDbId"
             style="width: 200px"
@@ -56,7 +56,7 @@
             <div class="actions-left">
               <a-input
                 v-model:value="state.searchInput"
-                placeholder="Enter entity to query (* for all)"
+                placeholder="Search lecturer, paper, keyword, or concept"
                 style="width: 300px"
                 @keydown.enter="onSearch"
                 allow-clear
@@ -70,7 +70,7 @@
               </a-input>
               <a-input
                 v-model:value="sampleNodeCount"
-                placeholder="Query count"
+                placeholder="Nodes"
                 style="width: 100px"
                 @keydown.enter="loadSampleNodes"
                 :loading="graph.fetching"
@@ -126,7 +126,6 @@ const configStore = useConfigStore()
 const cur_embed_model = computed(() => configStore.config?.embed_model)
 const knowledgeActiveView = 'graph'
 const knowledgeViewItems = [
-  { key: 'documents', label: 'Knowledge base', path: '/database' },
   { key: 'graph', label: 'Knowledge Graph', path: '/graph' }
 ]
 const modelMatched = computed(
@@ -138,7 +137,7 @@ const modelMatched = computed(
 const router = useRouter()
 const graphRef = ref(null)
 const graphInfo = ref(null)
-const sampleNodeCount = ref(100)
+const sampleNodeCount = ref(80)
 
 const graph = reactive(useGraph(graphRef))
 

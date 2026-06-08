@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 
 from yunesa import get_version
 
-APP_NAME = "YUNESA"
-API_TITLE = "YUNESA API"
+APP_NAME = "Yunesa"
+API_TITLE = "Yunesa API"
 API_DESCRIPTION = "Knowledge Discovery System API"
 AUTHOR = "Rizky Yanuar Kristianto"
 DOCS_URL = "/doc"

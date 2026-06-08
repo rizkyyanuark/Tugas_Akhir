@@ -142,7 +142,7 @@ def render_api_homepage(metadata: ApiMetadata, base_url: str) -> str:
   <body>
     <main>
       <section class="hero">
-        <pre aria-label="YUNESA banner">{banner}</pre>
+        <pre aria-label="Yunesa banner">{banner}</pre>
       </section>
       <section class="content">
         <div>

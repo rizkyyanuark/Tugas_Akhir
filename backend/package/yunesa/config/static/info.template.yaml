@@ -3,15 +3,15 @@
 
 # Organization information
 organization:
-  name: "YUnesa" # Full organization name
+  name: "Yunesa" # Full organization name
   logo: "/favicon.svg" # Logo file path (in web/public)
   avatar: "/avatar.jpg" # Avatar file path (in web/public)
   login_bg: "/login-bg.jpg" # Login background image path (in web/public)
 
 # Project information
 branding:
-  name: "YUnesa"
-  title: "YUnesa Knowledge Engine" # System title
+  name: "Yunesa"
+  title: "Yunesa Knowledge Engine" # System title
   subtitle: "Text-first academic knowledge assistant powered by Neo4j graph context and Milvus vector search" # Used when subtitles is empty
   subtitles:
     - "Ask text questions over connected academic knowledge"
@@ -50,6 +50,6 @@ actions:
 
 # Footer information
 footer:
-  copyright: "(C) YUnesa Knowledge Engine 2026 v0.6.0"
+  copyright: "(C) Yunesa Knowledge Engine 2026 v0.6.0"
   user_agreement_url: "/protocols/user-agreement.template.html"
   privacy_policy_url: "/protocols/privacy-policy.template.html"

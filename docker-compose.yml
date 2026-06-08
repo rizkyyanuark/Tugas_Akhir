@@ -7,10 +7,11 @@ x-api-worker-env: &api-worker-env
   POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}@postgres:5432/${POSTGRES_DB:-postgres}
   REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
   MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+  MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_DB_NAME: ${MILVUS_DB_NAME:-yunesa_know}
   NEO4J_URI: ${NEO4J_URI:-bolt://graph:7687}
   NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
-  NEO4J_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}}
   NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
   # --- Core Credentials (Shared by ETL & Server) ---
   SUPABASE_URL: ${SUPABASE_URL}
@@ -19,6 +20,11 @@ x-api-worker-env: &api-worker-env
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
   GROQ_API_KEY: ${GROQ_API_KEY}
+  OPIK_ENABLED: ${OPIK_ENABLED:-true}
+  OPIK_API_KEY: ${OPIK_API_KEY:-}
+  OPIK_WORKSPACE: ${OPIK_WORKSPACE:-}
+  OPIK_PROJECT_NAME: ${OPIK_PROJECT_NAME:-yunesa-academic-graphrag}
+  OPIK_ENVIRONMENT: ${OPIK_ENVIRONMENT:-development}
   MINIO_URI: ${MINIO_URI:-http://minio:9000}
   MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yunesa}
   MINIO_ROOT_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
@@ -165,7 +171,7 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
+      NEO4J_AUTH: neo4j/${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
       NEO4J_server_bolt_listen__address: 0.0.0.0:7687
       NEO4J_server_http_listen__address: 0.0.0.0:7474
     volumes:

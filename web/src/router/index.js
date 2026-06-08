@@ -80,21 +80,14 @@ const router = createRouter({
     {
       path: '/database',
       name: 'DatabaseMain',
-      component: AppLayout,
-      children: [
-        {
-          path: '',
-          name: 'DatabaseComp',
-          component: () => import('../views/DataBaseView.vue'),
-          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: true }
-        },
-        {
-          path: ':database_id',
-          name: 'DatabaseInfoComp',
-          component: () => import('../views/DataBaseInfoView.vue'),
-          meta: { keepAlive: false, requiresAuth: true, requiresAdmin: true }
-        }
-      ]
+      redirect: '/graph',
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/database/:database_id',
+      name: 'DatabaseInfoMain',
+      redirect: '/graph',
+      meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
       path: '/extensions',

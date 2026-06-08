@@ -85,6 +85,43 @@ function getCSSVariable(variableName, element = document.documentElement) {
   return getComputedStyle(element).getPropertyValue(variableName).trim()
 }
 
+const nodeTypeColors = {
+  Publication: '#2563eb',
+  Lecturer: '#059669',
+  Concept: '#7c3aed',
+  Keyword: '#d97706',
+  Venue: '#0891b2',
+  Year: '#64748b',
+  Institution: '#be123c',
+  Problem: '#dc2626',
+  Task: '#ea580c',
+  Method: '#16a34a',
+  Model: '#9333ea',
+  Dataset: '#0284c7',
+  Metric: '#ca8a04',
+  Results: '#0d9488',
+  Innovation: '#db2777',
+  Field: '#4f46e5',
+  Entity: '#64748b',
+  Node: '#64748b'
+}
+
+function getNodeType(original = {}) {
+  return (
+    original.type ||
+    original.properties?.concept_type ||
+    original.properties?.node_type ||
+    original.labels?.find((label) => !['KGNode', 'Entity'].includes(label)) ||
+    original.labels?.[0] ||
+    'Node'
+  )
+}
+
+function getNodeColor(original = {}) {
+  const type = getNodeType(original)
+  return nodeTypeColors[type] || nodeTypeColors.Node
+}
+
 function formatData() {
   const data = props.graphData || { nodes: [], edges: [] }
   const degrees = new Map()
@@ -103,6 +140,7 @@ function formatData() {
     id: String(n.id),
     data: {
       label: n[props.labelField] ?? n.name ?? String(n.id),
+      nodeType: getNodeType(n),
       degree: degrees.get(String(n.id)) || 0,
       original: n // Preserve original data
     }
@@ -159,6 +197,7 @@ function initGraph() {
       type: 'circle',
       style: {
         labelText: (d) => d.data.label,
+        fill: (d) => getNodeColor(d.data.original),
         labelFill: getCSSVariable('--gray-700'),
         labelWordWrap: true, // enable label ellipsis
         labelMaxWidth: '300%',
@@ -174,21 +213,7 @@ function initGraph() {
         shadowBlur: 4,
         ...(props.nodeStyleOptions.style || {})
       },
-      palette: props.nodeStyleOptions.palette || {
-        field: 'label',
-        color: [
-          '#60a5fa',
-          '#34d399',
-          '#f59e0b',
-          '#f472b6',
-          '#22d3ee',
-          '#a78bfa',
-          '#f97316',
-          '#4ade80',
-          '#f43f5e',
-          '#2dd4bf'
-        ]
-      }
+      palette: props.nodeStyleOptions.palette
     },
     edge: {
       type: 'quadratic',

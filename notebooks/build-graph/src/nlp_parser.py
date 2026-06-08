@@ -1,9 +1,25 @@
+"""Legacy NLP parser for the old KG notebook pipeline.
+
+Deprecated:
+    Use the optional GLiNER/GLiREL integration in `yunesa_academic_kg.py`
+    for current KG construction.
+"""
+
 import logging
+import warnings
 from typing import List, Dict, Any, Tuple
 import spacy
 from gliner import GLiNER
 
 logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "notebooks.build-graph.src.nlp_parser is legacy. "
+    "Use yunesa_academic_kg.AcademicExtractionConfig and "
+    "extract_academic_elements_with_gliner_glirel() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 class NLPParser:
     def __init__(self, spacy_model="en_core_web_sm", gliner_model="urchade/gliner_small-v2.1"):

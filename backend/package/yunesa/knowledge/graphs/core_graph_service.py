@@ -3,6 +3,7 @@ import json
 import os
 import traceback
 import warnings
+from typing import Any
 
 from yunesa import config
 from yunesa.knowledge.graphs.adapters.base import Neo4jConnectionManager
@@ -31,6 +32,140 @@ class CoreGraphService:
 
         # Attempt to load saved graph database info
         self.load_graph_info()
+
+    @staticmethod
+    def _neo4j_database() -> str | None:
+        database = os.getenv("NEO4J_DATABASE", "neo4j").strip()
+        return database or None
+
+    @staticmethod
+    def _configured_graph_name() -> str | None:
+        graph_name = os.getenv("KG_GRAPH_NAME") or os.getenv("YUNESA_KG_GRAPH_NAME")
+        if graph_name:
+            graph_name = graph_name.strip()
+        return graph_name or None
+
+    @staticmethod
+    def _safe_limit(value: int, *, default: int, minimum: int, maximum: int) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = default
+        return max(minimum, min(parsed, maximum))
+
+    @staticmethod
+    def _safe_depth(value: int) -> int:
+        return CoreGraphService._safe_limit(value, default=1, minimum=1, maximum=3)
+
+    @staticmethod
+    def _public_properties(properties: dict[str, Any]) -> dict[str, Any]:
+        """Remove heavy/internal values before sending graph data to the UI."""
+        clean: dict[str, Any] = {}
+        hidden = {"embedding", "vector", "document_embedding"}
+        max_chars = 1200
+
+        for key, value in (properties or {}).items():
+            if key in hidden:
+                continue
+            if isinstance(value, str) and len(value) > max_chars:
+                clean[key] = value[:max_chars].rstrip() + "..."
+            else:
+                clean[key] = value
+        return clean
+
+    @staticmethod
+    def _node_name(properties: dict[str, Any], node_id: str) -> str:
+        for key in ("label", "name", "title", "nama_dosen", "paper_id", "value", "id"):
+            value = properties.get(key)
+            if value:
+                return str(value)
+        return node_id
+
+    @staticmethod
+    def _node_type(labels: list[str], properties: dict[str, Any]) -> str:
+        node_type = properties.get("node_type") or properties.get("concept_type") or properties.get("type")
+        if node_type:
+            return str(node_type)
+        for label in labels:
+            if label not in {"KGNode", "Entity"}:
+                return label
+        return labels[0] if labels else "Node"
+
+    @classmethod
+    def _normalize_neo4j_node(cls, node) -> dict[str, Any]:
+        properties = cls._public_properties(dict(node))
+        labels = sorted(list(getattr(node, "labels", [])))
+        node_id = str(properties.get("id") or getattr(node, "element_id", None) or id(node))
+        name = cls._node_name(properties, node_id)
+        node_type = cls._node_type(labels, properties)
+
+        return {
+            "id": node_id,
+            "name": name,
+            "type": node_type,
+            "labels": labels,
+            "properties": properties,
+            "normalized": {
+                "name": name,
+                "type": node_type,
+                "source": "neo4j",
+            },
+            "graph_type": "core",
+        }
+
+    @classmethod
+    def _normalize_neo4j_edge(cls, rel) -> dict[str, Any]:
+        properties = cls._public_properties(dict(rel))
+        edge_type = getattr(rel, "type", None) or type(rel).__name__
+        source = getattr(rel, "start_node", None)
+        target = getattr(rel, "end_node", None)
+
+        return {
+            "id": str(getattr(rel, "element_id", None) or id(rel)),
+            "source_id": str(
+                dict(source).get("id") if source is not None and dict(source).get("id") else getattr(source, "element_id", "")
+            ),
+            "target_id": str(
+                dict(target).get("id") if target is not None and dict(target).get("id") else getattr(target, "element_id", "")
+            ),
+            "type": str(edge_type),
+            "properties": properties,
+            "normalized": {
+                "type": str(edge_type),
+                "direction": "directed",
+            },
+        }
+
+    @classmethod
+    def _format_graph_result(cls, record) -> dict[str, list[dict[str, Any]]]:
+        if not record:
+            return {"nodes": [], "edges": []}
+
+        nodes = []
+        seen_nodes: set[str] = set()
+        for node in record.get("nodes", []) or []:
+            if node is None:
+                continue
+            normalized = cls._normalize_neo4j_node(node)
+            if normalized["id"] not in seen_nodes:
+                nodes.append(normalized)
+                seen_nodes.add(normalized["id"])
+
+        edges = []
+        seen_edges: set[str] = set()
+        for rel in record.get("rels", []) or []:
+            if rel is None:
+                continue
+            normalized = cls._normalize_neo4j_edge(rel)
+            if (
+                normalized["id"] not in seen_edges
+                and normalized["source_id"] in seen_nodes
+                and normalized["target_id"] in seen_nodes
+            ):
+                edges.append(normalized)
+                seen_edges.add(normalized["id"])
+
+        return {"nodes": nodes, "edges": edges}
 
     @property
     def driver(self):
@@ -71,19 +206,33 @@ class CoreGraphService:
         self.use_database(graph_name)
 
         def query(tx):
-            # Count only nodes with the Entity label.
-            entity_count = tx.run(
-                "MATCH (n:Entity) RETURN count(n) AS count").single()["count"]
-            # Count only relationships with the RELATION type.
-            relationship_count = tx.run(
-                "MATCH ()-[r:RELATION]->() RETURN count(r) AS count").single()["count"]
-            triples_count = tx.run("MATCH (n:Entity)-[r:RELATION]->(m:Entity) RETURN count(n) AS count").single()[
-                "count"
-            ]
+            entity_count = tx.run("MATCH (n) RETURN count(n) AS count").single()["count"]
+            relationship_count = tx.run("MATCH ()-[r]->() RETURN count(r) AS count").single()["count"]
+            triples_count = relationship_count
 
-            # Get all labels
-            labels = tx.run(
-                "CALL db.labels() YIELD label RETURN collect(label) AS labels").single()["labels"]
+            labels = tx.run("CALL db.labels() YIELD label RETURN collect(label) AS labels").single()["labels"]
+            relationship_types = tx.run(
+                """
+                MATCH ()-[r]->()
+                RETURN type(r) AS type, count(r) AS count
+                ORDER BY count DESC, type ASC
+                """
+            ).data()
+            node_types = tx.run(
+                """
+                MATCH (n)
+                WITH coalesce(n.node_type, head([label IN labels(n) WHERE label <> 'KGNode']), head(labels(n)), 'Unknown') AS type
+                RETURN type, count(*) AS count
+                ORDER BY count DESC, type ASC
+                """
+            ).data()
+            graph_names = tx.run(
+                """
+                MATCH (n)
+                WHERE n.graph_name IS NOT NULL
+                RETURN collect(DISTINCT n.graph_name) AS names
+                """
+            ).single()["names"]
 
             return {
                 "graph_name": graph_name,
@@ -91,14 +240,18 @@ class CoreGraphService:
                 "relationship_count": relationship_count,
                 "triples_count": triples_count,
                 "labels": labels,
+                "node_types": node_types,
+                "relationship_types": relationship_types,
+                "graph_names": graph_names,
                 "status": self.status,
                 "embed_model_name": self.embed_model_name,
                 "embed_model_configurable": not self.is_initialized_from_file,
+                "unindexed_node_count": 0,
             }
 
         try:
             if self.is_running():
-                with self.driver.session() as session:
+                with self.driver.session(database=self._neo4j_database()) as session:
                     graph_info = session.execute_read(query)
                     graph_info["last_updated"] = utc_isoformat()
                     return graph_info
@@ -108,6 +261,88 @@ class CoreGraphService:
             logger.error(
                 f"Failed to get graph database info: {e}, {traceback.format_exc()}")
             return None
+
+    def query_subgraph(
+        self,
+        keyword: str = "*",
+        *,
+        max_depth: int = 1,
+        max_nodes: int = 100,
+        graph_name: str | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return a bounded, UI-ready subgraph from the current Neo4j database."""
+        assert self.driver is not None, "Database is not connected"
+        self.use_database(self.kgdb_name)
+
+        depth = self._safe_depth(max_depth)
+        node_limit = self._safe_limit(max_nodes, default=100, minimum=1, maximum=500)
+        seed_limit = max(5, min(node_limit, 40))
+        edge_limit = min(node_limit * 4, 1200)
+        graph_filter = graph_name or self._configured_graph_name()
+        search = (keyword or "*").strip()
+        keyword_lc = search.lower()
+
+        if search == "*":
+            seed_where = "($graph_name IS NULL OR seed.graph_name = $graph_name)"
+        else:
+            seed_where = """
+                ($graph_name IS NULL OR seed.graph_name = $graph_name)
+                AND (
+                    toLower(coalesce(seed.label, '')) CONTAINS $keyword
+                    OR toLower(coalesce(seed.name, '')) CONTAINS $keyword
+                    OR toLower(coalesce(seed.title, '')) CONTAINS $keyword
+                    OR toLower(coalesce(seed.nama_dosen, '')) CONTAINS $keyword
+                    OR toLower(coalesce(seed.paper_id, '')) CONTAINS $keyword
+                    OR toLower(coalesce(seed.node_type, '')) CONTAINS $keyword
+                    OR toLower(coalesce(seed.concept_type, '')) CONTAINS $keyword
+                    OR any(label IN labels(seed) WHERE toLower(label) CONTAINS $keyword)
+                )
+            """
+
+        query_text = f"""
+            MATCH (seed)
+            WHERE {seed_where}
+            WITH seed, COUNT {{ (seed)--() }} AS degree
+            ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
+            LIMIT $seed_limit
+            OPTIONAL MATCH path = (seed)-[*1..{depth}]-(neighbor)
+            WHERE $graph_name IS NULL OR neighbor.graph_name = $graph_name
+            WITH collect(DISTINCT seed) AS seeds, collect(DISTINCT path) AS paths
+            WITH seeds, [p IN paths WHERE p IS NOT NULL] AS paths
+            WITH seeds + reduce(acc = [], p IN paths | acc + nodes(p)) AS raw_nodes,
+                 reduce(acc = [], p IN paths | acc + relationships(p)) AS raw_rels
+            UNWIND raw_nodes AS n
+            WITH collect(DISTINCT n)[0..toInteger($node_limit)] AS nodes, raw_rels
+            UNWIND raw_rels AS r
+            WITH nodes, collect(DISTINCT r) AS candidate_rels
+            UNWIND candidate_rels AS r
+            WITH nodes, r
+            WHERE r IS NOT NULL AND startNode(r) IN nodes AND endNode(r) IN nodes
+            RETURN nodes, collect(DISTINCT r)[0..toInteger($edge_limit)] AS rels
+        """
+
+        isolated_query = f"""
+            MATCH (seed)
+            WHERE {seed_where}
+            RETURN collect(seed)[0..toInteger($node_limit)] AS nodes, [] AS rels
+        """
+
+        params = {
+            "keyword": keyword_lc,
+            "graph_name": graph_filter,
+            "seed_limit": seed_limit,
+            "node_limit": node_limit,
+            "edge_limit": edge_limit,
+        }
+
+        with self.driver.session(database=self._neo4j_database()) as session:
+            record = session.execute_read(lambda tx: tx.run(query_text, **params).single())
+            result = self._format_graph_result(record)
+            if result["nodes"]:
+                return result
+
+            record = session.execute_read(lambda tx: tx.run(isolated_query, **params).single())
+            return self._format_graph_result(record)
 
     def save_graph_info(self, graph_name="neo4j"):
         """Save basic graph database info to a JSON file"""

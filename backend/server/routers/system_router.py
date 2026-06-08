@@ -269,6 +269,9 @@ async def add_custom_provider(
         else:
             raise HTTPException(
                 status_code=400, detail=f"Provider ID {provider_id} already exists, use another ID")
+    except ValueError as e:
+        logger.warning(f"Validation error adding custom provider {provider_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to add custom provider {provider_id}: {e}")
         raise HTTPException(
@@ -289,6 +292,9 @@ async def update_custom_provider(
         else:
             raise HTTPException(
                 status_code=404, detail=f"Custom provider {provider_id} does not exist or update failed")
+    except ValueError as e:
+        logger.warning(f"Validation error updating custom provider {provider_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to update custom provider {provider_id}: {e}")
         raise HTTPException(

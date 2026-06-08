@@ -108,7 +108,7 @@ const rules = {
 }
 
 const backToDatabase = () => {
-  router.push('/database')
+  router.push('/graph')
 }
 
 const showEditModal = () => {

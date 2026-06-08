@@ -84,6 +84,8 @@ src/data/
 saves/
 saves_dev/
 graphrag/
+!backend/package/yunesa/knowledge/graphrag/
+!backend/package/yunesa/knowledge/graphrag/*.py
 /models/
 
 # ML model and large binary artifacts
@@ -215,6 +217,8 @@ __package_test__.*
 .latex_deps_cache/
 
 # Misc project paths
+notebooks/build-graph/outputs/
+
 # Cloudflare Tunnel
 cloudflared/credentials.json
 cloudflared/config.yaml

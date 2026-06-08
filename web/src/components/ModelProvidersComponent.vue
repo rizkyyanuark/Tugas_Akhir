@@ -357,14 +357,15 @@
           />
         </a-form-item>
 
-        <a-form-item label="API Key" name="env">
+        <a-form-item label="API Key Environment Variable" name="env">
           <a-input
             v-model:value="customProviderModal.data.env"
-            placeholder="Enter API key or environment variable name (e.g., MY_API_KEY)"
+            placeholder="Enter environment variable name (e.g., MY_API_KEY)"
           />
           <div class="form-help-text">
-            You can enter an API key directly or use an environment variable name (e.g.,
-            MY_API_KEY). If no key is needed, enter "none".
+            Enter the name of the environment variable containing the API key.
+            Do not enter the API key itself. The actual API key must be defined
+            in your <code>.env</code> file.
           </div>
         </a-form-item>
 
@@ -664,7 +665,12 @@ const customProviderRules = {
   ],
   default: [{ required: true, message: 'Please enter default model', trigger: 'blur' }],
   env: [
-    { required: true, message: 'Please enter API key or environment variable', trigger: 'blur' }
+    { required: true, message: 'Please enter the API key environment variable name', trigger: 'blur' },
+    {
+      pattern: /^[a-zA-Z_][a-zA-Z0-9_]*$/,
+      message: 'Environment variable name can only contain letters, numbers, and underscores, and must start with a letter or underscore. Do not enter the API key directly.',
+      trigger: 'blur'
+    }
   ]
 }
 

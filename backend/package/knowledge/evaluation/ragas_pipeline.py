@@ -190,24 +190,19 @@ class RAGASEvaluator:
 
     def _log_to_opik(self, metrics: Dict, mode: str):
         """Log evaluation metrics to Opik."""
-        opik = _ensure_opik()
-        if opik:
-            try:
-                from knowledge.graphrag.config import OPIK_URL, OPIK_WORKSPACE, OPIK_PROJECT
-                client = opik.Opik(
-                    url=OPIK_URL,
-                    workspace=OPIK_WORKSPACE,
-                    project_name=OPIK_PROJECT,
-                )
-                client.log_trace(
-                    name=f"ragas_evaluation_{mode}",
-                    input={"mode": mode},
-                    output={"metrics": metrics},
-                    metadata={"evaluation_type": "ragas", "mode": mode},
-                )
-                logger.info("✅ RAGAS metrics logged to Opik")
-            except Exception as e:
-                logger.debug(f"Opik logging failed: {e}")
+        try:
+            from yunesa.observability import opik_trace, set_observation_output
+
+            with opik_trace(
+                f"ragas_evaluation_{mode}",
+                input={"mode": mode},
+                metadata={"evaluation_type": "ragas", "mode": mode},
+                tags=["ragas", "evaluation", mode],
+            ) as trace:
+                set_observation_output(trace, output={"metrics": metrics})
+            logger.info("RAGAS metrics logged to Opik")
+        except Exception as e:
+            logger.debug(f"Opik logging failed: {e}")
 
     def print_report(self, results: Dict[str, Any]):
         """Print formatted evaluation report."""

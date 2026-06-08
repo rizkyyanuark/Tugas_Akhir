@@ -1,10 +1,25 @@
+"""Legacy Supabase data loader for the old KG notebook pipeline.
+
+Deprecated:
+    Use `yunesa_academic_kg.fetch_supabase_sample()` and
+    `yunesa_academic_kg.run_local_kg_pipeline()` for current KG construction.
+"""
+
 import os
 import re
 import logging
+import warnings
 from typing import List, Dict, Any
 from supabase import create_client, Client
 
 logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "notebooks.build-graph.src.data_loader is legacy. "
+    "Use yunesa_academic_kg.fetch_supabase_sample() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 class DataLoader:
     def __init__(self, supabase_url: str = None, supabase_key: str = None):

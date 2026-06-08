@@ -95,12 +95,54 @@ def test_document_type_normalization_for_enrichment():
     assert normalize_document_type("") == "article"
     assert normalize_document_type("Artikel") == "article"
     assert normalize_document_type("Article") == "article"
+    assert normalize_document_type("Articles") == "article"
     assert normalize_document_type("journal-article") == "article"
+    assert normalize_document_type("journal articles") == "article"
     assert normalize_document_type("JournalArticle") == "article"
     assert normalize_document_type("conference") == "conference paper"
     assert normalize_document_type("conference-paper") == "conference paper"
     assert normalize_document_type("proceedings-article") == "conference paper"
     assert normalize_document_type("Book Chapter") == "book chapter"
+
+
+def test_supabase_loader_normalizes_document_type_before_upsert():
+    import pandas as pd
+    from knowledge.etl.load.supabase_loader import SupabaseLoader
+
+    captured = {}
+
+    class FakeTable:
+        def upsert(self, rows, on_conflict=None):
+            captured["rows"] = rows
+            captured["on_conflict"] = on_conflict
+            return self
+
+        def execute(self):
+            return None
+
+    class FakeClient:
+        def table(self, name):
+            captured["table"] = name
+            return FakeTable()
+
+    loader = object.__new__(SupabaseLoader)
+    loader.client = FakeClient()
+    loader.key_role = "service_role"
+
+    count = loader.upsert_papers(
+        pd.DataFrame(
+            [{
+                "Title": "Document Type Normalization Paper",
+                "Year": "2026",
+                "Document Type": "articles",
+            }]
+        )
+    )
+
+    assert count == 1
+    assert captured["table"] == "papers"
+    assert captured["on_conflict"] == "paper_id"
+    assert captured["rows"][0]["document_type"] == "article"
 
 
 def test_scopus_processing_helper_cleans_and_deduplicates(monkeypatch):

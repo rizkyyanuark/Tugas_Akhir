@@ -14,12 +14,21 @@ import logging
 import json
 import re
 import requests
+import warnings
 from typing import List, Dict, Any, Optional, Tuple
 from collections import defaultdict
 
 import networkx as nx
 
 logger = logging.getLogger(__name__)
+
+warnings.warn(
+    "notebooks.build-graph.src.graphrag is legacy. "
+    "Use yunesa_academic_kg.graphrag_retrieve() and "
+    "generate_graphrag_answer_with_groq() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class GraphRAG:

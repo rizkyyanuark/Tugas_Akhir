@@ -58,11 +58,16 @@ def normalize_document_type(value: Any) -> str:
     article_aliases = {
         "artikel",
         "article",
+        "articles",
         "journal",
         "journal article",
+        "journal articles",
         "journalarticle",
+        "journalarticles",
         "research article",
+        "research articles",
         "original article",
+        "original articles",
     }
     if doc_type in article_aliases or compact in article_aliases:
         return "article"
