@@ -174,7 +174,7 @@ class QueryKBInput(BaseModel):
     retrieval_mode: str = Field(
         default="mix",
         description=(
-            "Retrieval mode: vector, keyword, graph, hybrid, or mix. "
+            "Retrieval mode: vector, keyword, subgraph, global, graph, hybrid, or mix. "
             "Use mix for Academic GraphRAG because it combines Zilliz/Milvus vector evidence "
             "and Neo4j/AuraDB academic graph evidence."
         ),
@@ -265,6 +265,7 @@ def _academic_tool_response(
         "kb_name": kb_name,
         "retrieval_mode": retrieval_mode,
         "storage_layer": payload.get("storage_layer", {}),
+        "grounding": payload.get("grounding", {}),
     }
     tool_payload = {
         "type": "academic_graphrag_result",
@@ -272,6 +273,7 @@ def _academic_tool_response(
         "kb_name": kb_name,
         "retrieval_mode": retrieval_mode,
         "summary": payload.get("evidence_text") or "",
+        "grounding": payload.get("grounding", {}),
         "chunks": payload.get("chunks", []),
         "academic_retrieval": {
             "status": academic.get("status"),
@@ -282,6 +284,10 @@ def _academic_tool_response(
             "keywords": academic.get("keywords", [])[:8],
             "entities": academic.get("entities", [])[:12],
             "relationships": academic.get("relationships", [])[:12],
+            "keyword_decomposition": academic.get("keyword_decomposition", {}),
+            "local_query": academic.get("local_query"),
+            "global_query": academic.get("global_query"),
+            "diagnostics": academic.get("diagnostics", {}),
         },
         "graph": {
             "status": graph_context.get("status"),
@@ -289,6 +295,10 @@ def _academic_tool_response(
             "edges": graph_context.get("edges", [])[:32],
             "triples": graph_context.get("triples", [])[:32],
         },
+        "answer_policy": (
+            "Use only retrieved evidence. If grounding.status is empty or supporting_only, "
+            "state that the requested academic data was not found and do not answer from prior knowledge."
+        ),
     }
     return Command(
         update={
@@ -376,7 +386,7 @@ async def query_kb(
 
         resolved_retrieval_mode = AcademicGraphRAGService.normalize_mode(
             retrieval_mode,
-            include_graph=True,
+            include_graph=include_graph,
         )
         payload = await _build_academic_graphrag_context(
             query_text=query_text,
@@ -384,7 +394,10 @@ async def query_kb(
             kb_name=kb_name,
             collection_id=None,
             retrieval_mode=resolved_retrieval_mode,
-            include_graph=True,
+            include_graph=AcademicGraphRAGService.uses_graph(
+                resolved_retrieval_mode,
+                include_graph=include_graph,
+            ),
             kwargs={},
         )
         return _academic_tool_response(
@@ -437,14 +450,20 @@ async def query_kb(
             target_kb_name=kb_name,
         )
 
-        if AcademicGraphRAGService.uses_graph(resolved_retrieval_mode, include_graph=include_graph):
+        if _is_academic_virtual_kb(kb_name) or AcademicGraphRAGService.uses_graph(
+            resolved_retrieval_mode,
+            include_graph=include_graph,
+        ):
             payload = await _build_academic_graphrag_context(
                 query_text=query_text,
                 chunks=enriched_result,
                 kb_name=kb_name,
                 collection_id=target_db_id,
                 retrieval_mode=resolved_retrieval_mode,
-                include_graph=True,
+                include_graph=AcademicGraphRAGService.uses_graph(
+                    resolved_retrieval_mode,
+                    include_graph=include_graph,
+                ),
                 kwargs=kwargs,
             )
             return _academic_tool_response(

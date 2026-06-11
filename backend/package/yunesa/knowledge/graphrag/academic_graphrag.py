@@ -19,6 +19,7 @@ from yunesa.utils import logger
 ACADEMIC_NODE_TYPES = [
     "Lecturer",
     "Publication",
+    "Institution",
     "Venue",
     "Year",
     "Keyword",
@@ -26,6 +27,7 @@ ACADEMIC_NODE_TYPES = [
 ]
 
 ACADEMIC_RELATION_TYPES = [
+    "HAS_AFFILIATION",
     "PUBLISHES",
     "HAS_AUTHOR",
     "PUBLISHED_IN_VENUE",
@@ -51,6 +53,8 @@ ACADEMIC_COLLECTIONS = {
 DEFAULT_ACADEMIC_EMBEDDING_PROVIDER = "siliconflow"
 DEFAULT_ACADEMIC_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_MILVUS_DB_NAME = "default"
+DEFAULT_MILVUS_TIMEOUT_SECONDS = 12.0
+DEFAULT_RETRIEVAL_STAGE_TIMEOUT_SECONDS = 20.0
 
 
 @lru_cache(maxsize=8)
@@ -66,13 +70,19 @@ def _cached_milvus_client(uri: str, token: str, db_name: str | None):
 class AcademicGraphRAGService:
     """Build an AcademicRAG-style context package from vector and graph stores."""
 
-    VALID_MODES = {"vector", "keyword", "graph", "hybrid", "mix"}
+    VALID_MODES = {
+        "vector",
+        "keyword",
+        "subgraph",
+        "global",
+        "graph",
+        "hybrid",
+        "mix",
+    }
     MODE_ALIASES = {
         "naive": "vector",
         "bm25": "keyword",
-        "subgraph": "graph",
-        "local": "graph",
-        "global": "graph",
+        "local": "subgraph",
         "academic": "mix",
         "academic_graphrag": "mix",
         "graphrag": "mix",
@@ -84,18 +94,32 @@ class AcademicGraphRAGService:
         "against",
         "antara",
         "apakah",
+        "apa",
         "based",
         "before",
         "berikan",
+        "dari",
         "dalam",
+        "dan",
         "dengan",
+        "dosen",
+        "ditulis",
         "from",
         "gimana",
         "hasil",
+        "membahas",
+        "menggunakan",
+        "oleh",
         "pada",
+        "paper",
+        "penelitian",
+        "penulis",
+        "siapa",
         "show",
+        "saja",
         "system",
         "that",
+        "tahun",
         "this",
         "untuk",
         "using",
@@ -117,13 +141,13 @@ class AcademicGraphRAGService:
     def milvus_search_mode(cls, mode: str) -> str:
         if mode == "keyword":
             return "keyword"
-        if mode in {"hybrid", "mix", "graph"}:
+        if mode in {"subgraph", "global", "graph", "hybrid", "mix"}:
             return "hybrid"
         return "vector"
 
     @classmethod
     def uses_graph(cls, mode: str, include_graph: bool = False) -> bool:
-        return include_graph or mode in {"graph", "hybrid", "mix"}
+        return mode in {"subgraph", "graph", "hybrid", "mix"}
 
     @staticmethod
     def storage_layer() -> dict[str, Any]:
@@ -191,12 +215,61 @@ class AcademicGraphRAGService:
         """
         candidates: list[str | None] = []
         configured = str(db_name or "").strip()
-        if configured and configured.lower() not in {"none", "null", DEFAULT_MILVUS_DB_NAME}:
+        if configured and configured.lower() not in {"none", "null"}:
             candidates.append(configured)
-        candidates.append(None)
-        if DEFAULT_MILVUS_DB_NAME not in candidates:
-            candidates.append(DEFAULT_MILVUS_DB_NAME)
+            if configured.lower() != DEFAULT_MILVUS_DB_NAME:
+                candidates.append(None)
+        else:
+            candidates.append(None)
         return candidates
+
+    @staticmethod
+    def _is_milvus_transport_failure(exc: Exception) -> bool:
+        message = f"{type(exc).__name__}: {exc}".casefold()
+        return any(
+            marker in message
+            for marker in (
+                "deadline_exceeded",
+                "timed out",
+                "timeout",
+                "connection refused",
+                "connection reset",
+                "failed to connect",
+                "name resolution",
+                "unavailable",
+            )
+        )
+
+    @classmethod
+    async def _gather_search_results(
+        cls,
+        labels: list[str],
+        tasks: list[Any],
+    ) -> dict[str, list[dict[str, Any]]]:
+        async def run_one(label: str, task: Any) -> tuple[str, list[dict[str, Any]]]:
+            try:
+                rows = await asyncio.wait_for(
+                    task,
+                    timeout=DEFAULT_RETRIEVAL_STAGE_TIMEOUT_SECONDS,
+                )
+                return label, rows
+            except TimeoutError:
+                logger.warning(
+                    f"Academic GraphRAG retrieval timed out for {label} after "
+                    f"{DEFAULT_RETRIEVAL_STAGE_TIMEOUT_SECONDS:.0f}s"
+                )
+                return label, []
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    f"Academic GraphRAG retrieval failed for {label}: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                return label, []
+
+        results = await asyncio.gather(
+            *(run_one(label, task) for label, task in zip(labels, tasks, strict=False))
+        )
+        return dict(results)
 
     @staticmethod
     def _graph_filter(graph_name: str) -> str:
@@ -215,6 +288,80 @@ class AcademicGraphRAGService:
             if len(terms) >= max_terms:
                 break
         return terms
+
+    @staticmethod
+    def _dedupe_terms(values: list[Any], *, max_terms: int = 8) -> list[str]:
+        terms: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            text = re.sub(r"\s+", " ", str(value or "")).strip(" \t\r\n,;|[]'\"")
+            normalized = text.casefold()
+            if not text or normalized in seen:
+                continue
+            seen.add(normalized)
+            terms.append(text)
+            if len(terms) >= max_terms:
+                break
+        return terms
+
+    @classmethod
+    def _content_keyword_terms(
+        cls,
+        rows: list[dict[str, Any]] | None,
+        *,
+        max_terms: int = 16,
+    ) -> list[str]:
+        values: list[str] = []
+        for row in rows or []:
+            raw = row.get("keywords")
+            if isinstance(raw, (list, tuple, set)):
+                values.extend(str(item) for item in raw)
+            else:
+                values.extend(re.split(r"[,;|\n]", str(raw or "").strip("[]")))
+        return cls._dedupe_terms(values, max_terms=max_terms)
+
+    @classmethod
+    def decompose_query_keywords(
+        cls,
+        query_text: str,
+        keyword_rows: list[dict[str, Any]] | None,
+        *,
+        max_terms: int = 8,
+    ) -> dict[str, Any]:
+        """Build AcademicRAG-style local and global clues without another LLM call."""
+        query_terms = cls._query_terms(query_text, max_terms=max_terms)
+        query_tokens = set(query_terms)
+        clue_terms = cls._content_keyword_terms(keyword_rows, max_terms=max_terms * 2)
+        low_level: list[str] = []
+        high_level: list[str] = []
+
+        for clue in clue_terms:
+            clue_tokens = set(cls._query_terms(clue, max_terms=max_terms))
+            overlap = len(query_tokens & clue_tokens) / max(len(clue_tokens), 1)
+            if clue.casefold() in query_text.casefold() or overlap >= 0.5:
+                low_level.append(clue)
+            else:
+                high_level.append(clue)
+
+        low_level = cls._dedupe_terms(
+            [*low_level, *query_terms] or [query_text],
+            max_terms=max_terms,
+        )
+        high_level = cls._dedupe_terms(
+            high_level or clue_terms or low_level,
+            max_terms=max_terms,
+        )
+        return {
+            "provider": "heuristic",
+            "high_level_keywords": high_level,
+            "low_level_keywords": low_level,
+            "content_keyword_clues": clue_terms[:max_terms],
+        }
+
+    @classmethod
+    def _keyword_query(cls, keywords: list[Any], fallback: str) -> str:
+        terms = cls._dedupe_terms(keywords, max_terms=16)
+        return ", ".join(terms) if terms else fallback
 
     @staticmethod
     def _milvus_literal(value: str) -> str:
@@ -274,7 +421,7 @@ class AcademicGraphRAGService:
         return row
 
     @classmethod
-    def _embed_query(cls, query_text: str) -> list[float]:
+    def _embed_queries(cls, query_texts: list[str]) -> dict[str, list[float]]:
         provider = DEFAULT_ACADEMIC_EMBEDDING_PROVIDER.strip().lower().replace("-", "_")
         if provider in {"lexical", "none", "disabled"}:
             raise RuntimeError("Dense embedding is disabled by Academic GraphRAG configuration.")
@@ -284,6 +431,17 @@ class AcademicGraphRAGService:
         api_key = os.getenv("SILICONFLOW_API_KEY")
         if not api_key:
             raise RuntimeError("SILICONFLOW_API_KEY is not configured.")
+
+        texts: list[str] = []
+        seen: set[str] = set()
+        for query_text in query_texts:
+            text = re.sub(r"\s+", " ", str(query_text or "")).strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            texts.append(text)
+        if not texts:
+            return {}
 
         import requests
 
@@ -295,16 +453,28 @@ class AcademicGraphRAGService:
             },
             json={
                 "model": DEFAULT_ACADEMIC_EMBEDDING_MODEL,
-                "input": [str(query_text or "")],
+                "input": texts,
             },
-            timeout=float(os.getenv("SILICONFLOW_EMBEDDING_TIMEOUT", "30")),
+            timeout=15.0,
         )
         response.raise_for_status()
-        data = (response.json().get("data") or [{}])[0]
-        vector = data.get("embedding")
-        if not vector:
+        response_rows = response.json().get("data") or []
+        vectors: dict[str, list[float]] = {}
+        for position, row in enumerate(response_rows):
+            index = int(row.get("index", position))
+            if index >= len(texts):
+                continue
+            vector = row.get("embedding")
+            if vector:
+                vectors[texts[index]] = [float(value) for value in vector]
+        if len(vectors) != len(texts):
             raise RuntimeError("SiliconFlow embedding response is empty.")
-        return [float(value) for value in vector]
+        return vectors
+
+    @classmethod
+    def _embed_query(cls, query_text: str) -> list[float]:
+        text = str(query_text or "").strip()
+        return cls._embed_queries([text])[text]
 
     @classmethod
     async def _search_academic_collection(
@@ -316,6 +486,8 @@ class AcademicGraphRAGService:
         text_fields: list[str],
         top_k: int,
         graph_name: str,
+        query_vector: list[float] | None = None,
+        embed_if_missing: bool = True,
     ) -> list[dict[str, Any]]:
         if not cls._academic_milvus_enabled():
             return []
@@ -324,10 +496,19 @@ class AcademicGraphRAGService:
             return []
 
         try:
-            vector = await asyncio.to_thread(cls._embed_query, query_text)
+            vector = query_vector
+            if vector is None and embed_if_missing:
+                vector = await asyncio.to_thread(cls._embed_query, query_text)
+            if vector is None:
+                raise RuntimeError("Dense query vector is unavailable.")
             for candidate_db in cls._milvus_db_candidates(db_name):
                 try:
-                    client = _cached_milvus_client(uri, token, candidate_db)
+                    client = await asyncio.to_thread(
+                        _cached_milvus_client,
+                        uri,
+                        token,
+                        candidate_db,
+                    )
                     raw_hits = await asyncio.to_thread(
                         client.search,
                         collection_name=collection_name,
@@ -337,6 +518,7 @@ class AcademicGraphRAGService:
                         output_fields=output_fields,
                         search_params={"metric_type": os.getenv("YUNESA_MILVUS_METRIC_TYPE", "L2")},
                         filter=cls._graph_filter(graph_name),
+                        timeout=DEFAULT_MILVUS_TIMEOUT_SECONDS,
                     )
                     if candidate_db != db_name:
                         logger.info(
@@ -349,6 +531,8 @@ class AcademicGraphRAGService:
                         f"Academic GraphRAG dense search failed for {collection_name} "
                         f"on Milvus database {candidate_db or '<implicit>'}: {type(exc).__name__}: {exc}"
                     )
+                    if cls._is_milvus_transport_failure(exc):
+                        return []
         except Exception as exc:  # noqa: BLE001
             logger.debug(
                 f"Academic GraphRAG dense search skipped for {collection_name}; "
@@ -357,7 +541,12 @@ class AcademicGraphRAGService:
 
         for candidate_db in cls._milvus_db_candidates(db_name):
             try:
-                client = _cached_milvus_client(uri, token, candidate_db)
+                client = await asyncio.to_thread(
+                    _cached_milvus_client,
+                    uri,
+                    token,
+                    candidate_db,
+                )
                 rows = await asyncio.to_thread(
                     client.query,
                     collection_name=collection_name,
@@ -368,6 +557,7 @@ class AcademicGraphRAGService:
                     ),
                     output_fields=output_fields,
                     limit=top_k,
+                    timeout=DEFAULT_MILVUS_TIMEOUT_SECONDS,
                 )
                 if candidate_db != db_name:
                     logger.info(
@@ -380,16 +570,24 @@ class AcademicGraphRAGService:
                     f"Academic GraphRAG lexical query failed for {collection_name} "
                     f"on Milvus database {candidate_db or '<implicit>'}: {exc}"
                 )
+                if cls._is_milvus_transport_failure(exc):
+                    return []
 
         for candidate_db in cls._milvus_db_candidates(db_name):
             try:
-                client = _cached_milvus_client(uri, token, candidate_db)
+                client = await asyncio.to_thread(
+                    _cached_milvus_client,
+                    uri,
+                    token,
+                    candidate_db,
+                )
                 rows = await asyncio.to_thread(
                     client.query,
                     collection_name=collection_name,
                     filter=cls._graph_filter(graph_name),
                     output_fields=output_fields,
                     limit=max(top_k * 20, 100),
+                    timeout=DEFAULT_MILVUS_TIMEOUT_SECONDS,
                 )
                 if candidate_db != db_name:
                     logger.info(
@@ -407,6 +605,8 @@ class AcademicGraphRAGService:
                     f"Academic GraphRAG fallback query failed for {collection_name} "
                     f"on Milvus database {candidate_db or '<implicit>'}: {exc}"
                 )
+                if cls._is_milvus_transport_failure(exc):
+                    return []
         logger.warning(f"Academic GraphRAG vector retrieval returned no rows for {collection_name}")
         return []
 
@@ -421,6 +621,7 @@ class AcademicGraphRAGService:
         keyword_top_k: int = 8,
     ) -> dict[str, Any]:
         """Retrieve from canonical AcademicRAG indexes produced by the notebook pipeline."""
+        started_at = time.perf_counter()
         mode = cls.normalize_mode(retrieval_mode)
         resolved_graph_name = cls._academic_graph_name(graph_name)
         payload: dict[str, Any] = {
@@ -432,16 +633,38 @@ class AcademicGraphRAGService:
             "keywords": [],
             "entities": [],
             "relationships": [],
+            "keyword_decomposition": {},
+            "local_query": query_text,
+            "global_query": query_text,
+            "diagnostics": {
+                "embedding_batches": 0,
+                "dense_embedding_status": "not_requested",
+            },
         }
         if not cls._academic_milvus_enabled():
             payload["status"] = "disabled"
             return payload
 
-        tasks = []
-        labels = []
-        if mode in {"vector", "hybrid", "mix"}:
-            labels.append("paper_chunks")
-            tasks.append(
+        needs_clues = mode in {"keyword", "subgraph", "global", "graph", "hybrid", "mix"}
+        needs_local = mode in {"subgraph", "graph", "hybrid", "mix"}
+        needs_global = mode in {"global", "graph", "hybrid", "mix"}
+        needs_raw_papers = mode in {"vector", "mix"}
+        needs_fused_papers = mode in {"keyword", "subgraph", "global", "graph", "hybrid"}
+
+        query_vectors: dict[str, list[float]] = {}
+        try:
+            query_vectors = await asyncio.to_thread(cls._embed_queries, [query_text])
+            payload["diagnostics"]["embedding_batches"] += 1
+            payload["diagnostics"]["dense_embedding_status"] = "ready"
+        except Exception as exc:  # noqa: BLE001
+            payload["diagnostics"]["dense_embedding_status"] = "lexical_fallback"
+            payload["diagnostics"]["embedding_error_type"] = type(exc).__name__
+
+        first_tasks = []
+        first_labels = []
+        if needs_raw_papers:
+            first_labels.append("paper_chunks")
+            first_tasks.append(
                 cls._search_academic_collection(
                     query_text=query_text,
                     collection_name=ACADEMIC_COLLECTIONS["paper_chunks"],
@@ -449,11 +672,13 @@ class AcademicGraphRAGService:
                     text_fields=["title", "content", "authors"],
                     top_k=top_k,
                     graph_name=resolved_graph_name,
+                    query_vector=query_vectors.get(query_text),
+                    embed_if_missing=False,
                 )
             )
-        if mode in {"keyword", "hybrid", "mix"}:
-            labels.append("keywords")
-            tasks.append(
+        if needs_clues:
+            first_labels.append("keywords")
+            first_tasks.append(
                 cls._search_academic_collection(
                     query_text=query_text,
                     collection_name=ACADEMIC_COLLECTIONS["content_keywords"],
@@ -461,37 +686,120 @@ class AcademicGraphRAGService:
                     text_fields=["keywords", "sourcePaper"],
                     top_k=keyword_top_k,
                     graph_name=resolved_graph_name,
+                    query_vector=query_vectors.get(query_text),
+                    embed_if_missing=False,
                 )
             )
-        if mode in {"graph", "hybrid", "mix"}:
-            labels.extend(["entities", "relationships"])
-            tasks.extend(
-                [
-                    cls._search_academic_collection(
-                        query_text=query_text,
-                        collection_name=ACADEMIC_COLLECTIONS["entities"],
-                        output_fields=["graphName", "entityName", "entityType", "description", "nodeId", "sourceId"],
-                        text_fields=["entityName", "entityType", "description"],
-                        top_k=top_k,
-                        graph_name=resolved_graph_name,
-                    ),
-                    cls._search_academic_collection(
-                        query_text=query_text,
-                        collection_name=ACADEMIC_COLLECTIONS["relationships"],
-                        output_fields=["graphName", "srcId", "tgtId", "relType", "description", "sourceId"],
-                        text_fields=["srcId", "tgtId", "relType", "description"],
-                        top_k=top_k,
-                        graph_name=resolved_graph_name,
-                    ),
-                ]
+
+        if first_tasks:
+            payload.update(
+                await cls._gather_search_results(first_labels, first_tasks)
             )
 
-        if tasks:
-            results = await asyncio.gather(*tasks)
-            for label, rows in zip(labels, results, strict=False):
-                payload[label] = rows
+        if needs_clues:
+            decomposition = cls.decompose_query_keywords(
+                query_text,
+                payload["keywords"],
+                max_terms=max(keyword_top_k, 1),
+            )
+            payload["keyword_decomposition"] = decomposition
+            payload["local_query"] = cls._keyword_query(
+                decomposition["low_level_keywords"],
+                query_text,
+            )
+            payload["global_query"] = cls._keyword_query(
+                decomposition["high_level_keywords"],
+                query_text,
+            )
 
-        payload["status"] = "ok" if any(payload.get(key) for key in ("paper_chunks", "keywords", "entities", "relationships")) else "empty"
+        fused_query = cls._keyword_query(
+            [
+                *(payload["keyword_decomposition"].get("low_level_keywords") or []),
+                *(payload["keyword_decomposition"].get("high_level_keywords") or []),
+            ],
+            query_text,
+        )
+        secondary_queries: list[str] = []
+        if needs_fused_papers:
+            secondary_queries.append(fused_query)
+        if needs_local:
+            secondary_queries.append(payload["local_query"])
+        if needs_global:
+            secondary_queries.append(payload["global_query"])
+
+        missing_queries = [query for query in secondary_queries if query not in query_vectors]
+        if missing_queries and payload["diagnostics"]["dense_embedding_status"] == "ready":
+            try:
+                query_vectors.update(
+                    await asyncio.to_thread(cls._embed_queries, missing_queries)
+                )
+                payload["diagnostics"]["embedding_batches"] += 1
+            except Exception as exc:  # noqa: BLE001
+                payload["diagnostics"]["dense_embedding_status"] = "partial_lexical_fallback"
+                payload["diagnostics"]["secondary_embedding_error_type"] = type(exc).__name__
+
+        second_tasks = []
+        second_labels = []
+        if needs_fused_papers:
+            second_labels.append("paper_chunks")
+            second_tasks.append(
+                cls._search_academic_collection(
+                    query_text=fused_query,
+                    collection_name=ACADEMIC_COLLECTIONS["paper_chunks"],
+                    output_fields=["graphName", "title", "content", "year", "paperUrl", "authors"],
+                    text_fields=["title", "content", "authors"],
+                    top_k=top_k,
+                    graph_name=resolved_graph_name,
+                    query_vector=query_vectors.get(fused_query),
+                    embed_if_missing=False,
+                )
+            )
+        if needs_local:
+            second_labels.append("entities")
+            second_tasks.append(
+                cls._search_academic_collection(
+                    query_text=payload["local_query"],
+                    collection_name=ACADEMIC_COLLECTIONS["entities"],
+                    output_fields=["graphName", "entityName", "entityType", "description", "nodeId", "sourceId"],
+                    text_fields=["entityName", "entityType", "description"],
+                    top_k=top_k,
+                    graph_name=resolved_graph_name,
+                    query_vector=query_vectors.get(payload["local_query"]),
+                    embed_if_missing=False,
+                )
+            )
+        if needs_global:
+            second_labels.append("relationships")
+            second_tasks.append(
+                cls._search_academic_collection(
+                    query_text=payload["global_query"],
+                    collection_name=ACADEMIC_COLLECTIONS["relationships"],
+                    output_fields=["graphName", "srcId", "tgtId", "relType", "description", "sourceId"],
+                    text_fields=["srcId", "tgtId", "relType", "description"],
+                    top_k=top_k,
+                    graph_name=resolved_graph_name,
+                    query_vector=query_vectors.get(payload["global_query"]),
+                    embed_if_missing=False,
+                )
+            )
+
+        if second_tasks:
+            payload.update(
+                await cls._gather_search_results(second_labels, second_tasks)
+            )
+
+        payload["status"] = (
+            "ok"
+            if any(
+                payload.get(key)
+                for key in ("paper_chunks", "keywords", "entities", "relationships")
+            )
+            else "empty"
+        )
+        payload["diagnostics"]["duration_seconds"] = round(
+            time.perf_counter() - started_at,
+            3,
+        )
         return payload
 
     @classmethod
@@ -527,7 +835,7 @@ class AcademicGraphRAGService:
         max_chars: int = 1200,
     ) -> list[dict[str, Any]]:
         grouped: dict[str, dict[str, Any]] = {}
-        for row in rows or []:
+        for position, row in enumerate(rows or []):
             source = row.get("title") or row.get("paperUrl") or "PaperChunk"
             key = str(source).strip().lower()
             content = str(row.get("content") or "").strip()
@@ -545,6 +853,7 @@ class AcademicGraphRAGService:
                 "rank": 0,
                 "content": cls._clip_text(content, max_chars),
                 "score": distance,
+                "_position": position,
                 "source": source,
                 "file_id": row.get("paperUrl") or row.get("title"),
                 "chunk_id": row.get("title"),
@@ -557,10 +866,17 @@ class AcademicGraphRAGService:
                     "graphName": row.get("graphName"),
                 },
             }
-            if len(grouped) >= max_chunks:
-                break
-        normalized = list(grouped.values())
+        normalized = sorted(
+            grouped.values(),
+            key=lambda item: (
+                item.get("score")
+                if isinstance(item.get("score"), (int, float))
+                else float("inf"),
+                item["_position"],
+            ),
+        )[:max_chunks]
         for index, item in enumerate(normalized, start=1):
+            item.pop("_position", None)
             item["rank"] = index
         return normalized
 
@@ -628,8 +944,16 @@ class AcademicGraphRAGService:
         chunks: list[dict[str, Any]],
         graph: dict[str, Any],
         academic: dict[str, Any] | None = None,
+        grounding: dict[str, Any] | None = None,
     ) -> str:
         lines = ["Academic GraphRAG evidence:"]
+        grounding = grounding or {}
+        lines.append(
+            "Grounding status: "
+            f"{grounding.get('status', 'unknown')} "
+            f"(direct={grounding.get('direct_evidence_count', 0)}, "
+            f"supporting={grounding.get('supporting_evidence_count', 0)})"
+        )
         if chunks:
             lines.append("Vector evidence:")
             for chunk in chunks:
@@ -677,6 +1001,12 @@ class AcademicGraphRAGService:
         elif graph.get("status") not in {"ok", None}:
             lines.append(f"Graph evidence unavailable: {graph.get('status')}")
 
+        if grounding.get("status") == "empty":
+            lines.append(
+                "No relevant evidence was found. Answer that the academic data was not found; "
+                "do not use model memory to fill the gap."
+            )
+
         return "\n".join(lines)
 
     @staticmethod
@@ -692,6 +1022,7 @@ class AcademicGraphRAGService:
     def _context_summary(cls, payload: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
         graph = payload.get("graph") or {}
         academic = payload.get("academic_retrieval") or {}
+        keyword_decomposition = academic.get("keyword_decomposition") or {}
         return {
             "mode": payload.get("mode"),
             "kb_name": (payload.get("knowledge_base") or {}).get("name"),
@@ -702,9 +1033,36 @@ class AcademicGraphRAGService:
             "academic_keywords": len(academic.get("keywords", []) or []),
             "academic_entities": len(academic.get("entities", []) or []),
             "academic_relationships": len(academic.get("relationships", []) or []),
+            "high_level_keywords": keyword_decomposition.get("high_level_keywords", []),
+            "low_level_keywords": keyword_decomposition.get("low_level_keywords", []),
             "graph": cls._graph_summary(graph),
+            "grounding": payload.get("grounding"),
             "evidence_chars": len(payload.get("evidence_text") or ""),
             "duration_seconds": round(duration_seconds, 3),
+        }
+
+    @staticmethod
+    def _grounding_status(
+        chunks: list[dict[str, Any]],
+        graph: dict[str, Any],
+        academic: dict[str, Any],
+    ) -> dict[str, Any]:
+        direct_count = len(chunks) + len(graph.get("triples", []) or [])
+        supporting_count = sum(
+            len(academic.get(key, []) or [])
+            for key in ("keywords", "entities", "relationships")
+        )
+        if direct_count:
+            status = "grounded"
+        elif supporting_count:
+            status = "supporting_only"
+        else:
+            status = "empty"
+        return {
+            "status": status,
+            "answerable": status == "grounded",
+            "direct_evidence_count": direct_count,
+            "supporting_evidence_count": supporting_count,
         }
 
     async def query_graph(
@@ -714,6 +1072,7 @@ class AcademicGraphRAGService:
         max_depth: int = 2,
         max_nodes: int = 80,
         graph_name: str | None = None,
+        seed_terms: list[str] | None = None,
     ) -> dict[str, Any]:
         started_at = time.perf_counter()
         with opik_span(
@@ -724,6 +1083,7 @@ class AcademicGraphRAGService:
                 "max_depth": max_depth,
                 "max_nodes": max_nodes,
                 "graph_name": graph_name,
+                "seed_terms": seed_terms or [],
             },
             metadata={"storage": "neo4j_aura"},
             tags=["graph-retrieval", "neo4j"],
@@ -733,6 +1093,7 @@ class AcademicGraphRAGService:
                 max_depth=max_depth,
                 max_nodes=max_nodes,
                 graph_name=graph_name,
+                seed_terms=seed_terms,
             )
             set_observation_output(
                 span,
@@ -748,6 +1109,7 @@ class AcademicGraphRAGService:
         max_depth: int = 2,
         max_nodes: int = 80,
         graph_name: str | None = None,
+        seed_terms: list[str] | None = None,
     ) -> dict[str, Any]:
         try:
             from yunesa import graph_base
@@ -757,27 +1119,51 @@ class AcademicGraphRAGService:
             if not graph_base.is_running():
                 return {"nodes": [], "edges": [], "triples": [], "status": "unavailable"}
 
-            graph = await asyncio.to_thread(
-                graph_base.query_subgraph,
-                keyword=query_text,
-                max_depth=max_depth,
-                max_nodes=max_nodes,
-                graph_name=graph_name,
+            terms = self._dedupe_terms(
+                list(seed_terms or []),
+                max_terms=5,
             )
+            if not terms:
+                terms = [query_text]
+
+            graph_results = await asyncio.gather(
+                *[
+                    asyncio.to_thread(
+                        graph_base.query_subgraph,
+                        keyword=term,
+                        max_depth=max_depth,
+                        max_nodes=max_nodes,
+                        graph_name=graph_name,
+                    )
+                    for term in terms
+                ]
+            )
+            graph = self._merge_graph_results(graph_results, max_nodes=max_nodes)
+            if not graph.get("nodes") and terms != [query_text]:
+                graph = await asyncio.to_thread(
+                    graph_base.query_subgraph,
+                    keyword=query_text,
+                    max_depth=max_depth,
+                    max_nodes=max_nodes,
+                    graph_name=graph_name,
+                )
             if not graph.get("nodes"):
-                fallback_results = []
-                for term in self._fallback_graph_terms(query_text):
-                    fallback_results.append(
-                        await asyncio.to_thread(
+                fallback_results = await asyncio.gather(
+                    *[
+                        asyncio.to_thread(
                             graph_base.query_subgraph,
                             keyword=term,
                             max_depth=max_depth,
                             max_nodes=max_nodes,
                             graph_name=graph_name,
                         )
-                    )
-                if fallback_results:
-                    graph = self._merge_graph_results(fallback_results, max_nodes=max_nodes)
+                        for term in self._fallback_graph_terms(query_text)
+                    ]
+                )
+                graph = self._merge_graph_results(
+                    fallback_results,
+                    max_nodes=max_nodes,
+                )
 
             graph["triples"] = self._triples_from_graph(graph)
             graph["status"] = "ok"
@@ -839,15 +1225,16 @@ class AcademicGraphRAGService:
                 for row in (academic.get("entities") or [])[:5]
                 if str(row.get("entityName") or "").strip()
             ]
-            graph_query_text = query_text
-            if graph_terms:
-                graph_query_text = f"{query_text} {' '.join(graph_terms)}"
+            keyword_decomposition = academic.get("keyword_decomposition") or {}
+            graph_terms.extend(keyword_decomposition.get("low_level_keywords") or [])
+            graph_terms = self._dedupe_terms(graph_terms, max_terms=5)
             graph = (
                 await self.query_graph(
-                    graph_query_text,
+                    academic.get("local_query") or query_text,
                     max_depth=graph_max_depth,
                     max_nodes=graph_max_nodes,
                     graph_name=resolved_graph_name,
+                    seed_terms=graph_terms,
                 )
                 if self.uses_graph(mode, include_graph=include_graph)
                 else {"nodes": [], "edges": [], "triples": [], "status": "skipped"}
@@ -862,7 +1249,17 @@ class AcademicGraphRAGService:
                 "academic_retrieval": academic,
                 "graph": graph,
             }
-            payload["evidence_text"] = self._compact_evidence_text(normalized_chunks, graph, academic=academic)
+            payload["grounding"] = self._grounding_status(
+                normalized_chunks,
+                graph,
+                academic,
+            )
+            payload["evidence_text"] = self._compact_evidence_text(
+                normalized_chunks,
+                graph,
+                academic=academic,
+                grounding=payload["grounding"],
+            )
             set_observation_output(
                 span,
                 output=self._context_summary(payload, time.perf_counter() - started_at),

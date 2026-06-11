@@ -2933,6 +2933,14 @@ def write_graph_to_neo4j(
                 )
 
             session.run("CREATE CONSTRAINT kg_node_id IF NOT EXISTS FOR (n:KGNode) REQUIRE n.id IS UNIQUE")
+            session.run(
+                "CREATE INDEX kg_node_graph_name IF NOT EXISTS "
+                "FOR (n:KGNode) ON (n.graph_name)"
+            )
+            session.run(
+                "CREATE INDEX kg_publication_year IF NOT EXISTS "
+                "FOR (n:Publication) ON (n.year)"
+            )
 
             nodes_written = 0
             for label, rows in node_rows_by_label.items():

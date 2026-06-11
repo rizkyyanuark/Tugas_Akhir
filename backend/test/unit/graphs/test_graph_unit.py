@@ -7,9 +7,28 @@ import sys
 sys.path.append(os.getcwd())
 
 from yunesa.knowledge.graphs.upload_graph_service import UploadGraphService
+from yunesa.knowledge.graphs.adapters.base import neo4j_uri_for_driver
 
 # For backward compatibility with the existing test
 GraphDatabase = UploadGraphService
+
+
+def test_neo4j_uri_uses_explicit_self_signed_mode(monkeypatch):
+    monkeypatch.setenv("NEO4J_TRUST_SELF_SIGNED", "1")
+
+    assert (
+        neo4j_uri_for_driver("neo4j+s://example.databases.neo4j.io")
+        == "neo4j+ssc://example.databases.neo4j.io"
+    )
+
+
+def test_neo4j_uri_keeps_verified_tls_by_default(monkeypatch):
+    monkeypatch.delenv("NEO4J_TRUST_SELF_SIGNED", raising=False)
+
+    assert (
+        neo4j_uri_for_driver("neo4j+s://example.databases.neo4j.io")
+        == "neo4j+s://example.databases.neo4j.io"
+    )
 
 
 @pytest.mark.asyncio

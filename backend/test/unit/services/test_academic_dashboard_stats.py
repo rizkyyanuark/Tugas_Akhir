@@ -80,8 +80,12 @@ def test_collect_keeps_storage_layers_separate(monkeypatch):
         "_collect_milvus",
         AsyncMock(
             return_value={
-                "total_records": 1040,
-                "collections": {"PaperChunk": 50, "EntityEmbedding": 687},
+                "total_records": 1090,
+                "collections": {
+                    "PaperChunk": 50,
+                    "EntityEmbedding": 687,
+                    "ContentKeyword": 50,
+                },
                 "database": "default",
                 "source_status": {"status": "ready", "detail": "ok"},
             }
@@ -92,6 +96,32 @@ def test_collect_keeps_storage_layers_separate(monkeypatch):
 
     assert result["papers_count"] == 50
     assert result["kg_nodes_count"] == 687
-    assert result["vector_records_count"] == 1040
+    assert result["vector_records_count"] == 1090
     assert result["graph_name"] == "yunesa_academic_kg"
     assert result["embedding_dimension"] == 1024
+    assert result["storage_consistency"]["status"] == "in_sync"
+
+
+def test_storage_consistency_reports_cross_store_drift():
+    result = AcademicDashboardService._storage_consistency(
+        supabase={
+            "papers_count": 51,
+            "lecturers_count": 128,
+            "authorship_links_count": 140,
+            "source_status": {"status": "ready"},
+        },
+        neo4j={
+            "entity_distribution": {"Publication": 50, "Lecturer": 128},
+            "relationship_distribution": {"HAS_AUTHOR": 139},
+            "source_status": {"status": "ready"},
+        },
+        milvus={
+            "collections": {"ContentKeyword": 49},
+            "source_status": {"status": "ready"},
+        },
+    )
+
+    assert result["status"] == "drift_detected"
+    assert result["checks"]["publications"]["gap"] == 1
+    assert result["checks"]["authorship_links"]["gap"] == 1
+    assert result["checks"]["content_keywords"]["gap"] == 2

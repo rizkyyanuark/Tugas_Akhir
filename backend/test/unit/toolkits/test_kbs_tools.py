@@ -209,3 +209,38 @@ async def test_query_kb_uses_backend_filepath_injector(monkeypatch) -> None:
 
     assert result[0]["metadata"]["filepath"] == "/home/gem/kbs/FAQ/auth-guide.pdf"
     assert result[0]["metadata"]["parsed_path"] == "/home/gem/kbs/FAQ/parsed/auth-guide.pdf.md"
+
+
+@pytest.mark.asyncio
+async def test_virtual_academic_kb_preserves_vector_ablation_mode(monkeypatch) -> None:
+    monkeypatch.setattr(tools.knowledge_base, "get_retrievers", lambda: {})
+
+    async def _fake_visible_kbs(runtime):
+        return []
+
+    async def _fake_build_context(**kwargs):
+        assert kwargs["retrieval_mode"] == "vector"
+        assert kwargs["include_graph"] is False
+        return {
+            "mode": "vector",
+            "query": kwargs["query_text"],
+            "chunks": [],
+            "academic_retrieval": {"status": "empty", "mode": "vector"},
+            "graph": {"status": "skipped", "nodes": [], "edges": [], "triples": []},
+            "grounding": {"status": "empty", "answerable": False},
+            "evidence_text": "No relevant evidence was found.",
+        }
+
+    monkeypatch.setattr(tools, "_resolve_visible_knowledge_bases_for_query", _fake_visible_kbs)
+    monkeypatch.setattr(tools, "_build_academic_graphrag_context", _fake_build_context)
+
+    result = await _run_query_kb(
+        kb_name="yunesa_academic_kg",
+        query_text="paper tentang retinopati",
+        retrieval_mode="vector",
+        include_graph=False,
+        runtime=SimpleNamespace(context=SimpleNamespace()),
+    )
+
+    assert result["mode"] == "vector"
+    assert result["grounding"]["status"] == "empty"
