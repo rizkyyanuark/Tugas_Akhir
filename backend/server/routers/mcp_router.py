@@ -250,6 +250,12 @@ async def test_mcp_server(
 
         try:
             tools = await get_all_mcp_tools(name)
+            if not tools:
+                return {
+                    "success": False,
+                    "message": "Connection completed, but no MCP tools were discovered. Check the server package, command, transport, and runtime dependencies.",
+                    "tool_count": 0,
+                }
             return {
                 "success": True,
                 "message": f"Connection successful, found {len(tools)} tools",
@@ -307,6 +313,13 @@ async def get_mcp_server_tools(
         try:
             # Get all tools (do not filter disabled tools).
             tools = await get_all_mcp_tools(name)
+            if not tools:
+                return {
+                    "success": True,
+                    "data": [],
+                    "total": 0,
+                    "message": "No MCP tools were discovered for this server.",
+                }
             tool_list = []
 
             for tool in tools:
@@ -361,6 +374,14 @@ async def refresh_mcp_server_tools(
         try:
             # Get all tools (do not filter disabled tools).
             tools = await get_all_mcp_tools(name)
+            if not tools:
+                return {
+                    "success": False,
+                    "message": "Refresh completed, but no MCP tools were discovered. Check the server package, command, transport, and runtime dependencies.",
+                    "tool_count": 0,
+                    "enabled_count": 0,
+                    "disabled_count": 0,
+                }
 
             # Get tool statistics.
             stats = get_mcp_tools_stats(name)

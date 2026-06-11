@@ -65,3 +65,24 @@ def test_update_mcp_server_status_not_found(monkeypatch):
     client = TestClient(_build_app())
     resp = client.put("/api/system/mcp-servers/missing/status", json={"enabled": True})
     assert resp.status_code == 404, resp.text
+
+
+def test_test_mcp_server_reports_zero_tools_as_unsuccessful(monkeypatch):
+    async def fake_get_server_or_404(db, name):
+        del db
+        return {"name": name}
+
+    async def fake_get_all_mcp_tools(name):
+        assert name == "mcp-server-chart"
+        return []
+
+    monkeypatch.setattr("server.routers.mcp_router.get_server_or_404", fake_get_server_or_404)
+    monkeypatch.setattr("server.routers.mcp_router.get_all_mcp_tools", fake_get_all_mcp_tools)
+
+    client = TestClient(_build_app())
+    resp = client.post("/api/system/mcp-servers/mcp-server-chart/test")
+    assert resp.status_code == 200, resp.text
+    payload = resp.json()
+    assert payload["success"] is False
+    assert payload["tool_count"] == 0
+    assert "no MCP tools" in payload["message"]

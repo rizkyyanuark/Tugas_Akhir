@@ -17,9 +17,7 @@ import ListKbsTool from './tools/ListKbsTool.vue'
 import GetMindmapTool from './tools/GetMindmapTool.vue'
 import QueryKbTool from './tools/QueryKbTool.vue'
 import KnowledgeGraphTool from './tools/KnowledgeGraphTool.vue'
-import CalculatorTool from './tools/CalculatorTool.vue'
 import TodoListTool from './tools/TodoListTool.vue'
-import ImageTool from './tools/ImageTool.vue'
 import WriteFileTool from './tools/WriteFileTool.vue'
 import ReadFileTool from './tools/ReadFileTool.vue'
 import ListDirectoryTool from './tools/ListDirectoryTool.vue'
@@ -27,9 +25,6 @@ import SearchFileContentTool from './tools/SearchFileContentTool.vue'
 import GrepTool from './tools/GrepTool.vue'
 import GlobTool from './tools/GlobTool.vue'
 import EditFileTool from './tools/EditFileTool.vue'
-import MysqlQueryTool from './tools/MysqlQueryTool.vue'
-import MysqlDescribeTableTool from './tools/MysqlDescribeTableTool.vue'
-import MysqlListTablesTool from './tools/MysqlListTablesTool.vue'
 import AskUserQuestionTool from './tools/AskUserQuestionTool.vue'
 import ExecuteTool from './tools/ExecuteTool.vue'
 import { getToolCallId } from './toolRegistry'
@@ -46,7 +41,6 @@ const toolId = computed(() => getToolCallId(props.toolCall))
 const TOOL_RENDERERS = {
   ask_user_question: AskUserQuestionTool,
   bash: ExecuteTool,
-  calculator: CalculatorTool,
   cmd: ExecuteTool,
   edit_file: EditFileTool,
   execute: ExecuteTool,
@@ -56,9 +50,6 @@ const TOOL_RENDERERS = {
   list_directory: ListDirectoryTool,
   list_kbs: ListKbsTool,
   ls: ListDirectoryTool,
-  mysql_describe_table: MysqlDescribeTableTool,
-  mysql_list_tables: MysqlListTablesTool,
-  mysql_query: MysqlQueryTool,
   query_kb: QueryKbTool,
   query_knowledge_graph: KnowledgeGraphTool,
   read_file: ReadFileTool,
@@ -66,7 +57,6 @@ const TOOL_RENDERERS = {
   run_shell_command: ExecuteTool,
   search_file_content: SearchFileContentTool,
   tavily_search: WebSearchTool,
-  text_to_img_qwen_image: ImageTool,
   write_file: WriteFileTool,
   write_todos: TodoListTool
 }

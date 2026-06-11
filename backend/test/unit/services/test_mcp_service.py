@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from yunesa.services import mcp_service
 
 
@@ -112,3 +114,66 @@ async def test_get_tools_from_all_servers_loads_names_from_db_once(monkeypatch):
         ("alpha", server_configs),
         ("beta", server_configs),
     ]
+
+
+async def test_get_all_mcp_tools_uses_config_even_when_server_is_disabled(monkeypatch):
+    captured = {}
+
+    async def fake_get_any_mcp_server_config(server_name: str, db=None):
+        del db
+        assert server_name == "demo"
+        return {"transport": "stdio", "command": "demo", "disabled_tools": ["hidden_tool"]}
+
+    async def fake_get_mcp_tools(
+        server_name: str,
+        additional_servers=None,
+        disabled_tools=None,
+        cache=True,
+        force_refresh=False,
+        raise_on_error=False,
+    ):
+        captured.update(
+            {
+                "server_name": server_name,
+                "additional_servers": additional_servers,
+                "disabled_tools": disabled_tools,
+                "cache": cache,
+                "force_refresh": force_refresh,
+                "raise_on_error": raise_on_error,
+            }
+        )
+        return ["tool-a"]
+
+    monkeypatch.setattr(mcp_service, "get_any_mcp_server_config", fake_get_any_mcp_server_config)
+    monkeypatch.setattr(mcp_service, "get_mcp_tools", fake_get_mcp_tools)
+
+    tools = await mcp_service.get_all_mcp_tools("demo")
+
+    assert tools == ["tool-a"]
+    assert captured == {
+        "server_name": "demo",
+        "additional_servers": {
+            "demo": {"transport": "stdio", "command": "demo", "disabled_tools": ["hidden_tool"]}
+        },
+        "disabled_tools": [],
+        "cache": False,
+        "force_refresh": True,
+        "raise_on_error": True,
+    }
+
+
+async def test_get_mcp_tools_can_raise_when_client_initialization_fails(monkeypatch):
+    async def fake_get_enabled_mcp_server_config(server_name: str, db=None):
+        del db
+        assert server_name == "demo"
+        return {"transport": "stdio", "command": "demo", "disabled_tools": []}
+
+    async def fake_get_mcp_client(server_configs):
+        del server_configs
+        return None
+
+    monkeypatch.setattr(mcp_service, "get_enabled_mcp_server_config", fake_get_enabled_mcp_server_config)
+    monkeypatch.setattr(mcp_service, "get_mcp_client", fake_get_mcp_client)
+
+    with pytest.raises(RuntimeError, match="Failed to initialize MCP client"):
+        await mcp_service.get_mcp_tools("demo", raise_on_error=True)

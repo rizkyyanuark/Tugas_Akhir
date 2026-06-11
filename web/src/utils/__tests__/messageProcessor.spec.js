@@ -92,6 +92,27 @@ const run = () => {
   const idxB = chunks.findIndex((c) => c.content === 'B')
   assert.equal(idxA < idxB, true)
 
+  const textualToolCall = MessageProcessor.mergeMessageChunk([
+    {
+      id: 'msg-1',
+      type: 'ai',
+      content:
+        '<function(query_kb){"kb_name":"yunesa_academic_kg","query_text":"authors","retrieval_mode":"mix","include_graph":true}>'
+    }
+  ])
+
+  assert.equal(textualToolCall.content, '')
+  assert.equal(textualToolCall.tool_calls.length, 1)
+  assert.equal(textualToolCall.tool_calls[0].name, 'query_kb')
+  assert.equal(textualToolCall.tool_calls[0].args.kb_name, 'yunesa_academic_kg')
+
+  assert.equal(
+    MessageProcessor.stripTextualToolCallContent(
+      '<function(query_kb){"kb_name":"yunesa_academic_kg","query_text":"authors"}>'
+    ),
+    ''
+  )
+
   console.log('messageProcessor extractKnowledgeChunksFromConversation: all assertions passed')
 }
 

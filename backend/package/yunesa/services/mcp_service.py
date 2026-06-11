@@ -38,22 +38,17 @@ _UNSET = object()
 
 # Default MCP Server configurations (Imported to DB on first run)
 _DEFAULT_MCP_SERVERS = {
-    "sequentialthinking": {
-        "url": "https://remote.mcpservers.org/sequentialthinking/mcp",
-        "transport": "streamable_http",
-        "description": "Sequential thinking tool that helps AI break complex questions into multiple steps",
-        "icon": "🧠",
-        "tags": ["builtin", "AI"],
-    },
     "mcp-server-chart": {
-        "command": "npx.cmd",
+        "command": "npx",
         "args": ["-y", "@antv/mcp-server-chart"],
         "transport": "stdio",
         "description": "Chart generation tool supporting multiple chart types (bar, line, pie, etc.)",
-        "icon": "📊",
+        "icon": "chart",
         "tags": ["builtin", "chart"],
     },
 }
+
+_RETIRED_BUILTIN_MCP_SERVER_NAMES = ("sequentialthinking",)
 
 _SYNCED_MCP_FIELDS = (
     "description",
@@ -85,6 +80,24 @@ async def ensure_builtin_mcp_servers_in_db() -> None:
 
     try:
         async with pg_manager.get_async_session_context() as session:
+            retired_changed = False
+            for name in _RETIRED_BUILTIN_MCP_SERVER_NAMES:
+                result = await session.execute(
+                    select(MCPServer).filter(
+                        MCPServer.name == name,
+                        MCPServer.created_by == "system",
+                    )
+                )
+                retired = result.scalar_one_or_none()
+                if retired:
+                    await session.delete(retired)
+                    clear_mcp_server_tools_cache(name)
+                    retired_changed = True
+                    logger.info(f"Removed retired built-in MCP server '{name}'")
+
+            if retired_changed:
+                await session.commit()
+
             # Check if database has MCP configurations
             result = await session.execute(select(func.count(MCPServer.name)))
             count = result.scalar()
@@ -207,10 +220,44 @@ async def _load_enabled_mcp_server_configs(
         return await _load_enabled_mcp_server_configs(names=names, db=session)
 
 
+async def get_mcp_server_config(
+    server_name: str,
+    *,
+    db: AsyncSession | None = None,
+    require_enabled: bool = True,
+) -> dict[str, Any] | None:
+    """Get the latest MCP server config from the database.
+
+    Agent runtime uses ``require_enabled=True``. Management screens use
+    ``require_enabled=False`` to test and inspect available servers before they
+    are added to the agent runtime.
+    """
+    if db is not None:
+        stmt = select(MCPServer).where(MCPServer.name == server_name)
+        if require_enabled:
+            stmt = stmt.where(MCPServer.enabled == 1)
+        result = await db.execute(stmt)
+        server = result.scalar_one_or_none()
+        return server.to_mcp_config() if server else None
+
+    from yunesa.storage.postgres.manager import pg_manager
+
+    async with pg_manager.get_async_session_context() as session:
+        return await get_mcp_server_config(
+            server_name,
+            db=session,
+            require_enabled=require_enabled,
+        )
+
+
 async def get_enabled_mcp_server_config(server_name: str, *, db: AsyncSession | None = None) -> dict[str, Any] | None:
     """Get the latest enabled MCP server config from the database."""
-    configs = await _load_enabled_mcp_server_configs(names=[server_name], db=db)
-    return configs.get(server_name)
+    return await get_mcp_server_config(server_name, db=db, require_enabled=True)
+
+
+async def get_any_mcp_server_config(server_name: str, *, db: AsyncSession | None = None) -> dict[str, Any] | None:
+    """Get MCP server config regardless of enabled state."""
+    return await get_mcp_server_config(server_name, db=db, require_enabled=False)
 
 
 async def get_enabled_mcp_server_names(*, db: AsyncSession | None = None) -> list[str]:
@@ -225,6 +272,7 @@ async def get_mcp_tools(
     disabled_tools: list[str] = None,
     cache: bool = True,
     force_refresh: bool = False,
+    raise_on_error: bool = False,
 ) -> list[Callable[..., Any]]:
     """Get MCP tools for a specific server.
 
@@ -246,8 +294,10 @@ async def get_mcp_tools(
         server_config = await get_enabled_mcp_server_config(server_name)
 
     if server_config is None:
-        logger.warning(
-            f"MCP server '{server_name}' not found in database or disabled")
+        message = f"MCP server '{server_name}' not found in database or disabled"
+        logger.warning(message)
+        if raise_on_error:
+            raise ValueError(message)
         return []
 
     # Configuration hash is generated from the full config payload. Any database-side
@@ -272,6 +322,10 @@ async def get_mcp_tools(
 
             client = await get_mcp_client({server_name: client_config})
             if client is None:
+                if raise_on_error:
+                    raise RuntimeError(
+                        f"Failed to initialize MCP client for '{server_name}'"
+                    )
                 return []
 
             raw_tools = cast(list[Any], await client.get_tools())
@@ -285,6 +339,7 @@ async def get_mcp_tools(
                 if tool.metadata is None:
                     tool.metadata = {}
                 tool.metadata["id"] = unique_id
+                tool.handle_tool_error = True
                 all_processed_tools.append(tool)
 
             if cache:
@@ -315,6 +370,8 @@ async def get_mcp_tools(
             logger.error(
                 f"Failed to load tools from MCP server '{server_name}': {e}, traceback: {traceback.format_exc()}"
             )
+            if raise_on_error:
+                raise
             return []
 
     # 3. Filtering (Apply to Return Value Only)
@@ -625,10 +682,9 @@ async def get_all_mcp_tools(server_name: str) -> list:
     Returns:
         List of all tools (unfiltered)
     """
-    config = await get_enabled_mcp_server_config(server_name)
+    config = await get_any_mcp_server_config(server_name)
     if config is None:
-        logger.warning(
-            f"MCP server '{server_name}' not found in database or disabled")
+        logger.warning(f"MCP server '{server_name}' not found in database")
         return []
 
     # Get all tools (no filtering, force refresh, no cache update)
@@ -638,4 +694,5 @@ async def get_all_mcp_tools(server_name: str) -> list:
         disabled_tools=[],
         cache=False,
         force_refresh=True,
+        raise_on_error=True,
     )
