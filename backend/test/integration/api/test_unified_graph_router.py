@@ -132,4 +132,4 @@ async def test_deprecated_neo4j_endpoints(test_client, admin_headers):
         assert payload["message"] == "success"
     else:
         assert response.status_code == 500
-        assert "向量索引不存在" in response.text or "未上传任何三元组" in response.text
+        assert "vector index does not exist" in response.text or "no triples uploaded" in response.text

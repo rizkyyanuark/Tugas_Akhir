@@ -48,7 +48,7 @@ async def test_create_database_with_chunk_preset(test_client, admin_headers):
     payload = {
         "database_name": db_name,
         "description": "Chunk preset create test",
-        "embed_model_name": "siliconflow/BAAI/bge-m3",
+        "embed_model_name": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
         "kb_type": "milvus",
         "additional_params": {"chunk_preset_id": "book"},
     }
@@ -105,7 +105,7 @@ async def test_knowledge_routes_enforce_permissions(test_client, standard_user, 
         json={
             "database_name": "unauthorized_db",
             "description": "Should not succeed",
-            "embed_model_name": "siliconflow/BAAI/bge-m3",
+            "embed_model_name": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
         },
         headers=standard_user["headers"],
     )
@@ -127,7 +127,7 @@ async def test_admin_can_create_vector_db_with_reranker(test_client, admin_heade
     payload = {
         "database_name": db_name,
         "description": "Vector DB with reranker",
-        "embed_model_name": "siliconflow/BAAI/bge-m3",
+        "embed_model_name": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
         "kb_type": "milvus",
         "additional_params": {},
     }
@@ -457,7 +457,7 @@ async def test_duplicate_database_name(test_client, admin_headers, knowledge_dat
         json={
             "database_name": db_name,
             "description": "Duplicate name test",
-            "embed_model_name": "siliconflow/BAAI/bge-m3",
+            "embed_model_name": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
             "kb_type": "lightrag",
             "additional_params": {},
         },
@@ -476,7 +476,7 @@ async def test_create_milvus_knowledge_base(test_client, admin_headers):
     payload = {
         "database_name": db_name,
         "description": "Pytest Milvus knowledge base",
-        "embed_model_name": "siliconflow/BAAI/bge-m3",
+        "embed_model_name": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
         "kb_type": "milvus",
         "additional_params": {},
     }

@@ -4,6 +4,41 @@ import { message } from 'ant-design-vue'
  * Unified error handling utility class
  */
 export class ErrorHandler {
+  static getFriendlyErrorMessage(rawMessage, context = 'Operation') {
+    const text = String(rawMessage || '').trim()
+    if (!text) return `${context} failed`
+
+    const lower = text.toLowerCase()
+
+    if (
+      lower.includes('model does not exist') ||
+      lower.includes('badrequesterror') ||
+      lower.includes('not registered for this provider') ||
+      lower.includes('selected model') ||
+      lower.includes('provider') && lower.includes('not configured')
+    ) {
+      return 'The selected AI provider or model is not available. Choose an available model in Settings, then try again.'
+    }
+
+    if (
+      lower.includes('authentication failed') ||
+      lower.includes('invalid api key') ||
+      lower.includes('api key') && (lower.includes('missing') || lower.includes('invalid'))
+    ) {
+      return 'The AI provider API key is missing or invalid. Check the provider configuration, then try again.'
+    }
+
+    if (lower.includes('rate limit') || lower.includes('too many requests')) {
+      return 'The AI provider is rate-limiting requests. Wait a moment, then try again.'
+    }
+
+    if (lower.includes('timeout') || lower.includes('network') || lower.includes('connection')) {
+      return 'The AI provider could not be reached. Check the service connection, then try again.'
+    }
+
+    return `${context} failed: ${text}`
+  }
+
   /**
    * Handles generic errors
    * @param {Error} error - Error object
@@ -52,7 +87,7 @@ export class ErrorHandler {
    */
   static getErrorMessage(error, context) {
     if (error?.message) {
-      return `${context} failed: ${error.message}`
+      return this.getFriendlyErrorMessage(error.message, context)
     }
     return `${context} failed`
   }

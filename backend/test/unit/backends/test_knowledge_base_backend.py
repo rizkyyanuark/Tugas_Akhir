@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from yuxi.agents.backends.knowledge_base_backend import (
+from yunesa.agents.backends.knowledge_base_backend import (
     KBS_PATH,
     KnowledgeBaseReadonlyBackend,
     build_knowledge_base_filepath_map,
@@ -59,13 +59,13 @@ def test_knowledge_base_backend_builds_virtual_tree_and_materializes_files(monke
             "created_at": "2026-03-26T00:00:00Z",
         },
     }
-    monkeypatch.setattr("yuxi.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
+    monkeypatch.setattr("yunesa.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
 
     class _FakeMinio:
         def download_file(self, bucket_name: str, object_name: str) -> bytes:
             return f"{bucket_name}:{object_name}".encode()
 
-    monkeypatch.setattr("yuxi.agents.backends.knowledge_base_backend.get_minio_client", lambda: _FakeMinio())
+    monkeypatch.setattr("yunesa.agents.backends.knowledge_base_backend.get_minio_client", lambda: _FakeMinio())
 
     backend = KnowledgeBaseReadonlyBackend(visible_kbs=visible_kbs, cache_root=tmp_path)
 
@@ -99,7 +99,7 @@ async def test_resolve_visible_knowledge_bases_for_context_filters_by_enabled_na
         return {"databases": [{"db_id": "db-1", "name": "Alpha"}, {"db_id": "db-2", "name": "Beta"}]}
 
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend.knowledge_base.get_databases_by_raw_id",
+        "yunesa.agents.backends.knowledge_base_backend.knowledge_base.get_databases_by_raw_id",
         _fake_get_databases_by_raw_id,
     )
 
@@ -155,7 +155,7 @@ def test_build_knowledge_base_filepath_map_matches_virtual_tree(monkeypatch, tmp
             "created_at": "2026-03-26T00:00:00Z",
         },
     }
-    monkeypatch.setattr("yuxi.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
+    monkeypatch.setattr("yunesa.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
 
     filepath_map = build_knowledge_base_filepath_map(visible_kbs=visible_kbs, files_meta=files_meta)
     backend = KnowledgeBaseReadonlyBackend(visible_kbs=visible_kbs, cache_root=tmp_path)
@@ -170,13 +170,13 @@ def test_build_knowledge_base_filepath_map_matches_virtual_tree(monkeypatch, tmp
 
 
 def test_resolve_file_relative_virtual_path_by_file_id(monkeypatch) -> None:
-    visible_kbs = [{"db_id": "db-1", "name": "食品 相关文献"}]
+    visible_kbs = [{"db_id": "db-1", "name": "Food Research Literature"}]
     files_meta = {
         "folder-1": {
             "file_id": "folder-1",
             "database_id": "db-1",
             "parent_id": None,
-            "filename": "课程",
+            "filename": "Courses",
             "is_folder": True,
             "created_at": "2026-03-26T00:00:00Z",
         },
@@ -184,19 +184,19 @@ def test_resolve_file_relative_virtual_path_by_file_id(monkeypatch) -> None:
             "file_id": "file_79c496",
             "database_id": "db-1",
             "parent_id": "folder-1",
-            "filename": "营养与食品课程中的思政建设研究.pdf",
+            "filename": "Nutrition and Food Curriculum Research.pdf",
             "path": "http://minio/knowledgebases/db-1/uploads/file_79c496.pdf",
             "is_folder": False,
             "size": 100,
             "created_at": "2026-03-26T00:00:00Z",
         },
     }
-    monkeypatch.setattr("yuxi.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
+    monkeypatch.setattr("yunesa.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
 
     relative_path = resolve_file_relative_virtual_path(file_id="file_79c496", visible_kbs=visible_kbs)
     absolute_map = build_knowledge_base_filepath_map(visible_kbs=visible_kbs, files_meta=files_meta)
 
-    assert relative_path == "/食品 相关文献/课程/营养与食品课程中的思政建设研究.pdf"
+    assert relative_path == "/Food Research Literature/Courses/Nutrition and Food Curriculum Research.pdf"
     assert absolute_map["file_79c496"] == f"{KBS_PATH}{relative_path}"
 
 
@@ -213,7 +213,7 @@ async def test_inject_filepaths_into_retrieval_result_injects_by_file_id(monkeyp
     ]
 
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend._resolve_virtual_layout",
+        "yunesa.agents.backends.knowledge_base_backend._resolve_virtual_layout",
         lambda **kwargs: SimpleNamespace(
             source_filepaths={"file-1": f"{KBS_PATH}/FAQ/auth-guide.pdf"},
             parsed_filepaths={"file-1": f"{KBS_PATH}/FAQ/parsed/auth-guide.pdf.md"},
@@ -244,7 +244,7 @@ async def test_inject_filepaths_into_retrieval_result_injects_parsed_path_when_m
             "created_at": "2026-03-26T00:00:00Z",
         }
     }
-    monkeypatch.setattr("yuxi.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
+    monkeypatch.setattr("yunesa.agents.backends.knowledge_base_backend._all_files_meta", lambda: files_meta)
 
     retrieval_chunks = [{"content": "auth guide", "metadata": {"file_id": "file-1"}}]
     result = await inject_filepaths_into_retrieval_result(
@@ -269,7 +269,7 @@ async def test_inject_filepaths_into_retrieval_result_does_not_use_filename_fall
     ]
 
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend._resolve_virtual_layout",
+        "yunesa.agents.backends.knowledge_base_backend._resolve_virtual_layout",
         lambda **kwargs: SimpleNamespace(
             source_filepaths={
                 "file-1": f"{KBS_PATH}/FAQ/API/auth-guide.pdf",
@@ -304,20 +304,25 @@ async def test_inject_filepaths_into_retrieval_result_requires_explicit_file_id(
     ]
 
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend._resolve_virtual_layout",
+        "yunesa.agents.backends.knowledge_base_backend._resolve_virtual_layout",
         lambda **kwargs: SimpleNamespace(
             source_filepaths={
-                "file_79c496": f"{KBS_PATH}/食品 相关文献/课程/营养与食品课程中的思政建设研究.pdf",
+                "file_79c496": (
+                    f"{KBS_PATH}/Food Research Literature/Courses/Nutrition and Food Curriculum Research.pdf"
+                ),
             },
             parsed_filepaths={
-                "file_79c496": f"{KBS_PATH}/食品 相关文献/parsed/课程/营养与食品课程中的思政建设研究.pdf.md",
+                "file_79c496": (
+                    f"{KBS_PATH}/Food Research Literature/parsed/Courses/"
+                    "Nutrition and Food Curriculum Research.pdf.md"
+                ),
             },
         ),
     )
 
     result = await inject_filepaths_into_retrieval_result(
         retrieval_chunks=retrieval_chunks,
-        visible_kbs=[{"db_id": "db-1", "name": "食品 相关文献"}],
+        visible_kbs=[{"db_id": "db-1", "name": "Food Research Literature"}],
         target_db_id="db-1",
     )
 

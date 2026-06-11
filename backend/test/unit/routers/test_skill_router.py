@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from server.routers.skill_router import skills
 from server.utils.auth_middleware import get_admin_user, get_db, get_superadmin_user
-from yuxi.storage.postgres.models_business import Skill, User
+from yunesa.storage.postgres.models_business import Skill, User
 
 
 def _build_app(*, allow_superadmin: bool) -> FastAPI:

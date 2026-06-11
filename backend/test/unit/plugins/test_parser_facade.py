@@ -7,12 +7,12 @@ from types import SimpleNamespace
 
 import fitz
 import pytest
-import yuxi.plugins.parser.unified as parser_unified
+import yunesa.plugins.parser.unified as parser_unified
 from docx import Document
 from PIL import Image
 
-from yuxi.plugins.parser import Parser
-from yuxi.plugins.parser.factory import DocumentProcessorFactory
+from yunesa.plugins.parser import Parser
+from yunesa.plugins.parser.factory import DocumentProcessorFactory
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -52,7 +52,7 @@ def test_parser_parse_docx_file_returns_markdown_text(tmp_path: Path, monkeypatc
     file_path = tmp_path / "parser_test.docx"
     _build_docx(file_path, "Parser DOCX content")
 
-    # 避免测试依赖 docling 行为，直接验证统一 parser 可回退到 python-docx。
+    # Avoid depending on Docling behavior; verify the parser can fall back to python-docx.
     def _raise_docling_error(*args, **kwargs):
         raise RuntimeError("force fallback to python-docx")
 
@@ -142,13 +142,13 @@ async def test_parser_aparse_pdf_file_returns_markdown_text(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_parser_aparse_image_file_with_mineru_when_available():
-    file_path = DATA_DIR / "测试图片.png"
-    assert file_path.exists(), f"测试文件不存在: {file_path}"
+async def test_parser_aparse_image_file_with_mineru_when_available(tmp_path: Path):
+    file_path = tmp_path / "mineru_image.png"
+    _build_png(file_path)
 
     health = await asyncio.to_thread(DocumentProcessorFactory.check_health, "mineru_ocr")
     if health.get("status") != "healthy":
-        pytest.skip(f"mineru_ocr 不可用: {health.get('message', 'unknown')}")
+        pytest.skip(f"mineru_ocr is unavailable: {health.get('message', 'unknown')}")
 
     markdown = await Parser.aparse(
         str(file_path),

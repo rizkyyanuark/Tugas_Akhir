@@ -42,7 +42,7 @@
             <header class="form-header">
               <!-- Show specific title during initialization -->
               <h2 v-if="isFirstRun" class="init-title">
-                System Initialization — Create Super Admin
+                System Initialization - Create Super Admin
               </h2>
               <p v-else class="welcome-text">Welcome Back</p>
             </header>
@@ -101,9 +101,15 @@
                   <a-form-item
                     label="Password"
                     name="password"
-                    :rules="[{ required: true, message: 'Please enter a password' }]"
+                    :rules="[
+                      { required: true, message: 'Please enter a password' },
+                      { validator: validatePasswordStrength }
+                    ]"
                   >
                     <a-input-password v-model:value="adminForm.password" prefix-icon="lock" />
+                    <div class="password-hint">
+                      Use at least 12 characters with uppercase, lowercase, number, and symbol.
+                    </div>
                   </a-form-item>
 
                   <a-form-item
@@ -253,6 +259,17 @@
                     </a-button>
                   </div>
                 </div>
+
+                <div class="access-policy">
+                  <ShieldCheck class="access-policy-icon" />
+                  <div>
+                    <strong>Institution-managed access</strong>
+                    <span>
+                      Accounts are provisioned by a Yunesa administrator. Contact your administrator
+                      if you need access.
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <!-- Error message -->
@@ -292,14 +309,14 @@ import {
   User as UserIcon,
   Lock as LockIcon,
   Key as KeyIcon,
-  AlertCircle as ExclamationCircleIcon
+  AlertCircle as ExclamationCircleIcon,
+  ShieldCheck
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const infoStore = useInfoStore()
-const STAR_CARD_STORAGE_KEY = 'agenticrag-settings-star-card-dismissed'
 const agentStore = useAgentStore()
 
 // Brand display data
@@ -421,6 +438,20 @@ const validateConfirmPassword = async (rule, value) => {
   if (value !== adminForm.password) {
     throw new Error('Passwords do not match')
   }
+}
+
+const getPasswordStrengthError = (password) => {
+  if (password.length < 12) return 'Password must contain at least 12 characters'
+  if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter'
+  if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter'
+  if (!/\d/.test(password)) return 'Password must contain a number'
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain a symbol'
+  return ''
+}
+
+const validatePasswordStrength = async (rule, value) => {
+  const error = getPasswordStrengthError(value || '')
+  if (error) throw new Error(error)
 }
 
 const ensureAgreementAccepted = () => {
@@ -571,6 +602,11 @@ const handleInitialize = async () => {
 
     if (adminForm.password !== adminForm.confirmPassword) {
       errorMessage.value = 'Passwords do not match'
+      return
+    }
+    const passwordError = getPasswordStrengthError(adminForm.password)
+    if (passwordError) {
+      errorMessage.value = passwordError
       return
     }
 
@@ -755,7 +791,7 @@ onUnmounted(() => {
 .login-card {
   width: 900px;
   max-width: 95vw;
-  height: 560px;
+  min-height: 580px;
   background: var(--gray-0);
   border-radius: 16px;
   box-shadow: 0 0px 40px var(--shadow-1);
@@ -837,6 +873,13 @@ onUnmounted(() => {
   margin-bottom: 14px;
 }
 
+.password-hint {
+  margin-top: 6px;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .third-party-login {
   margin-top: 16px;
   .divider {
@@ -896,6 +939,40 @@ onUnmounted(() => {
       height: 44px;
       border-radius: 8px;
     }
+  }
+}
+
+.access-policy {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-150);
+  color: var(--gray-600);
+
+  .access-policy-icon {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    color: var(--main-color);
+  }
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    margin-bottom: 3px;
+    color: var(--gray-800);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  span {
+    font-size: 12px;
+    line-height: 1.5;
   }
 }
 

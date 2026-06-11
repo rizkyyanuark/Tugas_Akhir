@@ -13,10 +13,6 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
-from docling.datamodel.base_models import InputFormat
-from docling.document_converter import DocumentConverter
-from langchain_community.document_loaders import PyPDFLoader
-from markdownify import markdownify as md_convert
 
 from yunesa.plugins.parser.zip_utils import process_zip_file as _process_zip_file
 from yunesa.storage.minio import get_minio_client
@@ -58,11 +54,20 @@ class MarkdownParseResult:
     artifacts: dict[str, Any] = field(default_factory=dict)
 
 
-_docling_converter: DocumentConverter | None = None
+_docling_converter: Any | None = None
 
 
-def _get_docling_converter() -> DocumentConverter:
+def _get_docling_converter() -> Any:
     """Get singleton Docling document converter."""
+    try:
+        from docling.datamodel.base_models import InputFormat
+        from docling.document_converter import DocumentConverter
+    except ImportError as exc:
+        raise RuntimeError(
+            "Docling is required to parse DOCX/XLSX/PPTX with rich layout. "
+            "Install docling or use a supported fallback parser."
+        ) from exc
+
     global _docling_converter
     if _docling_converter is None:
         _docling_converter = DocumentConverter(
@@ -194,18 +199,47 @@ def _convert_docx_with_python_docx(file_path: Path) -> str:
     return "\n\n".join(blocks).strip()
 
 
+def _convert_html_with_bs4(content: str) -> str:
+    """Convert HTML to readable markdown-like text without an extra dependency."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(content, "html.parser")
+
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
+
+    blocks: list[str] = []
+    for element in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "th", "td"]):
+        text = element.get_text(" ", strip=True)
+        if not text:
+            continue
+
+        if element.name and element.name.startswith("h"):
+            level = int(element.name[1])
+            blocks.append(f"{'#' * level} {text}")
+        elif element.name == "li":
+            blocks.append(f"- {text}")
+        else:
+            blocks.append(text)
+
+    if blocks:
+        return "\n\n".join(blocks).strip()
+
+    return soup.get_text("\n", strip=True)
+
+
 def pdfreader(file_path, params=None):
     """Read PDF file and return plain text."""
+    import fitz
+
     if isinstance(file_path, str):
         file_path = Path(file_path)
 
     assert file_path.exists(), "File not found"
     assert file_path.suffix.lower() == ".pdf", "File format not supported"
 
-    loader = PyPDFLoader(str(file_path))
-    docs = loader.load()
-    text = "\n\n".join([d.page_content for d in docs])
-    return text
+    with fitz.open(str(file_path)) as doc:
+        return "\n\n".join(page.get_text("text") for page in doc).strip()
 
 
 def parse_pdf(file, params=None):
@@ -338,11 +372,10 @@ async def _process_file_to_markdown_core(
             result = _convert_with_docling(file_path_obj, params=params)
 
         elif file_ext == ".doc":
-            from langchain_community.document_loaders import UnstructuredWordDocumentLoader
-
-            loader = UnstructuredWordDocumentLoader(str(file_path_obj))
-            docs = loader.load()
-            result = "\n".join(doc.page_content for doc in docs).strip()
+            raise ValueError(
+                "Legacy .doc files are not supported by the lean parser runtime. "
+                "Convert the document to .docx before upload."
+            )
 
         elif file_ext in [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"]:
             text = await parse_image_async(str(file_path_obj), params=params)
@@ -351,7 +384,7 @@ async def _process_file_to_markdown_core(
         elif file_ext in [".html", ".htm"]:
             with open(file_path_obj, encoding="utf-8") as f:
                 content = f.read()
-            text = md_convert(content, heading_style="ATX")
+            text = _convert_html_with_bs4(content)
             result = f"{text}"
 
         elif file_ext == ".csv":

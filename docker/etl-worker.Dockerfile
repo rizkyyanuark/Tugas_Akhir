@@ -34,7 +34,7 @@ ENV CHROME_BIN=/usr/bin/chromium \
     UV_HTTP_TIMEOUT=300 \
     DOCKER_ENVIRONMENT=true
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -47,12 +47,12 @@ RUN mkdir -p /app/package/knowledge/etl/resources
 COPY notebooks/build-graph/ieee-thesaurus.ttl /app/package/knowledge/etl/resources/ieee-thesaurus.ttl
 ARG ETL_INSTALL_TEST_DEPS=true
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system -e /app/package && \
+    uv sync --project /app/package --frozen --no-dev && \
     if [ "$ETL_INSTALL_TEST_DEPS" = "true" ]; then \
-        uv pip install --system --project /app/package --group test; \
+        uv sync --project /app/package --frozen --group test; \
     fi
 
-ENV PATH="/app/.venv/bin:$PATH" \
+ENV PATH="/app/package/.venv/bin:$PATH" \
     PYTHONPATH="/app/package"
 
 # ── LAYER 3: Data Directories ───────────────────────────────

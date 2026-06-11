@@ -20,7 +20,7 @@ from server.utils.auth_middleware import (
     get_db,
     get_required_user,
 )
-from server.utils.auth_utils import AuthUtils
+from server.utils.auth_utils import AuthUtils, validate_password_strength
 from server.utils.user_utils import generate_unique_user_id, validate_username, is_valid_phone_number
 from server.utils.common_utils import log_operation
 from yunesa.storage.minio import aupload_file_to_minio
@@ -138,6 +138,33 @@ async def get_default_department_id(db: AsyncSession) -> int | None:
     return default_dept.id if default_dept else None
 
 
+def ensure_strong_password(password: str) -> None:
+    is_valid, error_message = validate_password_strength(password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_message,
+        )
+
+
+def ensure_valid_role(role: str) -> None:
+    if role not in {"user", "admin", "superadmin"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role must be one of: user, admin, superadmin.",
+        )
+
+
+def ensure_user_in_current_department(current_user: User, target_user: User) -> None:
+    if current_user.role == "superadmin":
+        return
+    if target_user.department_id != current_user.department_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only manage users in your own department.",
+        )
+
+
 # Route: login and get token
 # =============================================================================
 # === authenticationgroup ===
@@ -206,7 +233,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username or password",
+                detail="Invalid login identifier or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -258,6 +285,8 @@ async def initialize_admin(admin_data: InitializeAdmin, db: AsyncSession = Depen
             status_code=status.HTTP_403_FORBIDDEN,
             detail="System is already initialized, cannot create initial admin again",
         )
+
+    ensure_strong_password(admin_data.password)
 
     # Create admin account.
     hashed_password = AuthUtils.hash_password(admin_data.password)
@@ -426,6 +455,8 @@ async def create_user(
 ):
     """Create a new user (admin permission)."""
     user_repo = UserRepository()
+    ensure_strong_password(user_data.password)
+    ensure_valid_role(user_data.role)
 
     # Validate username.
     is_valid, error_msg = validate_username(user_data.username)
@@ -487,6 +518,11 @@ async def create_user(
     else:
         # When regular admin creates user, inherit admin's department automatically.
         department_id = current_user.department_id
+        if department_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admin must belong to a department before creating users.",
+            )
         # Non-superadmin cannot specify department.
         if user_data.department_id is not None:
             raise HTTPException(
@@ -548,6 +584,7 @@ async def read_user(user_id: int, current_user: User = Depends(get_admin_user), 
             status_code=status.HTTP_404_NOT_FOUND,
             detail="userdoes not exist",
         )
+    ensure_user_in_current_department(current_user, user)
     return user.to_dict()
 
 
@@ -558,6 +595,7 @@ async def check_department_admin_count(db: AsyncSession, department_id: int, exc
             User.department_id == department_id,
             User.role == "admin",
             User.id != exclude_user_id,
+            User.is_deleted == 0,
         )
     )
     return result.scalar()
@@ -580,24 +618,52 @@ async def update_user(
             detail="userdoes not exist",
         )
 
-    # checkpermission
+    ensure_user_in_current_department(current_user, user)
+
+    # Check permissions.
     if user.role == "superadmin" and current_user.role != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only superadmin can modify superadmin accounts",
         )
 
-    # Superadmin account cannot be downgraded (except by another superadmin).
-    if user.role == "superadmin" and user_data.role and user_data.role != "superadmin" and current_user.id != user.id:
+    # The single superadmin account must remain a superadmin.
+    if user.role == "superadmin" and user_data.role and user_data.role != "superadmin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot downgrade superadmin account",
         )
+
+    if user_data.role is not None:
+        ensure_valid_role(user_data.role)
+        if user_data.role == "superadmin" and user.role != "superadmin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot promote another account to superadmin.",
+            )
+
+    if current_user.role == "admin":
+        if user.role != "user":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin can only modify regular user accounts.",
+            )
+        if user_data.role is not None and user_data.role != "user":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin can only assign the user role.",
+            )
 
     # Update fields.
     update_details = []
 
     if user_data.username is not None:
+        is_valid, error_message = validate_username(user_data.username)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_message,
+            )
         # Check whether username is used by another user.
         result = await db.execute(select(User).filter(User.username == user_data.username, User.id != user_id))
         existing_user = result.scalar_one_or_none()
@@ -610,6 +676,7 @@ async def update_user(
         update_details.append(f"Username: {user_data.username}")
 
     if user_data.password is not None:
+        ensure_strong_password(user_data.password)
         user.password_hash = AuthUtils.hash_password(user_data.password)
         update_details.append("Password updated")
 
@@ -626,6 +693,23 @@ async def update_user(
         update_details.append(f"role: {user_data.role}")
 
     if user_data.phone_number is not None:
+        if user_data.phone_number and not is_valid_phone_number(user_data.phone_number):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number format is invalid.",
+            )
+        if user_data.phone_number:
+            result = await db.execute(
+                select(User).filter(
+                    User.phone_number == user_data.phone_number,
+                    User.id != user_id,
+                )
+            )
+            if result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Phone number is already used by another user.",
+                )
         user.phone_number = user_data.phone_number
         update_details.append(
             f"Phone number: {user_data.phone_number or 'cleared'}")
@@ -675,11 +759,19 @@ async def delete_user(
             detail="userdoes not exist",
         )
 
+    ensure_user_in_current_department(current_user, user)
+
     # Cannot delete superadmin account.
     if user.role == "superadmin":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete superadmin account",
+        )
+
+    if current_user.role == "admin" and user.role != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin can only delete regular user accounts.",
         )
 
     # Check whether this is the only admin in the department.

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from server.routers.mcp_router import mcp
 from server.utils.auth_middleware import get_admin_user, get_db
-from yuxi.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 
 
 def _build_app() -> FastAPI:

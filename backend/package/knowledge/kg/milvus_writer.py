@@ -31,12 +31,12 @@ logger = logging.getLogger(__name__)
 # Using SiliconFlow API for embeddings to keep the environment lean
 _EMBED_MODEL_NAME = os.environ.get(
     "MILVUS_EMBED_MODEL",
-    "BAAI/bge-m3",
+    "Qwen/Qwen3-Embedding-0.6B",
 )
 _API_KEY = os.environ.get("SILICONFLOW_API_KEY")
-_API_URL = "https://api.siliconflow.cn/v1/embeddings"
+_API_URL = "https://api.siliconflow.com/v1/embeddings"
 
-EMBEDDING_DIM = 1024  # BAAI/bge-m3 outputs 1024-dim vectors
+EMBEDDING_DIM = 1024  # Qwen/Qwen3-Embedding-0.6B outputs 1024-dim vectors
 
 
 def get_embeddings(texts: List[str]) -> List[List[float]]:

@@ -87,6 +87,7 @@
                     type="text"
                     size="small"
                     @click="showEditUserModal(user)"
+                    :disabled="!canEditUser(user)"
                     class="action-btn lucide-icon-btn"
                   >
                     <Pencil :size="14" />
@@ -99,10 +100,7 @@
                     size="small"
                     danger
                     @click="confirmDeleteUser(user)"
-                    :disabled="
-                      user.id === userStore.userId ||
-                      (user.role === 'superadmin' && userStore.userRole !== 'superadmin')
-                    "
+                    :disabled="!canDeleteUser(user)"
                     class="action-btn lucide-icon-btn"
                   >
                     <Trash2 :size="14" />
@@ -166,7 +164,7 @@
             v-model:value="userManagement.form.phoneNumber"
             placeholder="Enter phone number (optional, can be used for login)"
             size="large"
-            :maxlength="11"
+            :maxlength="15"
           />
           <div v-if="userManagement.form.phoneError" class="error-text">
             {{ userManagement.form.phoneError }}
@@ -185,9 +183,10 @@
           <a-form-item label="Password" required class="form-item">
             <a-input-password
               v-model:value="userManagement.form.password"
-              placeholder="Enter password"
+              placeholder="At least 12 characters"
               size="large"
             />
+            <div class="help-text">Include uppercase, lowercase, number, and symbol.</div>
           </a-form-item>
 
           <a-form-item label="Confirm Password" required class="form-item">
@@ -244,6 +243,12 @@ import { Plus, Pencil, Trash2, User, UserLock, UserStar } from 'lucide-vue-next'
 import { formatDateTime } from '@/utils/time'
 
 const userStore = useUserStore()
+
+const canEditUser = (user) => userStore.isSuperAdmin || user.role === 'user'
+const canDeleteUser = (user) =>
+  user.id !== userStore.userId &&
+  user.role !== 'superadmin' &&
+  (userStore.isSuperAdmin || user.role === 'user')
 
 // User management state
 const userManagement = reactive({
@@ -318,6 +323,15 @@ const validatePhoneNumber = (phone) => {
   // Indonesian mobile phone format validation
   const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{7,10}$/
   return phoneRegex.test(phone)
+}
+
+const validatePassword = (password) => {
+  if (password.length < 12) return 'Password must contain at least 12 characters'
+  if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter'
+  if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter'
+  if (!/\d/.test(password)) return 'Password must contain a number'
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain a symbol'
+  return ''
 }
 
 // Watch password field visibility changes
@@ -432,6 +446,12 @@ const handleUserFormSubmit = async () => {
     if (userManagement.displayPasswordFields) {
       if (!userManagement.form.password) {
         notification.error({ message: 'Password cannot be empty' })
+        return
+      }
+
+      const passwordError = validatePassword(userManagement.form.password)
+      if (passwordError) {
+        notification.error({ message: passwordError })
         return
       }
 

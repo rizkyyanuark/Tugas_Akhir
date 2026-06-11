@@ -31,8 +31,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { message } from 'ant-design-vue'
-import { Upload, Plus, Computer } from 'lucide-vue-next'
 import SkillsManagerComponent from '@/components/SkillsManagerComponent.vue'
 import ToolsManagerComponent from '@/components/ToolsManagerComponent.vue'
 import McpServersComponent from '@/components/McpServersComponent.vue'
@@ -62,30 +60,13 @@ watch(
   { immediate: true }
 )
 
-const skillsLoading = ref(false)
-const skillsImporting = ref(false)
-
-const updateSkillsState = (loading, importing) => {
-  skillsLoading.value = loading
-  skillsImporting.value = importing
-}
-
 const handleSkillsImport = () => {
   handleSkillsRefresh()
 }
 
 const handleSkillsRefresh = () => {
   if (skillsRef.value?.fetchSkills) {
-    updateSkillsState(true, skillsImporting.value)
-    skillsRef.value.fetchSkills().finally(() => {
-      updateSkillsState(false, skillsImporting.value)
-    })
-  }
-}
-
-const handleOpenRemoteInstall = () => {
-  if (skillsRef.value?.openRemoteInstallModal) {
-    skillsRef.value.openRemoteInstallModal()
+    skillsRef.value.fetchSkills()
   }
 }
 
@@ -101,28 +82,6 @@ const handleSubagentAdd = () => {
   }
 }
 
-const beforeSkillUpload = (file) => {
-  const lowerName = file.name.toLowerCase()
-  if (!lowerName.endsWith('.zip') && lowerName !== 'skill.md') {
-    message.error('Only .zip files or SKILL.md are supported')
-    return false
-  }
-  return true
-}
-
-const handleImportUpload = async ({ file, onSuccess, onError }) => {
-  if (skillsRef.value?.handleImportUpload) {
-    updateSkillsState(skillsLoading.value, true)
-    try {
-      await skillsRef.value.handleImportUpload({ file, onSuccess, onError })
-      handleSkillsImport()
-    } catch (error) {
-      onError?.(error)
-    } finally {
-      updateSkillsState(skillsLoading.value, false)
-    }
-  }
-}
 </script>
 
 <style scoped lang="less">

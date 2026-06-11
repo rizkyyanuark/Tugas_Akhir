@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from yuxi.storage.postgres.models_business import SubAgent
-from yuxi.utils.datetime_utils import utc_now_naive
+from yunesa.storage.postgres.models_business import SubAgent
+from yunesa.utils.datetime_utils import utc_now_naive
 
 
 # =============================================================================
@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient
 
 from server.routers.subagent_router import subagents_router
 from server.utils.auth_middleware import get_admin_user, get_db
-from yuxi.storage.postgres.models_business import User
+from yunesa.storage.postgres.models_business import User
 
 
 def _build_app() -> FastAPI:
@@ -330,7 +330,7 @@ def test_update_subagent_status_not_found(monkeypatch):
 class TestSubAgentRepository:
     @pytest.mark.asyncio
     async def test_list_all(self):
-        from yuxi.repositories.subagent_repository import SubAgentRepository
+        from yunesa.repositories.subagent_repository import SubAgentRepository
 
         mock_db = AsyncMock()
         mock_result = MagicMock()
@@ -359,7 +359,7 @@ class TestSubAgentRepository:
 
     @pytest.mark.asyncio
     async def test_get_by_name_found(self):
-        from yuxi.repositories.subagent_repository import SubAgentRepository
+        from yunesa.repositories.subagent_repository import SubAgentRepository
 
         mock_db = AsyncMock()
         mock_result = MagicMock()
@@ -385,7 +385,7 @@ class TestSubAgentRepository:
 
     @pytest.mark.asyncio
     async def test_get_by_name_not_found(self):
-        from yuxi.repositories.subagent_repository import SubAgentRepository
+        from yunesa.repositories.subagent_repository import SubAgentRepository
 
         mock_db = AsyncMock()
         mock_result = MagicMock()
@@ -399,7 +399,7 @@ class TestSubAgentRepository:
 
     @pytest.mark.asyncio
     async def test_update_can_clear_model_when_provided(self):
-        from yuxi.repositories.subagent_repository import SubAgentRepository
+        from yunesa.repositories.subagent_repository import SubAgentRepository
 
         mock_db = AsyncMock()
         repo = SubAgentRepository(mock_db)
@@ -436,7 +436,7 @@ class TestSubAgentRepository:
 class TestSubAgentService:
     @pytest.mark.asyncio
     async def test_init_builtin_subagents_creates_agents(self, monkeypatch):
-        from yuxi.services import subagent_service as service_module
+        from yunesa.services import subagent_service as service_module
 
         created_agents = []
 
@@ -477,7 +477,7 @@ class TestSubAgentService:
 
     @pytest.mark.asyncio
     async def test_get_subagent_specs_returns_list(self, monkeypatch):
-        from yuxi.services import subagent_service as service_module
+        from yunesa.services import subagent_service as service_module
 
         mock_spec = {
             "name": "test-agent",
@@ -510,7 +510,7 @@ class TestSubAgentService:
 
     @pytest.mark.asyncio
     async def test_get_subagent_specs_returns_defensive_copy(self, monkeypatch):
-        from yuxi.services import subagent_service as service_module
+        from yunesa.services import subagent_service as service_module
 
         service_module._subagent_specs_cache = [
             {
@@ -603,7 +603,7 @@ class TestSubAgentModel:
 class TestDeepAgentSubagentSelection:
     @pytest.mark.asyncio
     async def test_get_subagents_from_names_filters_and_resolves_tools(self, monkeypatch):
-        from yuxi.services import subagent_service as service_module
+        from yunesa.services import subagent_service as service_module
 
         async def fake_get_specs(_db=None):
             return [
@@ -627,7 +627,7 @@ class TestDeepAgentSubagentSelection:
         monkeypatch.setattr(
             service_module, "get_subagent_specs", fake_get_specs)
         monkeypatch.setattr(
-            "yuxi.agents.toolkits.get_all_tool_instances", lambda: [mock_tool])
+            "yunesa.agents.toolkits.get_all_tool_instances", lambda: [mock_tool])
 
         resolved_specs = await service_module.get_subagents_from_names(["research-agent", "missing-agent"])
 

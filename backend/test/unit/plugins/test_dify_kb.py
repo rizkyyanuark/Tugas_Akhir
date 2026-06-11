@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from yuxi.knowledge.implementations.dify import DifyKB
+from yunesa.knowledge.implementations.dify import DifyKB
 
 
 class _FakeResponse:
@@ -79,7 +79,7 @@ async def test_dify_kb_aquery_maps_records(monkeypatch, tmp_path):
     }
 
     monkeypatch.setattr(
-        "yuxi.knowledge.implementations.dify.httpx.AsyncClient",
+        "yunesa.knowledge.implementations.dify.httpx.AsyncClient",
         lambda **kwargs: _FakeAsyncClient(response_payload=payload, **kwargs),
     )
 
@@ -110,7 +110,7 @@ async def test_dify_kb_aquery_error_returns_empty(monkeypatch, tmp_path):
     }
 
     monkeypatch.setattr(
-        "yuxi.knowledge.implementations.dify.httpx.AsyncClient",
+        "yunesa.knowledge.implementations.dify.httpx.AsyncClient",
         lambda **kwargs: _FakeAsyncClient(raises=RuntimeError("boom"), **kwargs),
     )
 

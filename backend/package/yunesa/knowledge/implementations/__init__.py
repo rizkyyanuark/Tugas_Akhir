@@ -1,9 +1,9 @@
-"""knowledge base具体实现模块
+"""Concrete knowledge base implementations.
 
-包含各种knowledge base的具体实现：
-- MilvusKB: 基于 Milvus 的vectorknowledge base
-- LightRagKB: 基于 LightRAG 的图retrievalknowledge base
-- DifyKB: 基于 Dify retrieval API 的只读knowledge base
+Available backends:
+- MilvusKB: vector knowledge base powered by Milvus.
+- LightRagKB: graph retrieval knowledge base powered by LightRAG.
+- DifyKB: read-only knowledge base backed by the Dify retrieval API.
 """
 
 from .dify import DifyKB

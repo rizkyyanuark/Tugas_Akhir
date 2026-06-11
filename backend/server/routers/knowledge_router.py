@@ -1771,37 +1771,8 @@ async def get_supported_file_types(current_user: User = Depends(get_admin_user))
 
 @knowledge.post("/files/markdown")
 async def mark_it_down(file: UploadFile = File(...), current_user: User = Depends(get_admin_user)):
-    """Parse file to markdown using unified Parser (admin permission required)."""
+    """Reject legacy document parsing in the text-query-only runtime."""
     _reject_document_runtime("Markdown preprocessing")
-    import tempfile
-
-    if not file.filename:
-        return {"message": "File parse failed: unable to identify filename", "markdown_content": ""}
-
-    suffix = os.path.splitext(file.filename)[1].lower()
-    temp_path = None
-
-    try:
-        content = await file.read()
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            temp_path = temp_file.name
-
-        async with aiofiles.open(temp_path, "wb") as temp_buffer:
-            await temp_buffer.write(content)
-
-        markdown_content = await Parser.aparse(temp_path)
-        return {"markdown_content": markdown_content, "message": "success"}
-    except Exception as e:
-        logger.error(f"fileparsefailed {e}, {traceback.format_exc()}")
-        return {"message": f"fileparsefailed {e}", "markdown_content": ""}
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            try:
-                os.unlink(temp_path)
-            except Exception as cleanup_error:
-                logger.warning(
-                    f"Temporary file cleanup failed {temp_path}: {cleanup_error}")
 
 
 # =============================================================================

@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from yuxi.services import skill_service as svc
-from yuxi.services import tool_service
-from yuxi.storage.postgres.models_business import Skill
+from yunesa.services import skill_service as svc
+from yunesa.services import tool_service
+from yunesa.storage.postgres.models_business import Skill
 
 
 def _build_zip(files: dict[str, str]) -> bytes:
@@ -102,7 +102,7 @@ def test_resolve_relative_path_blocks_traversal(tmp_path: Path):
     skill_dir = tmp_path / "skill"
     skill_dir.mkdir(parents=True, exist_ok=True)
 
-    with pytest.raises(ValueError, match="上级路径"):
+    with pytest.raises(ValueError, match="parent path references"):
         svc._resolve_relative_path(skill_dir, "../outside.txt")
 
 
@@ -231,7 +231,7 @@ async def test_import_skill_dir_requires_root_skill_md(tmp_path: Path, monkeypat
     source_dir = tmp_path / "source-skill"
     source_dir.mkdir(parents=True, exist_ok=True)
 
-    with pytest.raises(ValueError, match="根级 SKILL.md"):
+    with pytest.raises(ValueError, match="root-level SKILL.md"):
         await svc.import_skill_dir(
             None,
             source_dir=source_dir,
@@ -592,7 +592,7 @@ def test_builtin_skill_specs_include_deep_reporter():
     deep_reporter = next(item for item in specs if item["slug"] == "deep-reporter")
 
     assert deep_reporter["name"] == "deep-reporter"
-    assert "深度" in deep_reporter["description"]
+    assert "laporan riset" in deep_reporter["description"]
     assert deep_reporter["source_dir"].is_dir()
     assert (deep_reporter["source_dir"] / "SKILL.md").is_file()
 
@@ -701,7 +701,7 @@ async def test_install_builtin_skill_already_installed(tmp_path: Path, monkeypat
 
     monkeypatch.setattr(svc, "SkillRepository", FakeRepo)
 
-    with pytest.raises(ValueError, match="已安装"):
+    with pytest.raises(ValueError, match="already installed"):
         await svc.install_builtin_skill(None, "reporter", installed_by="root")
 
 
@@ -1002,7 +1002,7 @@ async def test_builtin_skill_file_edit_blocked(tmp_path: Path, monkeypatch: pyte
 
     monkeypatch.setattr(svc, "get_skill_or_raise", fake_get_skill_or_raise)
 
-    with pytest.raises(ValueError, match="内置 skill 不允许直接修改文件"):
+    with pytest.raises(ValueError, match="Built-in skills cannot be modified directly"):
         await svc.update_skill_file(
             None,
             slug="reporter",

@@ -1,3 +1,3 @@
-# debug tool包
+# Debug tool package.
 
 __all__ = []

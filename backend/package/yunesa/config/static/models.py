@@ -80,13 +80,13 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
         name="SiliconFlow",
         url="https://cloud.siliconflow.com/models",
         base_url="https://api.siliconflow.com/v1",
-        default="Pro/deepseek-ai/DeepSeek-V3.2",
+        default="deepseek-ai/DeepSeek-V3.2",
         env="SILICONFLOW_API_KEY",
         models=[
-            "Pro/deepseek-ai/DeepSeek-V3.2",
-            "Pro/MiniMaxAI/MiniMax-M2.5",
-            "Pro/zai-org/GLM-5",
-            "Pro/moonshotai/Kimi-K2.5",
+            "deepseek-ai/DeepSeek-V3.2",
+            "MiniMaxAI/MiniMax-M2.5",
+            "zai-org/GLM-5",
+            "moonshotai/Kimi-K2.5",
         ],
     ),
     # "together": ChatModelProvider(
@@ -178,8 +178,12 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
         base_url="https://api-inference.modelscope.cn/v1/",
         default="deepseek-ai/DeepSeek-V3.2",
         env="MODELSCOPE_ACCESS_TOKEN",
-        models=["ZhipuAI/GLM-5", "ZhipuAI/GLM-4.7-Flash",
-            "MiniMax/MiniMax-M2.5", "moonshotai/Kimi-K2.5", ""],
+        models=[
+            "ZhipuAI/GLM-5",
+            "ZhipuAI/GLM-4.7-Flash",
+            "MiniMax/MiniMax-M2.5",
+            "moonshotai/Kimi-K2.5",
+        ],
     ),
 }
 
@@ -189,20 +193,6 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
 # ============================================================
 
 DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
-    "siliconflow/BAAI/bge-m3": EmbedModelInfo(
-        model_id="siliconflow/BAAI/bge-m3",
-        name="BAAI/bge-m3",
-        dimension=1024,
-        base_url="https://api.siliconflow.com/v1/embeddings",
-        api_key="SILICONFLOW_API_KEY",
-    ),
-    "siliconflow/Pro/BAAI/bge-m3": EmbedModelInfo(
-        model_id="siliconflow/Pro/BAAI/bge-m3",
-        name="Pro/BAAI/bge-m3",
-        dimension=1024,
-        base_url="https://api.siliconflow.com/v1/embeddings",
-        api_key="SILICONFLOW_API_KEY",
-    ),
     "siliconflow/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
         model_id="siliconflow/Qwen/Qwen3-Embedding-0.6B",
         name="Qwen/Qwen3-Embedding-0.6B",
@@ -261,16 +251,6 @@ DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
 # ============================================================
 
 DEFAULT_RERANKERS: dict[str, RerankerInfo] = {
-    "siliconflow/BAAI/bge-reranker-v2-m3": RerankerInfo(
-        name="BAAI/bge-reranker-v2-m3",
-        base_url="https://api.siliconflow.com/v1/rerank",
-        api_key="SILICONFLOW_API_KEY",
-    ),
-    "siliconflow/Pro/BAAI/bge-reranker-v2-m3": RerankerInfo(
-        name="Pro/BAAI/bge-reranker-v2-m3",
-        base_url="https://api.siliconflow.com/v1/rerank",
-        api_key="SILICONFLOW_API_KEY",
-    ),
     "siliconflow/Qwen/Qwen3-Reranker-0.6B": RerankerInfo(
         name="Qwen/Qwen3-Reranker-0.6B",
         base_url="https://api.siliconflow.com/v1/rerank",

@@ -1,341 +1,619 @@
+% !TEX root = ../Skripsi.tex
 \chapter{HASIL PENELITIAN DAN PEMBAHASAN}
-Bab ini terdiri atas tiga bagian, yakni hasil penelitian, pembahasan, dan keterbatasan penelitian. Subbab pada bab 4 ini dapat disesuaikan dengan kebutuhan. Uraikan bab ini sesuai dengan alur berpikir dalam diagram alir
 
 \section{Hasil Penelitian}
-Hasil penelitian harus menjawab pertanyaan penelitian dan disusun menurut urutan pertanyaan penelitian/hipotesis.
 
-\subsection{Pengelompokan Node Label}
+\subsection{Deskripsi Data}
+Penelitian ini berangkat dari kebutuhan untuk membuat proses pencarian sumber daya akademik tidak hanya bergantung pada kemiripan kata kunci atau potongan teks semata. Dalam konteks tersebut, AcademicRAG digunakan sebagai kerangka kerja yang memadukan \textit{knowledge graph} dan model bahasa besar untuk menangkap hubungan semantik antarentitas akademik, seperti dosen, publikasi, kata kunci, konsep, venue, dan tahun publikasi. Oleh karena itu, sebelum proses konstruksi graf dilakukan, data perlu dideskripsikan terlebih dahulu agar karakteristik korpus akademik yang digunakan dapat terlihat dengan jelas. Deskripsi ini mencakup jumlah publikasi, jumlah dosen, kelengkapan metadata publikasi, serta relasi awal antara dosen dan publikasi. Dengan demikian, data yang diproses tidak hanya dipandang sebagai kumpulan dokumen, tetapi sebagai dasar pembentukan struktur pengetahuan yang dapat mendukung pencarian, penelusuran relasi, dan pengujian alur \textit{Hybrid GraphRAG} secara lebih terarah.
 
-% \centering % Opsional: jika Anda ingin tabelnya di tengah
-\begin{longtable}{|c|P{0.30\linewidth}|P{0.55\linewidth}|}
-\caption{Pengelompokan node label pada Knowledge Graph Akademik UNESA} \label{tab:node_labels} \\ % Tambahkan \label untuk referensi
-\hline
-\textbf{No} & \textbf{Node Label} & \textbf{Deskripsi} \\ \hline
-\endfirsthead
+Ringkasan jumlah data yang digunakan pada eksperimen ditunjukkan pada
+\ref{tab:ringkasan-data}.
 
-\multicolumn{3}{l}{\textit{\ref{tab:node_labels} (lanjutan).}}\\
-\hline
-\textbf{No} & \textbf{Node Label} & \textbf{Deskripsi} \\ \hline
-\endhead
+\section{Konfigurasi Implementasi dan Ruang Lingkup Hasil}
 
-\hline
-\multicolumn{3}{r}{\textit{Bersambung ke halaman berikutnya}} \\ % Pesan footer
-\endfoot
+Konfigurasi pembangunan graf terverifikasi dirangkum pada
+\ref{tab:konfigurasi-implementasi}. Data masukan dibaca dari Supabase,
+struktur relasional disimpan pada Neo4j AuraDB, sedangkan representasi vektor
+disimpan pada Zilliz Cloud yang kompatibel dengan Milvus. Model
+\textit{embedding} yang digunakan adalah
+\texttt{Qwen/Qwen3-Embedding-0.6B} melalui layanan SiliconFlow. Pemisahan
+penyimpanan ini mengikuti gagasan \textit{dual indexing}, yaitu graf untuk
+menyimpan struktur hubungan dan basis data vektor untuk pencarian semantik.
+Pendekatan serupa digunakan pada AcademicRAG \citep{chen2025acadrag} dan
+HybridRAG \citep{10.1145/3677052.3698671}.
 
-\hline
-\endlastfoot
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Konfigurasi implementasi yang digunakan pada pembangunan terverifikasi}
+    \label{tab:konfigurasi-implementasi}
+    \begin{tabular}{|P{0.28\textwidth}|P{0.55\textwidth}|}
+        \hline
+        \textbf{Komponen} & \textbf{Konfigurasi} \\ \hline
+        Sumber data & Supabase: tabel publikasi, dosen, dan relasi dosen--publikasi \\ \hline
+        Nama ruang graf & \texttt{yunesa\_academic\_kg} \\ \hline
+        Penyimpanan graf & Neo4j AuraDB \\ \hline
+        Penyimpanan vektor & Zilliz Cloud/Milvus \\ \hline
+        Penyedia \textit{embedding} & SiliconFlow \\ \hline
+        Model \textit{embedding} & \texttt{Qwen/Qwen3-Embedding-0.6B} \\ \hline
+        Dimensi vektor & 1.024 \\ \hline
+        Metrik jarak & L2 \\ \hline
+        Ukuran potongan teks & Maksimum 2.024 karakter dengan \textit{overlap} 50 karakter \\ \hline
+        Model generasi pada uji awal & \texttt{llama-3.3-70b-versatile} melalui Groq \\ \hline
+    \end{tabular}
+\end{table}
 
-1  & Researcher
-   & Dosen/peneliti UNESA; kunci: \textit{nidn}, \textit{nip}, \textit{name\_norm}, \textit{scholar\_id}, \textit{scopus\_id}. \\ \hline
-2  & Organization
-   & Entitas organisasi (Universitas/Fakultas/Departemen/Prodi/Mitra); atribut \texttt{org\_type}. \\ \hline
-3  & StudyProgram
-   & Program studi untuk agregasi aktivitas dan output dosen. \\ \hline
-4  & Affiliation
-   & Afiliasi sebagaimana tercantum pada artikel (snapshot saat terbit). \\ \hline
-5  & Article
-   & Publikasi ilmiah; atribut: judul, tahun, \textit{doi?}, \textit{citations}, \textit{authors\_order}. \\ \hline
-6  & Venue
-   & Jurnal/konferensi/prosiding tempat artikel terbit. \\ \hline
-7  & CoAuthor
-   & Penulis kolaborator non-internal (bukan \textit{Researcher} UNESA). \\ \hline
-8  & DbIndexer
-   & Sumber indeksasi (Google Scholar/Scopus) sebagai \textit{provenance}. \\ \hline
-9  & SubjectArea
-   & Kategori bidang (ASJC/SciVal) dari data SciVal. \\ \hline
-10 & Concept
-   & Konsep terkanonisasi dari abstrak/judul (ekstraksi+normalisasi) untuk pemetaan topik. \\ \hline
-11 & Keyword
-   & Kata kunci mentah dari metadata atau ekstraksi awal. \\ \hline
-12 & MetricIndicator
-   & Metrik bibliometrik (FWCI, \textit{citations}, \textit{scholarly\_output}, \textit{percentile}) per tahun. \\ \hline
-13 & ResearchProject
-   & Proyek penelitian internal; atribut: judul, skema, tahun, \textit{status}. \\ \hline
-14 & FundingSource
-   & Sumber pendanaan (DRTPM/BRIN/internal/industri). \\ \hline
-15 & ExternalProfile
-   & ID eksternal (Sinta/Garuda/dll.) untuk disambiguasi identitas. \\ \hline
-16 & DocumentChunk
-   & Potongan teks artikel untuk Graph/Vector RAG dan sitasi konteks. \\ \hline
+\ref{tab:status-bukti-eksperimen} menjelaskan batas klaim hasil penelitian.
+Pemisahan ini diperlukan agar keberhasilan integrasi perangkat lunak tidak
+disamakan dengan efektivitas ilmiah. Keberhasilan penulisan graf dan indeks
+menunjukkan bahwa arsitektur telah berfungsi, tetapi belum secara otomatis
+membuktikan bahwa jawaban sistem lebih tepat daripada \textit{Vector RAG}.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Status bukti yang tersedia pada penelitian}
+    \label{tab:status-bukti-eksperimen}
+    \begin{tabular}{|P{0.25\textwidth}|P{0.19\textwidth}|P{0.37\textwidth}|}
+        \hline
+        \textbf{Komponen} & \textbf{Status} & \textbf{Bukti} \\ \hline
+        Konstruksi graf & Terverifikasi & Manifest konstruksi, artefak CSV/JSON/GraphML, dan inspeksi Neo4j \\ \hline
+        \textit{Dual indexing} & Terverifikasi & Jumlah baris per koleksi Zilliz dan jumlah simpul/relasi Neo4j \\ \hline
+        Alur \textit{Hybrid GraphRAG} & Terverifikasi secara fungsional & Empat kueri uji berhasil melalui proses \textit{retrieval} dan generasi \\ \hline
+        Keunggulan terhadap \textit{Vector RAG} & Belum disimpulkan & Memerlukan eksperimen komparatif 40 pertanyaan \\ \hline
+        Penurunan halusinasi & Belum disimpulkan & Memerlukan pengukuran \textit{faithfulness} dan audit klaim \\ \hline
+    \end{tabular}
+\end{table}
+
+\section{Hasil Konstruksi \textit{Knowledge Graph}}
+\label{sec:hasil-konstruksi-kg}
+
+\subsection{Kelengkapan Data Masukan}
+
+Proses pembangunan membaca 51 publikasi, 128 dosen, dan 132 relasi
+dosen--publikasi dari Supabase. Meskipun parameter maksimum sampel ditetapkan
+sebesar 100 publikasi, jumlah data publikasi yang tersedia dan memenuhi kriteria
+pada saat eksperimen adalah 51. Hasil pemeriksaan kualitas pada
+Tabel~\ref{tab:kualitas-publikasi} menunjukkan bahwa semua publikasi yang masuk
+ke tahap konstruksi memiliki judul, abstrak, TLDR, kata kunci, penulis, dan
+konsep. Pemeriksaan tersebut merupakan \textit{quality gate} sebelum data
+ditulis ke penyimpanan produksi.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Hasil pemeriksaan kelengkapan 51 publikasi}
+    \label{tab:kualitas-publikasi}
+    \begin{tabular}{|P{0.38\textwidth}|P{0.20\textwidth}|P{0.25\textwidth}|}
+        \hline
+        \textbf{Atribut/ketentuan} & \textbf{Data tidak lengkap} & \textbf{Status} \\ \hline
+        Judul & 0 & Lulus \\ \hline
+        Abstrak & 0 & Lulus \\ \hline
+        TLDR & 0 & Lulus \\ \hline
+        Kata kunci & 0 & Lulus \\ \hline
+        Penulis & 0 & Lulus \\ \hline
+        Konsep & 0 & Lulus \\ \hline
+        Relasi sesuai ontologi & 0 relasi di luar ontologi & Lulus \\ \hline
+    \end{tabular}
+\end{table}
+
+Hasil ini menunjukkan bahwa tahap ETL telah menyediakan atribut minimum yang
+dibutuhkan untuk konstruksi graf dan pembuatan \textit{embedding}. Namun,
+kelengkapan atribut tidak identik dengan ketepatan semantik. Nama entitas,
+konsep, dan hubungan yang diekstraksi tetap perlu dinilai melalui inspeksi
+kualitatif atau anotasi pakar.
+
+\subsection{Distribusi Simpul}
+
+Graf yang dihasilkan terdiri atas 1.253 simpul. Distribusi simpul disajikan pada
+Tabel~\ref{tab:distribusi-simpul}. Simpul \texttt{Concept} mendominasi graf
+sebanyak 831 simpul atau 66,32\% dari keseluruhan simpul. Dominasi ini merupakan
+konsekuensi dari pemetaan kata kunci publikasi ke tesaurus dan taksonomi IEEE,
+termasuk perluasan tetangga SKOS. Simpul akademik utama tetap dipertahankan,
+yaitu \texttt{Lecturer}, \texttt{Publication}, \texttt{Institution},
+\texttt{Venue}, dan \texttt{Year}.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Distribusi simpul \textit{Knowledge Graph} Akademik UNESA}
+    \label{tab:distribusi-simpul}
+    \begin{tabular}{|P{0.34\textwidth}|r|r|}
+        \hline
+        \textbf{Label simpul} & \textbf{Jumlah} & \textbf{Persentase} \\ \hline
+        \texttt{Concept} & 831 & 66,32\% \\ \hline
+        \texttt{Keyword} & 166 & 13,25\% \\ \hline
+        \texttt{Lecturer} & 128 & 10,22\% \\ \hline
+        \texttt{Publication} & 51 & 4,07\% \\ \hline
+        \texttt{Venue} & 41 & 3,27\% \\ \hline
+        \texttt{Institution} & 23 & 1,84\% \\ \hline
+        \texttt{Year} & 13 & 1,04\% \\ \hline
+        \textbf{Total} & \textbf{1.253} & \textbf{100,00\%} \\ \hline
+    \end{tabular}
+\end{table}
+
+Satu publikasi direpresentasikan sebagai satu simpul
+\texttt{Publication}, sedangkan hubungan banyak-ke-banyak dengan dosen
+direpresentasikan melalui \texttt{HAS\_AUTHOR} dan \texttt{PUBLISHES}. Pilihan
+ini menghindari pembuatan simpul publikasi ganda ketika satu artikel ditulis oleh
+lebih dari satu dosen. Identitas publikasi dibentuk secara deterministik sehingga
+proses pembangunan ulang dapat menggunakan operasi \textit{upsert}.
+
+\subsection{Distribusi Relasi}
+
+Graf memuat 1.970 relasi dengan 17 tipe aktif. Rincian relasi disajikan pada
+Tabel~\ref{tab:distribusi-relasi}. Relasi dapat dikelompokkan menjadi tiga
+lapisan. Pertama, lapisan metadata akademik sebanyak 820 relasi (41,62\%) yang
+menghubungkan dosen, publikasi, tahun, venue, institusi, kolaborasi, dan kata
+kunci. Kedua, lapisan semantik publikasi--konsep sebanyak 436 relasi (22,13\%).
+Ketiga, lapisan struktur SKOS sebanyak 714 relasi (36,24\%) yang menghubungkan
+konsep menurut hubungan \textit{broader}, \textit{narrower},
+\textit{related}, dan \textit{exact match}.
+
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTcapwidth}{0.90\textwidth}
+\small
+\begin{longtable}{|P{0.40\textwidth}|r|P{0.34\textwidth}|}
+    \caption{Distribusi relasi \textit{Knowledge Graph} Akademik UNESA}
+    \label{tab:distribusi-relasi} \\
+    \hline
+    \textbf{Tipe relasi} & \textbf{Jumlah} & \textbf{Kelompok} \\ \hline
+    \endfirsthead
+    \multicolumn{3}{l}{\textit{\ref{tab:distribusi-relasi} (lanjutan)}} \\
+    \hline
+    \textbf{Tipe relasi} & \textbf{Jumlah} & \textbf{Kelompok} \\ \hline
+    \endhead
+    \hline
+    \multicolumn{3}{r}{\textit{Bersambung ke halaman berikutnya}} \\
+    \endfoot
+    \hline
+    \endlastfoot
+    \texttt{HAS\_AFFILIATION} & 128 & Metadata akademik \\ \hline
+    \texttt{PUBLISHES} & 132 & Metadata akademik \\ \hline
+    \texttt{COLLABORATES\_WITH} & 95 & Metadata akademik \\ \hline
+    \texttt{PUBLISHED\_IN\_YEAR} & 51 & Metadata akademik \\ \hline
+    \texttt{PUBLISHED\_IN\_VENUE} & 51 & Metadata akademik \\ \hline
+    \texttt{HAS\_AUTHOR} & 132 & Metadata akademik \\ \hline
+    \texttt{HAS\_KEYWORD} & 231 & Metadata akademik \\ \hline
+    \texttt{USES\_MODEL} & 26 & Semantik publikasi \\ \hline
+    \texttt{EVALUATED\_WITH} & 72 & Semantik publikasi \\ \hline
+    \texttt{HAS\_TOPIC} & 250 & Semantik publikasi \\ \hline
+    \texttt{BELONGS\_TO\_DOMAIN} & 34 & Semantik publikasi \\ \hline
+    \texttt{USES\_METHOD} & 46 & Semantik publikasi \\ \hline
+    \texttt{HAS\_RESULT} & 8 & Semantik publikasi \\ \hline
+    \texttt{SKOS\_BROADER} & 376 & Struktur SKOS \\ \hline
+    \texttt{SKOS\_EXACT\_MATCH} & 71 & Struktur SKOS \\ \hline
+    \texttt{SKOS\_NARROWER} & 48 & Struktur SKOS \\ \hline
+    \texttt{SKOS\_RELATED} & 219 & Struktur SKOS \\ \hline
+    \textbf{Total} & \textbf{1.970} & \\ \hline
 \end{longtable}
+\endgroup
 
-\subsection{Relasi Node}
+Relasi \texttt{COLLABORATES\_WITH} diturunkan dari kepengarangan bersama.
+Setiap pasangan dosen dibentuk secara kanonis dan menyimpan jumlah publikasi
+bersama serta identitas publikasinya. Dengan demikian, satu pasangan dosen tidak
+dibuat berulang pada pembangunan ulang. Sebanyak 95 relasi kolaborasi
+menunjukkan bahwa graf tidak hanya dapat menjawab pertanyaan mengenai isi
+publikasi, tetapi juga pertanyaan relasional mengenai jejaring peneliti.
 
-% \centering % Opsional, jika ingin tabel di tengah
-\begin{longtable}{|c|P{0.25\linewidth}|P{0.35\linewidth}|P{0.28\linewidth}|}
-\caption{Relasi antar-node pada Knowledge Graph Akademik UNESA} \label{tab:relasi_node} \\
-\hline
-\textbf{No} & \textbf{Node} & \textbf{Nama Relasi} & \textbf{Node} \\ \hline
-\endfirsthead
+Relasi sitasi \texttt{CITES} tidak diaktifkan karena dataset penelitian belum
+memiliki daftar referensi, DOI yang disitasi, atau identitas publikasi yang
+disitasi. Tidak dibuatnya relasi tersebut merupakan keputusan untuk menjaga
+faktualitas graf; relasi yang tidak didukung data sumber tidak boleh diinferensikan
+hanya dari kemiripan topik.
 
-\multicolumn{4}{l}{\textit{\ref{tab:relasi_node} (lanjutan).}}\\
-\hline
-\textbf{No} & \textbf{Node} & \textbf{Nama Relasi} & \textbf{Node} \\ \hline
-\endhead
+\subsection{Pemetaan Konsep dan Ontologi IEEE}
 
-\hline
-\multicolumn{4}{r}{\textit{Bersambung ke halaman berikutnya}} \\
-\endfoot
+Sebanyak 831 simpul konsep dibentuk dari lima sumber sebagaimana ditunjukkan
+pada Tabel~\ref{tab:sumber-konsep}. Sebanyak 675 konsep (81,23\%) memiliki URI
+IEEE, sedangkan 156 konsep (18,77\%) belum memiliki URI IEEE. Konsep tanpa URI
+tetap dipertahankan apabila berasal dari kata kunci penulis atau pola ilmiah yang
+memberikan informasi spesifik terhadap publikasi.
 
-\hline
-\endlastfoot
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Sumber pembentukan simpul konsep}
+    \label{tab:sumber-konsep}
+    \begin{tabular}{|P{0.43\textwidth}|r|r|}
+        \hline
+        \textbf{Sumber konsep} & \textbf{Jumlah} & \textbf{Persentase} \\ \hline
+        Tetangga SKOS IEEE & 574 & 69,07\% \\ \hline
+        Kata kunci penulis & 119 & 14,32\% \\ \hline
+        Tesaurus IEEE & 100 & 12,03\% \\ \hline
+        Pola ekstraksi berbasis aturan & 37 & 4,45\% \\ \hline
+        Taksonomi IEEE & 1 & 0,12\% \\ \hline
+        \textbf{Total} & \textbf{831} & \textbf{100,00\%} \\ \hline
+    \end{tabular}
+\end{table}
 
-1  & Researcher    & AFFILIATED\_WITH   & Organization    \\ \hline
-2  & Researcher    & LISTED\_AFFILIATION & Affiliation     \\ \hline
-3  & Affiliation   & MAPS\_TO           & Organization    \\ \hline
-4  & Researcher    & AUTHORS            & Article         \\ \hline
-5  & CoAuthor      & AUTHORS            & Article         \\ \hline
-6  & Researcher    & CO\_AUTHOR\_WITH   & CoAuthor        \\ \hline
-7  & Article       & PUBLISHED\_IN      & Venue           \\ \hline
-8  & Article       & INDEXED\_IN        & DbIndexer       \\ \hline
-9  & Article       & HAS\_SUBJECT       & SubjectArea     \\ \hline
-10 & Article       & HAS\_KEYWORD       & Keyword         \\ \hline
-11 & Keyword       & NORMALIZED\_TO     & Concept         \\ \hline
-12 & Article       & HAS\_CONCEPT       & Concept         \\ \hline
-13 & Concept       & IN\_SUBJECT        & SubjectArea     \\ \hline
-14 & Researcher    & WORKS\_ON          & ResearchProject \\ \hline
-15 & ResearchProject & FUNDED\_BY       & FundingSource   \\ \hline
-16 & ResearchProject & PRODUCES         & Article         \\ \hline
-17 & Venue         & HAS\_METRIC        & MetricIndicator \\ \hline
-18 & MetricIndicator & FOR\_SUBJECT     & SubjectArea     \\ \hline
-19 & MetricIndicator & PROVIDED\_BY      & DbIndexer       \\ \hline
-20 & StudyProgram  & BELONGS\_TO        & Organization    \\ \hline
-21 & Researcher    & ASSIGNED\_TO      & StudyProgram    \\ \hline
-22 & Researcher    & HAS\_PROFILE       & ExternalProfile \\ \hline
-23 & DocumentChunk & CHUNK\_OF          & Article         \\ \hline
-24 & DocumentChunk & HAS\_CONCEPT       & Concept         \\ \hline
-\end{longtable}
+Perluasan SKOS meningkatkan keterhubungan konsep, tetapi juga menghasilkan
+konsep domain yang lebih umum. Oleh karena itu, jumlah hubungan SKOS yang besar
+tidak dengan sendirinya menunjukkan kualitas semantik yang tinggi. Kualitas
+pemetaan harus dinilai berdasarkan ketepatan konsep terhadap isi publikasi,
+bukan hanya densitas graf. Prinsip ini sejalan dengan kajian konstruksi
+\textit{knowledge graph} yang menekankan validasi, resolusi entitas, dan
+pengendalian kualitas sepanjang siklus hidup graf \citep{Hofer_2024,zhong2023comprehensive}.
 
+Metode penelitian menyediakan jalur opsional GLiNER dan GLiREL untuk ekstraksi
+entitas dan relasi \textit{zero-shot} \citep{zaratiana2023gliner,boylan2025glirelgeneralistmodel}.
+Namun, manifest pembangunan yang dianalisis mencatat nol dokumen, entitas, dan
+relasi pada jalur ekstraksi tersebut. Artinya, hasil pada subbab ini merupakan
+\textit{baseline} berbasis metadata terstruktur, kata kunci penulis, aturan, dan
+kosakata IEEE. Hasil ini tidak digunakan untuk mengklaim performa GLiNER atau
+GLiREL. Evaluasi kedua model memerlukan pembangunan ulang dengan konfigurasi
+ekstraksi aktif dan anotasi acuan.
 
-\subsection{Indeks Sensitivitas}
-\begin{figure}[h!]
-	\centering
-	\begin{tikzpicture}
-		\begin{axis}[
-			ybar,
-			ymin=-1.5,
-			ymax=1.5,
-			symbolic x coords={$\alpha$,$\beta$,$d$,$\gamma$,$\kappa$,$\mu$,$\omega$,$\phi$},
-			xtick=data,
-			nodes near coords,
-			nodes near coords align={vertical},
-			nodes near coords style={font=\footnotesize},
-			grid=major,
-			]
-			\addplot[
-			color=black!70,
-			fill=black!30,
-			] coordinates {
-				($\alpha$,1)
-				($\beta$,0.175)
-				($d$,-0.061)
-				($\gamma$,-0.87)
-				($\kappa$, -0.15)
-				($\mu$, 0.53)
-				($\omega$, 0.34)
-				($\phi$, -0.97)
-			};
-		\end{axis}
-	\end{tikzpicture}
-	\caption{Indeks sensitivitas}
-\end{figure}
+\subsection{Provenance dan Validasi Artefak}
 
-\subsection{Graf}
-\begin{figure}[h!]
-	\centering
-	\begin{tikzpicture}[scale=1]
-		% Nodes
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=left:$v_1$] (v1) at (0,0) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=above:$v_2$] (v2) at (1,1.5) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=above:$v_3$] (v3) at (3,1.5) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=right:$v_4$] (v4) at (4,0) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=below:$v_5$] (v5) at (3,-1.5) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=below:$v_6$] (v6) at (1,-1.5) {};
-		
-		% Edges
-		\draw (v1) -- (v2);
-		\draw (v1) -- (v6);
-		\draw (v1) -- (v4);
-		\draw (v2) -- (v3);
-		\draw (v3) -- (v4);
-		\draw (v4) -- (v5);
-		\draw (v5) -- (v6);
-		\draw (v6) -- (v2);
-		\draw (v6) -- (v5);
-		\draw (v2) -- (v3);
-	\end{tikzpicture}
-	\caption{Graf $G$}
-\end{figure}
+Setiap simpul atau relasi semantik menyimpan atribut sumber, tipe pencocokan,
+teks yang cocok, skor, dan/atau identitas publikasi asal sesuai ketersediaan
+datanya. Selain penyimpanan cloud, proses menghasilkan artefak
+\texttt{academic\_kg\_nodes.csv}, \texttt{academic\_kg\_edges.csv},
+\texttt{academic\_kg\_node\_link.json}, dan
+\texttt{academic\_kg.graphml}. Artefak tersebut memungkinkan audit di luar
+Neo4j dan mendukung reproduksi hasil.
 
-\begin{figure}[h!]
-	\centering
-	\begin{tikzpicture}[scale=1]
-		
-		% Row 1: K1, K2, K3
-		% K1
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt, label=below:$K_1$] (k1) at (0,1) {};
-		
-		% K2
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k21) at (1.5,1) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k22) at (2.2,1) {};
-		\draw (k21) -- (k22);
-		\node at (1.85,0.5) {$K_2$};
-		
-		% K3 (Triangle)
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k31) at (3.8,1) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k32) at (5,1) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k33) at (4.4,2) {};
-		\draw (k31) -- (k32) -- (k33) -- (k31);
-		\node at (4.4,0.5) {$K_3$};
-		
-		% Row 2: K4, K5, K6
-		% K4 (Tetrahedron)
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k41) at (0,-1) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k42) at (1.2,-1) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k43) at (0.6,0) {};
-		\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k44) at (0.6,-0.5) {};
-		\draw (k41) -- (k42) -- (k43) -- (k41);
-		\draw (k41) -- (k44) -- (k42);
-		\draw (k43) -- (k44);
-		\node at (0.6,-1.5) {$K_4$};
-		
-		% K5 (Pentagon)
-		\foreach \i in {0,72,144,216,288} {
-			\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k5\i) at ({3 + cos(\i)}, {-1 + sin(\i)}) {};
-		}
-		\foreach \i in {0,72,144,216,288} {
-			\foreach \j in {0,72,144,216,288} {
-				\ifnum\i<\j
-				\draw (k5\i) -- (k5\j);
-				\fi
-			}
-		}
-		\node at (3,-2.5) {$K_5$};
-		
-		% K6 (Hexagon)
-		\foreach \i in {0,60,120,180,240,300} {
-			\node[circle, draw, fill=black, minimum size=5pt, inner sep=0pt] (k6\i) at ({6 + cos(\i)}, {-1 + sin(\i)}) {};
-		}
-		\foreach \i in {0,60,120,180,240,300} {
-			\foreach \j in {0,60,120,180,240,300} {
-				\ifnum\i<\j
-				\draw (k6\i) -- (k6\j);
-				\fi
-			}
-		}
-		\node at (6,-2.5) {$K_6$};
-		
-	\end{tikzpicture}
-	\caption{Graf Komplit}
-\end{figure}
+Validasi pascapembangunan memastikan bahwa seluruh publikasi memiliki penulis,
+konsep, dan TLDR serta tidak terdapat tipe relasi di luar ontologi aktif. Dengan
+demikian, rumusan masalah pertama telah dijawab pada tingkat implementasi:
+\textit{pipeline} mampu mengubah metadata akademik dan teks ringkas menjadi graf
+yang terstandarisasi dan dapat diaudit. Akan tetapi, akurasi ekstraksi semantik
+belum dapat dinyatakan hanya berdasarkan keberhasilan \textit{quality gate}
+struktural.
 
-\begin{figure}[h!]
-	\centering
-	\begin{tikzpicture}[scale=3, every node/.style={circle, draw, fill=black, inner sep=1.5pt}]
-		% Penempatan simpul berdasarkan estimasi dari gambar
-		\node (v1) at (0,2) [label=above:$v_1$] {};
-		\node (v2) at (-0.5,1.5) [label=left:$v_2$] {};
-		\node (v3) at (-0.8,1) [label=left:$v_3$] {};
-		\node (v4) at (-0.6,0.8) [label=left:$v_4$] {};
-		\node (v5) at (-0.4,1.3) [label=above:$v_5$] {};
-		\node (v6) at (-0.2,1) [label=left:$v_6$] {};
-		\node (v7) at (-0.1,1.5) [label=above:$v_7$] {};
-		\node (v8) at (0.2,1.8) [label=above:$v_8$] {};
-		\node (v9) at (-0.3,0.6) [label=left:$v_9$] {};
-		\node (v10) at (0,0.4) [label=left:$v_{10}$] {};
-		\node (v11) at (0.1,1.2) [label=right:$v_{11}$] {};
-		\node (v12) at (0.4,1.6) [label=right:$v_{12}$] {};
-		\node (v13) at (0.5,1.2) [label=right:$v_{13}$] {};
-		\node (v14) at (0.6,0.9) [label=right:$v_{14}$] {};
-		\node (v15) at (0.3,0.7) [label=right:$v_{15}$] {};
-		\node (v16) at (0.8,0.8) [label=right:$v_{16}$] {};
-		\node (v17) at (1,0.5) [label=right:$v_{17}$] {};
-		\node (v18) at (1.2,0.9) [label=right:$v_{18}$] {};
-		\node (v19) at (1.5,1.2) [label=right:$v_{19}$] {};
-		\node (v20) at (1.1,0.3) [label=right:$v_{20}$] {};
-		\node (v21) at (1.3,0) [label=right:$v_{21}$] {};
-		\node (v22) at (0.8,-0.1) [label=below:$v_{22}$] {};
-		\node (v23) at (1,-0.5) [label=below:$v_{23}$] {};
-		\node (v24) at (0.5,-0.6) [label=below:$v_{24}$] {};
-		\node (v25) at (0.2,-0.8) [label=below:$v_{25}$] {};
-		\node (v26) at (0.6,-1) [label=below:$v_{26}$] {};
-		\node (v27) at (-0.1,-1) [label=below:$v_{27}$] {};
-		\node (v28) at (-0.4,-0.6) [label=below:$v_{28}$] {};
-		\node (v29) at (-0.6,-0.4) [label=left:$v_{29}$] {};
-		\node (v30) at (-0.8,-0.1) [label=left:$v_{30}$] {};
-		\node (v31) at (-0.9,0.2) [label=left:$v_{31}$] {};
-		\node (v32) at (-0.7,-0.7) [label=left:$v_{32}$] {};
-		\node (v33) at (0.1,0) [label=below:$v_{33}$] {};
-		\node (v34) at (-0.2,-0.2) [label=below:$v_{34}$] {};
-		\node (v35) at (0.3,-0.3) [label=below:$v_{35}$] {};
-		\node (v36) at (-0.5,0) [label=left:$v_{36}$] {};
-		\node (v37) at (-0.3,1.8) [label=above:$v_{37}$] {};
-		\node (v38) at (0.6,1.7) [label=above:$v_{38}$] {};
-		\node (v39) at (1,1.8) [label=above:$v_{39}$] {};
-		\node (v40) at (1.4,1.7) [label=above:$v_{40}$] {};
-		\node (v41) at (1.6,1.5) [label=right:$v_{41}$] {};
-		\node (v42) at (1.7,1.9) [label=right:$v_{42}$] {};
-		
-		% Koneksi antar simpul sesuai gambar
-		\draw (v1) -- (v37) -- (v38) -- (v39) -- (v40) -- (v41) -- (v42) -- (v19);
-		\draw (v1) -- (v5) -- (v7) -- (v8) -- (v38);
-		\draw (v2) -- (v3) -- (v4) -- (v6) -- (v9) -- (v10);
-		\draw (v6) -- (v11) -- (v12) -- (v13) -- (v14) -- (v16) -- (v17);
-		\draw (v9) -- (v33) -- (v34) -- (v35) -- (v36);
-		\draw (v31) -- (v4) -- (v30) -- (v29) -- (v28);
-		\draw (v29) -- (v32) -- (v27) -- (v24) -- (v25) -- (v26) -- (v23);
-		\draw (v20) -- (v21) -- (v22);
-		\draw (v18) -- (v41);
-		\draw (v22) -- (v28);
-		\draw (v14) -- (v15);
-		\draw (v9) -- (v10) -- (v15) -- (v16);
-		
-	\end{tikzpicture}
-	\caption{Graf Dual}
-	\label{fig:Dual}
-\end{figure}
-Berdasarkan~\ref{fig:Dual}, graf tersebut dapat direpresentasikan dalam titik dan sisi sebagai berikut:
-\begin{align*}
-	G &= (V(G), E(G))\\
-	V &= \left\lbrace 
-	\begin{array}{llllllll}
-		v_1, & v_2, & v_3, & v_4, & v_5, & v_6, & v_7, & v_8,\\
-		v_9, & v_{10}, & v_{11}, & v_{12}, & v_{13}, & v_{14}, & v_{15}, & v_{16},\\
-		v_{17}, & v_{18}, & v_{19}, & v_{20}, & v_{21}, & v_{22}, & v_{23}, & v_{24},\\
-		v_{25}, & v_{26}, & v_{27}, & v_{28}, & v_{29}, & v_{30}, & v_{31}, & v_{32},\\
-		v_{33}, & v_{34}, & v_{35}, & v_{36}, & v_{37}, & v_{38}, & v_{39}, & v_{40},\\
-		v_{41}, & v_{42}
-	\end{array}
-	\right\rbrace
-\end{align*}
+\section{Hasil \textit{Dual Indexing} dan \textit{Hybrid Retrieval}}
+\label{sec:hasil-dual-indexing}
 
-\begin{align*}
-	E &= \left\lbrace 
-	\begin{array}{llllllll}
-		(v_1v_2), & (v_1v_{37}), & (v_2v_3), & (v_2v_4), & (v_2v_5), & (v_2v_{37}), & (v_3v_4), & (v_3v_{30}),\\
-		(v_4v_5), & (v_4v_6), & (v_4v_{30}), & (v_4v_{31}), & (v_5v_6), & (v_5v_7), & (v_5v_{11}), & (v_5v_{37}),\\
-		(v_6v_9), & (v_6v_{11}), & (v_6v_{31}), & (v_7v_8), & (v_7v_{11}), & (v_7v_{37}), & (v_8v_{11}), & (v_8v_{12}),\\
-		(v_8v_{38}), & (v_9v_{10}), & (v_9v_{11}), & (v_9v_{31}), & (v_9v_{32}), & (v_9v_{33}), & (v_{10}v_{11}), & (v_{10}v_{15}),\\
-		(v_{10}v_{17}), & (v_{10}v_{33}), & (v_{10}v_{35}), & (v_{11}v_{12}), & (v_{11}v_{15}), & (v_{12}v_{13}), & (v_{12}v_{15}), & (v_{12}v_{38}),\\
-		(v_{13}v_{14}), & (v_{13}v_{15}), & (v_{13}v_{16}), & (v_{13}v_{38}), & (v_{13}v_{39}), & (v_{13}v_{41}), & (v_{14}v_{15}), & (v_{14}v_{16}),\\
-		(v_{14}v_{17}), & (v_{14}v_{18}), & (v_{15}v_{16}), & (v_{15}v_{17}), & (v_{17}v_{18}), & (v_{17}v_{20}), & (v_{17}v_{35}), & (v_{18}v_{19}),\\
-		(v_{18}v_{20}), & (v_{18}v_{21}), & (v_{18}v_{41}), & (v_{19}v_{21}), & (v_{19}v_{41}), & (v_{19}v_{42}), & (v_{20}v_{21}), & (v_{20}v_{22}),\\
-		(v_{20}v_{23}), & (v_{20}v_{35}), & (v_{21}v_{23}), & (v_{22}v_{23}), & (v_{22}v_{24}), & (v_{22}v_{25}), & (v_{22}v_{26}), & (v_{22}v_{28}),\\
-		(v_{22}v_{36}), & (v_{23}v_{26}), & (v_{24}v_{25}), & (v_{24}v_{27}), & (v_{25}v_{26}), & (v_{27}v_{28}), & (v_{27}v_{29}), & (v_{28}v_{29}),\\
-		(v_{28}v_{30}), & (v_{28}v_{36}), & (v_{29}v_{31}), & (v_{29}v_{32}), & (v_{29}v_{34}), & (v_{30}v_{31}), & (v_{31}v_{32}), & (v_{32}v_{33}),\\
-		(v_{32}v_{34}), & (v_{33}v_{34}), & (v_{33}v_{35}), & (v_{34}v_{36}), & (v_{35}v_{36}), & (v_{37}v_{38}), & (v_{38}v_{39}), & (v_{39}v_{40}),\\
-		(v_{39}v_{41}), & (v_{40}v_{41}), & (v_{40}v_{42}), & (v_{41}v_{42})
-	\end{array}
-	\right\rbrace
-\end{align*}
+\subsection{Penyimpanan Graf dan Vektor}
 
-\begin{align*}
-	E &= \left\lbrace e_1, e_2, \dots, e_{100} \right\rbrace\\
-	R &= \left\lbrace r_1, r_2, \dots, r_{60} \right\rbrace
-\end{align*}
+Inspeksi Neo4j setelah proses penulisan menemukan 1.253 simpul dan 1.970 relasi,
+sesuai dengan hasil validasi lokal. Kesesuaian jumlah tersebut menunjukkan bahwa
+tidak ada simpul atau relasi yang hilang selama proses pemuatan. Pada sisi
+vektor, empat koleksi dibentuk sesuai fungsi masing-masing. Hasilnya disajikan
+pada Tabel~\ref{tab:koleksi-vektor}.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Hasil penulisan indeks vektor pada Zilliz Cloud}
+    \label{tab:koleksi-vektor}
+    \begin{tabular}{|P{0.26\textwidth}|r|P{0.43\textwidth}|}
+        \hline
+        \textbf{Koleksi} & \textbf{Baris} & \textbf{Fungsi} \\ \hline
+        \texttt{PaperChunk} & 80 & Potongan judul, TLDR, abstrak, dan kata kunci untuk pencarian bukti tekstual \\ \hline
+        \texttt{Entity}\allowbreak\texttt{Embedding} & 1.240 & Representasi semantik simpul selain simpul tahun \\ \hline
+        \texttt{Relationship}\allowbreak\texttt{Embedding} & 1.970 & Representasi semantik seluruh relasi graf \\ \hline
+        \texttt{ContentKeyword} & 51 & Petunjuk kata kunci pada tingkat publikasi \\ \hline
+    \end{tabular}
+\end{table}
+
+Jumlah \texttt{PaperChunk} lebih besar daripada jumlah publikasi karena satu
+publikasi dapat menghasilkan lebih dari satu potongan teks. Rata-rata jumlah
+potongan adalah 1,57 per publikasi. Sebaliknya, koleksi
+\texttt{RelationshipEmbedding} memiliki jumlah yang sama dengan relasi Neo4j
+karena setiap relasi disiapkan sebagai kandidat untuk pencarian jejaring global.
+Kesamaan ruang nama graf pada seluruh koleksi mencegah data eksperimen berbeda
+tercampur dalam satu hasil pencarian.
+
+Arsitektur tersebut tidak menduplikasi fungsi penyimpanan. Neo4j digunakan
+untuk operasi topologis seperti pencarian jalur dan ekspansi tetangga, sedangkan
+Zilliz digunakan untuk pencarian \textit{nearest neighbor}. Penggabungan kedua
+jenis indeks memungkinkan sistem memanfaatkan kedekatan semantik sekaligus
+hubungan eksplisit, yang merupakan dasar pendekatan HybridRAG
+\citep{10.1145/3677052.3698671}.
+
+\subsection{Mode Pengambilan Informasi}
+
+Sistem mengimplementasikan lima mode pengambilan informasi yang dirangkum pada
+Tabel~\ref{tab:mode-retrieval}. Mode tersebut digunakan untuk mengisolasi
+kontribusi masing-masing jalur ketika evaluasi komparatif dilakukan.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Mode pengambilan informasi pada sistem}
+    \label{tab:mode-retrieval}
+    \begin{tabular}{|P{0.20\textwidth}|P{0.68\textwidth}|}
+        \hline
+        \textbf{Mode} & \textbf{Proses} \\ \hline
+        \texttt{naive} & Pencarian semantik langsung pada \texttt{PaperChunk}; menjadi representasi \textit{Vector RAG}. \\ \hline
+        \texttt{subgraph} & Pencocokan kata kunci tingkat rendah ke entitas, dilanjutkan pencarian jalur dan konteks lokal pada Neo4j. \\ \hline
+        \texttt{global} & Pencarian kata kunci tingkat tinggi terhadap \textit{embedding} relasi untuk memperoleh jejaring konseptual lintas publikasi. \\ \hline
+        \texttt{hybrid} & Penggabungan konteks lokal berbasis subgraf dan konteks global berbasis relasi. \\ \hline
+        \texttt{mix} & Penggabungan \texttt{PaperChunk}, petunjuk \texttt{ContentKeyword}, konteks subgraf, dan jejaring global. \\ \hline
+    \end{tabular}
+\end{table}
+
+Mode \texttt{mix} merupakan implementasi paling lengkap. Pertanyaan pengguna
+lebih dahulu dipetakan menjadi kata kunci tingkat rendah dan tinggi. Kata kunci
+tingkat rendah mempertahankan entitas spesifik, seperti nama model, dataset, atau
+dosen. Kata kunci tingkat tinggi memperluas konteks pada domain dan hubungan
+konseptual. Pemisahan ini mengadaptasi mekanisme \textit{clue-guided hierarchical
+keyword retrieval} pada AcademicRAG \citep{chen2025acadrag}. Berbeda dari
+GraphRAG berbasis ringkasan komunitas \citep{edge2025localglobalgraphrag}, sistem
+ini menggunakan pencarian relasi dan subgraf secara langsung karena korpus
+institusional yang digunakan masih relatif kecil.
+
+Setelah kandidat diperoleh, sistem menyusun konteks dengan prioritas bukti
+tekstual langsung dari publikasi, diikuti hubungan graf sebagai konteks
+pendukung. Jawaban diminta menyertakan judul publikasi yang digunakan sebagai
+sumber. Urutan ini penting karena hubungan graf dapat membantu penalaran, tetapi
+klaim faktual seperti nilai akurasi harus tetap didasarkan pada abstrak atau TLDR
+publikasi.
+
+\section{Evaluasi Awal \textit{Question Answering} dan Keterlacakan}
+\label{sec:evaluasi-awal-qa}
+
+\subsection{Skenario Uji Integrasi}
+
+Uji awal dilakukan terhadap empat pertanyaan yang mencakup pencarian model,
+dataset, metode, dan metrik. Setiap kasus memiliki istilah dan sumber yang
+diharapkan. Keempat kasus dinyatakan lulus oleh pemeriksaan otomatis karena
+istilah wajib dan judul sumber ditemukan pada jawaban. Ringkasannya ditampilkan
+pada Tabel~\ref{tab:hasil-smoke-test}.
+
+\begin{table}[htbp]
+    \centering
+    \scriptsize
+    \caption{Hasil \textit{integration smoke test} GraphRAG}
+    \label{tab:hasil-smoke-test}
+    \begin{tabular}{|P{0.25\textwidth}|P{0.45\textwidth}|P{0.16\textwidth}|}
+        \hline
+        \textbf{Kasus} & \textbf{Informasi yang diuji} & \textbf{Hasil pemeriksaan otomatis} \\ \hline
+        Pengenalan ras dan gender & Model Vision Transformer dan dataset DemogPairs & Lulus \\ \hline
+        Prediksi risiko gagal bayar & XGBoost, CatBoost, LightGBM, Optuna, dan AUC & Lulus \\ \hline
+        Deteksi gaya belajar & Chatbot WhatsApp, metode adaptif berbasis aturan, akurasi, dan AUC & Lulus \\ \hline
+        Pemahaman mahasiswa & Analisis sentimen dan Support Vector Machine & Lulus \\ \hline
+    \end{tabular}
+\end{table}
+
+Empat dari empat kasus lulus pemeriksaan cakupan istilah dan sumber. Hasil ini
+menunjukkan bahwa jalur kueri, pengambilan konteks, pemanggilan model, dan
+penyertaan sumber telah terintegrasi. Namun, indikator tersebut bukan
+\textit{Answer Correctness} atau \textit{Faithfulness}. Pemeriksaan berbasis
+kata hanya memastikan bahwa unsur yang diharapkan muncul; pemeriksaan tersebut
+belum menilai apakah setiap klaim benar-benar didukung oleh sumber.
+
+\subsection{Latensi dan Penggunaan Token}
+
+Empat kasus memerlukan waktu total 52,861 detik dengan penggunaan 9.605 token.
+Rata-rata latensi adalah 13,215 detik per kasus dan rata-rata penggunaan token
+adalah 2.401,25 token per kasus. Rinciannya disajikan pada
+Tabel~\ref{tab:kinerja-awal-graphrag}.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Kinerja awal generasi jawaban pada empat kasus}
+    \label{tab:kinerja-awal-graphrag}
+    \begin{tabular}{|P{0.44\textwidth}|r|}
+        \hline
+        \textbf{Metrik} & \textbf{Nilai} \\ \hline
+        Jumlah kasus & 4 \\ \hline
+        Durasi total & 52,861 detik \\ \hline
+        Rata-rata latensi & 13,215 detik/kasus \\ \hline
+        Total token masukan & 8.925 token \\ \hline
+        Total token keluaran & 680 token \\ \hline
+        Total penggunaan token & 9.605 token \\ \hline
+        Rata-rata penggunaan token & 2.401,25 token/kasus \\ \hline
+    \end{tabular}
+\end{table}
+
+Sebagian besar token digunakan untuk konteks masukan, yaitu 8.925 token atau
+92,92\% dari total penggunaan. Temuan ini menunjukkan bahwa optimasi tahap
+selanjutnya perlu difokuskan pada pemeringkatan dan pemangkasan konteks, bukan
+hanya memperpendek jawaban. Konteks yang terlalu luas meningkatkan biaya dan
+berpotensi memperkenalkan bukti yang tidak relevan.
+
+\subsection{Audit Kualitatif Jawaban}
+
+Audit manual menemukan dua masalah yang tidak ditangkap oleh pemeriksaan
+otomatis. Pertama, jawaban pada kasus pengenalan ras dan gender menampilkan
+publikasi yang sama dua kali. Kedua, jawaban pada kasus chatbot gaya belajar
+menyebut Support Vector Machine, padahal bukti langsung menyatakan metode
+\textit{rule-based adaptive} dan inferensi Bayesian. Support Vector Machine
+berasal dari publikasi lain yang ikut terambil sebagai kandidat konteks.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Temuan audit kualitatif uji awal}
+    \label{tab:audit-kualitatif}
+    \begin{tabular}{|P{0.23\textwidth}|P{0.29\textwidth}|P{0.28\textwidth}|}
+        \hline
+        \textbf{Temuan} & \textbf{Dampak} & \textbf{Perbaikan yang diperlukan} \\ \hline
+        Duplikasi publikasi dalam jawaban & Jawaban lebih panjang dan memberi kesan terdapat lebih dari satu bukti & Deduplikasi kandidat dan deduplikasi daftar sumber sebelum generasi \\ \hline
+        Kontaminasi metode dari publikasi lain & Menghasilkan klaim yang tidak didukung publikasi utama & Prioritas bukti langsung, batas per publikasi, dan verifikasi klaim terhadap sumber \\ \hline
+        Kandidat sumber kurang relevan & Menambah token dan risiko distraksi model & \textit{Reranking}, ambang relevansi, dan pemangkasan konteks \\ \hline
+    \end{tabular}
+\end{table}
+
+Temuan tersebut memperlihatkan bahwa keterlacakan sumber telah tersedia secara
+teknis, tetapi \textit{grounding} klaim belum sempurna. MedSumGraph menunjukkan
+bahwa ringkasan pengetahuan terstruktur dan optimasi \textit{prompt} dapat
+membantu menyediakan bukti faktual langsung sekaligus konteks penalaran graf
+\citep{kim2026medsumgraph}. Pada sistem ini, strategi serupa dapat diterapkan
+dengan memisahkan bukti utama dari publikasi dan bukti relasional pendukung,
+kemudian melarang model menggabungkan metode atau metrik antarpublikasi tanpa
+hubungan yang eksplisit.
+
+\subsection{Status Evaluasi RAGAS}
+
+RAGAS memisahkan evaluasi kualitas pengambilan konteks, kesetiaan penggunaan
+konteks, dan kualitas generasi \citep{es-etal-2024-ragas}. Sesuai rancangan pada
+Bab III, evaluasi akhir harus membandingkan \textit{Vector RAG} dan
+\textit{Hybrid GraphRAG} menggunakan 40 pertanyaan dengan \textit{ground truth}
+manual. Tabel~\ref{tab:status-ragas} menegaskan bahwa nilai akhir belum
+ditetapkan pada tahap penulisan ini.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Status evaluasi kuantitatif yang direncanakan}
+    \label{tab:status-ragas}
+    \begin{tabular}{|P{0.24\textwidth}|P{0.16\textwidth}|P{0.21\textwidth}|P{0.13\textwidth}|}
+        \hline
+        \textbf{Metrik} & \textbf{Target} & \textbf{Perbandingan} & \textbf{Status} \\ \hline
+        \textit{Context Precision} & $>0{,}85$ & Vector RAG vs. Hybrid GraphRAG & Belum diukur \\ \hline
+        \textit{Context Recall} & $>0{,}80$ & Vector RAG vs. Hybrid GraphRAG & Belum diukur \\ \hline
+        \textit{Answer Correctness} & $>0{,}75$ & Vector RAG vs. Hybrid GraphRAG & Belum diukur \\ \hline
+        \textit{Faithfulness} & $>0{,}90$ & Vector RAG vs. Hybrid GraphRAG & Belum diukur \\ \hline
+        \textit{Answer Relevancy} & Dilaporkan & Vector RAG vs. Hybrid GraphRAG & Belum diukur \\ \hline
+    \end{tabular}
+\end{table}
+
+Oleh karena itu, rumusan masalah ketiga baru terjawab sebagian. Sistem telah
+menyediakan mekanisme \textit{traceability} melalui judul, URL, identitas
+publikasi, dan provenance pada graf. Akan tetapi, penurunan halusinasi belum
+dapat dinyatakan efektif sebelum nilai \textit{faithfulness}, ketepatan jawaban,
+dan perbandingan terhadap \textit{Vector RAG} tersedia.
 
 \section{Pembahasan}
-Bagian pembahasan merupakan bagian penting dari penelitian dan letaknya terpisah dari subbab hasil penelitian. Bagian pembahasan memuat telaah kritis terhadap penelitian menggunakan perspektif dari berbagai teori yang relevan yang telah dibahas pada Bab II.
+
+\subsection{Kemampuan \textit{Pipeline} Konstruksi Graf}
+
+Hasil konstruksi menunjukkan bahwa pendekatan berbasis dua jalur cocok untuk
+data akademik institusional. Metadata terstruktur membentuk tulang punggung yang
+stabil, sedangkan abstrak, TLDR, dan kata kunci memperkaya lapisan konsep.
+Representasi satu simpul untuk satu publikasi, relasi kepengarangan
+banyak-ke-banyak, dan relasi kolaborasi teragregasi memungkinkan pertanyaan
+faktual maupun relasional dijawab pada graf yang sama.
+
+Kelebihan utama pendekatan ini adalah keterlacakan. Konsep tidak hanya disimpan
+sebagai istilah lepas, tetapi dihubungkan kembali ke publikasi asal dan, jika
+tersedia, ke URI IEEE. Hal ini mendukung tujuan \textit{scholarly knowledge
+graph} untuk merepresentasikan kontribusi ilmiah secara terstruktur
+\citep{TOSI2021101109,10.1145/3383583.3398530}. Akan tetapi, dominasi perluasan
+SKOS memperlihatkan risiko \textit{semantic drift}: konsep tetangga dapat
+meningkatkan cakupan tetapi tidak selalu menjadi pokok bahasan publikasi.
+Evaluasi presisi pemetaan konsep karena itu harus menjadi bagian dari evaluasi
+konstruksi graf, terpisah dari evaluasi GraphRAG.
+
+Jalur GLiNER/GLiREL merupakan perbedaan metodologis terhadap AcademicRAG yang
+lebih bergantung pada ekstraksi berbasis LLM. Model \textit{zero-shot} berpotensi
+mengurangi ketergantungan pada biaya generasi dan memberikan keluaran yang lebih
+terkontrol. Namun, karena jalur tersebut belum aktif pada manifest terverifikasi,
+keunggulan tersebut masih berupa rancangan, bukan hasil eksperimen. Pengujian
+selanjutnya perlu mengukur presisi, \textit{recall}, dan F1 terhadap anotasi
+entitas dan relasi pada sampel abstrak.
+
+\subsection{Kontribusi \textit{Hybrid Vector-Graph Retrieval}}
+
+Hasil \textit{dual indexing} membuktikan bahwa satu korpus dapat disajikan dalam
+dua bentuk yang saling melengkapi. Pencarian vektor efisien untuk menemukan
+potongan teks yang mirip secara semantik dengan pertanyaan, sedangkan pencarian
+graf mempertahankan jalur hubungan yang tidak selalu tampak dari kemiripan teks.
+Temuan ini konsisten dengan HybridRAG, yang menunjukkan bahwa penggabungan graf
+dan vektor dapat mengungguli penggunaan salah satunya secara terpisah pada
+domain keuangan \citep{10.1145/3677052.3698671}.
+
+Sistem yang dibangun tidak identik dengan Microsoft GraphRAG. Microsoft
+GraphRAG membangun komunitas entitas dan ringkasan komunitas untuk menjawab
+pertanyaan global pada korpus besar \citep{edge2025localglobalgraphrag}. Sistem
+penelitian ini mengikuti pola AcademicRAG dengan kata kunci hierarkis, pencarian
+subgraf lokal, dan pencarian relasi global. Pilihan tersebut lebih proporsional
+untuk 51 publikasi karena tidak memerlukan pembangunan dan pemutakhiran
+ringkasan komunitas. Survei GraphRAG juga menegaskan bahwa strategi
+\textit{indexing}, \textit{retrieval}, dan generasi harus disesuaikan dengan
+struktur data dan tipe pertanyaan, bukan diperlakukan sebagai satu algoritma
+tunggal \citep{peng2024graphretrievalaugmentedgenerationsurvey}.
+
+Koleksi \texttt{ContentKeyword} memberikan petunjuk domain sebelum sistem
+membangun kata kunci hierarkis. Mekanisme ini bermanfaat ketika istilah
+pertanyaan pengguna berbeda dari istilah publikasi. Namun, audit awal
+menunjukkan bahwa peningkatan \textit{recall} juga membawa kandidat yang tidak
+relevan. Dengan demikian, kontribusi graf bukan sekadar menambah konteks,
+melainkan menyediakan struktur untuk menyaring dan menjelaskan mengapa konteks
+dipilih. Tanpa \textit{reranking} dan verifikasi klaim, penambahan konteks justru
+dapat meningkatkan risiko kontaminasi.
+
+\subsection{Keterlacakan dan Risiko Halusinasi}
+
+Pada tingkat arsitektur, setiap jawaban dapat dikaitkan dengan judul publikasi
+dan konteks yang diambil. Hal ini merupakan peningkatan keterlacakan dibanding
+generasi LLM tanpa sumber eksternal. Namun, keterlacakan sumber tidak otomatis
+menjamin bahwa setiap kalimat jawaban didukung sumber tersebut. Kasus chatbot
+gaya belajar membuktikan bahwa model dapat menggabungkan metode dari dua
+publikasi yang sama-sama hadir dalam konteks.
+
+Implikasinya, evaluasi halusinasi harus dilakukan pada tingkat klaim. Setiap
+klaim jawaban perlu dipecah dan diperiksa apakah memiliki dukungan pada konteks.
+Metrik \textit{faithfulness} RAGAS sesuai untuk tujuan tersebut, tetapi hasil
+otomatis tetap perlu dilengkapi audit manusia untuk klaim teknis dan angka.
+Penggunaan satu penilai LLM juga dapat memperkenalkan bias model; karena itu,
+konfigurasi penilai, versi model, dan instruksi evaluasi harus dilaporkan.
+
+Secara keseluruhan, hasil awal mendukung kelayakan arsitektur, bukan superioritas
+akhirnya. Sistem mampu membangun graf, menulis indeks ganda, mengambil konteks
+melalui beberapa mode, dan menghasilkan jawaban bersumber. Kesimpulan bahwa
+\textit{Hybrid GraphRAG} mengurangi halusinasi hanya boleh diberikan apabila
+eksperimen 40 pertanyaan menunjukkan perbaikan \textit{faithfulness} dan
+\textit{answer correctness} yang konsisten terhadap \textit{Vector RAG}.
 
 \section{Keterbatasan Penelitian}
-Keterbatasan penelitian merupakan keterbatasan terkait metodologi bukan keterbatasan terkait waktu, biaya, atau logistik penelitian. Keterbatasan penelitian juga tidak terkait jumlah sampel atau variabel penelitian karena hal ini telah ditentukan sebelumnya.
+
+Keterbatasan metodologis penelitian ini adalah sebagai berikut.
+
+\begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=5pt]
+    \item Korpus terverifikasi terdiri atas 51 publikasi dari lingkungan UNESA.
+          Hasil belum dapat digeneralisasikan ke korpus akademik lintas institusi
+          atau lintas disiplin tanpa pengujian tambahan.
+
+    \item Representasi tekstual utama berasal dari judul, abstrak, TLDR, dan kata
+          kunci. Isi penuh artikel, tabel, gambar, rumus, dan bagian metodologi
+          lengkap belum diproses.
+
+    \item Dataset belum menyediakan daftar referensi antarpublikasi sehingga
+          relasi sitasi \texttt{CITES} tidak dapat dibentuk. Penalaran berbasis
+          jejaring sitasi berada di luar hasil penelitian ini.
+
+    \item Jalur GLiNER dan GLiREL belum aktif pada pembangunan yang menjadi dasar
+          pelaporan. Oleh karena itu, kualitas ekstraksi entitas dan relasi
+          \textit{zero-shot} belum dievaluasi.
+
+    \item Pemetaan ke kosakata IEEE banyak menggunakan perluasan tetangga SKOS.
+          Pendekatan ini meningkatkan cakupan, tetapi dapat menghasilkan konsep
+          yang terlalu umum atau hanya berhubungan secara tidak langsung dengan
+          fokus publikasi.
+
+    \item Sejumlah string lama pada artefak masih memperlihatkan masalah
+          normalisasi karakter. Walaupun tidak menghentikan konstruksi, masalah
+          tersebut dapat memengaruhi tampilan, pencocokan leksikal, dan kualitas
+          \textit{embedding}.
+
+    \item Uji awal hanya terdiri atas empat kasus dan menggunakan pemeriksaan
+          istilah/sumber. Ukuran tersebut tidak cukup untuk menyimpulkan
+          ketepatan, \textit{faithfulness}, atau keunggulan terhadap
+          \textit{Vector RAG}.
+
+    \item Sistem bergantung pada penyedia eksternal untuk \textit{embedding} dan
+          LLM. Perubahan model, latensi layanan, batas kuota, atau versi API dapat
+          memengaruhi reproduksibilitas hasil.
+\end{enumerate}
+
+\section{Ringkasan Temuan}
+
+Ringkasan jawaban terhadap rumusan masalah disajikan pada
+Tabel~\ref{tab:ringkasan-rumusan-masalah}.
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Ringkasan hasil berdasarkan rumusan masalah}
+    \label{tab:ringkasan-rumusan-masalah}
+    \begin{tabular}{|P{0.14\textwidth}|P{0.52\textwidth}|P{0.21\textwidth}|}
+        \hline
+        \textbf{Rumusan masalah} & \textbf{Temuan} & \textbf{Status bukti} \\ \hline
+        Pertama & \textit{Pipeline} menghasilkan 1.253 simpul dan 1.970 relasi dari 51 publikasi, 128 dosen, dan 132 relasi dosen--publikasi dengan \textit{quality gate} struktural terpenuhi. & Terjawab pada tingkat implementasi dan struktur \\ \hline
+        Kedua & Neo4j menyimpan struktur graf dan Zilliz menyimpan empat indeks vektor; lima mode \textit{retrieval} menggabungkan bukti tekstual, entitas, relasi, dan subgraf. & Terjawab pada tingkat arsitektur dan integrasi \\ \hline
+        Ketiga & Sumber jawaban dapat ditelusuri, tetapi audit menemukan duplikasi dan satu kontaminasi metode. Evaluasi RAGAS komparatif belum selesai. & Terjawab sebagian; efektivitas belum dapat disimpulkan \\ \hline
+    \end{tabular}
+\end{table}
+
+Hasil tersebut menempatkan penelitian pada kondisi yang jelas: fondasi data,
+graf, indeks, dan alur GraphRAG telah tersedia dan dapat diuji secara
+reproduktif. Tahap yang masih menentukan validitas kesimpulan akhir adalah
+evaluasi komparatif berbasis \textit{ground truth}, khususnya pada
+\textit{faithfulness}, ketepatan jawaban, dan kualitas konteks.

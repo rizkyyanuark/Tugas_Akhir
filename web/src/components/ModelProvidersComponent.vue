@@ -360,10 +360,10 @@
         <a-form-item label="API Key Environment Variable" name="env">
           <a-input
             v-model:value="customProviderModal.data.env"
-            placeholder="Enter environment variable name (e.g., MY_API_KEY)"
+            placeholder="Enter uppercase env var name (e.g., MY_API_KEY)"
           />
           <div class="form-help-text">
-            Enter the name of the environment variable containing the API key.
+            Enter the uppercase environment variable name containing the API key. Do not paste the API key value here.
             Do not enter the API key itself. The actual API key must be defined
             in your <code>.env</code> file.
           </div>
@@ -665,7 +665,7 @@ const customProviderRules = {
   ],
   default: [{ required: true, message: 'Please enter default model', trigger: 'blur' }],
   env: [
-    { required: true, message: 'Please enter the API key environment variable name', trigger: 'blur' },
+    { required: true, message: 'Please enter the uppercase API key environment variable name', trigger: 'blur' },
     {
       pattern: /^[a-zA-Z_][a-zA-Z0-9_]*$/,
       message: 'Environment variable name can only contain letters, numbers, and underscores, and must start with a letter or underscore. Do not enter the API key directly.',

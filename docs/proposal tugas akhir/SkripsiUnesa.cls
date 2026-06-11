@@ -2,7 +2,7 @@
 \NeedsTeXFormat{LaTeX2e}
 \LoadClass[a5paper,10pt,twoside,openright]{book}
 \RequirePackage[hmargin={2.5cm,2cm},vmargin={2.5cm,2cm}]{geometry}
-\RequirePackage{graphicx,sectsty,setspace,amssymb,amsmath,amsthm,amsfonts,newpx,enumitem,indentfirst,tabularx,ifthen,lscape,hyperref,array,mathtools,subcaption,multirow,natbib,tikz,actuarialsymbol,actuarialangle,listings,wrapfig,imakeidx,fancyhdr,pgfplots,setspace,longtable,lipsum}
+\RequirePackage{graphicx,sectsty,setspace,amssymb,amsmath,amsthm,amsfonts,newpx,enumitem,indentfirst,tabularx,ifthen,lscape,hyperref,array,mathtools,subcaption,multirow,natbib,tikz,actuarialsymbol,actuarialangle,listings,wrapfig,imakeidx,fancyhdr,pgfplots,setspace,longtable,lipsum,adjustbox,hhline}
 \RequirePackage[font=small,labelfont=bf]{caption}
 % ==============================================================================
 % GLOSSARIES CONFIGURATION
@@ -13,7 +13,7 @@
 % ==============================================================================
 \RequirePackage[toc,nonumberlist,nopostdot]{glossaries}
 \RequirePackage[indonesian]{babel}
-\usetikzlibrary{shapes, arrows, shapes.multipart, positioning}
+\usetikzlibrary{shapes, arrows, shapes.multipart, positioning, shapes.geometric, shapes.symbols, arrows.meta, calc, fit, backgrounds, shadows}
 \setstretch{1.15}
 
 \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}

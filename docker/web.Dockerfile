@@ -10,11 +10,11 @@
 # ─── DEVELOPMENT ────────────────────────────────────────────
 FROM node:22-alpine AS development
 WORKDIR /app
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@10.11.0
 
 COPY ./web/package*.json ./
-COPY ./web/pnpm-lock.yaml* ./
-RUN pnpm install
+COPY ./web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY ./web .
 EXPOSE 5173
@@ -22,11 +22,11 @@ EXPOSE 5173
 # ─── BUILD (production assets) ──────────────────────────────
 FROM node:22-alpine AS build-stage
 WORKDIR /app
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@10.11.0
 
 COPY ./web/package*.json ./
-COPY ./web/pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || pnpm install
+COPY ./web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY ./web .
 RUN pnpm run build

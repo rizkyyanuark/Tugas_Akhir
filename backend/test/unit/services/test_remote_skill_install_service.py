@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from yuxi.services import remote_skill_install_service as svc
+from yunesa.services import remote_skill_install_service as svc
 
 
 def test_parse_available_skills_from_cli_output() -> None:
@@ -136,7 +136,7 @@ async def test_install_remote_skill_rejects_missing_remote_skill(monkeypatch: py
 
     monkeypatch.setattr(svc, "_run_skills_cli", fake_run_skills_cli)
 
-    with pytest.raises(ValueError, match="不存在 skill"):
+    with pytest.raises(ValueError, match="does not exist in remote repository"):
         await svc.install_remote_skill(
             None,
             source="anthropics/skills",

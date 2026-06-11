@@ -167,7 +167,7 @@ class LightRagKB(KnowledgeBase):
         os.makedirs(working_dir, exist_ok=True)
 
         LITE_MODE = os.environ.get("LITE_MODE", "").lower() in ("true", "1")
-        # create LightRAG 
+        # create LightRAG
         rag = LightRAG(
             working_dir=working_dir,
             workspace=db_id,
@@ -200,7 +200,9 @@ class LightRagKB(KnowledgeBase):
         status_value = status.value if hasattr(status, "value") else status
         if status_value not in {"processed", "preprocessed"}:
             error_msg = status_doc.get("error_msg") or "unknown error"
-            raise ValueError(f"LightRAG entityrelationshipfailed: file_id={file_id}, status={status_value}, error={error_msg}")
+            raise ValueError(
+                f"LightRAG entityrelationshipfailed: file_id={file_id}, status={status_value}, error={error_msg}"
+            )
 
     async def _get_lightrag_instance(self, db_id: str) -> LightRAG | None:
         """getcreate LightRAG """
@@ -312,7 +314,109 @@ class LightRagKB(KnowledgeBase):
             ),
         )
 
-    async def index_text(self, db_id: str, text: str, metadata: dict | None = None, operator_id: str | None = None) -> dict:
+    async def _read_markdown_from_minio(self, markdown_file: str) -> str:
+        """Read parsed markdown from local storage or MinIO-compatible storage."""
+        from pathlib import Path
+
+        if not markdown_file:
+            return ""
+
+        if markdown_file.startswith("mock://"):
+            raise ValueError(f"Unsupported mock markdown source: {markdown_file}")
+
+        local_path = Path(markdown_file)
+        if local_path.exists():
+            return local_path.read_text(encoding="utf-8")
+
+        from yunesa.knowledge.utils.kb_utils import is_minio_url, parse_minio_url
+        from yunesa.storage.minio.client import get_minio_client
+
+        if is_minio_url(markdown_file):
+            bucket_name, object_name = parse_minio_url(markdown_file)
+            data = await get_minio_client().adownload_file(bucket_name, object_name)
+            return data.decode("utf-8") if isinstance(data, bytes) else str(data)
+
+        raise FileNotFoundError(f"Markdown source not found: {markdown_file}")
+
+    async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
+        """Index a parsed file into LightRAG with one write lock per knowledge base."""
+        if db_id not in self.databases_meta:
+            raise ValueError(f"Database {db_id} not found")
+        if file_id not in self.files_meta:
+            raise ValueError(f"File {file_id} not found")
+
+        db_write_lock = await self._get_db_write_lock(db_id)
+        async with db_write_lock:
+            file_meta = self.files_meta[file_id]
+            params = resolve_chunk_processing_params(
+                kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
+                file_processing_params=file_meta.get("processing_params"),
+            )
+            file_meta["processing_params"] = params
+            file_meta["status"] = FileStatus.INDEXING
+            file_meta["updated_at"] = utc_isoformat()
+            if operator_id:
+                file_meta["updated_by"] = operator_id
+            await self._persist_file(file_id)
+            self._add_to_processing_queue(file_id)
+
+            try:
+                rag = await self._get_lightrag_instance(db_id)
+                if not rag:
+                    raise ValueError(f"Failed to get LightRAG instance for {db_id}")
+
+                markdown_content = await self._read_markdown_from_minio(file_meta.get("markdown_file", ""))
+                filename = file_meta.get("filename") or file_meta.get("path") or file_id
+                chunks = chunk_markdown(markdown_content, file_id, filename, params)
+                chunk_input, split_by_character, split_by_character_only = self._prepare_lightrag_insert_payload(chunks)
+                if not chunk_input:
+                    chunk_input = markdown_content
+
+                await rag.ainsert(
+                    input=chunk_input,
+                    ids=file_id,
+                    split_by_character=split_by_character,
+                    split_by_character_only=split_by_character_only,
+                )
+                await self._ensure_doc_processed(rag, file_id)
+
+                file_meta["status"] = FileStatus.INDEXED
+                file_meta["updated_at"] = utc_isoformat()
+                await self._persist_file(file_id)
+                return file_meta
+            except Exception as e:
+                logger.error(f"LightRAG indexing failed for {file_id}: {e}")
+                file_meta["status"] = FileStatus.ERROR_INDEXING
+                file_meta["error"] = str(e)
+                file_meta["updated_at"] = utc_isoformat()
+                await self._persist_file(file_id)
+                raise
+            finally:
+                self._remove_from_processing_queue(file_id)
+
+    async def update_content(self, db_id: str, file_ids: list[str], params: dict | None = None) -> list[dict]:
+        """Update processing parameters and re-index the selected files."""
+        results: list[dict] = []
+        for file_id in file_ids:
+            if params:
+                await self.update_file_params(db_id, file_id, params)
+            await self.delete_file_chunks_only(db_id, file_id)
+            results.append(await self.index_file(db_id, file_id))
+        return results
+
+    async def delete_file_chunks_only(self, db_id: str, file_id: str) -> None:
+        """Delete only LightRAG chunks for one file, keeping metadata intact."""
+        rag = await self._get_lightrag_instance(db_id)
+        if rag and hasattr(rag, "adelete_by_doc_id"):
+            await rag.adelete_by_doc_id(file_id)
+
+    async def index_text(
+        self,
+        db_id: str,
+        text: str,
+        metadata: dict | None = None,
+        operator_id: str | None = None,
+    ) -> dict:
         """
         Index direct text content into LightRAG.
 

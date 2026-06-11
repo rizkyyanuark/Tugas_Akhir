@@ -27,8 +27,12 @@ def __getattr__(name: str):
     if name in {"graph_base", "knowledge_base"}:
         knowledge = import_module("yunesa.knowledge")
         return getattr(knowledge, name)
+    if name in {"agents", "knowledge", "services"}:
+        module = import_module(f"yunesa.{name}")
+        globals()[name] = module
+        return module
     raise AttributeError(f"module 'yunesa' has no attribute {name!r}")
 
 
 def __dir__():
-    return sorted(set(globals()) | {"graph_base", "knowledge_base"})
+    return sorted(set(globals()) | {"agents", "graph_base", "knowledge", "knowledge_base", "services"})

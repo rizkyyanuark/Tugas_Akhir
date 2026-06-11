@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from yuxi.repositories.conversation_repository import ConversationRepository, MAX_CONVERSATION_TITLE_LENGTH
+from yunesa.repositories.conversation_repository import ConversationRepository, MAX_CONVERSATION_TITLE_LENGTH
 
 
 def test_normalize_title_truncates_when_too_long():

@@ -150,9 +150,9 @@ def deduplicate_papers(
 
     # 3. Fuzzy dedup via trigram Jaccard (O(N) amortized with inverted index)
     logger.info(f"   Fuzzy dedup on {len(df)} papers...")
-    trigram_index: Dict[str, Set[int]] = defaultdict(set)
-    trigram_cache: Dict[int, Set[str]] = {}
-    dup_indices: Set[int] = set()
+    trigram_index: dict[str, set[int]] = defaultdict(set)
+    trigram_cache: dict[int, set[str]] = {}
+    dup_indices: set[int] = set()
 
     for idx, row in df.iterrows():
         norm = row['_title_norm']

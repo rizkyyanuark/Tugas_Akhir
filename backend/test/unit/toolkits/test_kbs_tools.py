@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from yuxi.agents.toolkits.kbs import tools
+from yunesa.agents.toolkits.kbs import tools
 
 
 def _query_kb_callable():
@@ -67,12 +67,12 @@ async def test_query_kb_injects_filepath_into_chunk_metadata(monkeypatch) -> Non
         return retrieval_chunks
 
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
+        "yunesa.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
         _fake_inject,
     )
 
     runtime = SimpleNamespace(context=SimpleNamespace())
-    result = await _run_query_kb(kb_name="FAQ", query_text="auth", runtime=runtime)
+    result = await _run_query_kb(kb_name="FAQ", query_text="auth", retrieval_mode="naive", runtime=runtime)
 
     assert result[0]["metadata"]["filepath"] == "/home/gem/kbs/FAQ/API/auth-guide.pdf"
     assert result[0]["metadata"]["parsed_path"] == "/home/gem/kbs/FAQ/parsed/API/auth-guide.pdf.md"
@@ -110,12 +110,12 @@ async def test_query_kb_allows_dify_knowledge_base(monkeypatch) -> None:
 
     monkeypatch.setattr(tools, "_resolve_visible_knowledge_bases_for_query", _fake_visible_kbs)
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
+        "yunesa.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
         pytest.fail,
     )
 
     runtime = SimpleNamespace(context=SimpleNamespace())
-    result = await _run_query_kb(kb_name="FAQ", query_text="auth", runtime=runtime)
+    result = await _run_query_kb(kb_name="FAQ", query_text="auth", retrieval_mode="naive", runtime=runtime)
 
     assert result == [
         {
@@ -152,12 +152,12 @@ async def test_query_kb_returns_lightrag_result_without_filepath_injection(monke
 
     monkeypatch.setattr(tools, "_resolve_visible_knowledge_bases_for_query", _fake_visible_kbs)
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
+        "yunesa.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
         pytest.fail,
     )
 
     runtime = SimpleNamespace(context=SimpleNamespace())
-    result = await _run_query_kb(kb_name="FAQ", query_text="auth", runtime=runtime)
+    result = await _run_query_kb(kb_name="FAQ", query_text="auth", retrieval_mode="naive", runtime=runtime)
 
     assert result == "LightRAG context"
 
@@ -200,12 +200,12 @@ async def test_query_kb_uses_backend_filepath_injector(monkeypatch) -> None:
 
     monkeypatch.setattr(tools, "_resolve_visible_knowledge_bases_for_query", _fake_visible_kbs)
     monkeypatch.setattr(
-        "yuxi.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
+        "yunesa.agents.backends.knowledge_base_backend.inject_filepaths_into_retrieval_result",
         _fake_inject,
     )
 
     runtime = SimpleNamespace(context=SimpleNamespace())
-    result = await _run_query_kb(kb_name="FAQ", query_text="auth", runtime=runtime)
+    result = await _run_query_kb(kb_name="FAQ", query_text="auth", retrieval_mode="naive", runtime=runtime)
 
     assert result[0]["metadata"]["filepath"] == "/home/gem/kbs/FAQ/auth-guide.pdf"
     assert result[0]["metadata"]["parsed_path"] == "/home/gem/kbs/FAQ/parsed/auth-guide.pdf.md"

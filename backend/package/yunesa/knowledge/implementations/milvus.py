@@ -31,6 +31,7 @@ from yunesa.utils.datetime_utils import utc_isoformat
 MILVUS_AVAILABLE = True
 CONTENT_SPARSE_FIELD = "content_sparse"
 CONTENT_ANALYZER_PARAMS = {"type": "chinese"}
+DEFAULT_MILVUS_DB_NAME = "default"
 
 
 class MilvusKB(KnowledgeBase):
@@ -54,7 +55,7 @@ class MilvusKB(KnowledgeBase):
         # self.milvus_port = kwargs.get('milvus_port', int(os.getenv('MILVUS_PORT', '19530')))
         self.milvus_token = kwargs.get("milvus_token", os.getenv("MILVUS_TOKEN") or "")
         self.milvus_uri = kwargs.get("milvus_uri", os.getenv("MILVUS_URI") or "http://localhost:19530")
-        self.milvus_db = kwargs.get("milvus_db") or os.getenv("MILVUS_DB_NAME") or "yunesa_know"
+        self.milvus_db = kwargs.get("milvus_db") or os.getenv("MILVUS_DB_NAME") or DEFAULT_MILVUS_DB_NAME
 
         # connectname
         self.connection_alias = f"milvus_{hashstr(work_dir, 6)}"
@@ -82,19 +83,46 @@ class MilvusKB(KnowledgeBase):
     def _init_connection(self):
         """initialize Milvus connect"""
         try:
-            # connect Milvus/Zilliz to the configured database explicitly
-            connections.connect(
-                alias=self.connection_alias,
-                uri=self.milvus_uri,
-                token=self.milvus_token,
-                db_name=self.milvus_db,
-            )
+            candidates: list[str | None] = []
+            configured_db = str(self.milvus_db or "").strip()
+            if configured_db and configured_db != DEFAULT_MILVUS_DB_NAME:
+                candidates.append(configured_db)
+            candidates.append(None)
+            if DEFAULT_MILVUS_DB_NAME not in candidates:
+                candidates.append(DEFAULT_MILVUS_DB_NAME)
+
+            last_error: Exception | None = None
+            self._using_implicit_database = False
+            for candidate_db in candidates:
+                try:
+                    connect_kwargs = {
+                        "alias": self.connection_alias,
+                        "uri": self.milvus_uri,
+                        "token": self.milvus_token,
+                    }
+                    if candidate_db:
+                        connect_kwargs["db_name"] = candidate_db
+                    connections.connect(**connect_kwargs)
+                    if candidate_db != configured_db:
+                        logger.warning(
+                            f"Milvus database '{configured_db or '<empty>'}' is unavailable, "
+                            f"using {candidate_db or '<implicit>'}: {last_error}"
+                        )
+                    self.milvus_db = candidate_db or DEFAULT_MILVUS_DB_NAME
+                    self._using_implicit_database = candidate_db is None
+                    break
+                except Exception as e:
+                    last_error = e
+            else:
+                raise last_error or RuntimeError("Unable to connect to Milvus")
 
             # createdatabase（does not exist）
             try:
-                if self.milvus_db not in db.list_database(using=self.connection_alias):
+                if self._using_implicit_database:
+                    logger.info("Using implicit Milvus database; skipping database management calls")
+                elif self.milvus_db not in db.list_database(using=self.connection_alias):
                     db.create_database(self.milvus_db, using=self.connection_alias)
-                db.using_database(self.milvus_db, using=self.connection_alias)
+                    db.using_database(self.milvus_db, using=self.connection_alias)
             except Exception as e:
                 logger.warning(f"Database operation failed, using default: {e}")
 

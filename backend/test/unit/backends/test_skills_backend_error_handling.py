@@ -3,13 +3,13 @@ from __future__ import annotations
 from deepagents.backends import FilesystemBackend
 import pytest
 
-from yuxi.agents.backends.skills_backend import SelectedSkillsReadonlyBackend
+from yunesa.agents.backends.skills_backend import SelectedSkillsReadonlyBackend
 
 
 def test_skills_backend_read_outside_root_returns_error_message(monkeypatch) -> None:
     def _fake_read(self, file_path: str, offset: int = 0, limit: int = 2000):
         raise ValueError(
-            "Path:/app/package/yuxi/agents/skills/buildin/reporter "
+            "Path:/app/package/yunesa/agents/skills/buildin/reporter "
             "outside root directory: /app/saves/skills"
         )
 

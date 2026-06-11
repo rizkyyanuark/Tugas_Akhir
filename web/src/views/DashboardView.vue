@@ -5,7 +5,11 @@
     <!-- Modern Top Statistics Bar -->
     <div class="modern-stats-header">
       <StatusBar />
-      <StatsOverviewComponent :basic-stats="basicStats" @open-feedback="handleOpenFeedback" />
+      <StatsOverviewComponent
+        :basic-stats="basicStats"
+        :academic-stats="allStatsData.academic"
+        @open-feedback="handleOpenFeedback"
+      />
     </div>
 
     <!-- Main Content Area with Grid Layout -->
@@ -40,18 +44,23 @@
         />
       </div>
 
-      <!-- Knowledge Base Usage - Occupation 1x1 Grid -->
-      <div class="grid-item knowledge-stats">
-        <KnowledgeStatsComponent
-          :knowledge-stats="allStatsData?.knowledge"
+      <!-- Canonical academic corpus quality -->
+      <div class="grid-item academic-corpus">
+        <AcademicCorpusStatsComponent
+          :academic-stats="allStatsData.academic"
           :loading="loading"
-          ref="knowledgeStatsRef"
+          ref="academicCorpusRef"
         />
       </div>
 
-      <!-- Trending Topics Analysis - Occupation 1x1 Grid -->
-      <div class="grid-item trending-topics">
-        <TrendingTopicsComponent />
+      <!-- AuraDB and Zilliz index health -->
+      <div class="grid-item academic-index">
+        <AcademicIndexStatusComponent
+          :academic-stats="allStatsData.academic"
+          :loading="loading"
+          ref="academicIndexRef"
+          @refresh="loadAllStats"
+        />
       </div>
     </div>
 
@@ -69,11 +78,11 @@ import { dashboardApi } from '@/apis/dashboard_api'
 import StatusBar from '@/components/StatusBar.vue'
 import UserStatsComponent from '@/components/dashboard/UserStatsComponent.vue'
 import ToolStatsComponent from '@/components/dashboard/ToolStatsComponent.vue'
-import KnowledgeStatsComponent from '@/components/dashboard/KnowledgeStatsComponent.vue'
 import AgentStatsComponent from '@/components/dashboard/AgentStatsComponent.vue'
 import CallStatsComponent from '@/components/dashboard/CallStatsComponent.vue'
 import StatsOverviewComponent from '@/components/dashboard/StatsOverviewComponent.vue'
-import TrendingTopicsComponent from '@/components/dashboard/TrendingTopicsComponent.vue'
+import AcademicCorpusStatsComponent from '@/components/dashboard/AcademicCorpusStatsComponent.vue'
+import AcademicIndexStatusComponent from '@/components/dashboard/AcademicIndexStatusComponent.vue'
 import FeedbackModalComponent from '@/components/dashboard/FeedbackModalComponent.vue'
 
 // Component references
@@ -85,7 +94,8 @@ const allStatsData = ref({
   users: null,
   tools: null,
   knowledge: null,
-  agents: null
+  agents: null,
+  academic: null
 })
 
 // Loading state
@@ -95,8 +105,9 @@ const loading = ref(false)
 const callStatsRef = ref(null)
 const userStatsRef = ref(null)
 const toolStatsRef = ref(null)
-const knowledgeStatsRef = ref(null)
 const agentStatsRef = ref(null)
+const academicCorpusRef = ref(null)
+const academicIndexRef = ref(null)
 
 // Load all statistics data
 const loadAllStats = async () => {
@@ -109,11 +120,13 @@ const loadAllStats = async () => {
       users: response.users,
       tools: response.tools,
       knowledge: response.knowledge,
-      agents: response.agents
+      agents: response.agents,
+      academic: response.academic
     }
 
-    console.log('Dashboard data loaded:', response)
-    message.success('Data loaded successfully')
+    if (response.failures?.length) {
+      message.warning(`Some dashboard sources are unavailable: ${response.failures.join(', ')}`)
+    }
   } catch (error) {
     console.error('Failed to load statistics:', error)
     message.error('Failed to load statistics')
@@ -139,10 +152,11 @@ const handleOpenFeedback = () => {
 // Cleanup function for charts
 const cleanupCharts = () => {
   if (userStatsRef.value?.cleanup) userStatsRef.value.cleanup()
-  if (toolStatsRef.value?.cleanup) userStatsRef.value.cleanup()
-  if (knowledgeStatsRef.value?.cleanup) knowledgeStatsRef.value.cleanup()
+  if (toolStatsRef.value?.cleanup) toolStatsRef.value.cleanup()
   if (agentStatsRef.value?.cleanup) agentStatsRef.value.cleanup()
   if (callStatsRef.value?.cleanup) callStatsRef.value.cleanup()
+  if (academicCorpusRef.value?.cleanup) academicCorpusRef.value.cleanup()
+  if (academicIndexRef.value?.cleanup) academicIndexRef.value.cleanup()
 }
 
 // Initialization
@@ -218,16 +232,16 @@ onUnmounted(() => {
       min-height: 350px;
     }
 
-    &.knowledge-stats {
+    &.academic-corpus {
       grid-column: 3 / 4;
       grid-row: 2 / 3;
       min-height: 350px;
     }
 
-    &.trending-topics {
+    &.academic-index {
       grid-column: 1 / 4;
       grid-row: 3 / 4;
-      min-height: 250px;
+      min-height: 320px;
     }
   }
 }
@@ -374,10 +388,15 @@ onUnmounted(() => {
         min-height: 300px;
       }
 
-      &.knowledge-stats {
+      &.academic-corpus {
         grid-column: 2 / 3;
         grid-row: 3 / 4;
         min-height: 300px;
+      }
+
+      &.academic-index {
+        grid-column: 1 / 3;
+        grid-row: 4 / 5;
       }
     }
   }
@@ -397,7 +416,8 @@ onUnmounted(() => {
       &.agent-stats,
       &.user-stats,
       &.tool-stats,
-      &.knowledge-stats {
+      &.academic-corpus,
+      &.academic-index {
         grid-column: 1 / 2;
         grid-row: auto;
         min-height: 300px;

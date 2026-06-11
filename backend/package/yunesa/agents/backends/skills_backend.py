@@ -4,7 +4,14 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from deepagents.backends import FilesystemBackend
-from deepagents.backends.protocol import EditResult, FileDownloadResponse, FileInfo, FileUploadResponse, WriteResult
+from deepagents.backends.protocol import (
+    EditResult,
+    FileDownloadResponse,
+    FileInfo,
+    FileUploadResponse,
+    ReadResult,
+    WriteResult,
+)
 
 from yunesa.services.skill_service import get_skills_root_dir, is_valid_skill_slug
 
@@ -59,9 +66,9 @@ class SelectedSkillsReadonlyBackend(FilesystemBackend):
             return result
         return infos
 
-    def read(self, file_path: str, offset: int = 0, limit: int = 2000) -> str:
+    def read(self, file_path: str, offset: int = 0, limit: int = 2000) -> ReadResult:
         if not self._is_allowed_file(file_path):
-            return "Access denied: file is outside selected skills."
+            return ReadResult(error="Access denied: file is outside selected skills.", file_data=None)
         return super().read(file_path, offset=offset, limit=limit)
 
     def grep_raw(self, pattern: str, path: str | None = None, glob: str | None = None) -> list[dict] | str:

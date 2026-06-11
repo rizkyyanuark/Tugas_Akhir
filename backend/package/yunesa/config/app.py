@@ -29,6 +29,18 @@ from yunesa.config.static.models import (
 from yunesa.utils.logging_config import logger
 
 
+LEGACY_MODEL_ALIASES: dict[str, str] = {
+    "siliconflow/Pro/deepseek-ai/DeepSeek-V3.2": "siliconflow/deepseek-ai/DeepSeek-V3.2",
+    "siliconflow/Pro/MiniMaxAI/MiniMax-M2.5": "siliconflow/MiniMaxAI/MiniMax-M2.5",
+    "siliconflow/Pro/zai-org/GLM-5": "siliconflow/zai-org/GLM-5",
+    "siliconflow/Pro/moonshotai/Kimi-K2.5": "siliconflow/moonshotai/Kimi-K2.5",
+    "siliconflow/BAAI/bge-m3": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
+    "siliconflow/Pro/BAAI/bge-m3": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
+    "siliconflow/BAAI/bge-reranker-v2-m3": "siliconflow/Qwen/Qwen3-Reranker-0.6B",
+    "siliconflow/Pro/BAAI/bge-reranker-v2-m3": "siliconflow/Qwen/Qwen3-Reranker-0.6B",
+}
+
+
 class Config(BaseModel):
     """Application configuration class."""
 
@@ -53,23 +65,23 @@ class Config(BaseModel):
     # Model configuration
     # ============================================================
     default_model: str = Field(
-        default="siliconflow/Pro/MiniMaxAI/MiniMax-M2.5",
+        default="groq/llama-3.3-70b-versatile",
         description="Default chat model",
     )
     fast_model: str = Field(
-        default="siliconflow/Pro/MiniMaxAI/MiniMax-M2.5",
+        default="groq/llama-3.1-8b-instant",
         description="Fast response model",
     )
     embed_model: str = Field(
-        default="siliconflow/Pro/BAAI/bge-m3",
+        default="siliconflow/Qwen/Qwen3-Embedding-0.6B",
         description="default Embedding model",
     )
     reranker: str = Field(
-        default="siliconflow/Pro/BAAI/bge-reranker-v2-m3",
+        default="siliconflow/Qwen/Qwen3-Reranker-0.6B",
         description="default Re-Ranker model",
     )
     content_guard_llm_model: str = Field(
-        default="siliconflow/Pro/MiniMaxAI/MiniMax-M2.5",
+        default="groq/llama-3.1-8b-instant",
         description="Content guard LLM model",
     )
 
@@ -141,6 +153,7 @@ class Config(BaseModel):
         self._setup_paths()
         self._load_user_config()
         self._load_custom_providers()
+        self._normalize_deprecated_model_config()
         self._handle_environment()
 
     def _setup_paths(self) -> None:
@@ -228,10 +241,60 @@ class Config(BaseModel):
         for provider, provider_data in (providers_data or {}).items():
             try:
                 payload = dict(provider_data or {})
+                if "env" in payload and payload["env"]:
+                    payload["env"] = self._normalize_provider_env_name(payload["env"])
                 payload["custom"] = True
                 self.model_names[provider] = ChatModelProvider(**payload)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"Skip invalid custom provider {provider}: {e}")
+
+    def _normalize_deprecated_model_config(self) -> None:
+        """Replace stale model IDs left by older local configuration files."""
+        for field_name in (
+            "default_model",
+            "fast_model",
+            "embed_model",
+            "reranker",
+            "content_guard_llm_model",
+        ):
+            value = getattr(self, field_name, "")
+            replacement = LEGACY_MODEL_ALIASES.get(value)
+            if replacement:
+                logger.warning(
+                    "Migrating deprecated model config %s: %s -> %s",
+                    field_name,
+                    value,
+                    replacement,
+                )
+                setattr(self, field_name, replacement)
+
+        for provider, provider_info in list(self.model_names.items()):
+            if provider == "siliconflow":
+                provider_info.default = provider_info.default.removeprefix("Pro/")
+                provider_info.models = [
+                    model.removeprefix("Pro/") for model in provider_info.models
+                ]
+
+    @staticmethod
+    def _normalize_provider_env_name(env_value: str) -> str:
+        """Return a clean env var name and reject direct API-key values."""
+        env_name = str(env_value or "").strip()
+        if env_name.startswith("${") and env_name.endswith("}"):
+            env_name = env_name[2:-1].strip()
+
+        if env_name in {"NO_API_KEY", "no_api_key"}:
+            return "NO_API_KEY"
+
+        if not re.match(r"^[A-Z_][A-Z0-9_]*$", env_name):
+            raise ValueError(
+                "Invalid environment variable name for 'env'. "
+                "Use an uppercase environment variable name with letters, numbers, "
+                "and underscores only. "
+                "Do not enter an API key directly; define it in .env/GitHub Secrets "
+                "and enter only the variable name here, for example MY_PROVIDER_API_KEY."
+            )
+
+        return env_name
 
     def _handle_environment(self) -> None:
         """Process environment variables and runtime status."""
@@ -254,9 +317,7 @@ class Config(BaseModel):
                 self.model_provider_status[provider] = True
             else:
                 api_key = os.environ.get(env_var)
-                # If a value is found, the environment variable exists or a direct value is configured.
-                self.model_provider_status[provider] = bool(
-                    api_key or info.custom)
+                self.model_provider_status[provider] = bool(api_key)
 
             # Check web search availability.
         if os.getenv("TAVILY_API_KEY"):
@@ -482,22 +543,8 @@ class Config(BaseModel):
             Whether the add operation was successful.
         """
         try:
-            # Process environment variable value by removing ${} wrapper.
             if "env" in provider_data and provider_data["env"]:
-                env_value = provider_data["env"]
-                if isinstance(env_value, str) and env_value.startswith("${") and env_value.endswith("}"):
-                    provider_data["env"] = env_value[2:-1]
-
-            # Validate that env is a proper environment variable name, not a raw API key.
-            env_name = provider_data.get("env", "")
-            if env_name and not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", env_name):
-                raise ValueError(
-                    "Invalid environment variable name for 'env'. "
-                    "It must contain only letters, numbers, and underscores, "
-                    "and start with a letter or underscore. "
-                    "Do not enter the API key directly — define it in your .env file "
-                    "and enter only the variable name here (e.g., MY_API_KEY)."
-                )
+                provider_data["env"] = self._normalize_provider_env_name(provider_data["env"])
 
             # Ensure it is marked as a custom provider.
             provider_data["custom"] = True
@@ -534,22 +581,8 @@ class Config(BaseModel):
             Whether the update operation was successful.
         """
         try:
-            # Process environment variable value by removing ${} wrapper.
             if "env" in provider_data and provider_data["env"]:
-                env_value = provider_data["env"]
-                if isinstance(env_value, str) and env_value.startswith("${") and env_value.endswith("}"):
-                    provider_data["env"] = env_value[2:-1]
-
-            # Validate that env is a proper environment variable name, not a raw API key.
-            env_name = provider_data.get("env", "")
-            if env_name and not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", env_name):
-                raise ValueError(
-                    "Invalid environment variable name for 'env'. "
-                    "It must contain only letters, numbers, and underscores, "
-                    "and start with a letter or underscore. "
-                    "Do not enter the API key directly — define it in your .env file "
-                    "and enter only the variable name here (e.g., MY_API_KEY)."
-                )
+                provider_data["env"] = self._normalize_provider_env_name(provider_data["env"])
 
             # Check whether provider exists and is custom.
             if provider_id not in self.model_names:

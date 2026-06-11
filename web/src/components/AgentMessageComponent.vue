@@ -32,8 +32,17 @@
       </div>
 
       <!-- Message content -->
+      <div v-if="technicalError" class="technical-error-card" role="alert">
+        <div class="technical-error-icon">!</div>
+        <div class="technical-error-body">
+          <div class="technical-error-title">{{ technicalError.title }}</div>
+          <p class="technical-error-description">{{ technicalError.description }}</p>
+          <div class="technical-error-action">{{ technicalError.action }}</div>
+        </div>
+      </div>
+
       <MdPreview
-        v-if="parsedData.content"
+        v-else-if="parsedData.content"
         ref="editorRef"
         editorId="preview-only"
         :theme="theme"
@@ -47,7 +56,7 @@
       <div v-else-if="parsedData.reasoning_content" class="empty-block"></div>
 
       <!-- Error hint block -->
-      <div v-if="displayError" class="error-hint">
+      <div v-if="displayError && !technicalError" class="error-hint">
         <span v-if="getErrorMessage">{{ getErrorMessage }}</span>
         <span v-else-if="message.error_type === 'interrupted'"
           >Response generation was interrupted</span
@@ -256,9 +265,58 @@ const validToolCalls = computed(() => {
   })
 })
 
+const classifyTechnicalError = (content, messageObject) => {
+  const text = String(
+    content ||
+      messageObject?.error_message ||
+      messageObject?.extra_metadata?.error_message ||
+      ''
+  ).trim()
+  if (!text) return null
+
+  const lower = text.toLowerCase()
+  const isProviderConfigError =
+    lower.includes('provider') && lower.includes('not configured')
+  const isModelRegistryError =
+    lower.includes('model does not exist') ||
+    lower.includes('badrequesterror') ||
+    lower.includes('not registered for this provider') ||
+    lower.includes('selected model') && lower.includes('provider')
+  const isAuthError =
+    lower.includes('authentication failed') ||
+    lower.includes('invalid api key') ||
+    lower.includes('api key') && (lower.includes('missing') || lower.includes('invalid'))
+  const isProviderRuntimeError =
+    lower.includes('model call failed') ||
+    lower.includes('failed after') && lower.includes('attempt')
+
+  if (isProviderConfigError || isModelRegistryError || isAuthError || isProviderRuntimeError) {
+    if (isAuthError || isProviderConfigError) {
+      return {
+        title: 'AI provider is not configured',
+        description:
+          'The selected provider cannot be used because its API key is missing, invalid, or not loaded by the service.',
+        action: 'Admin action: check Settings > Model Providers, update .env/GitHub Secrets, then restart the service.'
+      }
+    }
+
+    return {
+      title: 'Selected model is unavailable',
+      description:
+        'The selected model was rejected by the provider or is not registered in the model list.',
+      action: 'Admin action: choose an available model in Settings > Model Providers, then resend the message.'
+    }
+  }
+
+  return null
+}
+
 const parsedData = computed(() => {
   // Start with default values from the prop to avoid mutation.
-  let content = props.message.content.trim() || ''
+  let content =
+    typeof props.message.content === 'string'
+      ? props.message.content.trim()
+      : String(props.message.content || '').trim()
   let reasoning_content = props.message.additional_kwargs?.reasoning_content || ''
 
   if (reasoning_content) {
@@ -284,6 +342,8 @@ const parsedData = computed(() => {
     reasoning_content
   }
 })
+
+const technicalError = computed(() => classifyTechnicalError(parsedData.value.content, props.message))
 </script>
 
 <style lang="less" scoped>
@@ -443,6 +503,57 @@ const parsedData = computed(() => {
 
   .assistant-message {
     width: 100%;
+  }
+
+  .technical-error-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    max-width: 780px;
+    margin: 10px 0 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--color-error-100);
+    border-radius: 10px;
+    background: var(--color-error-50);
+    color: var(--gray-900);
+  }
+
+  .technical-error-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-error-700);
+    background: var(--color-error-100);
+  }
+
+  .technical-error-body {
+    min-width: 0;
+  }
+
+  .technical-error-title {
+    font-weight: 650;
+    font-size: 15px;
+    line-height: 22px;
+    color: var(--color-error-700);
+  }
+
+  .technical-error-description {
+    margin: 3px 0 0;
+    color: var(--gray-700);
+    line-height: 22px;
+  }
+
+  .technical-error-action {
+    margin-top: 8px;
+    color: var(--gray-600);
+    font-size: 13px;
+    line-height: 20px;
   }
 
   .error-hint {

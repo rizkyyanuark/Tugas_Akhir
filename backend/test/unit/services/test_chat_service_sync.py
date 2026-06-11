@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from langchain.messages import AIMessage, HumanMessage
 
-from yuxi.services import chat_service as svc
+from yunesa.services import chat_service as svc
 
 
 class _FakeConvRepo:
@@ -100,7 +100,7 @@ async def test_agent_chat_uses_invoke_messages_and_persists_langgraph_state(monk
         return SimpleNamespace(
             callbacks=["handler-1"],
             metadata={"langfuse_user_id": kwargs["current_user"].id, "langfuse_session_id": kwargs["thread_id"]},
-            tags=["yuxi", "chat"],
+            tags=["yunesa", "chat"],
             trace_id="trace-seeded",
         )
 
@@ -130,7 +130,7 @@ async def test_agent_chat_uses_invoke_messages_and_persists_langgraph_state(monk
     assert result["response"] == "Hi from invoke"
     assert result["thread_id"] == "thread-1"
     assert result["request_id"] == "req-1"
-    assert result["agent_state"] == {"todos": ["todo-1"], "files": {}, "artifacts": []}
+    assert result["agent_state"] == {"todos": ["todo-1"], "files": {}, "artifacts": [], "citations": []}
 
     invoke_messages = calls["invoke_messages"]
     assert isinstance(invoke_messages, list)
@@ -141,7 +141,7 @@ async def test_agent_chat_uses_invoke_messages_and_persists_langgraph_state(monk
     assert calls["invoke_kwargs"] == {
         "callbacks": ["handler-1"],
         "metadata": {"langfuse_user_id": "user-1", "langfuse_session_id": "thread-1"},
-        "tags": ["yuxi", "chat"],
+        "tags": ["yunesa", "chat"],
     }
     assert calls["saved_state"]["thread_id"] == "thread-1"
     assert calls["saved_state"]["config_dict"] == {"configurable": {"thread_id": "thread-1", "user_id": "user-1"}}
@@ -160,7 +160,7 @@ async def test_agent_chat_sync_returns_finished_even_when_state_has_interrupt(mo
             return SimpleNamespace(
                 values={
                     "messages": [AIMessage(content="Need input later")],
-                    "__interrupt__": [{"questions": [{"question": "继续吗？"}]}],
+                    "__interrupt__": [{"questions": [{"question": "Continue?"}]}],
                 }
             )
 

@@ -3,26 +3,21 @@
     <div class="stats-grid">
       <div class="stat-card primary">
         <div class="stat-icon">
-          <BookOpen class="icon" />
+          <GraduationCap class="icon" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ basicStats?.total_conversations || 0 }}</div>
-          <div class="stat-label">Knowledge Items</div>
-          <div class="stat-trend" v-if="basicStats?.conversation_trend">
-            <TrendingUp v-if="basicStats.conversation_trend > 0" class="trend-icon up" />
-            <TrendingDown v-else-if="basicStats.conversation_trend < 0" class="trend-icon down" />
-            <span class="trend-text">{{ Math.abs(basicStats.conversation_trend) }}%</span>
-          </div>
+          <div class="stat-value">{{ formatNumber(academicStats?.lecturers_count) }}</div>
+          <div class="stat-label">Lecturers</div>
         </div>
       </div>
 
       <div class="stat-card success">
         <div class="stat-icon">
-          <Activity class="icon" />
+          <FileText class="icon" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ basicStats?.active_conversations || 0 }}</div>
-          <div class="stat-label">Active Conversations</div>
+          <div class="stat-value">{{ formatNumber(academicStats?.papers_count) }}</div>
+          <div class="stat-label">Publications</div>
         </div>
       </div>
 
@@ -31,22 +26,42 @@
           <Network class="icon" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ basicStats?.total_messages || 0 }}</div>
-          <div class="stat-label">Relationships</div>
+          <div class="stat-value">{{ formatNumber(academicStats?.kg_nodes_count) }}</div>
+          <div class="stat-label">Graph Entities</div>
         </div>
       </div>
 
       <div class="stat-card warning">
         <div class="stat-icon">
-          <Users class="icon" />
+          <Share2 class="icon" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ basicStats?.total_users || 0 }}</div>
-          <div class="stat-label">Users</div>
+          <div class="stat-value">{{ formatNumber(academicStats?.kg_edges_count) }}</div>
+          <div class="stat-label">Graph Relations</div>
         </div>
       </div>
 
-      <div class="stat-card secondary clickable" @click="handleFeedbackClick">
+      <div class="stat-card secondary">
+        <div class="stat-icon">
+          <Database class="icon" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(academicStats?.vector_records_count) }}</div>
+          <div class="stat-label">Vector Records</div>
+        </div>
+      </div>
+
+      <div class="stat-card conversations">
+        <div class="stat-icon">
+          <MessageSquare class="icon" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ formatNumber(academicStats?.conversations_count) }}</div>
+          <div class="stat-label">Conversations</div>
+        </div>
+      </div>
+
+      <div class="stat-card feedback clickable" @click="handleFeedbackClick">
         <div class="stat-icon">
           <BarChart3 class="icon" />
         </div>
@@ -72,18 +87,22 @@
 <script setup>
 import {
   Network,
-  BookOpen,
-  Activity,
-  Users,
+  GraduationCap,
+  FileText,
+  Share2,
+  Database,
+  MessageSquare,
   BarChart3,
-  Heart,
-  TrendingUp,
-  TrendingDown
+  Heart
 } from 'lucide-vue-next'
 
 // Props
 const props = defineProps({
   basicStats: {
+    type: Object,
+    default: () => ({})
+  },
+  academicStats: {
     type: Object,
     default: () => ({})
   }
@@ -104,6 +123,8 @@ const getSatisfactionClass = () => {
   if (rate >= 60) return 'satisfaction-medium'
   return 'satisfaction-low'
 }
+
+const formatNumber = (value) => new Intl.NumberFormat('en-US').format(Number(value || 0))
 </script>
 
 <style lang="less" scoped>
@@ -117,7 +138,7 @@ const getSatisfactionClass = () => {
   .stats-grid {
     display: grid;
     padding: 0 16px;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
 
     .stat-card {
@@ -169,6 +190,20 @@ const getSatisfactionClass = () => {
       }
 
       &.secondary {
+        .stat-icon {
+          background-color: var(--color-accent-50);
+          color: var(--color-accent-700);
+        }
+      }
+
+      &.conversations {
+        .stat-icon {
+          background-color: var(--gray-100);
+          color: var(--gray-700);
+        }
+      }
+
+      &.feedback {
         .stat-icon {
           background-color: var(--color-accent-50);
           color: var(--color-accent-700);
@@ -237,31 +272,6 @@ const getSatisfactionClass = () => {
           margin-bottom: 8px;
         }
 
-        .stat-trend {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          margin-top: 4px;
-
-          .trend-icon {
-            width: 14px;
-            height: 14px;
-
-            &.up {
-              color: var(--color-success-700);
-            }
-
-            &.down {
-              color: var(--color-error-700);
-            }
-          }
-
-          .trend-text {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--gray-600);
-          }
-        }
       }
     }
   }
@@ -271,7 +281,7 @@ const getSatisfactionClass = () => {
 @media (max-width: 1200px) {
   .stats-overview-container {
     .stats-grid {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 16px;
     }
   }

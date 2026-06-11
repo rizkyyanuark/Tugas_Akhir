@@ -11,7 +11,7 @@
 # 15 minutes → 5 seconds on code-only changes.
 # ══════════════════════════════════════════════════════════════
 FROM python:3.12-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 
 # -- Working Directory --
 WORKDIR /app
@@ -33,13 +33,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ── LAYER 1: Python Dependencies (cached separately) ────────
 COPY README.md /app/README.md
 COPY backend/pyproject.toml /app/pyproject.toml
+COPY backend/uv.lock /app/uv.lock
 COPY backend/package /app/package
 COPY README.md /app/package/README.md
 
 # Install dependencies into the virtual environment
 # We use cache mount to speed up downloads
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev
+    uv sync --frozen --no-dev
 
 # -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"

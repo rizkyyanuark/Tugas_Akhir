@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from yuxi.services import langfuse_service as svc
+from yunesa.services import langfuse_service as svc
 
 
 class _FakeLangfuseClient:
@@ -56,7 +56,7 @@ def test_build_run_context_includes_trace_metadata(monkeypatch):
     assert run_context.metadata["agent_config_id"] == "42"
     assert run_context.metadata["department_id"] == "7"
     assert run_context.tags == [
-        "yuxi",
+        "yunesa",
         "chat",
         "agent_chat_stream",
         "agent:agent-a",

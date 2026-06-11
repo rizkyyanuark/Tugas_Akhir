@@ -194,7 +194,10 @@ class DatabaseMigrator:
             ]
             if all(self.check_column_exists("users", column) for column in required_columns):
                 # Fields already exist, set directly to latest version
-                logger.info(f"Detected existing database already contains latest fields, setting version to v{latest_version}")
+                logger.info(
+                    "Detected existing database already contains latest fields, "
+                    f"setting version to v{latest_version}"
+                )
                 self.set_version(latest_version)
                 return
 
@@ -310,7 +313,8 @@ class DatabaseMigrator:
 
         migrations.append((4, "Add department functionality", v4_commands))
 
-        # Migration v5: Complete knowledge base/evaluation related table fields (add new columns for historical databases)
+        # Migration v5: Complete knowledge base/evaluation related table fields.
+        # Adds missing columns for historical databases.
         v5_commands: list[str] = []
 
         # knowledge_bases
@@ -398,7 +402,7 @@ class DatabaseMigrator:
         # Future migrations can be added here
         # migrations.append((
         #     2,
-        #     "添加新功能相关表",
+        #     "Add tables for new features",
         #     [
         #         "CREATE TABLE new_feature (...)",
         #         "ALTER TABLE existing_table ADD COLUMN new_field ..."
@@ -409,10 +413,10 @@ class DatabaseMigrator:
 
 
 def validate_database_schema(db_path: str) -> tuple[bool, list[str]]:
-    """验证数据库结构是否符合当前模型
+    """Validate whether the database schema matches the current models.
 
     Returns:
-        tuple: (是否符合, 缺失的字段列表)
+        tuple: (is_valid, missing_fields)
     """
     if not os.path.exists(db_path):
         return False, ["Database file does not exist"]
@@ -559,7 +563,10 @@ def check_and_migrate(db_path: str):
             logger.warning(f"  - {issue}")
 
         if os.path.exists(db_path):
-            logger.info("Suggested running migration script: docker exec api-dev python /app/scripts/migrate_user_soft_delete.py")
+            logger.info(
+                "Suggested running migration script: "
+                "docker exec api-dev python /app/scripts/migrate_user_soft_delete.py"
+            )
 
     migrator = DatabaseMigrator(db_path)
 

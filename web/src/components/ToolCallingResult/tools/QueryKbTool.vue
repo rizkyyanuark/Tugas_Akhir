@@ -11,7 +11,13 @@
     </template>
     <template #result="{ resultContent }">
       <div class="query-kb-result">
-        <KbResultGroupedList :chunks="parsedData(resultContent)" />
+        <KbResultGroupedList
+          :chunks="extractChunks(resultContent)"
+          :academic-retrieval="extractAcademicRetrieval(resultContent)"
+          :graph="extractGraph(resultContent)"
+          :evidence-summary="extractSummary(resultContent)"
+          :raw-text="extractRawText(resultContent)"
+        />
       </div>
     </template>
   </BaseToolCall>
@@ -54,13 +60,37 @@ const parseData = (content) => {
     try {
       return JSON.parse(content)
     } catch {
-      return []
+      return { rawText: content }
     }
   }
   return content || []
 }
 
-const parsedData = (content) => parseData(content)
+const extractChunks = (content) => {
+  const data = parseData(content)
+  if (Array.isArray(data)) return data
+  return Array.isArray(data?.chunks) ? data.chunks : []
+}
+
+const extractAcademicRetrieval = (content) => {
+  const data = parseData(content)
+  return data && typeof data === 'object' && !Array.isArray(data) ? data.academic_retrieval || {} : {}
+}
+
+const extractGraph = (content) => {
+  const data = parseData(content)
+  return data && typeof data === 'object' && !Array.isArray(data) ? data.graph || {} : {}
+}
+
+const extractSummary = (content) => {
+  const data = parseData(content)
+  return data && typeof data === 'object' && !Array.isArray(data) ? data.summary || '' : ''
+}
+
+const extractRawText = (content) => {
+  const data = parseData(content)
+  return data && typeof data === 'object' && !Array.isArray(data) ? data.rawText || '' : ''
+}
 </script>
 
 <style scoped lang="less">
