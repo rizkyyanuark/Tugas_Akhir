@@ -204,7 +204,7 @@ def cleanup_test_sandboxes():
 @pytest_asyncio.fixture(scope="function")
 async def standard_user(test_client: httpx.AsyncClient, admin_headers: dict[str, str]) -> AsyncGenerator[dict, None]:
     username = f"pytest_user_{uuid.uuid4().hex[:8]}"
-    password = f"Pw!{uuid.uuid4().hex[:8]}"
+    password = f"Pw!Test{uuid.uuid4().hex[:8]}"
 
     response = await test_client.post(
         "/api/auth/users",
@@ -267,7 +267,7 @@ async def knowledge_database(
             json={
                 "database_name": db_name,
                 "description": "Pytest managed knowledge base",
-                "embed_model_name": "siliconflow/BAAI/bge-m3",
+                "embed_model_name": "siliconflow/Qwen/Qwen3-Embedding-0.6B",
                 "kb_type": "lightrag",
                 "additional_params": {},
             },

@@ -95,7 +95,7 @@ async def get_current_user(
 
     # Determine authentication method based on token prefix
     if token.startswith("yxkey_"):
-        # API Key 认证
+        # API key authentication
         user, api_key_obj = await _verify_api_key(token, db)
         if user is not None and api_key_obj is not None:
             api_key_obj.last_used_at = utc_now_naive()
@@ -117,7 +117,12 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    result = await db.execute(select(User).filter(User.id == int(user_id)))
+    result = await db.execute(
+        select(User).filter(
+            User.id == int(user_id),
+            User.is_deleted == 0,
+        )
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exception

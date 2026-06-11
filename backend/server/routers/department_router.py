@@ -14,7 +14,7 @@ from yunesa.storage.postgres.models_business import APIKey, AgentConfig, Departm
 from yunesa.repositories.department_repository import DepartmentRepository
 from yunesa.repositories.user_repository import UserRepository
 from server.utils.auth_middleware import get_superadmin_user, get_admin_user, get_db
-from server.utils.auth_utils import AuthUtils
+from server.utils.auth_utils import AuthUtils, validate_password_strength
 from server.utils.common_utils import log_operation
 from server.utils.user_utils import is_valid_phone_number
 
@@ -124,6 +124,13 @@ async def create_department(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User ID length must be between 3 and 20 characters",
+        )
+
+    password_is_valid, password_error = validate_password_strength(department_data.admin_password)
+    if not password_is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=password_error,
         )
 
     # Check whether user_id already exists.

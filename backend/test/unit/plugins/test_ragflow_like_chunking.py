@@ -1,13 +1,13 @@
 from __future__ import annotations
-from yuxi.knowledge.utils.kb_utils import sanitize_processing_params
-from yuxi.knowledge.chunking.ragflow_like.presets import (
+from yunesa.knowledge.utils.kb_utils import sanitize_processing_params
+from yunesa.knowledge.chunking.ragflow_like.presets import (
     CHUNK_ENGINE_VERSION,
     get_chunk_preset_options,
     map_to_internal_parser_id,
     resolve_chunk_processing_params,
 )
-from yuxi.knowledge.chunking.ragflow_like.nlp import bullets_category, count_tokens
-from yuxi.knowledge.chunking.ragflow_like.dispatcher import chunk_markdown
+from yunesa.knowledge.chunking.ragflow_like.nlp import bullets_category, count_tokens
+from yunesa.knowledge.chunking.ragflow_like.dispatcher import chunk_markdown
 
 import os
 import sys

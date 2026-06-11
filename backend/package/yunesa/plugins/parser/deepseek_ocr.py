@@ -38,7 +38,7 @@ class DeepSeekOCRParser(BaseDocumentProcessor):
                 "SILICONFLOW_API_KEY environment variable not set", "deepseek_ocr", "missing_api_key"
             )
 
-        self.api_url = "https://api.siliconflow.cn/v1/chat/completions"
+        self.api_url = "https://api.siliconflow.com/v1/chat/completions"
         self.model = "deepseek-ai/DeepSeek-OCR"
 
         self.headers = {
@@ -57,7 +57,7 @@ class DeepSeekOCRParser(BaseDocumentProcessor):
         """Check API availability and key validity"""
         try:
             # We can't easily "ping" without cost, but we can check if the model list is accessible
-            models_url = "https://api.siliconflow.cn/v1/models"
+            models_url = "https://api.siliconflow.com/v1/models"
             response = requests.get(models_url, headers=self.headers, timeout=10)
 
             if response.status_code == 200:

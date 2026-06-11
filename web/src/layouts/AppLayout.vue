@@ -1,7 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted, computed, provide } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { GithubOutlined } from '@ant-design/icons-vue'
 import { Bot, LibraryBig, BarChart3, ClipboardList, Blocks } from 'lucide-vue-next'
 
 import { useConfigStore } from '@/stores/config'
@@ -26,10 +25,6 @@ const layoutSettings = reactive({
   showDebug: false,
   useTopBar: false // Whether to use top bar
 })
-
-// Add state for GitHub stars
-const githubStars = ref(0)
-const isLoadingStars = ref(false)
 
 // Add state for debug modal
 const showDebugModal = ref(false)
@@ -61,21 +56,6 @@ const getRemoteDatabase = async () => {
     await databaseStore.loadDatabases()
   } catch (error) {
     console.warn('Failed to load knowledge base list:', error)
-  }
-}
-
-// Fetch GitHub stars count
-const fetchGithubStars = async () => {
-  try {
-    isLoadingStars.value = true
-    // Public API, can use fetch directly
-    const response = await fetch('https://api.github.com/repos/rizkyyanuark/Tugas_Akhir')
-    const data = await response.json()
-    githubStars.value = data.stargazers_count
-  } catch (error) {
-    console.error('Failed to fetch GitHub stars:', error)
-  } finally {
-    isLoadingStars.value = false
   }
 }
 

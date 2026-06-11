@@ -1,6 +1,6 @@
 from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType
 
-from yuxi.knowledge.implementations.milvus import CONTENT_ANALYZER_PARAMS, CONTENT_SPARSE_FIELD, MilvusKB
+from yunesa.knowledge.implementations.milvus import CONTENT_ANALYZER_PARAMS, CONTENT_SPARSE_FIELD, MilvusKB
 
 
 class FakeHit:

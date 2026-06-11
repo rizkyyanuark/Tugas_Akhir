@@ -50,6 +50,14 @@ async def test_admin_can_fetch_stats(test_client, admin_headers):
     assert "total_calls" in response.json()
 
 
+async def test_academic_stats_requires_admin(test_client, standard_user):
+    response = await test_client.get(
+        "/api/dashboard/stats/academic",
+        headers=standard_user["headers"],
+    )
+    assert response.status_code == 403
+
+
 async def test_admin_can_fetch_feedbacks(test_client, admin_headers):
     """Test that feedback endpoint returns 200 and handles the User join correctly."""
     response = await test_client.get("/api/dashboard/feedbacks", headers=admin_headers)

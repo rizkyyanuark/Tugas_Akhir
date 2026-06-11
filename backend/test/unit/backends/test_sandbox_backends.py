@@ -5,10 +5,10 @@ from __future__ import annotations
 from types import MethodType, SimpleNamespace
 
 import pytest
-from yuxi.agents.backends.composite import create_agent_composite_backend
-from yuxi.agents.backends.sandbox import resolve_virtual_path, sandbox_id_for_thread
-from yuxi.agents.backends.sandbox.backend import ProvisionerSandboxBackend
-from yuxi.agents.middlewares.skills_middleware import SkillsMiddleware
+from yunesa.agents.backends.composite import create_agent_composite_backend
+from yunesa.agents.backends.sandbox import resolve_virtual_path, sandbox_id_for_thread
+from yunesa.agents.backends.sandbox.backend import ProvisionerSandboxBackend
+from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
 
 
 def _runtime(
@@ -30,7 +30,7 @@ def _runtime(
 
 
 def test_create_agent_composite_backend_uses_provisioner_default(monkeypatch):
-    monkeypatch.setattr("yuxi.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
+    monkeypatch.setattr("yunesa.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
 
     backend = create_agent_composite_backend(
         _runtime(skills=["reporter"], visible_kbs=[{"db_id": "db-1", "name": "Docs"}])
@@ -73,7 +73,7 @@ def test_sandbox_id_for_thread_is_stable():
 
 
 def test_provisioner_read_reports_binary_files(monkeypatch) -> None:
-    monkeypatch.setattr("yuxi.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
+    monkeypatch.setattr("yunesa.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
     backend = ProvisionerSandboxBackend(thread_id="thread-1", user_id="user-1")
     monkeypatch.setattr(backend, "_read_binary", lambda path, offset=0, limit=None: b"\x89PNG\r\n\x1a\n")
 
@@ -83,7 +83,7 @@ def test_provisioner_read_reports_binary_files(monkeypatch) -> None:
 
 
 def test_provisioner_read_reports_invalid_path(monkeypatch) -> None:
-    monkeypatch.setattr("yuxi.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
+    monkeypatch.setattr("yunesa.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
     backend = ProvisionerSandboxBackend(thread_id="thread-1", user_id="user-1")
 
     def _raise_invalid_path(path, offset=0, limit=None):
@@ -97,7 +97,7 @@ def test_provisioner_read_reports_invalid_path(monkeypatch) -> None:
 
 
 def test_provisioner_download_files_distinguishes_invalid_path_from_read_failure(monkeypatch) -> None:
-    monkeypatch.setattr("yuxi.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
+    monkeypatch.setattr("yunesa.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
     backend = ProvisionerSandboxBackend(thread_id="thread-1", user_id="user-1")
 
     def _fake_read_binary(path, offset=0, limit=None):
@@ -114,7 +114,7 @@ def test_provisioner_download_files_distinguishes_invalid_path_from_read_failure
 
 
 def test_provisioner_execute_returns_error_response_on_client_failure(monkeypatch) -> None:
-    monkeypatch.setattr("yuxi.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
+    monkeypatch.setattr("yunesa.agents.backends.sandbox.backend.get_sandbox_provider", lambda: object())
     backend = ProvisionerSandboxBackend(thread_id="thread-1", user_id="user-1")
 
     class _FakeClient:

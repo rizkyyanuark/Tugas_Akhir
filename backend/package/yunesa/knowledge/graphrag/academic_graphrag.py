@@ -50,9 +50,10 @@ ACADEMIC_COLLECTIONS = {
 
 DEFAULT_ACADEMIC_EMBEDDING_PROVIDER = "siliconflow"
 DEFAULT_ACADEMIC_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
+DEFAULT_MILVUS_DB_NAME = "default"
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=8)
 def _cached_milvus_client(uri: str, token: str, db_name: str | None):
     from pymilvus import MilvusClient
 
@@ -181,6 +182,23 @@ class AcademicGraphRAGService:
         return uri.strip(), token.strip(), str(db_name).strip() if db_name else None
 
     @staticmethod
+    def _milvus_db_candidates(db_name: str | None) -> list[str | None]:
+        """Try the configured database first, then the Milvus/Zilliz default.
+
+        This keeps explicit deployments working while protecting production from
+        stale `MILVUS_DB_NAME` values that point to a database without AcademicRAG
+        collections.
+        """
+        candidates: list[str | None] = []
+        configured = str(db_name or "").strip()
+        if configured and configured.lower() not in {"none", "null", DEFAULT_MILVUS_DB_NAME}:
+            candidates.append(configured)
+        candidates.append(None)
+        if DEFAULT_MILVUS_DB_NAME not in candidates:
+            candidates.append(DEFAULT_MILVUS_DB_NAME)
+        return candidates
+
+    @staticmethod
     def _graph_filter(graph_name: str) -> str:
         safe_graph_name = str(graph_name or "").replace("\\", "\\\\").replace('"', '\\"')
         return f'graphName == "{safe_graph_name}"' if safe_graph_name else ""
@@ -307,60 +325,90 @@ class AcademicGraphRAGService:
 
         try:
             vector = await asyncio.to_thread(cls._embed_query, query_text)
-            client = _cached_milvus_client(uri, token, db_name)
-            raw_hits = await asyncio.to_thread(
-                client.search,
-                collection_name=collection_name,
-                data=[vector],
-                anns_field="embedding",
-                limit=top_k,
-                output_fields=output_fields,
-                search_params={"metric_type": os.getenv("YUNESA_MILVUS_METRIC_TYPE", "L2")},
-                filter=cls._graph_filter(graph_name),
-            )
-            rows = [cls._hit_to_row(hit) for hit in (raw_hits[0] if raw_hits else [])]
-            return rows
+            for candidate_db in cls._milvus_db_candidates(db_name):
+                try:
+                    client = _cached_milvus_client(uri, token, candidate_db)
+                    raw_hits = await asyncio.to_thread(
+                        client.search,
+                        collection_name=collection_name,
+                        data=[vector],
+                        anns_field="embedding",
+                        limit=top_k,
+                        output_fields=output_fields,
+                        search_params={"metric_type": os.getenv("YUNESA_MILVUS_METRIC_TYPE", "L2")},
+                        filter=cls._graph_filter(graph_name),
+                    )
+                    if candidate_db != db_name:
+                        logger.info(
+                            f"Academic GraphRAG dense search used Milvus database "
+                            f"{candidate_db or '<implicit>'} for {collection_name}"
+                        )
+                    return [cls._hit_to_row(hit) for hit in (raw_hits[0] if raw_hits else [])]
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug(
+                        f"Academic GraphRAG dense search failed for {collection_name} "
+                        f"on Milvus database {candidate_db or '<implicit>'}: {type(exc).__name__}: {exc}"
+                    )
         except Exception as exc:  # noqa: BLE001
             logger.debug(
                 f"Academic GraphRAG dense search skipped for {collection_name}; "
                 f"falling back to lexical query: {type(exc).__name__}: {exc}"
             )
 
-        try:
-            client = _cached_milvus_client(uri, token, db_name)
-            rows = await asyncio.to_thread(
-                client.query,
-                collection_name=collection_name,
-                filter=cls._lexical_filter(
-                    query_text=query_text,
-                    graph_name=graph_name,
-                    text_fields=text_fields,
-                ),
-                output_fields=output_fields,
-                limit=top_k,
-            )
-            return [dict(row) for row in rows or []]
-        except Exception as exc:  # noqa: BLE001
-            logger.debug(f"Academic GraphRAG lexical query failed for {collection_name}: {exc}")
+        for candidate_db in cls._milvus_db_candidates(db_name):
+            try:
+                client = _cached_milvus_client(uri, token, candidate_db)
+                rows = await asyncio.to_thread(
+                    client.query,
+                    collection_name=collection_name,
+                    filter=cls._lexical_filter(
+                        query_text=query_text,
+                        graph_name=graph_name,
+                        text_fields=text_fields,
+                    ),
+                    output_fields=output_fields,
+                    limit=top_k,
+                )
+                if candidate_db != db_name:
+                    logger.info(
+                        f"Academic GraphRAG lexical query used Milvus database "
+                        f"{candidate_db or '<implicit>'} for {collection_name}"
+                    )
+                return [dict(row) for row in rows or []]
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    f"Academic GraphRAG lexical query failed for {collection_name} "
+                    f"on Milvus database {candidate_db or '<implicit>'}: {exc}"
+                )
 
-        try:
-            client = _cached_milvus_client(uri, token, db_name)
-            rows = await asyncio.to_thread(
-                client.query,
-                collection_name=collection_name,
-                filter=cls._graph_filter(graph_name),
-                output_fields=output_fields,
-                limit=max(top_k * 20, 100),
-            )
-            return cls._rank_rows_by_terms(
-                [dict(row) for row in rows or []],
-                query_text=query_text,
-                text_fields=text_fields,
-                top_k=top_k,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(f"Academic GraphRAG fallback query failed for {collection_name}: {exc}")
-            return []
+        for candidate_db in cls._milvus_db_candidates(db_name):
+            try:
+                client = _cached_milvus_client(uri, token, candidate_db)
+                rows = await asyncio.to_thread(
+                    client.query,
+                    collection_name=collection_name,
+                    filter=cls._graph_filter(graph_name),
+                    output_fields=output_fields,
+                    limit=max(top_k * 20, 100),
+                )
+                if candidate_db != db_name:
+                    logger.info(
+                        f"Academic GraphRAG graph-filter fallback used Milvus database "
+                        f"{candidate_db or '<implicit>'} for {collection_name}"
+                    )
+                return cls._rank_rows_by_terms(
+                    [dict(row) for row in rows or []],
+                    query_text=query_text,
+                    text_fields=text_fields,
+                    top_k=top_k,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    f"Academic GraphRAG fallback query failed for {collection_name} "
+                    f"on Milvus database {candidate_db or '<implicit>'}: {exc}"
+                )
+        logger.warning(f"Academic GraphRAG vector retrieval returned no rows for {collection_name}")
+        return []
 
     @classmethod
     async def query_academic_indexes(
@@ -379,6 +427,7 @@ class AcademicGraphRAGService:
             "status": "skipped",
             "mode": mode,
             "graph_name": resolved_graph_name,
+            "milvus_database": (cls._milvus_credentials()[2] or DEFAULT_MILVUS_DB_NAME),
             "paper_chunks": [],
             "keywords": [],
             "entities": [],

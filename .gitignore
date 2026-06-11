@@ -128,7 +128,10 @@ neo4j_plugins/
 neo4j_import/
 
 # IDE and editor settings
-.vscode/
+.latexmkrc
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 .claude/
 .vibe/
@@ -157,6 +160,7 @@ Thumbs.db
 desktop.ini
 
 # LaTeX compilation artifacts
+docs/proposal tugas akhir/Skripsi.pdf
 *.aux
 *.out
 *.toc

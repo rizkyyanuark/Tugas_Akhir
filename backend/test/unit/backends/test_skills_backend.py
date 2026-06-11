@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from yuxi.agents.backends import skills_backend
+from yunesa.agents.backends import skills_backend
 
 
 def _prepare_skills_dir(root: Path) -> None:
@@ -29,10 +29,12 @@ def test_selected_skills_backend_readonly_and_visible_only_selected(tmp_path, mo
     assert paths == ["/alpha/"]
 
     ok_read = backend.read("/alpha/SKILL.md")
-    assert "alpha" in ok_read
+    assert ok_read.error is None
+    assert ok_read.file_data is not None
+    assert "alpha" in ok_read.file_data["content"]
 
     denied_read = backend.read("/beta/SKILL.md")
-    assert "Access denied" in denied_read
+    assert denied_read.error and "Access denied" in denied_read.error
 
     write_result = backend.write("/alpha/new.md", "x")
     assert write_result.error and "read-only" in write_result.error

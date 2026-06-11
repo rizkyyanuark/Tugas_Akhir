@@ -11,6 +11,8 @@
 x-api-worker-env: &api-worker-env
   RUNNING_IN_DOCKER: "true"
   LITE_MODE: ${LITE_MODE:-false}
+  YUNESA_ENV: production
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY required}
   MODEL_DIR_IN_DOCKER: /models
   # --- Database & Infrastructure (resolved from GLOBAL_PASSWORD) ---
   SUPABASE_URL: ${SUPABASE_URL}
@@ -411,7 +413,7 @@ services:
     command: scheduler
 
   tunnel:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2025.8.1
     container_name: cloudflare-tunnel
     restart: always
     logging: *default-logging

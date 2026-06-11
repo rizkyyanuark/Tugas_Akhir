@@ -1,8 +1,9 @@
+% !TEX root = ../ProposalTA.tex
 \chapter{METODE PENELITIAN}
 
 \section{Dataset}
 
-Penelitian ini menggunakan dataset primer yang disusun secara mandiri untuk merepresentasikan entitas dan aktivitas akademik pada domain Informatika dan Komputer (Infokom) di Universitas Negeri Surabaya (UNESA). Pengembangan dataset ini dilakukan untuk mengatasi keterbatasan ketersediaan basis data publik yang terintegrasi secara komprehensif. Perancangan atribut data difokuskan untuk mengoptimalisasi mekanisme \textit{Question-Answering} berbasis graf (\textit{GraphRAG}), yang mensyaratkan pelacakan asal-usul informasi (\textit{provenance tracking}) hingga ke dokumen asli guna memitigasi halusinasi \textit{LLM} \cite{zheng2024medsumgraph}.
+Penelitian ini menggunakan dataset primer yang disusun secara mandiri untuk merepresentasikan entitas dan aktivitas akademik pada domain Informatika dan Komputer (Infokom) di Universitas Negeri Surabaya (UNESA). Pengembangan dataset ini dilakukan untuk mengatasi keterbatasan ketersediaan basis data publik yang terintegrasi secara komprehensif. Perancangan atribut data difokuskan untuk mengoptimalisasi mekanisme \textit{Question-Answering} berbasis graf (\textit{GraphRAG}), yang mensyaratkan pelacakan asal-usul informasi (\textit{provenance tracking}) hingga ke dokumen asli guna memitigasi halusinasi \textit{LLM} \cite{kim2026medsumgraph}.
 
 Dataset dihimpun melalui integrasi data dari tiga sumber utama: (1) profil akademik dosen pada pangkalan data PDDIKTI \citep{pddikti_db}, (2) riwayat publikasi \textit{Google Scholar} \citep{google_scholar}, dan (3) metadata artikel ilmiah dari \textit{Scopus} \citep{scopus_db}. Data yang terkumpul mencakup informasi dari dosen di berbagai program studi di bawah rumpun Infokom UNESA, di antaranya: S1 Sains Data (13 dosen), S1 Kecerdasan Artifisial (5), S1 Teknik Informatika (9), S1 Sistem Informasi (10), S2 Informatika (6), dan S1 Teknik Elektro (24). Selain itu, dataset ini juga mencakup data dari program studi terkait seperti S1 Bisnis Digital dan kependidikan teknik lainnya untuk memperkaya cakupan \textit{knowledge base}. Rincian struktur atribut disajikan pada Tabel \ref{tab:deskripsi-dataset}.
 
@@ -229,9 +230,9 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=4pt]
               \item \textbf{\textit{Data Cleaning} \& \textit{Normalization}:} Menangani \textit{missing values} dan menstandarisasi variasi penulisan nama institusi serta singkatan gelar untuk mencegah duplikasi entitas dalam graf.
 
-              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Dokumen panjang seperti abstrak dipecah menjadi segmen semantik (misalnya 512 token) menggunakan \textit{semantic chunking}, mengingat keterbatasan \textit{context window} \textit{LLM}. Strategi ini menjaga keutuhan unit informasi sekaligus mengurangi \textit{noise}.
+              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Judul, TLDR, abstrak, dan kata kunci digabungkan sebagai representasi tekstual publikasi, kemudian dipotong secara sadar kalimat dengan batas maksimum 2.024 karakter dan \textit{overlap} 50 karakter. Strategi ini menjaga keutuhan unit informasi sekaligus membatasi \textit{noise} dan penggunaan token.
 
-              \item \textbf{\textit{Embedding Generation}:} Setiap \textit{chunk} dikonversi menjadi vektor berdimensi tinggi menggunakan model \textit{embedding} (misalnya \textit{all-MiniLM-L6-v2}), memungkinkan pencarian berbasis makna (\textit{semantic search}) yang melampaui pencocokan kata kunci leksikal.
+              \item \textbf{\textit{Embedding Generation}:} Setiap \textit{chunk}, entitas, relasi, dan himpunan kata kunci dikonversi menjadi vektor 1.024 dimensi menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B} melalui layanan SiliconFlow. Representasi tersebut memungkinkan pencarian berbasis makna (\textit{semantic search}) yang melampaui pencocokan kata kunci leksikal.
           \end{enumerate}
 
 
@@ -424,7 +425,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                         \label{fig:ontology-design}
                     \end{figure}
 
-                    \hspace*{0.75cm}Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi dimulai (\ref{fig:ontology-design}). Implementasi difokuskan pada delapan relasi utama: \textit{publishes}, \textit{cites}, \textit{has\_author}, \textit{has\_topic}, \textit{uses\_method}, \textit{has\_affiliation}, \textit{belongs\_to\_domain}, dan \textit{collaborates\_with}. Konsistensi skema ini membatasi ruang pencarian model ekstraksi agar tetap relevan dengan domain Infokom UNESA.
+                    \hspace*{0.75cm}Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi dimulai (\ref{fig:ontology-design}). Relasi aktif dikelompokkan menjadi: (1) relasi metadata akademik, seperti \textit{publishes}, \textit{has\_author}, \textit{has\_affiliation}, \textit{published\_in\_year}, \textit{published\_in\_venue}, dan \textit{collaborates\_with}; (2) relasi semantik publikasi, seperti \textit{has\_topic}, \textit{uses\_method}, \textit{uses\_model}, \textit{evaluated\_with}, \textit{has\_result}, dan \textit{belongs\_to\_domain}; serta (3) relasi SKOS untuk menghubungkan konsep IEEE. Relasi \textit{cites} disediakan dalam rancangan, tetapi hanya diaktifkan apabila data referensi atau DOI yang disitasi tersedia. Pembatasan ini mencegah pembentukan relasi yang tidak didukung data sumber.
 
               \item \textbf{\textit{Parallel Processing Pipeline}}
 
@@ -440,7 +441,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
 
                               \hspace*{0.75cm}Tahap awal \textbf{\textit{Text Processing} \& \textit{Coreference Resolution}} membersihkan abstrak dari \textit{noise} dan mengganti kata ganti (``metode ini'', ``itu'') dengan entitas referensinya untuk mempertahankan konteks penuh.
 
-                              \hspace*{0.75cm}Selanjutnya, \textbf{Ekstraksi Entitas dan Relasi} dilakukan menggunakan \textit{GLiNER} \cite{zaratiana2023gliner} untuk \textit{Named Entity Recognition} secara \textit{zero-shot} dan \textit{GLiRel} \cite{boylan2025glirelgeneralistmodel} untuk ekstraksi relasi. Kombinasi ini dipilih karena tidak memerlukan dataset pelatihan teranotasi. Keluaran berupa \textit{Lexical Graph} berisi triplet kandidat.
+                              \hspace*{0.75cm}Selanjutnya, jalur \textbf{Ekstraksi Entitas dan Relasi} menyediakan \textit{GLiNER} \cite{zaratiana2023gliner} untuk \textit{Named Entity Recognition} secara \textit{zero-shot} dan \textit{GLiRel} \cite{boylan2025glirelgeneralistmodel} untuk ekstraksi relasi. Kombinasi ini dipilih karena tidak memerlukan dataset pelatihan teranotasi. Ketika konfigurasi ekstraksi diaktifkan, keluarannya berupa \textit{Lexical Graph} berisi triplet kandidat; ketika dinonaktifkan, konstruksi menggunakan metadata, kata kunci penulis, aturan, dan kosakata terkendali sebagai \textit{baseline}.
 
                     \end{enumerate}
 
@@ -455,7 +456,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                     \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
                         \item \textbf{\textit{Vector Indexing}}
 
-                              \hspace*{0.75cm}Teks abstrak dipotong menjadi segmen 2.024 karakter dengan \textit{overlap} 50 karakter, dikonversi ke vektor \textit{embedding} menggunakan \texttt{all-MiniLM-L6-v2} (384 dimensi), dan disimpan di \textit{Weaviate} untuk pencarian kemiripan semantik.
+                              \hspace*{0.75cm}Representasi tekstual publikasi dipotong menjadi segmen maksimum 2.024 karakter dengan \textit{overlap} 50 karakter. Setiap potongan teks, entitas, relasi, dan petunjuk kata kunci dikonversi menjadi vektor 1.024 dimensi menggunakan \texttt{Qwen/Qwen3-Embedding-0.6B} melalui SiliconFlow. Vektor disimpan pada Zilliz Cloud yang kompatibel dengan Milvus dalam koleksi \texttt{PaperChunk}, \texttt{EntityEmbedding}, \texttt{RelationshipEmbedding}, dan \texttt{ContentKeyword}.
 
                         \item \textbf{\textit{Graph Indexing}}
 
@@ -795,7 +796,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
     \item \textbf{Evaluasi Sistem}
           \label{subsec:system-evaluation}
 
-          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan kerangka \textit{RAGAS (Retrieval-Augmented Generation Assessment System)} yang menyediakan metrik komprehensif untuk menilai dua dimensi utama, yaitu: kemampuan pengambilan informasi relevan (\textit{retrieval quality}) dan kualitas jawaban yang dihasilkan (\textit{generation quality}).
+          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan kerangka \textit{RAGAS (Retrieval-Augmented Generation Assessment System)} \citep{es-etal-2024-ragas} yang menyediakan metrik komprehensif untuk menilai dua dimensi utama, yaitu: kemampuan pengambilan informasi relevan (\textit{retrieval quality}) dan kualitas jawaban yang dihasilkan (\textit{generation quality}).
 
           \hspace*{0.75cm}Skenario eksperimen dirancang untuk membandingkan \textit{GraphRAG} dan \textit{Vector RAG} menggunakan 40 pertanyaan akademik yang mencakup aspek faktual, relasional, dan sintesis, yang masing-masing dilengkapi dengan \textit{ground truth} manual. Lima metrik utama digunakan sebagai tolok ukur:
 
@@ -841,7 +842,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
           % 6. GUI Implementation
     \item \textbf{Implementasi GUI (\textit{GUI Implementation})}
 
-          \hspace*{0.75cm}Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan menggunakan \textit{Streamlit} untuk memfasilitasi interaksi pengguna dengan sistem. Antarmuka ini menampilkan jawaban, referensi sumber, dan visualisasi subgraf secara \textit{real-time}, sehingga memberikan transparansi terhadap proses perolehan jawaban.
+          \hspace*{0.75cm}Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan sebagai aplikasi web menggunakan Vue 3 dan Vite pada sisi klien serta FastAPI pada sisi layanan. Antarmuka memfasilitasi percakapan dengan agen, menampilkan sumber jawaban, dan menyediakan visualisasi \textit{knowledge graph}. Pemisahan klien dan layanan memungkinkan proses \textit{retrieval}, generasi, dan akses penyimpanan dijalankan pada sisi server tanpa mengekspos kredensial kepada pengguna.
 \end{enumerate}
 
 \section{JADWAL PENELITIAN}

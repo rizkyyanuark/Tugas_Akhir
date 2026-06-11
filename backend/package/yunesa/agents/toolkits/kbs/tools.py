@@ -255,22 +255,47 @@ def _academic_tool_response(
         return payload
 
     graph_context = payload.get("graph", {})
+    academic = payload.get("academic_retrieval", {}) or {}
     citations = {
         "entities": graph_context.get("nodes", []),
         "relationships": graph_context.get("edges", []),
         "chunks": payload.get("chunks", []),
-        "academic_retrieval": payload.get("academic_retrieval", {}),
+        "academic_retrieval": academic,
         "query": query_text,
         "kb_name": kb_name,
         "retrieval_mode": retrieval_mode,
         "storage_layer": payload.get("storage_layer", {}),
+    }
+    tool_payload = {
+        "type": "academic_graphrag_result",
+        "query": query_text,
+        "kb_name": kb_name,
+        "retrieval_mode": retrieval_mode,
+        "summary": payload.get("evidence_text") or "",
+        "chunks": payload.get("chunks", []),
+        "academic_retrieval": {
+            "status": academic.get("status"),
+            "mode": academic.get("mode"),
+            "graph_name": academic.get("graph_name"),
+            "milvus_database": academic.get("milvus_database"),
+            "paper_chunks": academic.get("paper_chunks", [])[:8],
+            "keywords": academic.get("keywords", [])[:8],
+            "entities": academic.get("entities", [])[:12],
+            "relationships": academic.get("relationships", [])[:12],
+        },
+        "graph": {
+            "status": graph_context.get("status"),
+            "nodes": graph_context.get("nodes", [])[:24],
+            "edges": graph_context.get("edges", [])[:32],
+            "triples": graph_context.get("triples", [])[:32],
+        },
     }
     return Command(
         update={
             "citations": [citations],
             "messages": [
                 ToolMessage(
-                    content=payload.get("evidence_text") or json.dumps(payload, ensure_ascii=False, default=str),
+                    content=json.dumps(tool_payload, ensure_ascii=False, default=str),
                     tool_call_id=tool_call_id,
                 )
             ],

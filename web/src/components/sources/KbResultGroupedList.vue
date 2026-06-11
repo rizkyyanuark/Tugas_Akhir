@@ -3,6 +3,8 @@
     <div v-if="showSummary" class="result-summary">
       Found {{ normalizedChunks.length }} relevant document chunks from
       {{ fileGroupList.length }} files
+      <span v-if="hasAcademicEvidence || hasGraphEvidence" class="summary-separator">|</span>
+      <span v-if="hasAcademicEvidence || hasGraphEvidence">{{ evidenceSummaryText }}</span>
     </div>
 
     <div class="kb-results" v-if="normalizedChunks.length > 0">
@@ -50,7 +52,41 @@
       </div>
     </div>
 
-    <div v-else class="no-results">
+    <div v-if="hasAcademicEvidence || hasGraphEvidence" class="graph-evidence">
+      <div class="evidence-header">
+        <Network :size="14" />
+        <span>Graph and Academic Evidence</span>
+      </div>
+      <div class="evidence-metrics">
+        <span v-if="academicStatus" class="metric-chip">Status: {{ academicStatus }}</span>
+        <span v-if="academicCounts.paperChunks" class="metric-chip"
+          >Paper chunks: {{ academicCounts.paperChunks }}</span
+        >
+        <span v-if="academicCounts.keywords" class="metric-chip"
+          >Keywords: {{ academicCounts.keywords }}</span
+        >
+        <span v-if="academicCounts.entities" class="metric-chip"
+          >Entities: {{ academicCounts.entities }}</span
+        >
+        <span v-if="academicCounts.relationships" class="metric-chip"
+          >Relationships: {{ academicCounts.relationships }}</span
+        >
+        <span v-if="graphCounts.triples" class="metric-chip">Triples: {{ graphCounts.triples }}</span>
+      </div>
+      <div v-if="graphTriples.length" class="triple-list">
+        <div v-for="(triple, index) in graphTriples" :key="getTripleKey(triple, index)" class="triple-item">
+          <span class="triple-source">{{ triple.source }}</span>
+          <span class="triple-relation">{{ triple.relation }}</span>
+          <span class="triple-target">{{ triple.target }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="fallbackText && !hasAnyStructuredEvidence" class="raw-evidence">
+      {{ fallbackText }}
+    </div>
+
+    <div v-if="!hasAnyEvidence" class="no-results">
       <p>{{ emptyText }}</p>
     </div>
 
@@ -64,7 +100,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { FileText, ChevronDown, Eye } from 'lucide-vue-next'
+import { FileText, ChevronDown, Eye, Network } from 'lucide-vue-next'
 import KbChunkDetailModal from './KbChunkDetailModal.vue'
 
 const props = defineProps({
@@ -79,6 +115,22 @@ const props = defineProps({
   emptyText: {
     type: String,
     default: 'No relevant knowledge base content found'
+  },
+  academicRetrieval: {
+    type: Object,
+    default: () => ({})
+  },
+  graph: {
+    type: Object,
+    default: () => ({})
+  },
+  evidenceSummary: {
+    type: String,
+    default: ''
+  },
+  rawText: {
+    type: String,
+    default: ''
   }
 })
 
@@ -94,7 +146,7 @@ const normalizedChunks = computed(() =>
 const fileGroupList = computed(() => {
   const groups = new Map()
   for (const item of normalizedChunks.value) {
-    const filename = item?.metadata?.source || 'Unknown Source'
+    const filename = item?.metadata?.source || item?.source || item?.metadata?.title || 'Unknown Source'
     if (!groups.has(filename)) {
       groups.set(filename, {
         filename,
@@ -105,6 +157,57 @@ const fileGroupList = computed(() => {
   }
 
   return Array.from(groups.values()).sort((a, b) => a.filename.localeCompare(b.filename))
+})
+
+const academicStatus = computed(() => String(props.academicRetrieval?.status || '').trim())
+
+const academicCounts = computed(() => ({
+  paperChunks: Array.isArray(props.academicRetrieval?.paper_chunks)
+    ? props.academicRetrieval.paper_chunks.length
+    : 0,
+  keywords: Array.isArray(props.academicRetrieval?.keywords) ? props.academicRetrieval.keywords.length : 0,
+  entities: Array.isArray(props.academicRetrieval?.entities) ? props.academicRetrieval.entities.length : 0,
+  relationships: Array.isArray(props.academicRetrieval?.relationships)
+    ? props.academicRetrieval.relationships.length
+    : 0
+}))
+
+const graphTriples = computed(() =>
+  Array.isArray(props.graph?.triples) ? props.graph.triples.filter((item) => item) : []
+)
+
+const graphCounts = computed(() => ({
+  nodes: Array.isArray(props.graph?.nodes) ? props.graph.nodes.length : 0,
+  edges: Array.isArray(props.graph?.edges) ? props.graph.edges.length : 0,
+  triples: graphTriples.value.length
+}))
+
+const hasAcademicEvidence = computed(() =>
+  Object.values(academicCounts.value).some((count) => Number(count) > 0)
+)
+
+const hasGraphEvidence = computed(() =>
+  graphCounts.value.nodes > 0 || graphCounts.value.edges > 0 || graphCounts.value.triples > 0
+)
+
+const hasAnyStructuredEvidence = computed(
+  () => normalizedChunks.value.length > 0 || hasAcademicEvidence.value || hasGraphEvidence.value
+)
+
+const fallbackText = computed(() => {
+  const text = String(props.evidenceSummary || props.rawText || '').trim()
+  return text.length <= 900 ? text : `${text.slice(0, 900).trim()}...`
+})
+
+const hasAnyEvidence = computed(() => hasAnyStructuredEvidence.value || Boolean(fallbackText.value))
+
+const evidenceSummaryText = computed(() => {
+  const parts = []
+  if (academicCounts.value.paperChunks) parts.push(`${academicCounts.value.paperChunks} academic chunks`)
+  if (academicCounts.value.entities) parts.push(`${academicCounts.value.entities} entities`)
+  if (academicCounts.value.relationships) parts.push(`${academicCounts.value.relationships} relationships`)
+  if (graphCounts.value.triples) parts.push(`${graphCounts.value.triples} graph triples`)
+  return parts.join(', ')
 })
 
 watch(
@@ -129,8 +232,11 @@ const toggleFile = (filename) => {
 
 const getChunkKey = (chunk, index) => {
   if (chunk?.metadata?.chunk_id) return `${chunk.metadata.chunk_id}-${index}`
-  return `${chunk?.metadata?.source || 'chunk'}-${index}`
+  return `${chunk?.metadata?.source || chunk?.source || chunk?.metadata?.title || 'chunk'}-${index}`
 }
+
+const getTripleKey = (triple, index) =>
+  `${triple?.source || 'source'}-${triple?.relation || 'rel'}-${triple?.target || 'target'}-${index}`
 
 const getPreviewText = (text = '') => {
   const content = String(text)
@@ -155,6 +261,11 @@ const openChunkDetail = (chunk, index) => {
     border: 1px solid var(--gray-150);
     border-radius: 8px;
     margin-bottom: 8px;
+
+    .summary-separator {
+      margin: 0 6px;
+      color: var(--gray-400);
+    }
   }
 
   .kb-results {
@@ -283,6 +394,90 @@ const openChunkDetail = (chunk, index) => {
         }
       }
     }
+  }
+
+  .graph-evidence {
+    margin-top: 8px;
+    border: 1px solid var(--gray-150);
+    border-radius: 8px;
+    background: var(--gray-0);
+    overflow: hidden;
+
+    .evidence-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--gray-10);
+      color: var(--gray-800);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .evidence-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--gray-100);
+
+      .metric-chip {
+        border: 1px solid var(--gray-150);
+        border-radius: 999px;
+        padding: 2px 8px;
+        color: var(--gray-700);
+        background: var(--gray-25);
+        font-size: 11px;
+      }
+    }
+
+    .triple-list {
+      border-top: 1px solid var(--gray-100);
+      padding: 6px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .triple-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+        color: var(--gray-700);
+
+        .triple-source,
+        .triple-target {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .triple-relation {
+          color: var(--color-primary-600);
+          background: var(--gray-25);
+          border: 1px solid var(--gray-150);
+          border-radius: 4px;
+          padding: 1px 6px;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  .raw-evidence {
+    margin-top: 8px;
+    padding: 10px 12px;
+    color: var(--gray-700);
+    background: var(--gray-25);
+    border: 1px solid var(--gray-150);
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .no-results {

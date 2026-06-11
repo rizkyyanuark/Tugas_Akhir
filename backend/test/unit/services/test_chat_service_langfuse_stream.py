@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from langchain.messages import AIMessageChunk, HumanMessage
 
-from yuxi.services import chat_service as svc
+from yunesa.services import chat_service as svc
 
 
 class _FakeConvRepo:
@@ -109,7 +109,7 @@ async def test_stream_agent_chat_passes_langfuse_callbacks_and_persists_trace_in
         lambda **kwargs: SimpleNamespace(
             callbacks=["handler-1"],
             metadata={"langfuse_user_id": kwargs["current_user"].id, "langfuse_session_id": kwargs["thread_id"]},
-            tags=["yuxi", "chat"],
+            tags=["yunesa", "chat"],
             trace_id="trace-seeded",
         ),
     )
@@ -138,7 +138,7 @@ async def test_stream_agent_chat_passes_langfuse_callbacks_and_persists_trace_in
     assert calls["stream_kwargs"] == {
         "callbacks": ["handler-1"],
         "metadata": {"langfuse_user_id": "user-1", "langfuse_session_id": "thread-1"},
-        "tags": ["yuxi", "chat"],
+        "tags": ["yunesa", "chat"],
     }
     assert calls["saved_state"]["trace_info"] == {
         "langfuse_trace_id": "trace-runtime",

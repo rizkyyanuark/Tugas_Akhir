@@ -120,12 +120,14 @@ class KnowledgeBase(ABC):
 
         self._normalize_metadata_state()
         self._metadata_loaded = True
-        logger.info(f"{self.kb_type}: load了 {len(self.databases_meta)} database的元data")
+        logger.info(f"{self.kb_type}: loaded metadata for {len(self.databases_meta)} databases")
 
     def _ensure_metadata_loaded(self):
         """Ensure metadata is loaded (lazy loading)"""
         if not self._metadata_loaded:
-            logger.warning(f"{self.kb_type}: Metadata not loaded yet, ensure KnowledgeBaseManager has called load_metadata()")
+            logger.warning(
+                f"{self.kb_type}: Metadata not loaded yet, ensure KnowledgeBaseManager has called load_metadata()"
+            )
 
     @staticmethod
     def _normalize_timestamp(value: Any) -> str | None:
@@ -406,7 +408,7 @@ class KnowledgeBase(ABC):
             ]
             await asyncio.gather(*cleanup_tasks)
 
-            # 3. Delete database记录
+            # 3. Delete database record.
             del self.databases_meta[db_id]
             kb_repo = KnowledgeBaseRepository()
             await kb_repo.delete(db_id)
@@ -467,7 +469,7 @@ class KnowledgeBase(ABC):
         Args:
             query_text: Query text
             db_id: Database ID
-            \*\*kwargs: Query parameters
+            **kwargs: Query parameters
 
         Returns:
             A list containing dictionaries, each representing a retrieved document chunk.
@@ -492,9 +494,9 @@ class KnowledgeBase(ABC):
                         "label": "parametername",
                         "type": "select|number|boolean",
                         "default": default_value,
-                        "options": [...],  # 对于 select type
+                        "options": [...],  # For select fields.
                         "description": "parameterdescription",
-                        "min": 1,  # 对于 number type
+                        "min": 1,  # For number fields.
                         "max": 100,
                         "step": 0.1
                     },
@@ -514,7 +516,7 @@ class KnowledgeBase(ABC):
         Args:
             query_text: Query text
             db_id: Database ID
-            \*\*kwargs: Query parameters
+            **kwargs: Query parameters
 
         Returns:
             A list containing dictionaries, each representing a retrieved document chunk.
@@ -703,7 +705,7 @@ class KnowledgeBase(ABC):
             intermediate_states = {
                 FileStatus.PARSING: FileStatus.ERROR_PARSING,
                 FileStatus.INDEXING: FileStatus.ERROR_INDEXING,
-                "processing": "failed",  # 兼容旧status
+                "processing": "failed",  # Backward-compatible legacy status.
             }
 
             # Check all intermediate state files under this database
@@ -712,7 +714,7 @@ class KnowledgeBase(ABC):
                     current_status = file_info.get("status")
 
                     if current_status in intermediate_states:
-                        # checkfilewhether真的在process队column中
+                        # Check whether the file is still in the processing queue.
                         if not self._is_file_in_processing_queue(file_id):
                             error_status = intermediate_states[current_status]
                             logger.warning(
@@ -879,7 +881,7 @@ class KnowledgeBase(ABC):
             db_id: Database ID
             name: New name
             description: New description
-            llm_info: LLM configuration information（optional，仅用于 LightRAG typeknowledge base）
+            llm_info: Optional LLM configuration used by LightRAG knowledge bases.
 
         Returns:
             Updated database information

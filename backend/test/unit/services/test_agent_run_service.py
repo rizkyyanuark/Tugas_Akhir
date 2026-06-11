@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-import yuxi.services.agent_run_service as agent_run_service
+import yunesa.services.agent_run_service as agent_run_service
 
 
 class FakeConfigRepo:
@@ -72,7 +72,7 @@ async def test_stream_agent_run_events_reads_redis_and_close_terminal(monkeypatc
                 {
                     "seq": "1700000000000-0",
                     "event_type": "loading",
-                    "payload": {"items": [{"status": "loading", "response": "你"}]},
+                    "payload": {"items": [{"status": "loading", "response": "Partial"}]},
                     "ts": 1700000000000,
                 }
             ]
@@ -316,4 +316,4 @@ async def test_create_agent_run_integrity_error_returns_409_for_other_user(monke
         )
 
     assert exc.value.status_code == 409
-    assert exc.value.detail == "request_id 冲突"
+    assert exc.value.detail == "request_id conflict"

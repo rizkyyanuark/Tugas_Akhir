@@ -1,11 +1,27 @@
 import os
-import traceback
 
-from openai import AsyncOpenAI
+from openai import (
+    APIConnectionError,
+    APITimeoutError,
+    AsyncOpenAI,
+    AuthenticationError,
+    BadRequestError,
+    NotFoundError,
+    PermissionDeniedError,
+    RateLimitError,
+)
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from yunesa import config
 from yunesa.utils import logger
+
+
+DEPRECATED_MODEL_SPEC_ALIASES: dict[str, str] = {
+    "siliconflow/Pro/deepseek-ai/DeepSeek-V3.2": "siliconflow/deepseek-ai/DeepSeek-V3.2",
+    "siliconflow/Pro/MiniMaxAI/MiniMax-M2.5": "siliconflow/MiniMaxAI/MiniMax-M2.5",
+    "siliconflow/Pro/zai-org/GLM-5": "siliconflow/zai-org/GLM-5",
+    "siliconflow/Pro/moonshotai/Kimi-K2.5": "siliconflow/moonshotai/Kimi-K2.5",
+}
 
 
 def split_model_spec(model_spec, sep="/"):
@@ -34,7 +50,11 @@ class OpenAIBase:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
-        retry=retry_if_exception_type((Exception,)),
+        retry=retry_if_exception_type((
+            APIConnectionError,
+            APITimeoutError,
+            RateLimitError,
+        )),
         before_sleep=before_sleep_log(logger, log_level="WARNING"),
         reraise=True,
     )
@@ -50,13 +70,17 @@ class OpenAIBase:
             else:
                 response = await self._get_response(messages)
 
-        except Exception as e:
-            err = (
-                f"Error streaming response: {e}, URL: {self.base_url}, "
-                f"API Key: {self.api_key[:5]}***, Model: {self.model_name}"
-            )
-            logger.error(err)
-            raise Exception(err)
+        except (AuthenticationError, PermissionDeniedError) as e:
+            logger.error("Model provider authentication failed for model %s", self.model_name)
+            raise ModelConfigurationError(
+                "Model provider authentication failed. Check the configured API key."
+            ) from e
+        except (BadRequestError, NotFoundError) as e:
+            logger.error("Model provider rejected model %s: %s", self.model_name, e)
+            raise ModelCallError(_format_provider_model_error(self.model_name, e)) from e
+        except Exception:
+            logger.exception("Model call failed for model %s", self.model_name)
+            raise
 
         return response
 
@@ -100,9 +124,54 @@ class GeneralResponse:
         self.is_full = False
 
 
+class ModelConfigurationError(ValueError):
+    """Raised when the selected provider/model cannot be used locally."""
+
+
+class ModelCallError(RuntimeError):
+    """Raised when a configured provider rejects a model call."""
+
+
+def _format_provider_model_error(model_name: str, exc: Exception) -> str:
+    message = str(exc)
+    if "Model does not exist" in message or "model" in message.lower():
+        return (
+            f"Selected model '{model_name}' was rejected by the provider. "
+            "Choose a registered model from Settings or update the provider model registry."
+        )
+    return "Model provider rejected the request. Check the selected model and provider settings."
+
+
+def _resolve_provider_api_key(model_provider: str, model_info) -> str:
+    env_name = model_info.env
+    if env_name in {"NO_API_KEY", "no_api_key"}:
+        return "no_api_key"
+
+    api_key = os.environ.get(env_name)
+    if not api_key:
+        raise ModelConfigurationError(
+            f"Provider '{model_provider}' is not configured. "
+            f"Set {env_name} in .env or GitHub Secrets, restart the service, "
+            "then select the provider again."
+        )
+    return api_key
+
+
+def _validate_registered_model(model_provider: str, model_info, model_name: str) -> None:
+    if model_info.models and model_name not in model_info.models:
+        supported = ", ".join(model_info.models[:8])
+        if len(model_info.models) > 8:
+            supported += ", ..."
+        raise ModelConfigurationError(
+            f"Model '{model_provider}/{model_name}' is not registered for this provider. "
+            f"Choose one of: {supported}"
+        )
+
+
 def select_model(model_provider=None, model_name=None, model_spec=None):
     """Select model by provider."""
     if model_spec:
+        model_spec = DEPRECATED_MODEL_SPEC_ALIASES.get(model_spec, model_spec)
         spec_provider, spec_model_name = split_model_spec(model_spec)
         model_provider = model_provider or spec_provider
         model_name = model_name or spec_model_name
@@ -125,22 +194,21 @@ def select_model(model_provider=None, model_name=None, model_spec=None):
         raise ValueError(
             f"Model name not specified for provider {model_provider}")
 
+    if not config.model_provider_status.get(model_provider, False):
+        _resolve_provider_api_key(model_provider, model_info)
+
+    _validate_registered_model(model_provider, model_info, model_name)
+
     logger.info(f"Selecting model from `{model_provider}` with `{model_name}`")
 
-    if model_provider == "openai":
-        return OpenModel(model_name)
-
     # Other providers default to OpenAIBase.
-    try:
-        model = OpenAIBase(
-            api_key=os.environ.get(model_info.env, model_info.env),
-            base_url=model_info.base_url,
-            model_name=model_name,
-        )
-        return model
-    except Exception as e:
-        raise ValueError(
-            f"Model provider {model_provider} load failed, {e} \n {traceback.format_exc()}")
+    api_key = _resolve_provider_api_key(model_provider, model_info)
+    base_url = os.getenv("OPENAI_API_BASE") if model_provider == "openai" else None
+    return OpenAIBase(
+        api_key=api_key,
+        base_url=base_url or model_info.base_url,
+        model_name=model_name,
+    )
 
 
 async def test_chat_model_status(provider: str, model_name: str) -> dict:

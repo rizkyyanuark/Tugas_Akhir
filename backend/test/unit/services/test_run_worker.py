@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import yuxi.services.run_worker as run_worker
+import yunesa.services.run_worker as run_worker
 
 
 class _RaisingAsyncIter:

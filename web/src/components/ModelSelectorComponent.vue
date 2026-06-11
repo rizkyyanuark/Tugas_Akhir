@@ -22,7 +22,7 @@
             type="text"
             :loading="state.checkingStatus"
             @click.stop="checkCurrentModelStatus"
-            :disabled="state.checkingStatus"
+            :disabled="state.checkingStatus || selectedProviderUnavailable"
             class="status-check-button"
           >
             {{ state.checkingStatus ? 'Checking...' : 'Check' }}
@@ -124,9 +124,20 @@ const resolvedModel = computed(() => {
 const displayModelProvider = computed(() => resolvedModel.value.provider || '')
 const displayModelName = computed(() => resolvedModel.value.name || '')
 const displayModelText = computed(() => displayModelName.value || props.placeholder)
+const selectedProviderUnavailable = computed(() => {
+  const provider = resolvedModel.value.provider
+  if (!provider || !modelStatus.value) return false
+  return modelStatus.value[provider] === false
+})
 
 // Current model status
 const currentModelStatus = computed(() => {
+  if (selectedProviderUnavailable.value) {
+    return {
+      status: 'error',
+      message: `Provider "${resolvedModel.value.provider}" is not configured. Set its API key environment variable and restart the service.`
+    }
+  }
   return state.currentModelStatus
 })
 

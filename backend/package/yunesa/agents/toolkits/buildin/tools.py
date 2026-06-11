@@ -25,6 +25,52 @@ After configuration, this tool can generate images.
 """.strip()
 
 
+def _normalize_presented_artifact_path(path: str, runtime) -> str:
+    """Normalize an artifact path to a sandbox-visible outputs path.
+
+    Agents may pass either a host-side file path or an existing virtual path.
+    Only files under the thread outputs directory are presentable artifacts.
+    """
+
+    from pathlib import Path
+
+    from yunesa.agents.backends.sandbox import (
+        VIRTUAL_PATH_PREFIX,
+        resolve_virtual_path,
+        sandbox_outputs_dir,
+        virtual_path_for_thread_file,
+    )
+
+    raw_path = str(path or "").strip()
+    if not raw_path:
+        raise ValueError("artifact path is required")
+
+    context = getattr(runtime, "context", None)
+    thread_id = str(getattr(context, "thread_id", "") or "").strip()
+    user_id = str(getattr(context, "user_id", "") or "").strip()
+    if not thread_id or not user_id:
+        raise ValueError("runtime context must include thread_id and user_id")
+
+    virtual_prefix = "/" + VIRTUAL_PATH_PREFIX.strip("/")
+    if raw_path == virtual_prefix or raw_path.startswith(f"{virtual_prefix}/"):
+        normalized = "/" + raw_path.strip().lstrip("/")
+        host_path = resolve_virtual_path(thread_id, normalized, user_id=user_id)
+    else:
+        host_path = Path(raw_path).resolve()
+        normalized = virtual_path_for_thread_file(thread_id, host_path, user_id=user_id)
+
+    outputs_root = sandbox_outputs_dir(thread_id).resolve()
+    try:
+        host_path.resolve().relative_to(outputs_root)
+    except ValueError as exc:
+        raise ValueError(f"artifact path must be under {virtual_prefix}/outputs/") from exc
+
+    if not normalized.startswith(f"{virtual_prefix}/outputs/"):
+        raise ValueError(f"artifact path must be under {virtual_prefix}/outputs/")
+
+    return normalized
+
+
 def _create_tavily_search():
     """Create and register TavilySearch tool with metadata."""
     global _tavily_search_instance
@@ -224,7 +270,7 @@ async def text_to_img_qwen_image(
 
     Generated results are not shown automatically; the returned URL should be processed and presented explicitly.
     """
-    url = "https://api.siliconflow.cn/v1/images/generations"
+    url = "https://api.siliconflow.com/v1/images/generations"
 
     payload = {
         "model": "Qwen/Qwen-Image",

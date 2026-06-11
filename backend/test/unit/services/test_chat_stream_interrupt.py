@@ -1,6 +1,6 @@
 """Tests interrupt-related helpers in chat_service."""
 
-from yuxi.services.chat_service import (
+from yunesa.services.chat_service import (
     _normalize_interrupt_options,
     _normalize_interrupt_questions,
     _build_ask_user_question_payload,

@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Avoid package-level knowledge graph initialization during pytest collection.
-os.environ.setdefault("YUXI_SKIP_APP_INIT", "1")
+os.environ.setdefault("YUNESA_SKIP_APP_INIT", "1")
 
 
 def pytest_configure(config: pytest.Config) -> None:

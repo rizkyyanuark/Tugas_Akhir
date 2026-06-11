@@ -103,21 +103,17 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, h } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useConfigStore } from '@/stores/config'
 import {
   SyncOutlined,
   SearchOutlined,
   ReloadOutlined,
-  LoadingOutlined,
-  DatabaseOutlined,
-  SettingOutlined
+  LoadingOutlined
 } from '@ant-design/icons-vue'
 import ViewSwitchHeader from '@/components/ViewSwitchHeader.vue'
 import { neo4jApi, unifiedApi } from '@/apis/graph_api'
-import { useUserStore } from '@/stores/user'
 import GraphCanvas from '@/components/GraphCanvas.vue'
 import GraphDetailPanel from '@/components/GraphDetailPanel.vue'
 import { useGraph } from '@/composables/useGraph'
@@ -134,7 +130,6 @@ const modelMatched = computed(
     graphInfo.value.embed_model_name === cur_embed_model.value
 )
 
-const router = useRouter()
 const graphRef = ref(null)
 const graphInfo = ref(null)
 const sampleNodeCount = ref(80)
@@ -155,10 +150,6 @@ const state = reactive({
 
 const isNeo4j = computed(() => {
   return state.selectedDbId === 'neo4j'
-})
-
-const embedModelConfigurable = computed(() => {
-  return graphInfo.value?.embed_model_configurable ?? true
 })
 
 const unindexedCount = computed(() => {
@@ -340,11 +331,6 @@ const indexNodes = () => {
     .finally(() => {
       state.indexing = false
     })
-}
-
-const getAuthHeaders = () => {
-  const userStore = useUserStore()
-  return userStore.getAuthHeaders()
 }
 
 </script>

@@ -1037,12 +1037,28 @@ async def get_call_timeseries_stats(
 
 
 class AcademicStats(BaseModel):
-    """Academic statistics for UNESA KG Dashboard"""
+    """Canonical Academic GraphRAG statistics for the UNESA dashboard."""
 
+    graph_name: str
     papers_count: int
     lecturers_count: int
+    authorship_links_count: int
+    papers_with_abstract: int
+    papers_with_keywords: int
+    papers_with_tldr: int
     kg_nodes_count: int
+    kg_edges_count: int
+    graph_entity_distribution: dict[str, int]
+    graph_relationship_distribution: dict[str, int]
+    vector_records_count: int
+    vector_collections: dict[str, int]
+    vector_database: str
+    embedding_provider: str
+    embedding_model: str
+    embedding_dimension: int
     conversations_count: int
+    source_status: dict[str, dict[str, str]]
+    generated_at: str
 
 
 @dashboard.get("/stats/academic", response_model=AcademicStats)
@@ -1050,96 +1066,18 @@ async def get_academic_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ):
-    """
-    Get academic statistics from Supabase, Neo4j, and local DB.
-    Returns paper count, lecturer count, KG nodes, and conversation count.
-    """
-    import os
+    """Return a read-only snapshot of the Academic GraphRAG storage layers."""
+    from yunesa.services.academic_dashboard_service import AcademicDashboardService
 
-    import httpx
+    snapshot = await AcademicDashboardService().collect()
 
-    papers_count = 0
-    lecturers_count = 0
-    kg_nodes_count = 0
-    conversations_count = 0
-
-    supabase_url = os.getenv("SUPABASE_URL", "")
-    supabase_key = os.getenv("SUPABASE_KEY", "")
-
-    # 1. Query Supabase for paper count
-    try:
-        if supabase_url and supabase_key:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                # Papers count via PostgREST
-                resp = await client.get(
-                    f"{supabase_url}/rest/v1/tabel_data_paper_unesa",
-                    params={"select": "id", "limit": "1"},
-                    headers={
-                        "apikey": supabase_key,
-                        "Authorization": f"Bearer {supabase_key}",
-                        "Prefer": "count=exact",
-                    },
-                )
-                if resp.status_code == 200:
-                    content_range = resp.headers.get("content-range", "")
-                    # Format: "0-0/5573" or "*/5573"
-                    if "/" in content_range:
-                        papers_count = int(content_range.split("/")[-1])
-                    else:
-                        papers_count = len(resp.json())
-
-                # Lecturers count via PostgREST
-                resp2 = await client.get(
-                    f"{supabase_url}/rest/v1/tabel_dosen_data_fix",
-                    params={"select": "id", "limit": "1"},
-                    headers={
-                        "apikey": supabase_key,
-                        "Authorization": f"Bearer {supabase_key}",
-                        "Prefer": "count=exact",
-                    },
-                )
-                if resp2.status_code == 200:
-                    content_range2 = resp2.headers.get("content-range", "")
-                    if "/" in content_range2:
-                        lecturers_count = int(content_range2.split("/")[-1])
-                    else:
-                        lecturers_count = len(resp2.json())
-    except Exception as e:
-        logger.warning(f"Failed to query Supabase for academic stats: {e}")
-
-    # 2. Query Neo4j for KG node count
-    try:
-        neo4j_uri = os.getenv("NEO4J_URI", "bolt://graph:7687")
-        neo4j_user = os.getenv(
-            "NEO4J_USERNAME", os.getenv("NEO4J_USER", "neo4j"))
-        neo4j_password = os.getenv("NEO4J_PASSWORD", "")
-        neo4j_database = os.getenv("NEO4J_DATABASE", "infokom-unesa")
-
-        from neo4j import AsyncGraphDatabase
-
-        driver = AsyncGraphDatabase.driver(
-            neo4j_uri, auth=(neo4j_user, neo4j_password))
-        async with driver.session(database=neo4j_database) as session:
-            result = await session.run("MATCH (n) RETURN count(n) AS total")
-            record = await result.single()
-            if record:
-                kg_nodes_count = record["total"]
-        await driver.close()
-    except Exception as e:
-        logger.warning(f"Failed to query Neo4j for KG node count: {e}")
-
-    # 3. Get conversation count from local DB
     try:
         from yunesa.storage.postgres.models_business import Conversation
 
         total_conv_result = await db.execute(select(func.count(Conversation.id)))
-        conversations_count = total_conv_result.scalar() or 0
+        snapshot["conversations_count"] = int(total_conv_result.scalar() or 0)
     except Exception as e:
         logger.warning(f"Failed to query conversations count: {e}")
+        snapshot["conversations_count"] = 0
 
-    return AcademicStats(
-        papers_count=papers_count,
-        lecturers_count=lecturers_count,
-        kg_nodes_count=kg_nodes_count,
-        conversations_count=conversations_count,
-    )
+    return AcademicStats(**snapshot)

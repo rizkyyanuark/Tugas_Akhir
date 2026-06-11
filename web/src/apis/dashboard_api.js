@@ -98,26 +98,34 @@ export const dashboardApi = {
    * @returns {Promise<Object>} - All statistics
    */
   getAllStats: async () => {
-    try {
-      const [basicStats, userStats, toolStats, knowledgeStats, agentStats] = await Promise.all([
-        apiAdminGet('/api/dashboard/stats'),
-        apiAdminGet('/api/dashboard/stats/users'),
-        apiAdminGet('/api/dashboard/stats/tools'),
-        apiAdminGet('/api/dashboard/stats/knowledge'),
-        apiAdminGet('/api/dashboard/stats/agents')
-      ])
-
-      return {
-        basic: basicStats,
-        users: userStats,
-        tools: toolStats,
-        knowledge: knowledgeStats,
-        agents: agentStats
-      }
-    } catch (error) {
-      console.error('Failed to fetch statistics in batch:', error)
-      throw error
+    const requests = {
+      basic: apiAdminGet('/api/dashboard/stats'),
+      users: apiAdminGet('/api/dashboard/stats/users'),
+      tools: apiAdminGet('/api/dashboard/stats/tools'),
+      knowledge: apiAdminGet('/api/dashboard/stats/knowledge'),
+      agents: apiAdminGet('/api/dashboard/stats/agents'),
+      academic: apiAdminGet('/api/dashboard/stats/academic')
     }
+
+    const keys = Object.keys(requests)
+    const results = await Promise.allSettled(Object.values(requests))
+    const response = { failures: [] }
+
+    results.forEach((result, index) => {
+      const key = keys[index]
+      if (result.status === 'fulfilled') {
+        response[key] = result.value
+      } else {
+        response[key] = null
+        response.failures.push(key)
+        console.error(`Failed to fetch dashboard source "${key}":`, result.reason)
+      }
+    })
+
+    if (!response.basic) {
+      throw new Error('Basic dashboard statistics are unavailable.')
+    }
+    return response
   },
 
   /**
@@ -133,7 +141,7 @@ export const dashboardApi = {
   /**
    * Get academic statistics (paper count, lecturer count, KG nodes)
    * Used by DashboardView for UNESA academic metrics
-   * @returns {Promise<Object>} - { papers_count, lecturers_count, kg_nodes_count, conversations_count }
+   * @returns {Promise<Object>} - Academic corpus, graph, vector, and source health metrics.
    */
   getAcademicStats: () => {
     return apiAdminGet('/api/dashboard/stats/academic')

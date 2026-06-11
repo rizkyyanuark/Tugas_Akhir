@@ -1,11 +1,11 @@
 <template>
-  <a-card title="Knowledge Base Usage" :loading="loading" class="dashboard-card">
+  <a-card title="Managed Document Knowledge Bases" :loading="loading" class="dashboard-card">
     <!-- Knowledge base overview -->
     <div class="stats-overview">
       <a-row :gutter="16">
         <a-col :span="8">
           <a-statistic
-            title="Total Knowledge Bases"
+            title="Managed Knowledge Bases"
             :value="knowledgeStats?.total_databases || 0"
             :value-style="{ color: 'var(--color-info-500)' }"
             suffix="items"

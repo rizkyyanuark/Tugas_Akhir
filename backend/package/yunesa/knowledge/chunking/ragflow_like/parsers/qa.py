@@ -250,7 +250,7 @@ def chunk_markdown(filename: str, markdown_content: str, parser_config: dict[str
     pairs = _dedupe_pairs(pairs)
 
     if not pairs and lines:
-        # 最后兜底：把content按 2 row一组构成问答
+        # Final fallback: pair content lines as question-answer rows.
         for i in range(0, len(lines), 2):
             q = lines[i]
             a = lines[i + 1] if i + 1 < len(lines) else ""

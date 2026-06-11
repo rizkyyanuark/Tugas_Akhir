@@ -2,6 +2,8 @@ x-api-worker-env: &api-worker-env
   HOST_IP: ${HOST_IP:-}
   LITE_MODE: ${LITE_MODE:-false}
   RUNNING_IN_DOCKER: "true"
+  YUNESA_ENV: development
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
   MODEL_DIR_IN_DOCKER: /models
   # DBs and other services
   POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}@postgres:5432/${POSTGRES_DB:-postgres}
@@ -16,6 +18,7 @@ x-api-worker-env: &api-worker-env
   # --- Core Credentials (Shared by ETL & Server) ---
   SUPABASE_URL: ${SUPABASE_URL}
   SUPABASE_KEY: ${SUPABASE_KEY}
+  SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}

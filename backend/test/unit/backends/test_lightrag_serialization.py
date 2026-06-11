@@ -6,9 +6,9 @@ from types import SimpleNamespace
 import pytest
 
 from server.routers import knowledge_router
-from yuxi.knowledge.base import FileStatus
-from yuxi.knowledge.implementations import lightrag as lightrag_module
-from yuxi.knowledge.implementations.lightrag import LightRagKB
+from yunesa.knowledge.base import FileStatus
+from yunesa.knowledge.implementations import lightrag as lightrag_module
+from yunesa.knowledge.implementations.lightrag import LightRagKB
 
 
 pytestmark = pytest.mark.asyncio
@@ -126,71 +126,19 @@ async def test_index_file_allows_parallel_writes_for_different_databases(
     await asyncio.gather(task_a, task_b)
 
 
-async def test_add_documents_auto_index_uses_latest_parsed_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[str, str]] = []
-
-    class FakeKnowledgeBase:
-        async def get_database_info(self, _db_id: str) -> dict:
-            return {"name": "pytest-db"}
-
-        async def add_file_record(
-            self,
-            _db_id: str,
-            _item: str,
-            params: dict | None = None,
-            operator_id: str | None = None,
-        ) -> dict:
-            return {"file_id": "file-1", "status": FileStatus.UPLOADED, "params": params, "operator_id": operator_id}
-
-        async def parse_file(self, _db_id: str, file_id: str, operator_id: str | None = None) -> dict:
-            calls.append(("parse", file_id))
-            return {"file_id": file_id, "status": FileStatus.PARSED, "operator_id": operator_id}
-
-        async def update_file_params(
-            self, _db_id: str, file_id: str, params: dict, operator_id: str | None = None
-        ) -> None:
-            calls.append(("update_params", file_id))
-
-        async def index_file(self, _db_id: str, file_id: str, operator_id: str | None = None) -> dict:
-            calls.append(("index", file_id))
-            return {"file_id": file_id, "status": FileStatus.INDEXED, "operator_id": operator_id}
-
-    class FakeTaskContext:
-        async def set_message(self, _message: str) -> None:
-            return None
-
-        async def set_progress(self, _progress: float, _message: str | None = None) -> None:
-            return None
-
-        async def set_result(self, _result) -> None:
-            return None
-
-        async def raise_if_cancelled(self) -> None:
-            return None
-
-    class FakeTasker:
-        async def enqueue(self, *, coroutine, **_kwargs):
-            await coroutine(FakeTaskContext())
-            return SimpleNamespace(id="task-1")
-
-    async def fake_ensure_database_not_dify(_db_id: str, _operation: str) -> None:
-        return None
-
-    monkeypatch.setattr("yuxi.knowledge.utils.kb_utils.validate_file_path", lambda _item, _db_id: None)
-    monkeypatch.setattr(knowledge_router, "knowledge_base", FakeKnowledgeBase())
-    monkeypatch.setattr(knowledge_router, "tasker", FakeTasker())
-    monkeypatch.setattr(knowledge_router, "_ensure_database_not_dify", fake_ensure_database_not_dify)
-
+async def test_add_documents_is_disabled_for_text_only_runtime() -> None:
     current_user = SimpleNamespace(user_id="user-1", id="user-1")
-    result = await knowledge_router.add_documents(
-        "kb_auto_index",
-        items=["/tmp/example.md"],
-        params={"content_type": "file", "auto_index": True},
-        current_user=current_user,
-    )
 
-    assert result["status"] == "queued"
-    assert calls == [("parse", "file-1"), ("update_params", "file-1"), ("index", "file-1")]
+    with pytest.raises(knowledge_router.HTTPException) as exc:
+        await knowledge_router.add_documents(
+            "kb_auto_index",
+            items=["/tmp/example.md"],
+            params={"content_type": "file", "auto_index": True},
+            current_user=current_user,
+        )
+
+    assert exc.value.status_code == 410
+    assert "Document ingestion is disabled" in exc.value.detail
 
 
 def _make_async_return(value):
