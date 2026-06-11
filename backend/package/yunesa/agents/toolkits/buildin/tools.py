@@ -1,29 +1,15 @@
-import os
 import traceback
-import uuid
 from typing import Annotated, Any
 
-import requests
 from langgraph.types import interrupt
 
 from yunesa import config, graph_base
 from yunesa.agents.toolkits.registry import ToolExtraMetadata, _all_tool_instances, _extra_registry, tool
-from yunesa.storage.minio import aupload_file_to_minio
 from yunesa.utils import logger
 from yunesa.utils.question_utils import normalize_questions
 
 # Lazy initialization for TavilySearch (only when API key is available)
 _tavily_search_instance = None
-
-QWEN_IMAGE_CONFIG_GUIDE = """
-Before using this tool, configure SiliconFlow image-generation credentials.
-
-Set the following environment variable in the backend runtime:
-- `SILICONFLOW_API_KEY`: used to call the SiliconFlow image generation API
-
-After configuration, this tool can generate images.
-""".strip()
-
 
 def _normalize_presented_artifact_path(path: str, runtime) -> str:
     """Normalize an artifact path to a sandbox-visible outputs path.
@@ -102,28 +88,6 @@ if config.enable_web_search:
         _register_tavily_tool()
     except Exception as e:
         logger.warning(f"Failed to register TavilySearch tool: {e}")
-
-
-@tool(category="buildin", tags=["calculate"], display_name="Calculator")
-def calculator(a: float, b: float, operation: str) -> float:
-    """Calculator: perform basic arithmetic operations on two numbers."""
-    try:
-        if operation == "add":
-            return a + b
-        elif operation == "subtract":
-            return a - b
-        elif operation == "multiply":
-            return a * b
-        elif operation == "divide":
-            if b == 0:
-                raise ZeroDivisionError("Divisor cannot be zero")
-            return a / b
-        else:
-            raise ValueError(
-                f"Unsupported operation type: {operation}. Supported: add, subtract, multiply, divide")
-    except Exception as e:
-        logger.error(f"Calculator error: {e}")
-        raise
 
 
 ASK_USER_QUESTION_DESCRIPTION = """
@@ -248,61 +212,3 @@ def query_knowledge_graph(query: Annotated[str, "The keyword to query knowledge 
         logger.error(
             f"Knowledge graph query error: {e}, {traceback.format_exc()}")
         return f"Knowledge graph query failed: {str(e)}"
-
-
-@tool(
-    category="buildin",
-    tags=["image", "generate"],
-    display_name="Qwen-Image",
-    config_guide=QWEN_IMAGE_CONFIG_GUIDE,
-)
-async def text_to_img_qwen_image(
-    prompt: Annotated[str, "Text prompt used to generate the image"],
-    negative_prompt: Annotated[str,
-                               "Negative prompt used to describe elements that should not appear"] = "",
-    num_inference_steps: Annotated[int, "Inference steps, range 1-100"] = 20,
-    guidance_scale: Annotated[float,
-                              "Guidance scale controlling prompt adherence"] = 7.5,
-    user_id: Annotated[str,
-                       "User ID used for image archival path"] = "unknown",
-) -> str:
-    """Generate an image with Qwen-Image and return its URL.
-
-    Generated results are not shown automatically; the returned URL should be processed and presented explicitly.
-    """
-    url = "https://api.siliconflow.com/v1/images/generations"
-
-    payload = {
-        "model": "Qwen/Qwen-Image",
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "num_inference_steps": num_inference_steps,
-        "guidance_scale": guidance_scale,
-    }
-    headers = {
-        "Authorization": f"Bearer {os.getenv('SILICONFLOW_API_KEY')}", "Content-Type": "application/json"}
-
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        response_json = response.json()
-    except Exception as e:
-        logger.error(f"Failed to generate image with: {e}")
-        raise ValueError(f"Image generation failed: {e}")
-
-    try:
-        image_url = response_json["images"][0]["url"]
-    except (KeyError, IndexError, TypeError) as e:
-        logger.error(
-            f"Failed to parse image URL from response: {e}, {response_json=}")
-        raise ValueError(f"Image URL extraction failed: {e}")
-
-    # Upload to MinIO
-    response = requests.get(image_url)
-    file_data = response.content
-
-    safe_user_id = str(user_id or "unknown").replace(
-        "/", "_").replace("\\", "_")
-    file_name = f"user/{safe_user_id}/generated-images/{uuid.uuid4()}.jpg"
-    image_url = await aupload_file_to_minio(bucket_name="public", file_name=file_name, data=file_data)
-    logger.info(f"Image uploaded. URL: {image_url}")
-    return image_url

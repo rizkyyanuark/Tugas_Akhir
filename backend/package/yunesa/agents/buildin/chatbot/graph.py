@@ -8,6 +8,7 @@ from yunesa.agents.backends import create_agent_composite_backend
 from yunesa.agents.middlewares import (
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
+    TextualToolCallMiddleware,
 )
 from yunesa.agents.middlewares.knowledge_base_middleware import KnowledgeBaseMiddleware
 from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
@@ -48,6 +49,7 @@ async def _build_middlewares(context):
         summary_middleware,
         # Todo-list middleware
         TodoListMiddleware(system_prompt=TODO_MID_PROMPT),
+        TextualToolCallMiddleware(),
         PatchToolCallsMiddleware(),
         ModelRetryMiddleware(),  # Model retry middleware
     ]

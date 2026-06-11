@@ -664,6 +664,7 @@ const fetchTools = async () => {
     const result = await mcpApi.getMcpServerTools(currentServer.value.name)
     if (result.success) {
       tools.value = result.data || []
+      toolsError.value = tools.value.length === 0 ? result.message || null : null
     } else {
       toolsError.value = result.message || 'Failed to fetch tools list'
       tools.value = []
@@ -909,8 +910,14 @@ const handleTestServer = async (server) => {
     const result = await mcpApi.testMcpServer(server.name)
     if (result.success) {
       message.success(result.message)
+      if (currentServer.value?.name === server.name) {
+        await fetchTools()
+      }
     } else {
       message.warning(result.message || 'Connection failed')
+      if (currentServer.value?.name === server.name) {
+        toolsError.value = result.message || 'Connection failed'
+      }
     }
   } catch (err) {
     console.error('MCP test failed:', err)

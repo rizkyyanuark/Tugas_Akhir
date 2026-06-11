@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 class ToolExtraMetadata:
     """Extra metadata registered via decorator."""
 
-    category: str = ""  # Category: buildin, mysql, subagents, debug
+    category: str = ""  # Category: buildin, subagents, debug
     tags: list[str] = field(default_factory=list)
     display_name: str = ""  # Human-friendly display name
     icon: str = ""
@@ -50,8 +50,8 @@ def tool(
     """Extended decorator based on langchain.tool that also registers metadata.
 
     Usage:
-    @tool(category="buildin", tags=["calculate"], display_name="Calculator")
-    def calculator(a: float, b: float, operation: str) -> float:
+    @tool(category="buildin", tags=["graph"], display_name="Query Knowledge Graph")
+    def query_knowledge_graph(query: str) -> str:
         ...
 
     Or keep the original name_or_callable and description:

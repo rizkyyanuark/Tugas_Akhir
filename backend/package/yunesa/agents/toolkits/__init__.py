@@ -1,6 +1,6 @@
 # toolkits package
 # Trigger @tool decorators in each module to auto-register tools.
-from . import buildin, debug, mysql
+from . import buildin, debug
 
 # Tool getter function
 from .kbs import get_common_kb_tools
@@ -22,5 +22,4 @@ __all__ = [
     # Trigger @tool decorators in each module to auto-register tools.
     "buildin",
     "debug",
-    "mysql",
 ]

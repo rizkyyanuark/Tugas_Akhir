@@ -316,6 +316,7 @@
           @click="saveConfig"
           class="footer-main-btn save-btn"
           :class="{ changed: agentStore.hasConfigChanges }"
+          :loading="isSavingConfig"
           :disabled="isSavingConfig || isEmptyConfig"
         >
           Save
@@ -1092,7 +1093,20 @@ const saveConfig = async () => {
     return
   }
 
-  if (!agentStore.hasConfigChanges) return
+  if (!selectedAgentConfigId.value) {
+    message.error('No configuration selected')
+    return
+  }
+
+  if (isReadOnlyConfig.value) {
+    message.warning('This configuration is read-only')
+    return
+  }
+
+  if (!agentStore.hasConfigChanges) {
+    message.info('No configuration changes to save')
+    return
+  }
 
   try {
     isSavingConfig.value = true

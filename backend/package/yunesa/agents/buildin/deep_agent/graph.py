@@ -11,6 +11,7 @@ from yunesa.agents.backends import create_agent_composite_backend
 from yunesa.agents.middlewares import (
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
+    TextualToolCallMiddleware,
 )
 from yunesa.agents.middlewares.knowledge_base_middleware import KnowledgeBaseMiddleware
 from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
@@ -94,6 +95,7 @@ class DeepAgent(BaseAgent):
                 SkillsMiddleware(),
                 TodoListMiddleware(
                     system_prompt="Before ending the task, check whether the maintained todo list is completed."),
+                TextualToolCallMiddleware(),
                 PatchToolCallsMiddleware(),
                 KnowledgeBaseMiddleware(),  # Knowledge-base tools
                 summary_middleware,

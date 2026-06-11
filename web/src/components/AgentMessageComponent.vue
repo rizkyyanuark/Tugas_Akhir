@@ -317,6 +317,7 @@ const parsedData = computed(() => {
     typeof props.message.content === 'string'
       ? props.message.content.trim()
       : String(props.message.content || '').trim()
+  content = MessageProcessor.stripTextualToolCallContent(content)
   let reasoning_content = props.message.additional_kwargs?.reasoning_content || ''
 
   if (reasoning_content) {

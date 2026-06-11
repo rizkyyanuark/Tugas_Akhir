@@ -1004,11 +1004,14 @@ const handleSendMessage = async () => {
 
   userInput.value = ''
 
-  await nextTick()
-  scrollController.scrollToBottom(true)
-
   const threadState = getThreadState(threadId)
   if (!threadState) return
+
+  resetOnGoingConv(threadId)
+  threadState.isStreaming = true
+
+  await nextTick()
+  scrollController.scrollToBottom(true)
 
   if (useRunsApi) {
     if ((threadMessages.value[threadId] || []).length === 0) {
@@ -1035,8 +1038,6 @@ const handleSendMessage = async () => {
       }
     }
 
-    resetOnGoingConv(threadId)
-    threadState.isStreaming = true
     try {
       const runResp = await agentApi.createAgentRun({
         query: text,
@@ -1080,8 +1081,6 @@ const handleSendMessage = async () => {
     }
   }
 
-  threadState.isStreaming = true
-  resetOnGoingConv(threadId)
   threadState.streamAbortController = new AbortController()
 
   try {

@@ -16,6 +16,7 @@ from yunesa.repositories.agent_config_repository import AgentConfigRepository
 from yunesa.repositories.agent_run_repository import TERMINAL_RUN_STATUSES, AgentRunRepository
 from yunesa.repositories.conversation_repository import ConversationRepository
 from yunesa.services.run_queue_service import (
+    append_run_stream_event,
     get_arq_pool,
     get_last_run_stream_seq,
     list_run_stream_events,
@@ -129,6 +130,24 @@ async def create_agent_run_view(
         raise HTTPException(status_code=409, detail="request_id conflict")
 
     queue = await get_arq_pool()
+    await append_run_stream_event(
+        run.id,
+        "init",
+        {
+            "chunk": {
+                "status": "init",
+                "request_id": request_id,
+                "response": None,
+                "meta": dict(meta or {}),
+                "msg": {
+                    "role": "user",
+                    "content": query,
+                    "type": "human",
+                    "message_type": "text",
+                },
+            }
+        },
+    )
     await queue.enqueue_job("process_agent_run", run.id, _job_id=f"run:{run.id}")
 
     return _build_run_response(run)

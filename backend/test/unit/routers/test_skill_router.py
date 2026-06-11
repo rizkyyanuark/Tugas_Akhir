@@ -138,7 +138,7 @@ def test_update_skill_file_passes_operator(monkeypatch):
 def test_dependency_options_route(monkeypatch):
     async def fake_get_skill_dependency_options(_db):
         return {
-            "tools": ["calculator"],
+            "tools": ["query_kb"],
             "mcps": ["mcp-a"],
             "skills": ["demo"],
         }
@@ -152,7 +152,7 @@ def test_dependency_options_route(monkeypatch):
     assert resp.status_code == 200, resp.text
     payload = resp.json()
     assert payload["success"] is True
-    assert payload["data"]["tools"] == ["calculator"]
+    assert payload["data"]["tools"] == ["query_kb"]
 
 
 def test_update_skill_dependencies_route(monkeypatch):
@@ -190,14 +190,14 @@ def test_update_skill_dependencies_route(monkeypatch):
     resp = client.put(
         "/api/system/skills/demo/dependencies",
         json={
-            "tool_dependencies": ["calculator"],
+            "tool_dependencies": ["query_kb"],
             "mcp_dependencies": ["mcp-a"],
             "skill_dependencies": ["other-skill"],
         },
     )
     assert resp.status_code == 200, resp.text
     assert captured["slug"] == "demo"
-    assert captured["tool_dependencies"] == ["calculator"]
+    assert captured["tool_dependencies"] == ["query_kb"]
     assert captured["mcp_dependencies"] == ["mcp-a"]
     assert captured["skill_dependencies"] == ["other-skill"]
     assert captured["updated_by"] == "root"

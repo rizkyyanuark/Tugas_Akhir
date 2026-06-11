@@ -69,7 +69,7 @@ async def test_get_skill_dependency_options(monkeypatch: pytest.MonkeyPatch):
     # Mock get_tool_metadata to return tool list
     def fake_get_tool_metadata(category=None):
         return [
-            {"id": "calculator", "name": "Calculator"},
+            {"id": "query_kb", "name": "Knowledge Base Search"},
             {"id": "search", "name": "Search"},
         ]
 
@@ -93,7 +93,7 @@ async def test_get_skill_dependency_options(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(svc, "SkillRepository", FakeRepo)
 
     result = await svc.get_skill_dependency_options(None)
-    assert result["tools"] == [{"id": "calculator", "name": "Calculator"}, {"id": "search", "name": "Search"}]
+    assert result["tools"] == [{"id": "query_kb", "name": "Knowledge Base Search"}, {"id": "search", "name": "Search"}]
     assert result["mcps"] == ["mcp-a", "mcp-b"]
     assert result["skills"] == ["alpha", "beta"]
 
@@ -313,7 +313,7 @@ async def test_update_skill_dependencies(monkeypatch: pytest.MonkeyPatch):
 
     # Mock get_tool_metadata to return tool list
     def fake_get_tool_metadata(category=None):
-        return [{"id": "calculator", "name": "Calculator"}]
+        return [{"id": "query_kb", "name": "Knowledge Base Search"}]
 
     monkeypatch.setattr(tool_service, "get_tool_metadata", fake_get_tool_metadata)
 
@@ -371,12 +371,12 @@ async def test_update_skill_dependencies(monkeypatch: pytest.MonkeyPatch):
     updated = await svc.update_skill_dependencies(
         None,
         slug="alpha",
-        tool_dependencies=["calculator", "calculator"],
+        tool_dependencies=["query_kb", "query_kb"],
         mcp_dependencies=["mcp-a", "mcp-a"],
         skill_dependencies=["beta", "beta"],
         updated_by="root",
     )
-    assert captured["tool_dependencies"] == ["calculator"]
+    assert captured["tool_dependencies"] == ["query_kb"]
     assert captured["mcp_dependencies"] == ["mcp-a"]
     assert captured["skill_dependencies"] == ["beta"]
     assert captured["updated_by"] == "root"
@@ -390,7 +390,7 @@ async def test_init_builtin_skills_create_missing(tmp_path: Path, monkeypatch: p
     source_dir = tmp_path / "builtin-skills" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: SQL report\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: research report\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
     (source_dir / "prompts").mkdir(parents=True, exist_ok=True)
@@ -403,8 +403,8 @@ async def test_init_builtin_skills_create_missing(tmp_path: Path, monkeypatch: p
             SimpleNamespace(
                 slug="reporter",
                 source_dir=source_dir,
-                description="SQL report from python",
-                tool_dependencies=("mysql_query",),
+                description="research report from python",
+                tool_dependencies=("query_kb",),
                 mcp_dependencies=("charts",),
                 skill_dependencies=("common-report",),
             )
@@ -471,7 +471,7 @@ async def test_init_builtin_skills_updates_existing_record(tmp_path: Path, monke
     source_dir = tmp_path / "builtin-skills" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: old\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: old\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
 
@@ -483,7 +483,7 @@ async def test_init_builtin_skills_updates_existing_record(tmp_path: Path, monke
                 slug="reporter",
                 source_dir=source_dir,
                 description="new description",
-                tool_dependencies=("mysql_query",),
+                tool_dependencies=("query_kb",),
                 mcp_dependencies=("charts",),
                 skill_dependencies=(),
             )
@@ -604,7 +604,7 @@ async def test_install_builtin_skill_ok(tmp_path: Path, monkeypatch: pytest.Monk
     source_dir = tmp_path / "builtin" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: SQL report\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: research report\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
     (source_dir / "prompt.md").write_text("prompt", encoding="utf-8")
@@ -616,9 +616,9 @@ async def test_install_builtin_skill_ok(tmp_path: Path, monkeypatch: pytest.Monk
             {
                 "slug": "reporter",
                 "name": "reporter",
-                "description": "SQL report",
+                "description": "research report",
                 "version": "1.0.0",
-                "tool_dependencies": ["mysql_query"],
+                "tool_dependencies": ["query_kb"],
                 "mcp_dependencies": ["charts"],
                 "skill_dependencies": [],
                 "content_hash": "hash-v1",
@@ -665,7 +665,7 @@ async def test_install_builtin_skill_already_installed(tmp_path: Path, monkeypat
     source_dir = tmp_path / "builtin" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: SQL report\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: research report\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
 
@@ -676,7 +676,7 @@ async def test_install_builtin_skill_already_installed(tmp_path: Path, monkeypat
             {
                 "slug": "reporter",
                 "name": "reporter",
-                "description": "SQL report",
+                "description": "research report",
                 "version": "1.0.0",
                 "tool_dependencies": [],
                 "mcp_dependencies": [],
@@ -714,7 +714,7 @@ async def test_update_builtin_skill_needs_confirm_when_hash_mismatch(
     source_dir = tmp_path / "builtin" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: SQL report\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: research report\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
 
@@ -725,7 +725,7 @@ async def test_update_builtin_skill_needs_confirm_when_hash_mismatch(
             {
                 "slug": "reporter",
                 "name": "reporter",
-                "description": "SQL report",
+                "description": "research report",
                 "version": "1.0.1",
                 "tool_dependencies": [],
                 "mcp_dependencies": [],
@@ -775,7 +775,7 @@ async def test_update_builtin_skill_accepts_legacy_managed_record(
     source_dir = tmp_path / "builtin" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: builtin\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: builtin\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
 
@@ -788,7 +788,7 @@ async def test_update_builtin_skill_accepts_legacy_managed_record(
                 "name": "reporter",
                 "description": "builtin",
                 "version": "1.0.1",
-                "tool_dependencies": ["mysql_query"],
+                "tool_dependencies": ["query_kb"],
                 "mcp_dependencies": ["charts"],
                 "skill_dependencies": [],
                 "content_hash": "hash-v2",
@@ -877,7 +877,7 @@ async def test_update_builtin_skill_force_overwrites(tmp_path: Path, monkeypatch
     source_dir = tmp_path / "builtin" / "reporter"
     source_dir.mkdir(parents=True, exist_ok=True)
     (source_dir / "SKILL.md").write_text(
-        "---\nname: reporter\ndescription: builtin new\n---\n# SQL Reporter\n",
+        "---\nname: reporter\ndescription: builtin new\n---\n# Research Reporter\n",
         encoding="utf-8",
     )
     (source_dir / "prompt.md").write_text("new builtin content", encoding="utf-8")
@@ -895,7 +895,7 @@ async def test_update_builtin_skill_force_overwrites(tmp_path: Path, monkeypatch
                 "name": "reporter",
                 "description": "builtin new",
                 "version": "1.0.1",
-                "tool_dependencies": ["mysql_query"],
+                "tool_dependencies": ["query_kb"],
                 "mcp_dependencies": ["charts"],
                 "skill_dependencies": [],
                 "content_hash": "hash-v2",

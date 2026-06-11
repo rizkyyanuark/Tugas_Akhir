@@ -186,15 +186,13 @@ const selectedCategory = ref('')
 const tools = ref([])
 const currentTool = ref(null)
 
-const categories = ['buildin', 'mysql', 'debug']
+const categories = ['buildin', 'debug']
 const categoryLabels = {
   buildin: 'Built-in Tools',
-  mysql: 'MySQL',
   debug: 'Debug'
 }
 const categoryColors = {
   buildin: 'blue',
-  mysql: 'green',
   debug: 'orange'
 }
 

@@ -2,12 +2,60 @@
  * Message processing utility class
  */
 export class MessageProcessor {
+  static parseTextualToolCall(content) {
+    if (typeof content !== 'string') return null
+    const match = content.match(
+      /^\s*<function\(([A-Za-z_][\w.-]*)\)\s*(\{[\s\S]*\})\s*(?:<\/function>)?>\s*$/
+    )
+    if (!match) return null
+
+    try {
+      const args = JSON.parse(match[2])
+      if (!args || typeof args !== 'object' || Array.isArray(args)) return null
+      return {
+        name: match[1],
+        args
+      }
+    } catch {
+      return null
+    }
+  }
+
+  static normalizeTextualToolCallMessage(message) {
+    if (!message || message.type !== 'ai' || Array.isArray(message.tool_calls)) return message
+
+    const parsed = MessageProcessor.parseTextualToolCall(message.content)
+    if (!parsed) return message
+
+    const id = `textual_${parsed.name}_${Math.random().toString(36).slice(2, 10)}`
+    return {
+      ...message,
+      content: '',
+      tool_calls: [
+        {
+          id,
+          name: parsed.name,
+          args: parsed.args,
+          function: {
+            name: parsed.name,
+            arguments: JSON.stringify(parsed.args)
+          }
+        }
+      ]
+    }
+  }
+
+  static stripTextualToolCallContent(content) {
+    return MessageProcessor.parseTextualToolCall(content) ? '' : content
+  }
+
   /**
    * Merge tool results into messages
    * @param {Array} msgs - Message array
    * @returns {Array} Merged message array
    */
   static convertToolResultToMessages(msgs) {
+    msgs = msgs.map((item) => MessageProcessor.normalizeTextualToolCallMessage(item))
     const toolResponseMap = new Map()
 
     // Build a map of tool responses
@@ -49,7 +97,9 @@ export class MessageProcessor {
   static convertServerHistoryToMessages(serverHistory) {
     // Filter out standalone 'tool' messages since tool results are already in AI messages' tool_calls
     // Backend new storage: tool results are embedded in AI messages' tool_calls array with tool_call_result field
-    const filteredHistory = serverHistory.filter((item) => item.type !== 'tool')
+    const filteredHistory = serverHistory
+      .map((item) => MessageProcessor.normalizeTextualToolCallMessage(item))
+      .filter((item) => item.type !== 'tool')
 
     // Group by conversation
     const conversations = []
@@ -339,7 +389,7 @@ export class MessageProcessor {
       result.type = 'ai'
     }
 
-    return result
+    return MessageProcessor.normalizeTextualToolCallMessage(result)
   }
 
   /**
