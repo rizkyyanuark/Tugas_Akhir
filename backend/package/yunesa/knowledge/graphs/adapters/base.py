@@ -8,6 +8,17 @@ from neo4j import GraphDatabase as GD
 from yunesa.utils import logger
 
 
+def neo4j_uri_for_driver(uri: str) -> str:
+    """Apply self-signed certificate trust only when explicitly configured."""
+    trust_self_signed = os.environ.get("NEO4J_TRUST_SELF_SIGNED", "0").strip().lower()
+    if trust_self_signed in {"1", "true", "yes", "on"}:
+        return uri.replace("neo4j+s://", "neo4j+ssc://").replace(
+            "bolt+s://",
+            "bolt+ssc://",
+        )
+    return uri
+
+
 @dataclass
 class GraphQueryConfig:
     """graphqueryconfigure (Graph Query Configuration)"""
@@ -167,7 +178,9 @@ class Neo4jConnectionManager:
         if self.driver and self._is_connected():
             return
 
-        uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+        uri = neo4j_uri_for_driver(
+            os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+        )
         username = os.environ.get("NEO4J_USERNAME", "neo4j")
         password = os.environ.get("NEO4J_PASSWORD") or os.environ.get("GLOBAL_PASSWORD")
         if not password:

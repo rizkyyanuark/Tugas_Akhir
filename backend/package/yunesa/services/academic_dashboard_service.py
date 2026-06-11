@@ -79,6 +79,11 @@ class AcademicDashboardService:
             self._collect_milvus(),
         )
         embedding = self._embedding_metadata()
+        storage_consistency = self._storage_consistency(
+            supabase=supabase,
+            neo4j=neo4j,
+            milvus=milvus,
+        )
 
         return {
             "graph_name": self.graph_name,
@@ -98,12 +103,65 @@ class AcademicDashboardService:
             "embedding_provider": embedding["provider"],
             "embedding_model": embedding["model"],
             "embedding_dimension": embedding["dimension"],
+            "storage_consistency": storage_consistency,
             "source_status": {
                 "supabase": supabase["source_status"],
                 "neo4j": neo4j["source_status"],
                 "milvus": milvus["source_status"],
             },
             "generated_at": datetime.now(UTC).isoformat(),
+        }
+
+    @staticmethod
+    def _storage_consistency(
+        *,
+        supabase: dict[str, Any],
+        neo4j: dict[str, Any],
+        milvus: dict[str, Any],
+    ) -> dict[str, Any]:
+        entity_distribution = neo4j.get("entity_distribution") or {}
+        relationship_distribution = neo4j.get("relationship_distribution") or {}
+        collections = milvus.get("collections") or {}
+
+        checks = {
+            "publications": {
+                "source": int(supabase.get("papers_count") or 0),
+                "indexed": int(entity_distribution.get("Publication") or 0),
+            },
+            "lecturers": {
+                "source": int(supabase.get("lecturers_count") or 0),
+                "indexed": int(entity_distribution.get("Lecturer") or 0),
+            },
+            "authorship_links": {
+                "source": int(supabase.get("authorship_links_count") or 0),
+                "indexed": int(
+                    relationship_distribution.get("HAS_AUTHOR")
+                    or relationship_distribution.get("PUBLISHES")
+                    or 0
+                ),
+            },
+            "content_keywords": {
+                "source": int(supabase.get("papers_count") or 0),
+                "indexed": int(collections.get("ContentKeyword") or 0),
+            },
+        }
+        for values in checks.values():
+            values["gap"] = values["source"] - values["indexed"]
+            values["in_sync"] = values["gap"] == 0
+
+        configured = all(
+            source.get("source_status", {}).get("status") == "ready"
+            for source in (supabase, neo4j, milvus)
+        )
+        return {
+            "status": (
+                "in_sync"
+                if configured and all(item["in_sync"] for item in checks.values())
+                else "drift_detected"
+                if configured
+                else "unavailable"
+            ),
+            "checks": checks,
         }
 
     async def _collect_supabase(self) -> dict[str, Any]:
