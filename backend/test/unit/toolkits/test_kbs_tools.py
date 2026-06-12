@@ -296,6 +296,11 @@ async def test_virtual_academic_kb_preserves_vector_ablation_mode(monkeypatch) -
     async def _fake_build_context(**kwargs):
         assert kwargs["retrieval_mode"] == "vector"
         assert kwargs["include_graph"] is False
+        assert kwargs["query_text"] == "retinopati EfficientNet APTOS"
+        assert kwargs["original_query_text"] == (
+            "Paper apa yang membahas retinopati diabetik dengan EfficientNet dan dataset APTOS?"
+        )
+        assert kwargs["trace_metadata"]["request_id"] == "request-1"
         return {
             "mode": "vector",
             "query": kwargs["query_text"],
@@ -311,10 +316,24 @@ async def test_virtual_academic_kb_preserves_vector_ablation_mode(monkeypatch) -
 
     result = await _run_query_kb(
         kb_name="yunesa_academic_kg",
-        query_text="paper tentang retinopati",
+        query_text="retinopati EfficientNet APTOS",
         retrieval_mode="vector",
         include_graph=False,
-        runtime=SimpleNamespace(context=SimpleNamespace()),
+        runtime=SimpleNamespace(
+            context=SimpleNamespace(thread_id="thread-1", user_id="user-1"),
+            state={
+                "messages": [
+                    {
+                        "type": "human",
+                        "content": (
+                            "Paper apa yang membahas retinopati diabetik dengan EfficientNet "
+                            "dan dataset APTOS?"
+                        ),
+                    }
+                ]
+            },
+            config={"metadata": {"request_id": "request-1"}},
+        ),
     )
 
     assert result["mode"] == "vector"

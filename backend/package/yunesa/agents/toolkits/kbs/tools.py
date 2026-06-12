@@ -253,6 +253,54 @@ def _academic_virtual_kb_info() -> dict[str, str]:
     }
 
 
+def _message_text(message: Any) -> str:
+    content = message.get("content") if isinstance(message, dict) else getattr(message, "content", "")
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(str(item.get("text") or ""))
+        return " ".join(parts).strip()
+    return str(content or "").strip()
+
+
+def _original_user_query(runtime: ToolRuntime | None, fallback: str) -> str:
+    state = getattr(runtime, "state", None) if runtime is not None else None
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    for message in reversed(messages or []):
+        message_type = (
+            message.get("type") if isinstance(message, dict) else getattr(message, "type", None)
+        )
+        role = message.get("role") if isinstance(message, dict) else getattr(message, "role", None)
+        if message_type == "human" or role == "user":
+            text = _message_text(message)
+            if text:
+                return text
+    return str(fallback or "").strip()
+
+
+def _runtime_trace_metadata(runtime: ToolRuntime | None, tool_call_id: str | None) -> dict[str, Any]:
+    if runtime is None:
+        return {}
+    config = getattr(runtime, "config", None)
+    metadata = config.get("metadata", {}) if isinstance(config, dict) else {}
+    context = getattr(runtime, "context", None)
+    result = {
+        key: value
+        for key, value in dict(metadata or {}).items()
+        if key in {"request_id", "thread_id", "user_id", "agent_id", "agent_config_id", "operation"}
+    }
+    for key in ("thread_id", "user_id"):
+        value = getattr(context, key, None)
+        if value and key not in result:
+            result[key] = value
+    if tool_call_id:
+        result["tool_call_id"] = tool_call_id
+    return result
+
+
 def _academic_tool_response(
     *,
     payload: dict[str, Any],
@@ -292,7 +340,9 @@ def _academic_tool_response(
             "milvus_database": academic.get("milvus_database"),
             "paper_chunks": academic.get("paper_chunks", [])[:8],
             "author_publications": academic.get("author_publications", [])[:24],
+            "publication_details": academic.get("publication_details", [])[:12],
             "lecturer_topic_publications": academic.get("lecturer_topic_publications", [])[:24],
+            "topic_frequencies": academic.get("topic_frequencies", [])[:15],
             "keywords": academic.get("keywords", [])[:8],
             "entities": academic.get("entities", [])[:12],
             "relationships": academic.get("relationships", [])[:12],
@@ -328,12 +378,14 @@ def _academic_tool_response(
 async def _build_academic_graphrag_context(
     *,
     query_text: str,
+    original_query_text: str,
     chunks: list[dict[str, Any]],
     kb_name: str,
     collection_id: str | None,
     retrieval_mode: str,
     include_graph: bool,
     kwargs: dict[str, Any],
+    trace_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Retrieve AcademicRAG-style context from Milvus/Zilliz and Neo4j/AuraDB."""
     from yunesa.knowledge.graphrag import AcademicGraphRAGService
@@ -341,6 +393,7 @@ async def _build_academic_graphrag_context(
     service = AcademicGraphRAGService()
     return await service.build_context_package(
         query_text=query_text,
+        original_query_text=original_query_text,
         chunks=chunks,
         kb_name=kb_name,
         collection_id=collection_id,
@@ -349,6 +402,7 @@ async def _build_academic_graphrag_context(
         graph_max_depth=int(kwargs.get("graph_max_depth", kwargs.get("graph_hops", 2))),
         graph_max_nodes=int(kwargs.get("graph_max_nodes", 80)),
         graph_name=kwargs.get("graph_name"),
+        trace_metadata=trace_metadata,
     )
 
 
@@ -380,6 +434,9 @@ async def query_kb(
     if not query_text:
         return "Please provide query text"
 
+    original_query_text = _original_user_query(runtime, query_text)
+    trace_metadata = _runtime_trace_metadata(runtime, tool_call_id)
+
     # Get all retrievers.
     retrievers = knowledge_base.get_retrievers()
 
@@ -402,6 +459,7 @@ async def query_kb(
         )
         payload = await _build_academic_graphrag_context(
             query_text=query_text,
+            original_query_text=original_query_text,
             chunks=[],
             kb_name=kb_name,
             collection_id=None,
@@ -411,6 +469,7 @@ async def query_kb(
                 include_graph=include_graph,
             ),
             kwargs={},
+            trace_metadata=trace_metadata,
         )
         return _academic_tool_response(
             payload=payload,
@@ -468,6 +527,7 @@ async def query_kb(
         ):
             payload = await _build_academic_graphrag_context(
                 query_text=query_text,
+                original_query_text=original_query_text,
                 chunks=enriched_result,
                 kb_name=kb_name,
                 collection_id=target_db_id,
@@ -477,6 +537,7 @@ async def query_kb(
                     include_graph=include_graph,
                 ),
                 kwargs=kwargs,
+                trace_metadata=trace_metadata,
             )
             return _academic_tool_response(
                 payload=payload,

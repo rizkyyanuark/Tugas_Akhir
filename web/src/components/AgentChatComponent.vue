@@ -534,9 +534,16 @@ const isStreaming = computed(() => {
   return threadState ? threadState.isStreaming : false
 })
 const isProcessing = computed(() => isStreaming.value)
+const hasStreamingAssistantContent = computed(() =>
+  onGoingConvMessages.value.some((msg) => {
+    if (msg?.type !== 'ai') return false
+    const { content, reasoningContent } = MessageProcessor.parseAssistantMessageBody(msg)
+    return Boolean(content || reasoningContent)
+  })
+)
 const isReplyLoading = computed(() => {
   const threadState = currentThreadState.value
-  return Boolean(threadState?.replyLoadingVisible)
+  return Boolean(threadState?.replyLoadingVisible && !hasStreamingAssistantContent.value)
 })
 
 const getToolNameFromCall = (toolCall) =>

@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Any
 
 from yunesa.utils.logging_config import logger
+from yunesa.observability.opik import opik_enabled, opik_project_name
 
 try:
     from langfuse import Langfuse
@@ -25,6 +26,7 @@ class LangfuseRunContext:
     metadata: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
     trace_id: str | None = None
+    opik_project: str | None = None
 
 
 def is_langfuse_enabled() -> bool:
@@ -59,6 +61,28 @@ def get_langfuse_client() -> Langfuse | None:
     except Exception as exc:
         logger.warning(
             f"Failed to initialize Langfuse client, tracing will be skipped: {exc}")
+        return None
+
+
+def _build_opik_callback(
+    *,
+    metadata: dict[str, Any],
+    tags: list[str],
+    thread_id: str,
+) -> Any | None:
+    if not opik_enabled():
+        return None
+    try:
+        from opik.integrations.langchain import OpikTracer
+
+        return OpikTracer(
+            project_name=opik_project_name(),
+            tags=tags,
+            metadata=metadata,
+            thread_id=thread_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Failed to initialize Opik LangChain tracer, tracing will be skipped: {exc}")
         return None
 
 
@@ -135,13 +159,28 @@ def build_run_context(
     tags = build_trace_tags(
         agent_id=agent_id, operation=operation, message_type=message_type)
 
+    callbacks: list[Any] = []
+    trace_id: str | None = None
     client = get_langfuse_client()
-    if client is None or CallbackHandler is None:
-        return LangfuseRunContext(metadata=metadata, tags=tags)
+    if client is not None and CallbackHandler is not None:
+        trace_id = client.create_trace_id(seed=request_id)
+        callbacks.append(CallbackHandler(trace_context={"trace_id": trace_id}))
 
-    trace_id = client.create_trace_id(seed=request_id)
-    handler = CallbackHandler(trace_context={"trace_id": trace_id})
-    return LangfuseRunContext(callbacks=[handler], metadata=metadata, tags=tags, trace_id=trace_id)
+    opik_callback = _build_opik_callback(
+        metadata=metadata,
+        tags=tags,
+        thread_id=thread_id,
+    )
+    if opik_callback is not None:
+        callbacks.append(opik_callback)
+
+    return LangfuseRunContext(
+        callbacks=callbacks,
+        metadata=metadata,
+        tags=tags,
+        trace_id=trace_id,
+        opik_project=opik_project_name() if opik_callback is not None else None,
+    )
 
 
 def get_trace_info(run_context: LangfuseRunContext | None) -> dict[str, Any]:
@@ -150,20 +189,29 @@ def get_trace_info(run_context: LangfuseRunContext | None) -> dict[str, Any]:
 
     metadata = run_context.metadata or {}
     trace_id = run_context.trace_id
-    if run_context.callbacks:
-        last_trace_id = getattr(
-            run_context.callbacks[0], "last_trace_id", None)
+    for callback in run_context.callbacks:
+        last_trace_id = getattr(callback, "last_trace_id", None)
         if last_trace_id:
             trace_id = last_trace_id
+            break
 
-    if not trace_id:
-        return {}
-
-    trace_info = {
-        "langfuse_trace_id": trace_id,
-        "langfuse_user_id": metadata.get("langfuse_user_id"),
-        "langfuse_session_id": metadata.get("langfuse_session_id"),
-    }
+    trace_info: dict[str, Any] = {}
+    if trace_id:
+        trace_info.update(
+            {
+                "langfuse_trace_id": trace_id,
+                "langfuse_user_id": metadata.get("langfuse_user_id"),
+                "langfuse_session_id": metadata.get("langfuse_session_id"),
+            }
+        )
+    if run_context.opik_project:
+        trace_info.update(
+            {
+                "opik_project": run_context.opik_project,
+                "opik_thread_id": metadata.get("thread_id"),
+                "opik_request_id": metadata.get("request_id"),
+            }
+        )
 
     # Do not fetch trace_url on the request critical path. Langfuse resolves the
     # project id via a remote API call, which can add noticeable latency when the
@@ -181,11 +229,11 @@ async def get_trace_url_async(
         return None
 
     trace_id = run_context.trace_id
-    if run_context.callbacks:
-        last_trace_id = getattr(
-            run_context.callbacks[0], "last_trace_id", None)
+    for callback in run_context.callbacks:
+        last_trace_id = getattr(callback, "last_trace_id", None)
         if last_trace_id:
             trace_id = last_trace_id
+            break
 
     if not trace_id:
         return None

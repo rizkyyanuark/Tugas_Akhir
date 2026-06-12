@@ -33,6 +33,7 @@ def test_build_run_context_includes_trace_metadata(monkeypatch):
     monkeypatch.delenv("LANGFUSE_ENABLED", raising=False)
     monkeypatch.setattr(svc, "Langfuse", _FakeLangfuseClient)
     monkeypatch.setattr(svc, "CallbackHandler", _FakeCallbackHandler)
+    monkeypatch.setattr(svc, "_build_opik_callback", lambda **kwargs: None)
     svc.get_langfuse_client.cache_clear()
 
     run_context = svc.build_run_context(
@@ -69,6 +70,7 @@ def test_get_trace_info_prefers_handler_last_trace_id(monkeypatch):
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
     monkeypatch.setattr(svc, "Langfuse", _FakeLangfuseClient)
     monkeypatch.setattr(svc, "CallbackHandler", _FakeCallbackHandler)
+    monkeypatch.setattr(svc, "_build_opik_callback", lambda **kwargs: None)
     svc.get_langfuse_client.cache_clear()
 
     run_context = svc.build_run_context(
@@ -94,6 +96,7 @@ async def test_get_trace_url_async_returns_trace_url(monkeypatch):
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
     monkeypatch.setattr(svc, "Langfuse", _FakeLangfuseClient)
     monkeypatch.setattr(svc, "CallbackHandler", _FakeCallbackHandler)
+    monkeypatch.setattr(svc, "_build_opik_callback", lambda **kwargs: None)
     svc.get_langfuse_client.cache_clear()
 
     run_context = svc.build_run_context(
@@ -108,3 +111,30 @@ async def test_get_trace_url_async_returns_trace_url(monkeypatch):
     trace_url = await svc.get_trace_url_async(run_context)
 
     assert trace_url == "https://langfuse.local/trace/trace-runtime"
+
+
+def test_build_run_context_adds_opik_callback_without_langfuse(monkeypatch):
+    opik_callback = object()
+    monkeypatch.setattr(svc, "get_langfuse_client", lambda: None)
+    monkeypatch.setattr(
+        svc,
+        "_build_opik_callback",
+        lambda **kwargs: opik_callback,
+    )
+    monkeypatch.setattr(svc, "opik_project_name", lambda: "yunesa-academic-graphrag")
+
+    run_context = svc.build_run_context(
+        user_id="user-1",
+        thread_id="thread-1",
+        agent_id="agent-a",
+        request_id="req-1",
+        operation="agent_chat_stream",
+    )
+
+    assert run_context.callbacks == [opik_callback]
+    assert run_context.opik_project == "yunesa-academic-graphrag"
+    assert svc.get_trace_info(run_context) == {
+        "opik_project": "yunesa-academic-graphrag",
+        "opik_thread_id": "thread-1",
+        "opik_request_id": "req-1",
+    }

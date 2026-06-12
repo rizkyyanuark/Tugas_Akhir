@@ -106,6 +106,41 @@ const run = () => {
   assert.equal(textualToolCall.tool_calls[0].name, 'query_kb')
   assert.equal(textualToolCall.tool_calls[0].args.kb_name, 'yunesa_academic_kg')
 
+  const streamedToolCall = MessageProcessor.mergeMessageChunk([
+    {
+      id: 'msg-tool-1',
+      type: 'AIMessageChunk',
+      content: '',
+      tool_call_chunks: [
+        {
+          index: 0,
+          id: 'call-1',
+          name: 'query_kb',
+          args: ''
+        }
+      ]
+    },
+    {
+      id: 'msg-tool-1',
+      type: 'AIMessageChunk',
+      content: '',
+      tool_call_chunks: [
+        {
+          index: 0,
+          args: '{"kb_name":"yunesa_academic_kg"}'
+        }
+      ]
+    }
+  ])
+
+  assert.equal(streamedToolCall.tool_calls.length, 1)
+  assert.equal(streamedToolCall.tool_calls[0].id, 'call-1')
+  assert.equal(streamedToolCall.tool_calls[0].function.name, 'query_kb')
+  assert.equal(
+    streamedToolCall.tool_calls[0].function.arguments,
+    '{"kb_name":"yunesa_academic_kg"}'
+  )
+
   assert.equal(
     MessageProcessor.stripTextualToolCallContent(
       '<function(query_kb){"kb_name":"yunesa_academic_kg","query_text":"authors"}>'

@@ -354,6 +354,11 @@ export class MessageProcessor {
       result.content = result.content || ''
     }
 
+    // Tool-call metadata often arrives in the first AIMessageChunk while the
+    // JSON arguments arrive in later chunks. Normalize the first chunk
+    // immediately so the running tool is visible before its result completes.
+    MessageProcessor._mergeToolCalls(result, chunks[0])
+
     // Merge subsequent chunks
     for (let i = 1; i < chunks.length; i++) {
       const chunk = chunks[i]

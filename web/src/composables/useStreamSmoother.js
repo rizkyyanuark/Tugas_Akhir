@@ -58,19 +58,19 @@ const caf =
 
 const DEFAULT_OPTIONS = {
   minChunkSize: 1,
-  maxChunkSize: 64,
-  defaultIntervalMs: 1000,
-  minDrainWindowMs: 400,
-  maxDrainWindowMs: 1400,
-  targetLagMs: 900,
-  minReserveChars: 48,
-  maxReserveChars: 240,
+  maxChunkSize: 32,
+  defaultIntervalMs: 80,
+  minDrainWindowMs: 24,
+  maxDrainWindowMs: 320,
+  targetLagMs: 140,
+  minReserveChars: 0,
+  maxReserveChars: 48,
   emaAlpha: 0.2,
-  basePaceMultiplier: 0.92,
-  overflowDivisor: 180,
-  maxBurstFactor: 2.6,
-  reserveReleaseDelayMs: 1200,
-  reserveDecayWindowMs: 2200
+  basePaceMultiplier: 1.05,
+  overflowDivisor: 96,
+  maxBurstFactor: 3,
+  reserveReleaseDelayMs: 160,
+  reserveDecayWindowMs: 420
 }
 
 const getIncomingSize = (chunk) => {

@@ -22,7 +22,7 @@ def test_academic_modes_preserve_reference_semantics() -> None:
     assert AcademicGraphRAGService.uses_graph("subgraph")
     assert AcademicGraphRAGService.uses_graph("hybrid")
     assert not AcademicGraphRAGService.uses_graph("global")
-    assert AcademicGraphRAGService._milvus_db_candidates("default") == ["default"]
+    assert AcademicGraphRAGService._milvus_db_candidates("default") == [None, "default"]
     assert AcademicGraphRAGService._milvus_db_candidates("research") == [
         "research",
         None,
@@ -246,6 +246,35 @@ def test_author_publication_chunks_prioritize_matching_paper() -> None:
     assert any("Yuni Yamasari" == item["metadata"]["authors"] for item in normalized)
 
 
+def test_exact_publication_title_produces_direct_metadata_chunk() -> None:
+    query = 'Siapa penulis paper "Optimizing ANN Architecture for Classifying Student Stress Levels"?'
+    assert AcademicGraphRAGService._extract_publication_title_candidates(query) == [
+        "Optimizing ANN Architecture for Classifying Student Stress Levels"
+    ]
+
+    chunks = AcademicGraphRAGService.normalize_publication_detail_chunks(
+        [
+            {
+                "paper_id": "paper-ann",
+                "title": "Optimizing ANN Architecture for Classifying Student Stress Levels",
+                "year": 2024,
+                "authors": [
+                    "Yuni Yamasari",
+                    "Anita Qoiriah",
+                    "Agus Prihanto",
+                    "Andi Iwan Nurhidayat",
+                ],
+                "abstract": "The study compares Ranger, Adam, and Adagrad.",
+                "concepts": [{"relation": "USES_METHOD", "value": "Adam optimizer"}],
+            }
+        ]
+    )
+
+    assert "Yuni Yamasari, Anita Qoiriah" in chunks[0]["content"]
+    assert "Ranger, Adam, and Adagrad" in chunks[0]["content"]
+    assert chunks[0]["metadata"]["retrieval_source"] == "neo4j_publication_details"
+
+
 def test_author_publication_evidence_makes_context_grounded() -> None:
     grounding = AcademicGraphRAGService._grounding_status(
         [],
@@ -320,6 +349,67 @@ def test_empty_context_is_marked_unanswerable() -> None:
     assert grounding["status"] == "empty"
     assert grounding["answerable"] is False
     assert "do not use model memory" in evidence
+
+
+def test_broad_graph_triples_are_supporting_not_direct_evidence() -> None:
+    grounding = AcademicGraphRAGService._grounding_status(
+        [],
+        {
+            "triples": [
+                {
+                    "source": "Paper A",
+                    "relation": "PUBLISHED_IN_YEAR",
+                    "target": "2024",
+                }
+            ]
+        },
+        {"keywords": [], "entities": [], "relationships": []},
+        query_text="paper tentang machine learning",
+    )
+
+    assert grounding["status"] == "supporting_only"
+    assert grounding["answerable"] is False
+
+
+def test_relationship_query_can_use_graph_triples_as_direct_evidence() -> None:
+    grounding = AcademicGraphRAGService._grounding_status(
+        [],
+        {
+            "triples": [
+                {
+                    "source": "Yuni Yamasari",
+                    "relation": "COLLABORATES_WITH",
+                    "target": "Ricky Eka Putra",
+                }
+            ]
+        },
+        {"keywords": [], "entities": [], "relationships": []},
+        query_text="Siapa yang berkolaborasi dengan Yuni Yamasari?",
+    )
+
+    assert grounding["status"] == "grounded"
+    assert grounding["graph_direct_evidence_count"] == 1
+
+
+def test_topic_frequency_query_requires_explicit_frequency_intent() -> None:
+    assert AcademicGraphRAGService._is_topic_frequency_query(
+        "Topik riset apa yang paling sering muncul?"
+    )
+    assert not AcademicGraphRAGService._is_topic_frequency_query(
+        "Paper apa yang membahas topik machine learning?"
+    )
+
+    chunks = AcademicGraphRAGService.normalize_topic_frequency_chunks(
+        [
+            {
+                "topic": "machine learning",
+                "concept_type": "ResearchTopic",
+                "publication_count": 12,
+                "sample_titles": ["Paper A", "Paper B"],
+            }
+        ]
+    )
+    assert "Publication count: 12" in chunks[0]["content"]
 
 
 def test_search_stage_timeout_returns_empty_rows(monkeypatch) -> None:

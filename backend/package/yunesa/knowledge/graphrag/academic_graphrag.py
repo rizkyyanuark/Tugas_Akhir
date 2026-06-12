@@ -152,6 +152,15 @@ class AcademicGraphRAGService:
         "researchers",
         "siapa",
     }
+    TOPIC_FREQUENCY_QUERY_MARKERS = {
+        "frequent",
+        "frequently",
+        "most",
+        "paling",
+        "sering",
+        "terbanyak",
+        "top",
+    }
 
     @classmethod
     def normalize_mode(cls, mode: str | None, include_graph: bool = False) -> str:
@@ -242,9 +251,14 @@ class AcademicGraphRAGService:
         candidates: list[str | None] = []
         configured = str(db_name or "").strip()
         if configured and configured.lower() not in {"none", "null"}:
-            candidates.append(configured)
-            if configured.lower() != DEFAULT_MILVUS_DB_NAME:
-                candidates.append(None)
+            # Zilliz serverless tokens can already be scoped to their database.
+            # Calling using_database("default") then requires DescribeDatabase,
+            # which scoped tokens may intentionally not have. Prefer the implicit
+            # connection for "default", while preserving explicit named DBs.
+            if configured.lower() == DEFAULT_MILVUS_DB_NAME:
+                candidates.extend([None, configured])
+            else:
+                candidates.extend([configured, None])
         else:
             candidates.append(None)
         return candidates
@@ -475,6 +489,33 @@ class AcademicGraphRAGService:
         return has_lecturer_intent and has_topic_intent
 
     @classmethod
+    def _is_topic_frequency_query(cls, query_text: str) -> bool:
+        text = str(query_text or "").casefold()
+        has_topic = any(
+            marker in text
+            for marker in ("topik", "topic", "tema", "theme", "research area", "bidang riset")
+        )
+        has_frequency = any(
+            re.search(rf"(?<![a-z0-9]){re.escape(marker)}(?![a-z0-9])", text)
+            for marker in cls.TOPIC_FREQUENCY_QUERY_MARKERS
+        )
+        return has_topic and has_frequency
+
+    @classmethod
+    def _extract_publication_title_candidates(cls, query_text: str) -> list[str]:
+        text = re.sub(r"\s+", " ", str(query_text or "")).strip()
+        candidates: list[str] = []
+        for match in re.finditer(r"""["“']([^"”']{12,240})["”']""", text):
+            candidates.append(match.group(1).strip())
+        return cls._dedupe_terms(candidates, max_terms=4)
+
+    @staticmethod
+    def _format_values(value: Any) -> str:
+        if isinstance(value, (list, tuple, set)):
+            return ", ".join(str(item) for item in value if item)
+        return str(value or "")
+
+    @classmethod
     def _department_terms(cls, query_text: str) -> list[str]:
         text = str(query_text or "").casefold()
         values: list[str] = []
@@ -579,7 +620,7 @@ class AcademicGraphRAGService:
                 f"Title: {title}",
                 f"Year: {row.get('year') or 'unknown'}",
                 f"Author matched: {row.get('author') or 'unknown'}",
-                f"Authors: {row.get('authors') or 'unknown'}",
+                f"Authors: {cls._format_values(row.get('authors')) or 'unknown'}",
             ]
             if row.get("doi"):
                 parts.append(f"DOI: {row.get('doi')}")
@@ -643,7 +684,7 @@ class AcademicGraphRAGService:
                 f"Affiliation: {row.get('affiliation') or 'unknown'}",
                 f"Title: {title}",
                 f"Year: {row.get('year') or 'unknown'}",
-                f"Authors: {row.get('authors') or 'unknown'}",
+                f"Authors: {cls._format_values(row.get('authors')) or 'unknown'}",
                 f"Matched terms: {matched_text or 'unknown'}",
             ]
             if row.get("doi"):
@@ -679,6 +720,104 @@ class AcademicGraphRAGService:
                 }
             )
         return normalized[:max_chunks]
+
+    @classmethod
+    def normalize_publication_detail_chunks(
+        cls,
+        rows: list[dict[str, Any]] | None,
+        *,
+        max_chunks: int = 8,
+        max_chars: int = 2200,
+    ) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        for index, row in enumerate((rows or [])[:max_chunks], start=1):
+            title = str(row.get("title") or "").strip()
+            if not title:
+                continue
+            concepts = row.get("concepts") or []
+            concept_text = ", ".join(
+                f"{item.get('relation')}: {item.get('value')}"
+                for item in concepts
+                if isinstance(item, dict) and item.get("value")
+            )
+            parts = [
+                f"Title: {title}",
+                f"Year: {row.get('year') or 'unknown'}",
+                f"Authors: {cls._format_values(row.get('authors')) or 'unknown'}",
+            ]
+            if row.get("doi"):
+                parts.append(f"DOI: {row.get('doi')}")
+            if row.get("venue"):
+                parts.append(f"Venue: {row.get('venue')}")
+            if row.get("tldr"):
+                parts.append(f"TLDR: {row.get('tldr')}")
+            if row.get("abstract"):
+                parts.append(f"Abstract: {row.get('abstract')}")
+            if concept_text:
+                parts.append(f"Graph concepts: {concept_text}")
+            if row.get("link"):
+                parts.append(f"Link: {row.get('link')}")
+            normalized.append(
+                {
+                    "rank": index,
+                    "content": cls._clip_text("\n".join(parts), max_chars),
+                    "score": 1.0,
+                    "source": title,
+                    "file_id": row.get("paper_id") or title,
+                    "chunk_id": f"publication-detail:{row.get('paper_id') or title}",
+                    "chunk_index": index - 1,
+                    "metadata": {
+                        "source": title,
+                        "title": title,
+                        "year": row.get("year"),
+                        "authors": row.get("authors"),
+                        "doi": row.get("doi"),
+                        "venue": row.get("venue"),
+                        "paper_id": row.get("paper_id"),
+                        "retrieval_source": "neo4j_publication_details",
+                    },
+                }
+            )
+        return normalized
+
+    @classmethod
+    def normalize_topic_frequency_chunks(
+        cls,
+        rows: list[dict[str, Any]] | None,
+        *,
+        max_chunks: int = 15,
+    ) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        for index, row in enumerate((rows or [])[:max_chunks], start=1):
+            topic = str(row.get("topic") or "").strip()
+            if not topic:
+                continue
+            titles = cls._format_values(row.get("sample_titles"))
+            content = (
+                f"Topic: {topic}\n"
+                f"Concept type: {row.get('concept_type') or 'Concept'}\n"
+                f"Publication count: {row.get('publication_count') or 0}\n"
+                f"Sample publications: {titles or 'unknown'}"
+            )
+            normalized.append(
+                {
+                    "rank": index,
+                    "content": content,
+                    "score": float(row.get("publication_count") or 0),
+                    "source": "YUNESA Academic Knowledge Graph topic aggregation",
+                    "file_id": f"topic-frequency:{topic}",
+                    "chunk_id": f"topic-frequency:{topic}",
+                    "chunk_index": index - 1,
+                    "metadata": {
+                        "topic": topic,
+                        "concept_type": row.get("concept_type"),
+                        "publication_count": row.get("publication_count"),
+                        "sample_titles": row.get("sample_titles"),
+                        "retrieval_source": "neo4j_topic_frequency",
+                    },
+                }
+            )
+        return normalized
 
     @classmethod
     async def query_author_publications(
@@ -717,12 +856,24 @@ class AcademicGraphRAGService:
                 MATCH (lecturer)-[:PUBLISHES|HAS_AUTHOR]-(paper:Publication)
                 WHERE paper.graph_name = $graph_name
                 WITH DISTINCT lecturer, paper
+                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(coauthor:Lecturer)
+                WHERE coauthor.graph_name = $graph_name
+                WITH lecturer, paper,
+                     collect(DISTINCT coalesce(
+                       coauthor.label,
+                       coauthor.nama_norm,
+                       coauthor.nama_dosen,
+                       coauthor.name
+                     )) AS connected_authors
                 RETURN
                   coalesce(lecturer.label, lecturer.nama_norm, lecturer.nama_dosen, lecturer.name) AS author,
                   paper.paper_id AS paper_id,
                   coalesce(paper.title, paper.label, paper.name) AS title,
                   paper.year AS year,
-                  paper.authors AS authors,
+                  CASE
+                    WHEN size(connected_authors) > 0 THEN connected_authors
+                    ELSE paper.authors
+                  END AS authors,
                   paper.doi AS doi,
                   paper.venue AS venue,
                   paper.tldr AS tldr,
@@ -747,6 +898,141 @@ class AcademicGraphRAGService:
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 f"Academic GraphRAG author publication query failed: {type(exc).__name__}: {exc}"
+            )
+            return []
+
+    @classmethod
+    async def query_publication_details(
+        cls,
+        query_text: str,
+        *,
+        graph_name: str | None = None,
+        limit: int = 12,
+    ) -> list[dict[str, Any]]:
+        title_candidates = cls._extract_publication_title_candidates(query_text)
+        if not title_candidates:
+            return []
+
+        try:
+            from yunesa import graph_base
+
+            if hasattr(graph_base, "start") and not graph_base.is_running():
+                graph_base.start()
+            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
+                return []
+
+            resolved_graph_name = cls._academic_graph_name(graph_name)
+            cypher = """
+                UNWIND $title_candidates AS title_candidate
+                MATCH (paper:Publication)
+                WHERE paper.graph_name = $graph_name
+                  AND toLower(coalesce(paper.title, paper.label, paper.name, ''))
+                      CONTAINS toLower(title_candidate)
+                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(author:Lecturer)
+                WHERE author.graph_name = $graph_name
+                WITH DISTINCT paper,
+                     collect(DISTINCT coalesce(
+                       author.label,
+                       author.nama_norm,
+                       author.nama_dosen,
+                       author.name
+                     )) AS connected_authors
+                OPTIONAL MATCH (paper)-[
+                  relation:HAS_KEYWORD|HAS_TOPIC|USES_METHOD|USES_MODEL|
+                  USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN|HAS_RESULT
+                ]->(concept)
+                WITH paper, connected_authors,
+                     collect(DISTINCT {
+                       relation: type(relation),
+                       value: coalesce(concept.label, concept.name, concept.id)
+                     }) AS concepts
+                RETURN
+                  paper.paper_id AS paper_id,
+                  coalesce(paper.title, paper.label, paper.name) AS title,
+                  paper.year AS year,
+                  CASE
+                    WHEN size(connected_authors) > 0 THEN connected_authors
+                    ELSE paper.authors
+                  END AS authors,
+                  paper.doi AS doi,
+                  paper.venue AS venue,
+                  paper.tldr AS tldr,
+                  paper.abstract AS abstract,
+                  paper.link AS link,
+                  concepts AS concepts
+                ORDER BY toInteger(toString(coalesce(paper.year, '0'))) DESC, title ASC
+                LIMIT $limit
+            """
+
+            def run_query() -> list[dict[str, Any]]:
+                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
+                    rows = session.run(
+                        cypher,
+                        title_candidates=title_candidates,
+                        graph_name=resolved_graph_name,
+                        limit=limit,
+                    )
+                    return [dict(row) for row in rows]
+
+            return await asyncio.to_thread(run_query)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                f"Academic GraphRAG publication detail query failed: {type(exc).__name__}: {exc}"
+            )
+            return []
+
+    @classmethod
+    async def query_topic_frequencies(
+        cls,
+        query_text: str,
+        *,
+        graph_name: str | None = None,
+        limit: int = 15,
+    ) -> list[dict[str, Any]]:
+        if not cls._is_topic_frequency_query(query_text):
+            return []
+
+        try:
+            from yunesa import graph_base
+
+            if hasattr(graph_base, "start") and not graph_base.is_running():
+                graph_base.start()
+            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
+                return []
+
+            resolved_graph_name = cls._academic_graph_name(graph_name)
+            cypher = """
+                MATCH (paper:Publication)-[
+                  relation:HAS_TOPIC|HAS_KEYWORD|BELONGS_TO_DOMAIN|
+                  USES_METHOD|USES_MODEL|USES_DATASET
+                ]->(concept)
+                WHERE paper.graph_name = $graph_name
+                  AND concept.graph_name = $graph_name
+                WITH
+                  coalesce(concept.label, concept.name, concept.id) AS topic,
+                  coalesce(concept.concept_type, labels(concept)[0], 'Concept') AS concept_type,
+                  count(DISTINCT paper) AS publication_count,
+                  collect(DISTINCT coalesce(paper.title, paper.label, paper.name))[0..5]
+                    AS sample_titles
+                WHERE topic IS NOT NULL AND trim(toString(topic)) <> ''
+                RETURN topic, concept_type, publication_count, sample_titles
+                ORDER BY publication_count DESC, toLower(toString(topic)) ASC
+                LIMIT $limit
+            """
+
+            def run_query() -> list[dict[str, Any]]:
+                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
+                    rows = session.run(
+                        cypher,
+                        graph_name=resolved_graph_name,
+                        limit=limit,
+                    )
+                    return [dict(row) for row in rows]
+
+            return await asyncio.to_thread(run_query)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                f"Academic GraphRAG topic frequency query failed: {type(exc).__name__}: {exc}"
             )
             return []
 
@@ -831,13 +1117,25 @@ class AcademicGraphRAGService:
                   ] AS matched_terms
                 WHERE size(matched_terms) >= $min_match_count
                 WITH DISTINCT lecturer, paper, affiliation_names, matched_terms
+                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(coauthor:Lecturer)
+                WHERE coauthor.graph_name = $graph_name
+                WITH lecturer, paper, affiliation_names, matched_terms,
+                     collect(DISTINCT coalesce(
+                       coauthor.label,
+                       coauthor.nama_norm,
+                       coauthor.nama_dosen,
+                       coauthor.name
+                     )) AS connected_authors
                 RETURN
                   coalesce(lecturer.label, lecturer.nama_norm, lecturer.nama_dosen, lecturer.name) AS lecturer,
                   affiliation_names AS affiliations,
                   paper.paper_id AS paper_id,
                   coalesce(paper.title, paper.label, paper.name) AS title,
                   paper.year AS year,
-                  paper.authors AS authors,
+                  CASE
+                    WHEN size(connected_authors) > 0 THEN connected_authors
+                    ELSE paper.authors
+                  END AS authors,
                   paper.doi AS doi,
                   paper.venue AS venue,
                   paper.tldr AS tldr,
@@ -1543,10 +1841,31 @@ class AcademicGraphRAGService:
                     "- "
                     f"title={row.get('title') or 'unknown'} | "
                     f"year={row.get('year') or 'unknown'} | "
-                    f"authors={cls._clip_text(row.get('authors', ''), 240)} | "
+                    f"authors={cls._clip_text(cls._format_values(row.get('authors')), 240)} | "
                     f"doi={row.get('doi') or '-'} | "
                     f"tldr={cls._clip_text(row.get('tldr', ''), 500)} | "
                     f"abstract={cls._clip_text(row.get('abstract', ''), 800)}"
+                )
+
+        publication_details = academic.get("publication_details") or []
+        if publication_details:
+            lines.append("Exact publication metadata evidence:")
+            for row in publication_details[:8]:
+                concepts = row.get("concepts") or []
+                concept_text = ", ".join(
+                    f"{item.get('relation')}: {item.get('value')}"
+                    for item in concepts
+                    if isinstance(item, dict) and item.get("value")
+                )
+                lines.append(
+                    "- "
+                    f"title={row.get('title') or 'unknown'} | "
+                    f"year={row.get('year') or 'unknown'} | "
+                    f"authors={cls._clip_text(cls._format_values(row.get('authors')), 320)} | "
+                    f"doi={row.get('doi') or '-'} | "
+                    f"concepts={cls._clip_text(concept_text, 500)} | "
+                    f"tldr={cls._clip_text(row.get('tldr', ''), 500)} | "
+                    f"abstract={cls._clip_text(row.get('abstract', ''), 1000)}"
                 )
 
         lecturer_topic_publications = academic.get("lecturer_topic_publications") or []
@@ -1564,11 +1883,23 @@ class AcademicGraphRAGService:
                     f"affiliation={row.get('affiliation') or 'unknown'} | "
                     f"title={row.get('title') or 'unknown'} | "
                     f"year={row.get('year') or 'unknown'} | "
-                    f"authors={cls._clip_text(row.get('authors', ''), 240)} | "
+                    f"authors={cls._clip_text(cls._format_values(row.get('authors')), 240)} | "
                     f"matched_terms={matched_text or '-'} | "
                     f"doi={row.get('doi') or '-'} | "
                     f"tldr={cls._clip_text(row.get('tldr', ''), 500)} | "
                     f"abstract={cls._clip_text(row.get('abstract', ''), 800)}"
+                )
+
+        topic_frequencies = academic.get("topic_frequencies") or []
+        if topic_frequencies:
+            lines.append("Topic frequency evidence:")
+            for row in topic_frequencies[:15]:
+                lines.append(
+                    "- "
+                    f"topic={row.get('topic') or 'unknown'} | "
+                    f"concept_type={row.get('concept_type') or 'Concept'} | "
+                    f"publication_count={row.get('publication_count') or 0} | "
+                    f"sample_titles={cls._clip_text(cls._format_values(row.get('sample_titles')), 600)}"
                 )
 
         graph_publications = cls._publication_nodes_from_graph(graph, max_nodes=10)
@@ -1653,9 +1984,11 @@ class AcademicGraphRAGService:
             "academic_status": academic.get("status"),
             "academic_paper_chunks": len(academic.get("paper_chunks", []) or []),
             "academic_author_publications": len(academic.get("author_publications", []) or []),
+            "academic_publication_details": len(academic.get("publication_details", []) or []),
             "academic_lecturer_topic_publications": len(
                 academic.get("lecturer_topic_publications", []) or []
             ),
+            "academic_topic_frequencies": len(academic.get("topic_frequencies", []) or []),
             "academic_keywords": len(academic.get("keywords", []) or []),
             "academic_entities": len(academic.get("entities", []) or []),
             "academic_relationships": len(academic.get("relationships", []) or []),
@@ -1667,23 +2000,44 @@ class AcademicGraphRAGService:
             "duration_seconds": round(duration_seconds, 3),
         }
 
-    @staticmethod
+    @classmethod
     def _grounding_status(
+        cls,
         chunks: list[dict[str, Any]],
         graph: dict[str, Any],
         academic: dict[str, Any],
+        query_text: str = "",
     ) -> dict[str, Any]:
-        direct_count = (
-            len(chunks)
-            + len(graph.get("triples", []) or [])
-            + len(academic.get("author_publications", []) or [])
-            + len(academic.get("lecturer_topic_publications", []) or [])
-            + len(AcademicGraphRAGService._publication_nodes_from_graph(graph, max_nodes=12))
+        direct_count = len(chunks)
+        direct_count += sum(
+            len(academic.get(key, []) or [])
+            for key in (
+                "publication_details",
+                "author_publications",
+                "lecturer_topic_publications",
+                "topic_frequencies",
+            )
         )
+        relation_intent = any(
+            marker in str(query_text or "").casefold()
+            for marker in (
+                "berkolaborasi",
+                "collaborat",
+                "hubungan",
+                "relasi",
+                "relationship",
+                "connected",
+                "terhubung",
+            )
+        )
+        graph_direct_count = len(graph.get("triples", []) or []) if relation_intent else 0
+        direct_count += graph_direct_count
         supporting_count = sum(
             len(academic.get(key, []) or [])
             for key in ("keywords", "entities", "relationships")
         )
+        supporting_count += max(0, len(graph.get("triples", []) or []) - graph_direct_count)
+        supporting_count += len(cls._publication_nodes_from_graph(graph, max_nodes=12))
         if direct_count:
             status = "grounded"
         elif supporting_count:
@@ -1695,6 +2049,7 @@ class AcademicGraphRAGService:
             "answerable": status == "grounded",
             "direct_evidence_count": direct_count,
             "supporting_evidence_count": supporting_count,
+            "graph_direct_evidence_count": graph_direct_count,
         }
 
     async def query_graph(
@@ -1814,6 +2169,7 @@ class AcademicGraphRAGService:
         self,
         *,
         query_text: str,
+        original_query_text: str | None = None,
         chunks: list[dict[str, Any]] | None,
         kb_name: str,
         collection_id: str | None = None,
@@ -1822,13 +2178,17 @@ class AcademicGraphRAGService:
         graph_max_depth: int = 2,
         graph_max_nodes: int = 80,
         graph_name: str | None = None,
+        trace_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         started_at = time.perf_counter()
+        intent_query = str(original_query_text or query_text).strip()
+        semantic_query = intent_query or query_text
         with opik_span(
             "academic_graphrag.build_context_package",
             type="tool",
             input={
                 "query": query_text,
+                "original_query": intent_query,
                 "kb_name": kb_name,
                 "collection_id": collection_id,
                 "retrieval_mode": retrieval_mode,
@@ -1838,13 +2198,17 @@ class AcademicGraphRAGService:
                 "graph_name": graph_name,
                 "input_chunks": len(chunks or []),
             },
-            metadata={"storage": "milvus+neo4j", "service": "query_kb"},
+            metadata={
+                "storage": "milvus+neo4j",
+                "service": "query_kb",
+                **(trace_metadata or {}),
+            },
             tags=["context-assembly", "hybrid-retrieval"],
         ) as span:
             mode = self.normalize_mode(retrieval_mode, include_graph=include_graph)
             resolved_graph_name = self._academic_graph_name(graph_name)
             academic = await self.query_academic_indexes(
-                query_text,
+                semantic_query,
                 retrieval_mode=mode,
                 graph_name=resolved_graph_name,
                 top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_TOP_K", "8")),
@@ -1852,28 +2216,53 @@ class AcademicGraphRAGService:
             )
             academic = dict(academic or {})
             author_publications = await self.query_author_publications(
-                query_text,
+                intent_query,
                 graph_name=resolved_graph_name,
                 limit=int(os.getenv("YUNESA_AUTHOR_PUBLICATION_QUERY_LIMIT", "60")),
             )
             academic["author_publications"] = author_publications
+            publication_details = await self.query_publication_details(
+                intent_query,
+                graph_name=resolved_graph_name,
+                limit=int(os.getenv("YUNESA_PUBLICATION_DETAIL_QUERY_LIMIT", "12")),
+            )
+            academic["publication_details"] = publication_details
             lecturer_topic_publications = await self.query_lecturer_topic_publications(
-                query_text,
+                intent_query,
                 graph_name=resolved_graph_name,
                 limit=int(os.getenv("YUNESA_LECTURER_TOPIC_QUERY_LIMIT", "60")),
             )
             academic["lecturer_topic_publications"] = lecturer_topic_publications
+            topic_frequencies = await self.query_topic_frequencies(
+                intent_query,
+                graph_name=resolved_graph_name,
+                limit=int(os.getenv("YUNESA_TOPIC_FREQUENCY_QUERY_LIMIT", "15")),
+            )
+            academic["topic_frequencies"] = topic_frequencies
             author_chunks = self.normalize_author_publication_chunks(
                 author_publications,
-                query_text=query_text,
+                query_text=intent_query,
                 max_chunks=int(os.getenv("YUNESA_AUTHOR_PUBLICATION_CHUNKS", "12")),
+            )
+            publication_detail_chunks = self.normalize_publication_detail_chunks(
+                publication_details,
+                max_chunks=int(os.getenv("YUNESA_PUBLICATION_DETAIL_CHUNKS", "8")),
             )
             lecturer_topic_chunks = self.normalize_lecturer_topic_chunks(
                 lecturer_topic_publications,
                 max_chunks=int(os.getenv("YUNESA_LECTURER_TOPIC_CHUNKS", "12")),
             )
+            topic_frequency_chunks = self.normalize_topic_frequency_chunks(
+                topic_frequencies,
+                max_chunks=int(os.getenv("YUNESA_TOPIC_FREQUENCY_CHUNKS", "15")),
+            )
             academic_chunks = self.normalize_academic_paper_chunks(academic.get("paper_chunks"))
-            direct_chunks = [*lecturer_topic_chunks, *author_chunks]
+            direct_chunks = [
+                *publication_detail_chunks,
+                *lecturer_topic_chunks,
+                *author_chunks,
+                *topic_frequency_chunks,
+            ]
             if direct_chunks:
                 academic_sources = {str(item.get("source") or "").casefold() for item in direct_chunks}
                 supplemental_chunks = [
@@ -1891,13 +2280,13 @@ class AcademicGraphRAGService:
                 for row in (academic.get("entities") or [])[:5]
                 if str(row.get("entityName") or "").strip()
             ]
-            graph_terms.extend(self._extract_author_name_candidates(query_text))
+            graph_terms.extend(self._extract_author_name_candidates(intent_query))
             keyword_decomposition = academic.get("keyword_decomposition") or {}
             graph_terms.extend(keyword_decomposition.get("low_level_keywords") or [])
             graph_terms = self._dedupe_terms(graph_terms, max_terms=5)
             graph = (
                 await self.query_graph(
-                    academic.get("local_query") or query_text,
+                    academic.get("local_query") or semantic_query,
                     max_depth=graph_max_depth,
                     max_nodes=graph_max_nodes,
                     graph_name=resolved_graph_name,
@@ -1910,6 +2299,7 @@ class AcademicGraphRAGService:
             payload = {
                 "mode": mode,
                 "query": query_text,
+                "original_query": intent_query,
                 "knowledge_base": {"name": kb_name, "collection_id": collection_id},
                 "storage_layer": self.storage_layer(),
                 "chunks": normalized_chunks,
@@ -1920,6 +2310,7 @@ class AcademicGraphRAGService:
                 normalized_chunks,
                 graph,
                 academic,
+                query_text=intent_query,
             )
             payload["evidence_text"] = self._compact_evidence_text(
                 normalized_chunks,
