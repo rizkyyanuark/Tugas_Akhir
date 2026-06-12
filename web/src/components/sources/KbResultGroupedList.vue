@@ -65,6 +65,9 @@
         <span v-if="academicCounts.authorPublications" class="metric-chip"
           >Author papers: {{ academicCounts.authorPublications }}</span
         >
+        <span v-if="academicCounts.lecturerTopicPublications" class="metric-chip"
+          >Lecturer-topic papers: {{ academicCounts.lecturerTopicPublications }}</span
+        >
         <span v-if="academicCounts.paperChunks" class="metric-chip"
           >Paper chunks: {{ academicCounts.paperChunks }}</span
         >
@@ -176,6 +179,9 @@ const academicCounts = computed(() => ({
   authorPublications: Array.isArray(props.academicRetrieval?.author_publications)
     ? props.academicRetrieval.author_publications.length
     : 0,
+  lecturerTopicPublications: Array.isArray(props.academicRetrieval?.lecturer_topic_publications)
+    ? props.academicRetrieval.lecturer_topic_publications.length
+    : 0,
   paperChunks: Array.isArray(props.academicRetrieval?.paper_chunks)
     ? props.academicRetrieval.paper_chunks.length
     : 0,
@@ -220,6 +226,8 @@ const evidenceSummaryText = computed(() => {
   if (groundingStatus.value) parts.push(`grounding: ${groundingStatus.value}`)
   if (academicCounts.value.authorPublications)
     parts.push(`${academicCounts.value.authorPublications} author papers`)
+  if (academicCounts.value.lecturerTopicPublications)
+    parts.push(`${academicCounts.value.lecturerTopicPublications} lecturer-topic papers`)
   if (academicCounts.value.paperChunks) parts.push(`${academicCounts.value.paperChunks} academic chunks`)
   if (academicCounts.value.entities) parts.push(`${academicCounts.value.entities} entities`)
   if (academicCounts.value.relationships) parts.push(`${academicCounts.value.relationships} relationships`)

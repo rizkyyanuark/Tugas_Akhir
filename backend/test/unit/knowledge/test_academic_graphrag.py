@@ -267,6 +267,43 @@ def test_author_publication_evidence_makes_context_grounded() -> None:
     assert grounding["answerable"] is True
 
 
+def test_lecturer_topic_query_terms_and_chunks_support_education_questions() -> None:
+    query = "Dosen S2 Informatika mana yang menulis paper tentang machine learning di bidang pendidikan?"
+
+    assert AcademicGraphRAGService._is_lecturer_topic_query(query)
+    assert "informatika" in AcademicGraphRAGService._department_terms(query)
+
+    topic_terms = AcademicGraphRAGService._topic_terms_for_neo4j(query)
+    assert "machine learning" in topic_terms
+    assert "education" in topic_terms
+    assert "student" in topic_terms
+
+    rows = [
+        {
+            "lecturer": "Asmunin",
+            "affiliation": "S2 Informatika",
+            "paper_id": "p-education",
+            "title": "Combining the Unsupervised Discretization Method and the Statistical Machine Learning on the Students' Performance",
+            "year": 2020,
+            "authors": "Asmunin, Yuni Yamasari",
+            "matched_terms": ["machine learning", "student"],
+            "doi": "10.1109/example",
+        }
+    ]
+
+    chunks = AcademicGraphRAGService.normalize_lecturer_topic_chunks(rows)
+    assert chunks[0]["metadata"]["lecturer"] == "Asmunin"
+    assert "S2 Informatika" in chunks[0]["content"]
+    assert "machine learning, student" in chunks[0]["content"]
+
+    grounding = AcademicGraphRAGService._grounding_status(
+        [],
+        {"triples": []},
+        {"lecturer_topic_publications": rows, "keywords": [], "entities": [], "relationships": []},
+    )
+    assert grounding["status"] == "grounded"
+
+
 def test_empty_context_is_marked_unanswerable() -> None:
     grounding = AcademicGraphRAGService._grounding_status(
         [],

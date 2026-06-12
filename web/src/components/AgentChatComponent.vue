@@ -124,6 +124,7 @@
                   <div></div>
                 </div>
                 <span class="generating-text">Generating reply...</span>
+                <span class="generating-subtext">{{ activeProgressText }}</span>
               </div>
             </div>
           </div>
@@ -536,6 +537,34 @@ const isProcessing = computed(() => isStreaming.value)
 const isReplyLoading = computed(() => {
   const threadState = currentThreadState.value
   return Boolean(threadState?.replyLoadingVisible)
+})
+
+const getToolNameFromCall = (toolCall) =>
+  String(toolCall?.name || toolCall?.function?.name || '').trim()
+
+const activeProgressText = computed(() => {
+  const activeConv = [...conversations.value].reverse().find((conv) => conv?.status === 'streaming')
+  const messages = Array.isArray(activeConv?.messages) ? activeConv.messages : []
+  const toolCalls = messages.flatMap((msg) => (Array.isArray(msg?.tool_calls) ? msg.tool_calls : []))
+  if (!toolCalls.length) {
+    return 'Preparing the retrieval plan'
+  }
+
+  const queryKbCalls = toolCalls.filter((toolCall) => getToolNameFromCall(toolCall) === 'query_kb')
+  const relevantCalls = queryKbCalls.length ? queryKbCalls : toolCalls
+  const hasRunning = relevantCalls.some((toolCall) => !toolCall?.tool_call_result)
+  const hasCompleted = relevantCalls.some((toolCall) => toolCall?.tool_call_result)
+
+  if (queryKbCalls.length && hasRunning) {
+    return 'Searching YUNESA Academic KG across graph and vector indexes'
+  }
+  if (queryKbCalls.length && hasCompleted) {
+    return 'Composing a grounded answer from retrieved evidence'
+  }
+  if (hasRunning) {
+    return `Running ${getToolNameFromCall(relevantCalls[0]) || 'tool'}`
+  }
+  return 'Composing final answer'
 })
 const isSendButtonDisabled = computed(() => {
   return (
@@ -1824,6 +1853,7 @@ watch(currentChatId, (threadId, oldThreadId) => {
 .generating-indicator {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   padding: 0.75rem 0rem;
 
   .generating-text {
@@ -1847,6 +1877,13 @@ watch(currentChatId, (threadId, oldThreadId) => {
     background-clip: text;
     color: transparent;
     animation: waveFlash 2s linear infinite;
+  }
+
+  .generating-subtext {
+    margin-left: 10px;
+    font-size: 12px;
+    color: var(--gray-500);
+    white-space: normal;
   }
 }
 
