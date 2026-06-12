@@ -17,6 +17,8 @@ export function useAgentThreadState({
     if (!chatState.threadStates[threadId]) {
       chatState.threadStates[threadId] = {
         isStreaming: false,
+        pendingRequestId: null,
+        replyLoadingVisible: false,
         streamAbortController: null,
         runStreamAbortController: null,
         activeRunId: null,
@@ -83,6 +85,8 @@ export function useAgentThreadState({
       }
 
       threadState.onGoingConv = createOnGoingConvState()
+      threadState.pendingRequestId = null
+      threadState.replyLoadingVisible = false
       return
     }
 

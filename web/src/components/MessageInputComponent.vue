@@ -263,7 +263,7 @@ const updateMentionItems = (query = '') => {
       type: 'knowledge',
       insertValue: kbName,
       tokenLabel: formatMentionToken('knowledge', kbName),
-      description: kb.db_id
+      description: kb.description || kb.db_id
     }
   })
 

@@ -46,9 +46,17 @@ _DEFAULT_MCP_SERVERS = {
         "icon": "chart",
         "tags": ["builtin", "chart"],
     },
+    "sequentialthinking": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        "transport": "stdio",
+        "description": "Structured step-by-step reasoning tool for decomposing complex tasks.",
+        "icon": "brain",
+        "tags": ["builtin", "reasoning"],
+    },
 }
 
-_RETIRED_BUILTIN_MCP_SERVER_NAMES = ("sequentialthinking",)
+_RETIRED_BUILTIN_MCP_SERVER_NAMES: tuple[str, ...] = ()
 
 _SYNCED_MCP_FIELDS = (
     "description",

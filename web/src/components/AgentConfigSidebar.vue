@@ -81,14 +81,10 @@
                 v-if="shouldShowConfig(key, value)"
                 :name="key"
                 class="config-item"
-                :class="{ 'is-locked': value.template_metadata?.kind === 'knowledges' }"
               >
                 <template #label>
                   <div class="config-label-row">
                     <span class="config-label-text">{{ getConfigLabel(key, value) }}</span>
-                    <a-tag v-if="value.template_metadata?.kind === 'knowledges'" color="error" class="lock-tag">
-                      <Lock :size="10" /> Locked
-                    </a-tag>
                   </div>
                 </template>
                 <p v-if="value.description" class="config-description">{{ value.description }}</p>
@@ -148,7 +144,7 @@
                 </a-select>
 
                 <!-- Multi-select / tool list (handled uniformly) -->
-                <div v-else-if="isListConfig(key, value)" class="list-config-container" :class="{ 'is-locked': value.template_metadata?.kind === 'knowledges' }">
+                <div v-else-if="isListConfig(key, value)" class="list-config-container">
                   <!-- Case 1: <= 5 options, inline list -->
                   <div v-if="getConfigOptions(value).length <= 5" class="multi-select-cards">
                     <div class="multi-select-label">
@@ -156,7 +152,7 @@
                         >Selected {{ getSelectedCount(key) }} items | Total
                         {{ getConfigOptions(value).length }} items</span
                       >
-                      <div v-if="!isReadOnlyConfig && value.template_metadata?.kind !== 'knowledges'" class="label-actions">
+                      <div v-if="!isReadOnlyConfig" class="label-actions">
                         <a-button
                           type="link"
                           size="small"
@@ -192,7 +188,7 @@
 
                     <div class="options-grid">
                       <div
-                        v-for="option in (isReadOnlyConfig || value.template_metadata?.kind === 'knowledges')
+                        v-for="option in isReadOnlyConfig
                           ? getConfigOptions(value).filter((opt) =>
                               isOptionSelected(key, getOptionValue(opt))
                             )
@@ -202,9 +198,9 @@
                         :class="{
                           selected: isOptionSelected(key, getOptionValue(option)),
                           unselected: !isOptionSelected(key, getOptionValue(option)),
-                          readonly: isReadOnlyConfig || value.template_metadata?.kind === 'knowledges'
+                          readonly: isReadOnlyConfig
                         }"
-                        @click="!(isReadOnlyConfig || value.template_metadata?.kind === 'knowledges') && toggleOption(key, getOptionValue(option))"
+                        @click="!isReadOnlyConfig && toggleOption(key, getOptionValue(option))"
                       >
                         <div class="option-content">
                           <span class="option-text">{{ getOptionLabel(option) }}</span>
@@ -242,7 +238,7 @@
                       </div>
 
                       <a-button
-                        v-if="!isReadOnlyConfig && value.template_metadata?.kind !== 'knowledges'"
+                        v-if="!isReadOnlyConfig"
                         type="primary"
                         size="small"
                         class="selection-trigger-btn"
@@ -539,6 +535,11 @@ const createConfigModalOpen = ref(false)
 const createConfigLoading = ref(false)
 const createConfigName = ref('')
 const CREATE_CONFIG_OPTION_VALUE = '__create_config__'
+const ACADEMIC_KG_OPTION = {
+  id: 'yunesa_academic_kg',
+  name: 'YUNESA Academic KG',
+  description: 'Curated Neo4j/Zilliz academic knowledge graph for GraphRAG.'
+}
 const currentSegment = ref('model')
 const segmentOptions = [
   { label: 'Model', value: 'model' },
@@ -771,7 +772,12 @@ const getConfigOptions = (value) => {
     return toolOptionsFromApi.value || []
   }
   if (value?.template_metadata?.kind === 'knowledges') {
-    return databaseStore.databases || []
+    const databases = databaseStore.databases || []
+    const hasAcademicKg = databases.some((db) => {
+      const optionValue = resolveOptionValue(db)
+      return String(optionValue || '').trim() === ACADEMIC_KG_OPTION.id
+    })
+    return hasAcademicKg ? databases : [ACADEMIC_KG_OPTION, ...databases]
   }
   if (value?.template_metadata?.kind === 'mcps') {
     return liveMcpOptions.value || []
@@ -1369,28 +1375,11 @@ const confirmDeleteConfig = async () => {
           padding: 12px;
           border-radius: 8px;
           border: 1px solid var(--gray-100);
-          
-          &.is-locked {
-            border-color: rgba(255, 77, 79, 0.3);
-            background: rgba(255, 77, 79, 0.02);
-          }
 
           .config-label-row {
             display: flex;
             align-items: center;
             gap: 8px;
-
-            .lock-tag {
-              height: 18px;
-              line-height:16px;
-              display: flex;
-              align-items: center;
-              gap: 4px;
-              font-size: 10px;
-              padding: 0 6px;
-              border-radius: 4px;
-              margin: 0;
-            }
           }
 
           :deep(.ant-form-item-label > label) {
@@ -1507,9 +1496,9 @@ const confirmDeleteConfig = async () => {
       }
 
       .save-btn {
-        background-color: var(--gray-100);
-        border: 1px solid var(--gray-200);
-        color: var(--gray-600);
+        background-color: var(--main-color);
+        color: var(--gray-0);
+        border: 1px solid var(--main-color);
 
         &.changed {
           background-color: var(--main-color);

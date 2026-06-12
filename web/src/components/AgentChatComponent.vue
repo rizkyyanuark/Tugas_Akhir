@@ -110,7 +110,7 @@
             </div>
 
             <!-- Loading state while generating - enhanced conditions support the main chat and resume flow -->
-            <div class="generating-status" v-if="isProcessing && conversations.length > 0">
+            <div class="generating-status" v-if="isReplyLoading && conversations.length > 0">
               <div class="generating-indicator">
                 <div class="loading-dots">
                   <div></div>
@@ -405,18 +405,57 @@ const historyConversations = computed(() => {
   return MessageProcessor.convertServerHistoryToMessages(currentThreadMessages.value)
 })
 
+const getMessageRequestId = (message) => {
+  const metadataRequestId = message?.extra_metadata?.request_id
+  if (typeof metadataRequestId === 'string' && metadataRequestId.trim()) {
+    return metadataRequestId.trim()
+  }
+  if (message?.type === 'human' && typeof message.id === 'string' && message.id.trim()) {
+    return message.id.trim()
+  }
+  return null
+}
+
+const mergeOngoingUserMessageIntoHistory = (historyConvs, ongoingMessages) => {
+  if (!Array.isArray(historyConvs) || !historyConvs.length || !Array.isArray(ongoingMessages)) {
+    return { historyConvs, ongoingMessages }
+  }
+
+  const firstOngoingMessage = ongoingMessages[0]
+  if (!firstOngoingMessage || firstOngoingMessage.type !== 'human') {
+    return { historyConvs, ongoingMessages }
+  }
+
+  const lastHistoryConv = historyConvs[historyConvs.length - 1]
+  const historyMessages = Array.isArray(lastHistoryConv?.messages) ? lastHistoryConv.messages : []
+  const historyHumanIndex = historyMessages.findIndex((message) => message?.type === 'human')
+  if (historyHumanIndex === -1) return { historyConvs, ongoingMessages }
+
+  const historyRequestId = getMessageRequestId(historyMessages[historyHumanIndex])
+  const ongoingRequestId = getMessageRequestId(firstOngoingMessage)
+  if (!historyRequestId || !ongoingRequestId || historyRequestId !== ongoingRequestId) {
+    return { historyConvs, ongoingMessages }
+  }
+
+  return { historyConvs, ongoingMessages: ongoingMessages.slice(1) }
+}
+
 const conversations = computed(() => {
   const historyConvs = historyConversations.value
+  const {
+    historyConvs: mergedHistoryConvs,
+    ongoingMessages: mergedOngoingMessages
+  } = mergeOngoingUserMessageIntoHistory(historyConvs, onGoingConvMessages.value)
 
   // If there are in-progress messages and the thread state shows streaming, append the in-progress conversation
-  if (onGoingConvMessages.value.length > 0) {
+  if (mergedOngoingMessages.length > 0) {
     const onGoingConv = {
-      messages: onGoingConvMessages.value,
+      messages: mergedOngoingMessages,
       status: 'streaming'
     }
-    return [...historyConvs, onGoingConv]
+    return [...mergedHistoryConvs, onGoingConv]
   }
-  return historyConvs
+  return mergedHistoryConvs
 })
 
 // Agent icon mapping
@@ -463,6 +502,10 @@ const isStreaming = computed(() => {
   return threadState ? threadState.isStreaming : false
 })
 const isProcessing = computed(() => isStreaming.value)
+const isReplyLoading = computed(() => {
+  const threadState = currentThreadState.value
+  return Boolean(threadState?.replyLoadingVisible)
+})
 const isSendButtonDisabled = computed(() => {
   return (
     sendCooldownActive.value || ((!userInput.value || !currentAgent.value) && !isProcessing.value)
@@ -478,6 +521,33 @@ const startSendCooldown = () => {
     sendCooldownActive.value = false
     sendCooldownTimer = null
   }, 2000)
+}
+
+const createClientRequestId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+const buildOptimisticHumanMessage = ({ requestId, text }) => ({
+  id: requestId,
+  role: 'user',
+  type: 'human',
+  content: text,
+  message_type: 'text',
+  extra_metadata: {
+    request_id: requestId
+  }
+})
+
+const insertOptimisticHumanMessage = (threadState, { requestId, text }) => {
+  if (!threadState || !requestId) return
+  threadState.pendingRequestId = requestId
+  threadState.replyLoadingVisible = false
+  threadState.onGoingConv.msgChunks[requestId] = [
+    buildOptimisticHumanMessage({ requestId, text })
+  ]
 }
 
 // ==================== SCROLL & RESIZE HANDLING ====================
@@ -777,6 +847,7 @@ const sendMessage = async ({
   agentId,
   threadId,
   text,
+  requestId,
   signal = undefined
 }) => {
   if (!agentId || !threadId || !text) {
@@ -796,7 +867,8 @@ const sendMessage = async ({
   const requestData = {
     query: text,
     thread_id: threadId,
-    agent_config_id: selectedAgentConfigId.value
+    agent_config_id: selectedAgentConfigId.value,
+    meta: { request_id: requestId }
   }
 
   try {
@@ -1008,6 +1080,8 @@ const handleSendMessage = async () => {
   if (!threadState) return
 
   resetOnGoingConv(threadId)
+  const requestId = createClientRequestId()
+  insertOptimisticHumanMessage(threadState, { requestId, text })
   threadState.isStreaming = true
 
   await nextTick()
@@ -1042,7 +1116,8 @@ const handleSendMessage = async () => {
       const runResp = await agentApi.createAgentRun({
         query: text,
         agent_config_id: selectedAgentConfigId.value,
-        thread_id: threadId
+        thread_id: threadId,
+        meta: { request_id: requestId }
       })
       const runId = runResp?.run_id
       if (!runId) {
@@ -1051,6 +1126,9 @@ const handleSendMessage = async () => {
       await startRunStream(threadId, runId, 0)
     } catch (error) {
       threadState.isStreaming = false
+      threadState.pendingRequestId = null
+      threadState.replyLoadingVisible = false
+      resetOnGoingConv(threadId)
       handleChatError(error, 'send')
     }
     return
@@ -1088,6 +1166,7 @@ const handleSendMessage = async () => {
       agentId: currentAgentId.value,
       threadId: threadId,
       text: text,
+      requestId,
       signal: threadState.streamAbortController?.signal
     })
 
@@ -1100,6 +1179,8 @@ const handleSendMessage = async () => {
       console.warn('[Interrupted] Catch')
     }
     threadState.isStreaming = false
+    threadState.pendingRequestId = null
+    threadState.replyLoadingVisible = false
   } finally {
     threadState.streamAbortController = null
     // Load history asynchronously and keep the current message visible until history loading completes
