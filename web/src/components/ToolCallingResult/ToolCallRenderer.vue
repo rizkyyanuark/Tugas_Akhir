@@ -3,9 +3,16 @@
     :is="currentRenderer"
     v-if="currentRenderer"
     :tool-call="toolCall"
+    :appearance="appearance"
+    :default-expanded="defaultExpanded"
     ref="toolRendererRef"
   />
-  <BaseToolCall v-else-if="!isHidden" :tool-call="toolCall" />
+  <BaseToolCall
+    v-else-if="!isHidden"
+    :tool-call="toolCall"
+    :appearance="appearance"
+    :default-expanded="defaultExpanded"
+  />
 </template>
 
 <script setup>
@@ -33,6 +40,14 @@ const props = defineProps({
   toolCall: {
     type: Object,
     required: true
+  },
+  appearance: {
+    type: String,
+    default: 'card'
+  },
+  defaultExpanded: {
+    type: Boolean,
+    default: false
   }
 })
 
