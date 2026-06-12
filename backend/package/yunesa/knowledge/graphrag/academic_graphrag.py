@@ -555,6 +555,8 @@ class AcademicGraphRAGService:
         phrase_map = {
             "machine learning": ["machine learning"],
             "deep learning": ["deep learning"],
+            "artificial intelligence": ["artificial intelligence", "ai"],
+            " ai ": ["artificial intelligence", "ai"],
             "data mining": ["data mining"],
             "pendidikan": ["education", "educational", "student", "students", "learning"],
             "mahasiswa": ["student", "students", "student performance"],
@@ -571,6 +573,23 @@ class AcademicGraphRAGService:
             terms.append(term)
 
         return cls._dedupe_terms(terms, max_terms=12)
+
+    @classmethod
+    def _is_collaboration_query(cls, query_text: str) -> bool:
+        text = str(query_text or "").casefold()
+        return any(
+            marker in text
+            for marker in (
+                "berkolaborasi",
+                "kolaborasi",
+                "kolaborator",
+                "collaborat",
+                "co-author",
+                "coauthor",
+                "co author",
+                "kerja sama",
+            )
+        )
 
     @classmethod
     def normalize_author_publication_chunks(
@@ -818,6 +837,153 @@ class AcademicGraphRAGService:
                 }
             )
         return normalized
+
+    @classmethod
+    def normalize_collaboration_chunks(
+        cls,
+        rows: list[dict[str, Any]] | None,
+        *,
+        max_chunks: int = 12,
+    ) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        for index, row in enumerate((rows or [])[:max_chunks], start=1):
+            lecturer = str(row.get("lecturer") or "").strip()
+            collaborator = str(row.get("collaborator") or "").strip()
+            if not lecturer or not collaborator:
+                continue
+            titles = cls._format_values(row.get("paper_titles"))
+            content = (
+                f"Lecturer: {lecturer}\n"
+                f"Collaborator: {collaborator}\n"
+                f"Collaboration paper count: {row.get('paper_count') or 0}\n"
+                f"Shared publications: {titles or 'unknown'}"
+            )
+            normalized.append(
+                {
+                    "rank": index,
+                    "content": content,
+                    "score": float(row.get("paper_count") or 0),
+                    "source": f"{lecturer} collaborates with {collaborator}",
+                    "file_id": f"collaboration:{lecturer}:{collaborator}",
+                    "chunk_id": f"collaboration:{lecturer}:{collaborator}",
+                    "chunk_index": index - 1,
+                    "metadata": {
+                        "lecturer": lecturer,
+                        "collaborator": collaborator,
+                        "paper_count": row.get("paper_count"),
+                        "paper_titles": row.get("paper_titles"),
+                        "paper_ids": row.get("paper_ids"),
+                        "retrieval_source": "neo4j_collaborations",
+                    },
+                }
+            )
+        return normalized
+
+    @classmethod
+    async def query_collaborations(
+        cls,
+        query_text: str,
+        *,
+        graph_name: str | None = None,
+        limit: int = 40,
+    ) -> list[dict[str, Any]]:
+        if not cls._is_collaboration_query(query_text):
+            return []
+
+        lecturer_candidates = cls._extract_author_name_candidates(query_text)
+        if not lecturer_candidates:
+            return []
+
+        topic_terms = cls._topic_terms_for_neo4j(query_text)
+
+        try:
+            from yunesa import graph_base
+
+            if hasattr(graph_base, "start") and not graph_base.is_running():
+                graph_base.start()
+            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
+                return []
+
+            resolved_graph_name = cls._academic_graph_name(graph_name)
+            cypher = """
+                UNWIND $lecturer_candidates AS lecturer_name
+                MATCH (lecturer:Lecturer)
+                WHERE lecturer.graph_name = $graph_name
+                  AND (
+                    toLower(coalesce(lecturer.label, '')) CONTAINS toLower(lecturer_name)
+                    OR toLower(coalesce(lecturer.name, '')) CONTAINS toLower(lecturer_name)
+                    OR toLower(coalesce(lecturer.nama_dosen, '')) CONTAINS toLower(lecturer_name)
+                    OR toLower(coalesce(lecturer.nama_norm, '')) CONTAINS toLower(lecturer_name)
+                  )
+                MATCH (lecturer)-[collab_rel:COLLABORATES_WITH]-(collaborator:Lecturer)
+                WHERE collaborator.graph_name = $graph_name
+                OPTIONAL MATCH (lecturer)-[:PUBLISHES]->(paper:Publication)<-[:PUBLISHES]-(collaborator)
+                WHERE paper.graph_name = $graph_name
+                WITH DISTINCT lecturer, collaborator, collab_rel, collect(DISTINCT paper) AS papers
+                WITH
+                  lecturer,
+                  collaborator,
+                  collab_rel,
+                  [
+                    paper IN papers |
+                    {
+                      paper_id: paper.paper_id,
+                      title: coalesce(paper.title, paper.label, paper.name),
+                      year: paper.year,
+                      doi: paper.doi,
+                      text: toLower(
+                        toString(coalesce(paper.title, '')) + ' ' +
+                        toString(coalesce(paper.abstract, '')) + ' ' +
+                        toString(coalesce(paper.tldr, '')) + ' ' +
+                        toString(coalesce(paper.keywords, ''))
+                      )
+                    }
+                  ] AS paper_items
+                WITH
+                  lecturer,
+                  collaborator,
+                  collab_rel,
+                  CASE
+                    WHEN size($topic_terms) = 0 THEN paper_items
+                    ELSE [
+                      item IN paper_items
+                      WHERE any(term IN $topic_terms WHERE item.text CONTAINS toLower(term))
+                    ]
+                  END AS matched_papers,
+                  paper_items
+                WHERE size($topic_terms) = 0 OR size(matched_papers) > 0
+                RETURN
+                  coalesce(lecturer.label, lecturer.nama_norm, lecturer.nama_dosen, lecturer.name) AS lecturer,
+                  coalesce(collaborator.label, collaborator.nama_norm, collaborator.nama_dosen, collaborator.name) AS collaborator,
+                  CASE
+                    WHEN size(matched_papers) > 0 THEN size(matched_papers)
+                    ELSE coalesce(collab_rel.paper_count, size(paper_items))
+                  END AS paper_count,
+                  [item IN matched_papers | item.paper_id][0..12] AS paper_ids,
+                  [item IN matched_papers | item.title][0..12] AS paper_titles,
+                  [item IN matched_papers | item.year][0..12] AS years,
+                  [item IN matched_papers | item.doi][0..12] AS dois
+                ORDER BY paper_count DESC, toLower(collaborator) ASC
+                LIMIT $limit
+            """
+
+            def run_query() -> list[dict[str, Any]]:
+                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
+                    rows = session.run(
+                        cypher,
+                        lecturer_candidates=lecturer_candidates,
+                        topic_terms=topic_terms,
+                        graph_name=resolved_graph_name,
+                        limit=limit,
+                    )
+                    return [dict(row) for row in rows]
+
+            return await asyncio.to_thread(run_query)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                f"Academic GraphRAG collaboration query failed: {type(exc).__name__}: {exc}"
+            )
+            return []
 
     @classmethod
     async def query_author_publications(
@@ -1902,6 +2068,18 @@ class AcademicGraphRAGService:
                     f"sample_titles={cls._clip_text(cls._format_values(row.get('sample_titles')), 600)}"
                 )
 
+        collaborations = academic.get("collaborations") or []
+        if collaborations:
+            lines.append("Lecturer collaboration evidence:")
+            for row in collaborations[:12]:
+                lines.append(
+                    "- "
+                    f"lecturer={row.get('lecturer') or 'unknown'} | "
+                    f"collaborator={row.get('collaborator') or 'unknown'} | "
+                    f"paper_count={row.get('paper_count') or 0} | "
+                    f"shared_publications={cls._clip_text(cls._format_values(row.get('paper_titles')), 800)}"
+                )
+
         graph_publications = cls._publication_nodes_from_graph(graph, max_nodes=10)
         if graph_publications:
             lines.append("Graph publication node evidence:")
@@ -1989,6 +2167,7 @@ class AcademicGraphRAGService:
                 academic.get("lecturer_topic_publications", []) or []
             ),
             "academic_topic_frequencies": len(academic.get("topic_frequencies", []) or []),
+            "academic_collaborations": len(academic.get("collaborations", []) or []),
             "academic_keywords": len(academic.get("keywords", []) or []),
             "academic_entities": len(academic.get("entities", []) or []),
             "academic_relationships": len(academic.get("relationships", []) or []),
@@ -2016,6 +2195,7 @@ class AcademicGraphRAGService:
                 "author_publications",
                 "lecturer_topic_publications",
                 "topic_frequencies",
+                "collaborations",
             )
         )
         relation_intent = any(
@@ -2025,6 +2205,7 @@ class AcademicGraphRAGService:
                 "collaborat",
                 "hubungan",
                 "relasi",
+                "collaboration",
                 "relationship",
                 "connected",
                 "terhubung",
@@ -2239,6 +2420,12 @@ class AcademicGraphRAGService:
                 limit=int(os.getenv("YUNESA_TOPIC_FREQUENCY_QUERY_LIMIT", "15")),
             )
             academic["topic_frequencies"] = topic_frequencies
+            collaborations = await self.query_collaborations(
+                intent_query,
+                graph_name=resolved_graph_name,
+                limit=int(os.getenv("YUNESA_COLLABORATION_QUERY_LIMIT", "40")),
+            )
+            academic["collaborations"] = collaborations
             author_chunks = self.normalize_author_publication_chunks(
                 author_publications,
                 query_text=intent_query,
@@ -2256,9 +2443,14 @@ class AcademicGraphRAGService:
                 topic_frequencies,
                 max_chunks=int(os.getenv("YUNESA_TOPIC_FREQUENCY_CHUNKS", "15")),
             )
+            collaboration_chunks = self.normalize_collaboration_chunks(
+                collaborations,
+                max_chunks=int(os.getenv("YUNESA_COLLABORATION_CHUNKS", "12")),
+            )
             academic_chunks = self.normalize_academic_paper_chunks(academic.get("paper_chunks"))
             direct_chunks = [
                 *publication_detail_chunks,
+                *collaboration_chunks,
                 *lecturer_topic_chunks,
                 *author_chunks,
                 *topic_frequency_chunks,

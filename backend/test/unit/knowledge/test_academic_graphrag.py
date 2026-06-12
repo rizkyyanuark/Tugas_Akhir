@@ -412,6 +412,35 @@ def test_topic_frequency_query_requires_explicit_frequency_intent() -> None:
     assert "Publication count: 12" in chunks[0]["content"]
 
 
+def test_collaboration_evidence_is_direct_and_grounded() -> None:
+    rows = [
+        {
+            "lecturer": "Ricky Eka Putra",
+            "collaborator": "Yuni Yamasari",
+            "paper_count": 3,
+            "paper_titles": [
+                "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+                "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+            ],
+        }
+    ]
+
+    assert AcademicGraphRAGService._is_collaboration_query(
+        "Siapa dosen yang berkolaborasi dengan Ricky Eka Putra?"
+    )
+    chunks = AcademicGraphRAGService.normalize_collaboration_chunks(rows)
+    assert "Collaborator: Yuni Yamasari" in chunks[0]["content"]
+
+    grounding = AcademicGraphRAGService._grounding_status(
+        [],
+        {"triples": []},
+        {"collaborations": rows, "keywords": [], "entities": [], "relationships": []},
+        query_text="Siapa dosen yang berkolaborasi dengan Ricky Eka Putra?",
+    )
+    assert grounding["status"] == "grounded"
+    assert grounding["answerable"] is True
+
+
 def test_search_stage_timeout_returns_empty_rows(monkeypatch) -> None:
     async def slow_search():
         await asyncio.sleep(0.05)

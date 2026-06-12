@@ -121,6 +121,9 @@ def parse_tool_output(content: Any) -> dict[str, Any]:
         "topic_frequencies": (
             len(academic.get("topic_frequencies") or []) if isinstance(academic, dict) else 0
         ),
+        "collaborations": (
+            len(academic.get("collaborations") or []) if isinstance(academic, dict) else 0
+        ),
         "keywords": len(academic.get("keywords") or []) if isinstance(academic, dict) else 0,
         "entities": len(academic.get("entities") or []) if isinstance(academic, dict) else 0,
         "relationships": (

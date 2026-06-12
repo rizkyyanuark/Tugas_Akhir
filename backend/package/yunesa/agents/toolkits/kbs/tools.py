@@ -343,6 +343,7 @@ def _academic_tool_response(
             "publication_details": academic.get("publication_details", [])[:12],
             "lecturer_topic_publications": academic.get("lecturer_topic_publications", [])[:24],
             "topic_frequencies": academic.get("topic_frequencies", [])[:15],
+            "collaborations": academic.get("collaborations", [])[:24],
             "keywords": academic.get("keywords", [])[:8],
             "entities": academic.get("entities", [])[:12],
             "relationships": academic.get("relationships", [])[:12],
