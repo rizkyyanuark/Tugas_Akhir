@@ -15,6 +15,7 @@
           :chunks="extractChunks(resultContent)"
           :academic-retrieval="extractAcademicRetrieval(resultContent)"
           :graph="extractGraph(resultContent)"
+          :grounding="extractGrounding(resultContent)"
           :evidence-summary="extractSummary(resultContent)"
           :raw-text="extractRawText(resultContent)"
         />
@@ -80,6 +81,11 @@ const extractAcademicRetrieval = (content) => {
 const extractGraph = (content) => {
   const data = parseData(content)
   return data && typeof data === 'object' && !Array.isArray(data) ? data.graph || {} : {}
+}
+
+const extractGrounding = (content) => {
+  const data = parseData(content)
+  return data && typeof data === 'object' && !Array.isArray(data) ? data.grounding || {} : {}
 }
 
 const extractSummary = (content) => {
