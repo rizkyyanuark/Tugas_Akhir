@@ -193,6 +193,80 @@ def test_paper_chunk_normalization_deduplicates_before_limiting() -> None:
     assert "Chunk two" in normalized[0]["content"]
 
 
+def test_author_publication_queries_detect_lowercase_indonesian_names() -> None:
+    assert AcademicGraphRAGService._is_author_publication_query(
+        "apa saja paper yang ditulis oleh yuni yamasari"
+    )
+    assert "yuni yamasari" in AcademicGraphRAGService._extract_author_name_candidates(
+        "apa saja paper yang ditulis oleh yuni yamasari"
+    )
+    assert "yuni yamasari" in AcademicGraphRAGService._extract_author_name_candidates(
+        "metode optimasi oleh yuni yamasari dkk (2024)"
+    )
+
+
+def test_author_publication_chunks_prioritize_matching_paper() -> None:
+    rows = [
+        {
+            "author": "Yuni Yamasari",
+            "paper_id": "p-1",
+            "title": "Rule-Based Adaptive Chatbot",
+            "year": 2026,
+            "authors": "Yuni Yamasari, Ricky Eka Putra",
+            "tldr": "Chatbot paper.",
+        },
+        {
+            "author": "Yuni Yamasari",
+            "paper_id": "p-2",
+            "title": "Optimizing ANN Architecture for Classifying Student Stress Levels",
+            "year": 2024,
+            "authors": "Yuni Yamasari, Anita Qoiriah",
+            "abstract": "This study compares Ranger, Adam, and Adagrad optimizers.",
+        },
+        {
+            "author": "Yuni Yamasari",
+            "paper_id": "p-3",
+            "title": "Predicting student's psychomotor domain on the vocational senior high school",
+            "year": 2018,
+            "authors": "Yuni Yamasari",
+            "abstract": "A solo-authored linear regression paper.",
+        },
+    ]
+
+    normalized = AcademicGraphRAGService.normalize_author_publication_chunks(
+        rows,
+        query_text=(
+            "Metode optimasi apa saja yang dibandingkan dalam penelitian klasifikasi "
+            "tingkat stres mahasiswa menggunakan ANN oleh Yuni Yamasari dkk (2024)?"
+        ),
+    )
+
+    assert normalized[0]["source"] == "Optimizing ANN Architecture for Classifying Student Stress Levels"
+    assert "Ranger, Adam, and Adagrad" in normalized[0]["content"]
+    assert any("Yuni Yamasari" == item["metadata"]["authors"] for item in normalized)
+
+
+def test_author_publication_evidence_makes_context_grounded() -> None:
+    grounding = AcademicGraphRAGService._grounding_status(
+        [],
+        {"triples": []},
+        {
+            "author_publications": [
+                {
+                    "title": "Predicting student's psychomotor domain",
+                    "authors": "Yuni Yamasari",
+                }
+            ],
+            "keywords": [],
+            "entities": [],
+            "relationships": [],
+        },
+    )
+
+    assert grounding["status"] == "grounded"
+    assert grounding["answerable"] is True
+
+
 def test_empty_context_is_marked_unanswerable() -> None:
     grounding = AcademicGraphRAGService._grounding_status(
         [],

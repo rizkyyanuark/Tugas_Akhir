@@ -575,7 +575,7 @@ const buildOptimisticHumanMessage = ({ requestId, text }) => ({
 const insertOptimisticHumanMessage = (threadState, { requestId, text }) => {
   if (!threadState || !requestId) return
   threadState.pendingRequestId = requestId
-  threadState.replyLoadingVisible = false
+  threadState.replyLoadingVisible = true
   threadState.onGoingConv.msgChunks[requestId] = [
     buildOptimisticHumanMessage({ requestId, text })
   ]

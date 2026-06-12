@@ -58,7 +58,13 @@
         <span>Graph and Academic Evidence</span>
       </div>
       <div class="evidence-metrics">
-        <span v-if="academicStatus" class="metric-chip">Status: {{ academicStatus }}</span>
+        <span v-if="groundingStatus" class="metric-chip">Grounding: {{ groundingStatus }}</span>
+        <span v-if="academicStatus && academicStatus !== 'ok'" class="metric-chip"
+          >Index status: {{ academicStatus }}</span
+        >
+        <span v-if="academicCounts.authorPublications" class="metric-chip"
+          >Author papers: {{ academicCounts.authorPublications }}</span
+        >
         <span v-if="academicCounts.paperChunks" class="metric-chip"
           >Paper chunks: {{ academicCounts.paperChunks }}</span
         >
@@ -124,6 +130,10 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
+  grounding: {
+    type: Object,
+    default: () => ({})
+  },
   evidenceSummary: {
     type: String,
     default: ''
@@ -160,8 +170,12 @@ const fileGroupList = computed(() => {
 })
 
 const academicStatus = computed(() => String(props.academicRetrieval?.status || '').trim())
+const groundingStatus = computed(() => String(props.grounding?.status || '').trim())
 
 const academicCounts = computed(() => ({
+  authorPublications: Array.isArray(props.academicRetrieval?.author_publications)
+    ? props.academicRetrieval.author_publications.length
+    : 0,
   paperChunks: Array.isArray(props.academicRetrieval?.paper_chunks)
     ? props.academicRetrieval.paper_chunks.length
     : 0,
@@ -203,6 +217,9 @@ const hasAnyEvidence = computed(() => hasAnyStructuredEvidence.value || Boolean(
 
 const evidenceSummaryText = computed(() => {
   const parts = []
+  if (groundingStatus.value) parts.push(`grounding: ${groundingStatus.value}`)
+  if (academicCounts.value.authorPublications)
+    parts.push(`${academicCounts.value.authorPublications} author papers`)
   if (academicCounts.value.paperChunks) parts.push(`${academicCounts.value.paperChunks} academic chunks`)
   if (academicCounts.value.entities) parts.push(`${academicCounts.value.entities} entities`)
   if (academicCounts.value.relationships) parts.push(`${academicCounts.value.relationships} relationships`)

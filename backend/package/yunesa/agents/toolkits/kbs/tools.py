@@ -291,6 +291,7 @@ def _academic_tool_response(
             "graph_name": academic.get("graph_name"),
             "milvus_database": academic.get("milvus_database"),
             "paper_chunks": academic.get("paper_chunks", [])[:8],
+            "author_publications": academic.get("author_publications", [])[:24],
             "keywords": academic.get("keywords", [])[:8],
             "entities": academic.get("entities", [])[:12],
             "relationships": academic.get("relationships", [])[:12],

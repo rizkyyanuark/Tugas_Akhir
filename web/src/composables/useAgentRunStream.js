@@ -177,6 +177,7 @@ export function useAgentRunStream({
     ts.runLastSeq = normalizeRunSeq(afterSeq)
     ts.lastRetryableJobTry = null
     ts.isStreaming = true
+    ts.replyLoadingVisible = true
     saveActiveRunSnapshot(threadId, runId, ts.runLastSeq)
 
     try {
@@ -237,6 +238,7 @@ export function useAgentRunStream({
         if (event === 'close') {
           streamSmoother?.flushThread(threadId)
           ts.isStreaming = false
+          ts.replyLoadingVisible = false
           if (RUN_TERMINAL_STATUSES.has(data.status)) {
             ts.activeRunId = null
             ts.lastRetryableJobTry = null
@@ -264,6 +266,7 @@ export function useAgentRunStream({
           approvalStatuses.includes(chunkStatus)
         ) {
           ts.isStreaming = false
+          ts.replyLoadingVisible = false
           ts.activeRunId = null
           ts.lastRetryableJobTry = null
           clearActiveRunSnapshot(threadId)
@@ -295,6 +298,7 @@ export function useAgentRunStream({
       }
       if (!ts.activeRunId) {
         ts.isStreaming = false
+        ts.replyLoadingVisible = false
       }
     }
   }
