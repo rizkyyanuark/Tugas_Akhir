@@ -1,5 +1,11 @@
 import { computed } from 'vue'
 
+const ACADEMIC_KG_OPTION = {
+  id: 'yunesa_academic_kg',
+  name: 'YUNESA Academic KG',
+  description: 'Curated Neo4j/Zilliz academic knowledge graph for GraphRAG.'
+}
+
 export function useAgentMentionConfig({
   configurableItems,
   agentConfig,
@@ -52,7 +58,16 @@ export function useAgentMentionConfig({
       }
     })
 
-    const knowledgeBases = availableKnowledgeBases.value.filter((kb) => allowedKbNames.has(kb.name))
+    const effectiveKnowledgeBases = [...(availableKnowledgeBases.value || [])]
+    if (
+      allowedKbNames.has(ACADEMIC_KG_OPTION.id) &&
+      !effectiveKnowledgeBases.some((kb) => kb.name === ACADEMIC_KG_OPTION.id || kb.id === ACADEMIC_KG_OPTION.id)
+    ) {
+      effectiveKnowledgeBases.unshift(ACADEMIC_KG_OPTION)
+    }
+    const knowledgeBases = effectiveKnowledgeBases.filter(
+      (kb) => allowedKbNames.has(kb.name) || allowedKbNames.has(kb.id)
+    )
     const mcps = availableMcps.value.filter((mcp) => allowedMcpNames.has(mcp.name))
     const skills = availableSkills.value.filter((skill) => {
       const skillName = skill.name || ''

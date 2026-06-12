@@ -65,6 +65,13 @@ async def list_kbs(dummy: str, runtime: ToolRuntime) -> str:  # Now has 2 params
 
     # Intersect with enabled knowledge bases.
     available_kbs = [kb for kb in all_kbs if kb["name"] in enabled_kb_names]
+    if any(_is_academic_virtual_kb(name) for name in enabled_kb_names):
+        available_kbs.append(
+            {
+                "name": "yunesa_academic_kg",
+                "description": "Curated YUNESA academic knowledge graph stored in Neo4j and Zilliz.",
+            }
+        )
 
     if not available_kbs:
         return "No accessible knowledge base is currently available"
