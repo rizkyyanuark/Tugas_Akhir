@@ -2188,7 +2188,7 @@ class AcademicGraphRAGService:
         query_text: str = "",
     ) -> dict[str, Any]:
         direct_count = len(chunks)
-        direct_count += sum(
+        structured_direct_count = sum(
             len(academic.get(key, []) or [])
             for key in (
                 "publication_details",
@@ -2198,6 +2198,7 @@ class AcademicGraphRAGService:
                 "collaborations",
             )
         )
+        direct_count += structured_direct_count
         relation_intent = any(
             marker in str(query_text or "").casefold()
             for marker in (
@@ -2211,7 +2212,11 @@ class AcademicGraphRAGService:
                 "terhubung",
             )
         )
-        graph_direct_count = len(graph.get("triples", []) or []) if relation_intent else 0
+        graph_direct_count = (
+            len(graph.get("triples", []) or [])
+            if relation_intent and structured_direct_count == 0
+            else 0
+        )
         direct_count += graph_direct_count
         supporting_count = sum(
             len(academic.get(key, []) or [])
@@ -2426,6 +2431,11 @@ class AcademicGraphRAGService:
                 limit=int(os.getenv("YUNESA_COLLABORATION_QUERY_LIMIT", "40")),
             )
             academic["collaborations"] = collaborations
+            if collaborations:
+                author_publications = []
+                lecturer_topic_publications = []
+                academic["author_publications"] = []
+                academic["lecturer_topic_publications"] = []
             author_chunks = self.normalize_author_publication_chunks(
                 author_publications,
                 query_text=intent_query,
@@ -2448,13 +2458,15 @@ class AcademicGraphRAGService:
                 max_chunks=int(os.getenv("YUNESA_COLLABORATION_CHUNKS", "12")),
             )
             academic_chunks = self.normalize_academic_paper_chunks(academic.get("paper_chunks"))
-            direct_chunks = [
-                *publication_detail_chunks,
-                *collaboration_chunks,
-                *lecturer_topic_chunks,
-                *author_chunks,
-                *topic_frequency_chunks,
-            ]
+            if collaboration_chunks:
+                direct_chunks = [*collaboration_chunks]
+            else:
+                direct_chunks = [
+                    *publication_detail_chunks,
+                    *lecturer_topic_chunks,
+                    *author_chunks,
+                    *topic_frequency_chunks,
+                ]
             if direct_chunks:
                 academic_sources = {str(item.get("source") or "").casefold() for item in direct_chunks}
                 supplemental_chunks = [

@@ -35,6 +35,9 @@ input and use the available knowledge-base tools for retrieval.
 - For questions asking which lecturers/authors wrote papers about a topic, answer from
   `lecturer_topic_publications` first. Each item contains the lecturer, affiliation, matched terms,
   title, year, authors, and DOI. Do not answer "authors unavailable" when this evidence is present.
+- For collaboration questions, answer from `collaborations` or explicit `COLLABORATES_WITH`
+  evidence. List only collaborator names present in that evidence, include shared publication titles
+  when available, and do not invent or normalize names from model memory.
 - For an exact publication title, prioritize `publication_details`; its author list is derived from
   the graph's `PUBLISHES` relations even when the Publication node has no `authors` property.
 - For "most frequent" or "top topic" questions, answer only from `topic_frequencies` and report
