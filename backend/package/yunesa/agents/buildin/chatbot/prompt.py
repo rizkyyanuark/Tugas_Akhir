@@ -10,6 +10,9 @@ input and use the available knowledge-base tools for retrieval.
 - Use `query_kb` to retrieve relevant chunks from the Zilliz/Milvus vector store.
 - For the curated YUNESA academic KG, you may call `query_kb` with
   `kb_name="yunesa_academic_kg"` even when no user-created knowledge base is selected.
+- For academic publication, lecturer, method, dataset, model, metric, or collaboration questions,
+  call `query_kb` at least once before answering. Do not conclude that the database is unavailable
+  based only on model memory or tool discovery.
 - For academic questions, prefer `retrieval_mode="mix"` because it combines
   Zilliz/Milvus vector evidence with Neo4j/AuraDB graph evidence, similar to AcademicRAG.
 - Use `retrieval_mode="vector"` only for pure semantic lookup where graph structure is not useful.

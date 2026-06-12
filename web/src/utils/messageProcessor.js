@@ -392,6 +392,27 @@ export class MessageProcessor {
     return MessageProcessor.normalizeTextualToolCallMessage(result)
   }
 
+  static parseAssistantMessageBody(message) {
+    let content =
+      typeof message?.content === 'string'
+        ? message.content.trim()
+        : String(message?.content || '').trim()
+    content = MessageProcessor.stripTextualToolCallContent(content)
+    let reasoningContent = message?.additional_kwargs?.reasoning_content || ''
+
+    if (!reasoningContent && content) {
+      const thinkRegex = /<think>(.*?)<\/think>|<think>(.*?)$/s
+      const thinkMatch = content.match(thinkRegex)
+
+      if (thinkMatch) {
+        reasoningContent = (thinkMatch[1] || thinkMatch[2] || '').trim()
+        content = content.replace(thinkMatch[0], '').trim()
+      }
+    }
+
+    return { content, reasoningContent }
+  }
+
   /**
    * Merge tool calls
    * @private

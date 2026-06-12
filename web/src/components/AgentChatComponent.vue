@@ -85,27 +85,33 @@
         <!-- Main Chat Area -->
         <div class="chat-main" ref="chatMainRef">
           <div class="chat-box">
-            <div class="conv-box" v-for="(conv, index) in conversations" :key="index">
-              <AgentMessageComponent
-                v-for="(message, msgIndex) in conv.messages"
-                :message="message"
-                :key="msgIndex"
-                :is-processing="
-                  isProcessing &&
-                  conv.status === 'streaming' &&
-                  msgIndex === conv.messages.length - 1
-                "
-                :show-refs="showMsgRefs(message)"
-                @retry="retryMessage(message)"
+            <div class="conv-box" v-for="row in conversationRows" :key="row.key">
+              <template
+                v-for="(displayItem, itemIndex) in row.displayItems"
+                :key="displayItem.key"
               >
-              </AgentMessageComponent>
+                <AgentMessageComponent
+                  v-if="displayItem.type === 'message'"
+                  :message="displayItem.message"
+                  :is-processing="isDisplayMessageProcessing(row.conv, displayItem)"
+                  :show-refs="showMsgRefs(displayItem.message)"
+                  :hide-tool-calls="true"
+                  @retry="retryMessage(displayItem.message)"
+                >
+                </AgentMessageComponent>
+                <ToolCallsGroupComponent
+                  v-else
+                  :tool-calls="displayItem.toolCalls"
+                  :is-active="isToolGroupActive(row.conv, itemIndex, row.displayItems)"
+                />
+              </template>
               <!-- Show the model used by the last message in the conversation -->
               <RefsComponent
-                v-if="shouldShowRefs(conv)"
-                :message="getLastMessage(conv)"
+                v-if="shouldShowRefs(row.conv)"
+                :message="getLastMessage(row.conv)"
                 :show-refs="['model', 'copy', 'sources']"
                 :is-latest-message="false"
-                :sources="getConversationSources(conv)"
+                :sources="getConversationSources(row.conv)"
               />
             </div>
 
@@ -204,6 +210,7 @@ import AgentInputArea from '@/components/AgentInputArea.vue'
 import AgentMessageComponent from '@/components/AgentMessageComponent.vue'
 import ChatSidebarComponent from '@/components/ChatSidebarComponent.vue'
 import RefsComponent from '@/components/RefsComponent.vue'
+import ToolCallsGroupComponent from '@/components/ToolCallsGroupComponent.vue'
 import { PanelLeftOpen, MessageCirclePlus, LoaderCircle, Bot, Telescope } from 'lucide-vue-next'
 import { handleChatError, handleValidationError } from '@/utils/errorHandler'
 import { ScrollController } from '@/utils/scrollController'
@@ -224,6 +231,7 @@ import { useAgentStreamHandler } from '@/composables/useAgentStreamHandler'
 import { useStreamSmoother } from '@/composables/useStreamSmoother'
 import { useAgentMentionConfig } from '@/composables/useAgentMentionConfig'
 import UserInfoComponent from '@/components/UserInfoComponent.vue'
+import { getConversationDisplayItems } from '@/utils/messageGrouping'
 
 // ==================== PROPS & EMITS ====================
 const props = defineProps({
@@ -457,6 +465,29 @@ const conversations = computed(() => {
   }
   return mergedHistoryConvs
 })
+
+const conversationRows = computed(() =>
+  conversations.value.map((conv, index) => ({
+    type: 'conversation',
+    key: `conv-${index}-${conv.messages?.[0]?.id || index}`,
+    conv,
+    displayItems: getConversationDisplayItems(conv)
+  }))
+)
+
+const isDisplayMessageProcessing = (conv, displayItem) => {
+  return Boolean(
+    isProcessing.value &&
+      conv?.status === 'streaming' &&
+      displayItem?.sourceIndex === conv.messages.length - 1
+  )
+}
+
+const isToolGroupActive = (conv, itemIndex, displayItems) => {
+  return Boolean(
+    isReplyLoading.value && conv?.status === 'streaming' && itemIndex === displayItems.length - 1
+  )
+}
 
 // Agent icon mapping
 const agentIconMap = {

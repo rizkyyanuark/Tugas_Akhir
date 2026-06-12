@@ -20,12 +20,87 @@ def _query_kb_callable():
     raise AssertionError("query_kb tool has no callable entry")
 
 
+def _list_kbs_callable():
+    callback = getattr(tools.list_kbs, "coroutine", None)
+    if callback is not None:
+        return callback
+
+    callback = getattr(tools.list_kbs, "func", None)
+    if callback is not None:
+        return callback
+
+    raise AssertionError("list_kbs tool has no callable entry")
+
+
+async def _run_list_kbs(**kwargs):
+    callback = _list_kbs_callable()
+    result = callback(**kwargs)
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
 async def _run_query_kb(**kwargs):
     callback = _query_kb_callable()
     result = callback(**kwargs)
     if inspect.isawaitable(result):
         return await result
     return result
+
+
+@pytest.mark.asyncio
+async def test_list_kbs_always_exposes_curated_academic_kg(monkeypatch) -> None:
+    async def _fake_get_databases_by_raw_id(user_id: str):
+        assert user_id == "user-1"
+        return {"databases": []}
+
+    monkeypatch.setattr(
+        tools.knowledge_base,
+        "get_databases_by_raw_id",
+        _fake_get_databases_by_raw_id,
+    )
+
+    runtime = SimpleNamespace(context=SimpleNamespace(user_id="user-1", knowledges=[]))
+    result = await _run_list_kbs(dummy="", runtime=runtime)
+
+    assert result == [
+        {
+            "name": "yunesa_academic_kg",
+            "description": "Curated YUNESA academic knowledge graph stored in Neo4j and Zilliz.",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_list_kbs_does_not_duplicate_curated_academic_kg(monkeypatch) -> None:
+    async def _fake_get_databases_by_raw_id(user_id: str):
+        assert user_id == "user-1"
+        return {
+            "databases": [
+                {
+                    "name": "yunesa_academic_kg",
+                    "description": "Session-selected academic KG",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(
+        tools.knowledge_base,
+        "get_databases_by_raw_id",
+        _fake_get_databases_by_raw_id,
+    )
+
+    runtime = SimpleNamespace(
+        context=SimpleNamespace(user_id="user-1", knowledges=["yunesa_academic_kg"])
+    )
+    result = await _run_list_kbs(dummy="", runtime=runtime)
+
+    assert result == [
+        {
+            "name": "yunesa_academic_kg",
+            "description": "Session-selected academic KG",
+        }
+    ]
 
 
 @pytest.mark.asyncio

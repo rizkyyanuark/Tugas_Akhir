@@ -70,7 +70,10 @@
         <span v-else>{{ message.error_type || 'Unknown error' }}</span>
       </div>
 
-      <div v-if="validToolCalls && validToolCalls.length > 0" class="tool-calls-container">
+      <div
+        v-if="!hideToolCalls && validToolCalls && validToolCalls.length > 0"
+        class="tool-calls-container"
+      >
         <div
           v-for="(toolCall, index) in validToolCalls"
           :key="toolCall.id || index"
@@ -151,6 +154,10 @@ const props = defineProps({
   },
   // Whether this is the latest message
   isLatestMessage: {
+    type: Boolean,
+    default: false
+  },
+  hideToolCalls: {
     type: Boolean,
     default: false
   },
@@ -312,35 +319,10 @@ const classifyTechnicalError = (content, messageObject) => {
 }
 
 const parsedData = computed(() => {
-  // Start with default values from the prop to avoid mutation.
-  let content =
-    typeof props.message.content === 'string'
-      ? props.message.content.trim()
-      : String(props.message.content || '').trim()
-  content = MessageProcessor.stripTextualToolCallContent(content)
-  let reasoning_content = props.message.additional_kwargs?.reasoning_content || ''
-
-  if (reasoning_content) {
-    return {
-      content,
-      reasoning_content
-    }
-  }
-
-  // Regex to find <think>...</think> or an unclosed <think>... at the end of the string.
-  const thinkRegex = /<think>(.*?)<\/think>|<think>(.*?)$/s
-  const thinkMatch = content.match(thinkRegex)
-
-  if (thinkMatch) {
-    // The captured reasoning is in either group 1 (closed tag) or 2 (unclosed tag).
-    reasoning_content = (thinkMatch[1] || thinkMatch[2] || '').trim()
-    // Remove the entire matched <think> block from the original content.
-    content = content.replace(thinkMatch[0], '').trim()
-  }
-
+  const { content, reasoningContent } = MessageProcessor.parseAssistantMessageBody(props.message)
   return {
     content,
-    reasoning_content
+    reasoning_content: reasoningContent
   }
 })
 
