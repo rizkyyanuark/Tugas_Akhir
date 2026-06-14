@@ -2452,6 +2452,16 @@ class AcademicGraphRAGService:
         mode: str = "mix",
     ) -> str:
         del grounding, mode
+        # ---------------------------------------------------------------------------
+        # Context-pruning limits (permanent fix for LLM token-limit overflow).
+        # Validated in batch testing: 15 entities + 15 relations + 5 sources keeps
+        # payloads at ~1 000–2 200 tokens, well within Qwen2.5-72B context budget.
+        # Override via environment variables for per-deployment tuning.
+        # ---------------------------------------------------------------------------
+        _MAX_ENTITY_ROWS = int(os.getenv("YUNESA_EVIDENCE_MAX_ENTITIES", "15"))
+        _MAX_RELATION_ROWS = int(os.getenv("YUNESA_EVIDENCE_MAX_RELATIONS", "15"))
+        _BASE_SOURCE_LIMIT = int(os.getenv("YUNESA_EVIDENCE_MAX_SOURCES", "5"))
+
         combined_graph = cls._merge_graph_results(
             [
                 graph or {},
@@ -2466,10 +2476,13 @@ class AcademicGraphRAGService:
             for node in combined_graph.get("nodes", [])
         }
 
+        # --- Entities (pruned to _MAX_ENTITY_ROWS) ---
         entity_rows: list[list[Any]] = [
             ["id", "entity", "type", "description", "source"]
         ]
-        for index, node in enumerate(combined_graph.get("nodes", [])[:80], start=1):
+        for index, node in enumerate(
+            combined_graph.get("nodes", [])[:_MAX_ENTITY_ROWS], start=1
+        ):
             properties = node.get("properties") or {}
             description = (
                 properties.get("description")
@@ -2490,11 +2503,14 @@ class AcademicGraphRAGService:
                 ]
             )
 
+        # --- Relationships (pruned to _MAX_RELATION_ROWS) ---
         relationship_rows: list[list[Any]] = [
             ["id", "source", "target", "relation", "description", "source"]
         ]
         relationship_signatures: set[tuple[str, str, str]] = set()
-        for index, edge in enumerate(combined_graph.get("edges", [])[:160], start=1):
+        for index, edge in enumerate(
+            combined_graph.get("edges", [])[:_MAX_RELATION_ROWS], start=1
+        ):
             properties = edge.get("properties") or {}
             source_id = str(edge.get("source_id") or edge.get("source") or "")
             target_id = str(edge.get("target_id") or edge.get("target") or "")
@@ -2510,7 +2526,13 @@ class AcademicGraphRAGService:
                     properties.get("source") or "neo4j",
                 ]
             )
-        for triple in graph.get("triples", []) or []:
+        # Fill remaining relation slots from raw triples (deduplicated)
+        remaining_relation_slots = max(
+            0, _MAX_RELATION_ROWS - (len(relationship_rows) - 1)
+        )
+        for triple in (graph.get("triples", []) or [])[:remaining_relation_slots * 2]:
+            if len(relationship_rows) - 1 >= _MAX_RELATION_ROWS:
+                break
             source = str(triple.get("source") or "")
             relation = str(triple.get("relation") or "RELATED_TO")
             target = str(triple.get("target") or "")
@@ -2529,19 +2551,22 @@ class AcademicGraphRAGService:
             )
             relationship_signatures.add(signature)
 
+        # --- Sources (limit scales with query type, anchored at _BASE_SOURCE_LIMIT) ---
         structured_counts = (
             academic.get("structured_counts", {}) if isinstance(academic, dict) else {}
         )
         author_publication_meta = structured_counts.get("author_publications", {})
-        source_limit = 24
         if (
             academic
             and academic.get("author_publications")
             and author_publication_meta.get("enumeration_query")
         ):
-            source_limit = DEFAULT_STRUCTURED_ENUMERATION_LIMIT
+            # Enumeration queries ("list all papers by X") warrant more source rows
+            source_limit = int(os.getenv("YUNESA_EVIDENCE_ENUM_MAX_SOURCES", "24"))
         elif academic and academic.get("lecturer_topic_publications"):
-            source_limit = 40
+            source_limit = int(os.getenv("YUNESA_EVIDENCE_TOPIC_MAX_SOURCES", "12"))
+        else:
+            source_limit = _BASE_SOURCE_LIMIT
 
         source_rows: list[list[Any]] = [["id", "source", "content", "score"]]
         for index, chunk in enumerate((chunks or [])[:source_limit], start=1):
@@ -2564,7 +2589,7 @@ class AcademicGraphRAGService:
             writer.writerows(rows)
             return output.getvalue().strip()
 
-        return (
+        evidence = (
             "-----Entities-----\n"
             "```csv\n"
             f"{to_csv(entity_rows)}\n"
@@ -2578,6 +2603,15 @@ class AcademicGraphRAGService:
             f"{to_csv(source_rows)}\n"
             "```"
         )
+        logger.debug(
+            "Academic GraphRAG evidence_text size: %d chars "
+            "(entities=%d, relations=%d, sources=%d)",
+            len(evidence),
+            len(entity_rows) - 1,
+            len(relationship_rows) - 1,
+            len(source_rows) - 1,
+        )
+        return evidence
 
     @staticmethod
     def _graph_summary(graph: dict[str, Any]) -> dict[str, Any]:

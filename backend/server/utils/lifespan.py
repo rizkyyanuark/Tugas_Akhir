@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
         raise
 
     # Initialize Knowledge Base manager
+    import asyncio
     import os
     if os.environ.get("LITE_MODE", "").lower() in ("true", "1"):
         logger.info("LITE_MODE enabled, skipping knowledge base initialization")
@@ -49,6 +50,42 @@ async def lifespan(app: FastAPI):
             await knowledge_base.initialize()
         except Exception as e:
             logger.error(f"Failed to initialize knowledge base manager: {e}")
+
+    # Pre-warm Neo4j & Milvus connection pools in background (non-blocking).
+    # Cold-start of the Neo4j AuraDB driver takes up to ~140 s on first query.
+    # Firing a lightweight ping here eliminates that latency for real user queries.
+    async def _prewarm_neo4j():
+        try:
+            from yunesa import graph_base
+            if hasattr(graph_base, "start") and not graph_base.is_running():
+                await asyncio.to_thread(graph_base.start)
+            if graph_base.is_running() and getattr(graph_base, "driver", None):
+                def _ping():
+                    with graph_base.driver.session() as session:
+                        session.run("RETURN 1")
+                await asyncio.to_thread(_ping)
+                logger.info("Neo4j connection pool pre-warmed successfully")
+        except Exception as exc:
+            logger.warning(f"Neo4j pre-warm skipped (will connect on first query): {exc}")
+
+    async def _prewarm_milvus():
+        try:
+            milvus_uri = os.getenv("MILVUS_URI") or os.getenv("ZILLIZ_URI", "")
+            milvus_token = os.getenv("MILVUS_TOKEN") or os.getenv("ZILLIZ_TOKEN", "")
+            if not milvus_uri or not milvus_token:
+                return
+            from yunesa.knowledge.graphrag.storage import normalize_milvus_uri
+            from pymilvus import MilvusClient
+            def _ping():
+                client = MilvusClient(uri=normalize_milvus_uri(milvus_uri), token=milvus_token)
+                client.list_collections()
+            await asyncio.to_thread(_ping)
+            logger.info("Milvus/Zilliz connection pool pre-warmed successfully")
+        except Exception as exc:
+            logger.warning(f"Milvus pre-warm skipped (will connect on first query): {exc}")
+
+    asyncio.create_task(_prewarm_neo4j())
+    asyncio.create_task(_prewarm_milvus())
 
     # Warm up Redis (run queue)
     try:
