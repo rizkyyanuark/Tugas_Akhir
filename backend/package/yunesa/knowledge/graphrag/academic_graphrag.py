@@ -65,6 +65,7 @@ DEFAULT_ACADEMIC_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_MILVUS_DB_NAME = "default"
 DEFAULT_MILVUS_TIMEOUT_SECONDS = 12.0
 DEFAULT_RETRIEVAL_STAGE_TIMEOUT_SECONDS = 20.0
+DEFAULT_STRUCTURED_ENUMERATION_LIMIT = 60
 
 
 @lru_cache(maxsize=8)
@@ -2502,10 +2503,14 @@ class AcademicGraphRAGService:
             )
             relationship_signatures.add(signature)
 
-        source_rows: list[list[Any]] = [
-            ["id", "source", "content", "score"]
-        ]
-        for index, chunk in enumerate((chunks or [])[:24], start=1):
+        source_limit = 24
+        if academic and academic.get("author_publications"):
+            source_limit = DEFAULT_STRUCTURED_ENUMERATION_LIMIT
+        elif academic and academic.get("lecturer_topic_publications"):
+            source_limit = 40
+
+        source_rows: list[list[Any]] = [["id", "source", "content", "score"]]
+        for index, chunk in enumerate((chunks or [])[:source_limit], start=1):
             source_rows.append(
                 [
                     index,
@@ -2795,6 +2800,12 @@ class AcademicGraphRAGService:
         ) as span:
             mode = self.normalize_mode(retrieval_mode, include_graph=include_graph)
             resolved_graph_name = self._academic_graph_name(graph_name)
+            author_publication_limit = int(
+                os.getenv(
+                    "YUNESA_AUTHOR_PUBLICATION_QUERY_LIMIT",
+                    str(DEFAULT_STRUCTURED_ENUMERATION_LIMIT),
+                )
+            )
             academic = await self.query_academic_indexes(
                 semantic_query,
                 retrieval_mode=mode,
@@ -2803,12 +2814,19 @@ class AcademicGraphRAGService:
                 keyword_top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_KEYWORD_TOP_K", "8")),
             )
             academic = dict(academic or {})
-            author_publications = await self.query_author_publications(
+            author_publications_raw = await self.query_author_publications(
                 intent_query,
                 graph_name=resolved_graph_name,
-                limit=int(os.getenv("YUNESA_AUTHOR_PUBLICATION_QUERY_LIMIT", "60")),
+                limit=author_publication_limit + 1,
             )
+            author_publications_capped = len(author_publications_raw) > author_publication_limit
+            author_publications = author_publications_raw[:author_publication_limit]
             academic["author_publications"] = author_publications
+            academic.setdefault("structured_counts", {})["author_publications"] = {
+                "returned": len(author_publications),
+                "limit": author_publication_limit,
+                "complete": not author_publications_capped,
+            }
             publication_details = await self.query_publication_details(
                 intent_query,
                 graph_name=resolved_graph_name,
@@ -2837,7 +2855,10 @@ class AcademicGraphRAGService:
             # If the query is about a specific publication (title candidate extracted),
             # we must keep the publication details to allow the LLM to verify sole-authorship.
             has_specific_pub = bool(self._extract_publication_title_candidates(intent_query))
-            if collaborations and not has_specific_pub:
+            if publication_details and has_specific_pub:
+                collaborations = []
+                academic["collaborations"] = []
+            elif collaborations:
                 author_publications = []
                 lecturer_topic_publications = []
                 academic["author_publications"] = []
@@ -2845,7 +2866,12 @@ class AcademicGraphRAGService:
             author_chunks = self.normalize_author_publication_chunks(
                 author_publications,
                 query_text=intent_query,
-                max_chunks=int(os.getenv("YUNESA_AUTHOR_PUBLICATION_CHUNKS", "12")),
+                max_chunks=int(
+                    os.getenv(
+                        "YUNESA_AUTHOR_PUBLICATION_CHUNKS",
+                        str(DEFAULT_STRUCTURED_ENUMERATION_LIMIT),
+                    )
+                ),
             )
             publication_detail_chunks = self.normalize_publication_detail_chunks(
                 publication_details,

@@ -32,6 +32,10 @@ input and use the available knowledge-base tools for retrieval.
 - For questions asking papers/publications written by a lecturer, answer from `author_publications`,
   `PUBLISHES`, or `HAS_AUTHOR` evidence. Do not narrow the answer to collaborators unless the user
   explicitly asks about collaboration.
+- For lecturer publication list questions, enumerate every row returned in `author_publications`
+  unless the user asks for a summary. State the returned count. If `structured_counts.author_publications.complete`
+  is false, explicitly say the list is capped by the retrieval limit instead of presenting it as complete.
+  Prefer a compact table with title, year, authors, venue/DOI when many rows are returned.
 - For questions asking which lecturers/authors wrote papers about a topic, answer from
   `lecturer_topic_publications` first. Each item contains the lecturer, affiliation, matched terms,
   title, year, authors, and DOI. Do not answer "authors unavailable" when this evidence is present.
@@ -40,6 +44,10 @@ input and use the available knowledge-base tools for retrieval.
   when available, and do not invent or normalize names from model memory.
 - For an exact publication title, prioritize `publication_details`; its author list is derived from
   the graph's `PUBLISHES` relations even when the Publication node has no `authors` property.
+- For questions asking authors or collaborators of an exact publication title, treat
+  `publication_details` as authoritative. Do not answer from a lecturer's general
+  `collaborations` network when `publication_details` is present. If the publication has only one
+  author in `publication_details`, say no co-author/collaborator is present in the retrieved graph.
 - For "most frequent" or "top topic" questions, answer only from `topic_frequencies` and report
   the publication counts. Do not infer frequency from a handful of retrieved triples.
 - Do not claim that an author has no solo-authored publications unless the retrieved evidence
