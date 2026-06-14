@@ -69,6 +69,16 @@ class GraphAdapter(ABC):
         pass
 
     @abstractmethod
+    async def get_shortest_path(
+        self,
+        node_ids: list[str],
+        max_hops: int = 3,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Retrieve the bounded shortest-path subgraph connecting node IDs."""
+        pass
+
+    @abstractmethod
     def normalize_node(self, raw_node: Any) -> dict[str, Any]:
         """Normalize node format."""
         pass

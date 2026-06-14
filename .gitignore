@@ -112,6 +112,7 @@ notebooks/build-graph/test_lancedb/
 # External/cloned repositories
 academicRAG/
 strwythura/
+temp_academicrag_clone/
 temp_yuxi_clone/
 
 # Documents and personal files

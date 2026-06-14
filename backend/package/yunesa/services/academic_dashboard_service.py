@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 
 from yunesa.config.static.models import DEFAULT_EMBED_MODELS
+from yunesa.knowledge.graphrag.storage import normalize_milvus_uri
 from yunesa.utils import logger
 
 
@@ -54,7 +55,11 @@ class AcademicDashboardService:
         uri = os.getenv("MILVUS_URI") or os.getenv("ZILLIZ_URI") or ""
         token = os.getenv("MILVUS_TOKEN") or os.getenv("ZILLIZ_TOKEN") or ""
         db_name = os.getenv("MILVUS_DB_NAME") or os.getenv("ZILLIZ_DB_NAME") or None
-        return uri.strip(), token.strip(), str(db_name).strip() if db_name else None
+        return (
+            normalize_milvus_uri(uri),
+            token.strip(),
+            str(db_name).strip() if db_name else None,
+        )
 
     @staticmethod
     def _milvus_db_candidates(db_name: str | None) -> list[str | None]:

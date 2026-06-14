@@ -58,6 +58,21 @@ class CoreGraphService:
         return CoreGraphService._safe_limit(value, default=1, minimum=1, maximum=3)
 
     @staticmethod
+    def _safe_shortest_path_hops(value: int | None) -> int:
+        default = CoreGraphService._safe_limit(
+            os.getenv("YUNESA_NEO4J_SHORTEST_PATH_MAX_HOPS", "3"),
+            default=3,
+            minimum=1,
+            maximum=6,
+        )
+        return CoreGraphService._safe_limit(
+            value,
+            default=default,
+            minimum=1,
+            maximum=6,
+        )
+
+    @staticmethod
     def _public_properties(properties: dict[str, Any]) -> dict[str, Any]:
         """Remove heavy/internal values before sending graph data to the UI."""
         clean: dict[str, Any] = {}
@@ -123,10 +138,14 @@ class CoreGraphService:
         return {
             "id": str(getattr(rel, "element_id", None) or id(rel)),
             "source_id": str(
-                dict(source).get("id") if source is not None and dict(source).get("id") else getattr(source, "element_id", "")
+                dict(source).get("id")
+                if source is not None and dict(source).get("id")
+                else getattr(source, "element_id", "")
             ),
             "target_id": str(
-                dict(target).get("id") if target is not None and dict(target).get("id") else getattr(target, "element_id", "")
+                dict(target).get("id")
+                if target is not None and dict(target).get("id")
+                else getattr(target, "element_id", "")
             ),
             "type": str(edge_type),
             "properties": properties,
@@ -221,7 +240,12 @@ class CoreGraphService:
             node_types = tx.run(
                 """
                 MATCH (n)
-                WITH coalesce(n.node_type, head([label IN labels(n) WHERE label <> 'KGNode']), head(labels(n)), 'Unknown') AS type
+                WITH coalesce(
+                    n.node_type,
+                    head([label IN labels(n) WHERE label <> 'KGNode']),
+                    head(labels(n)),
+                    'Unknown'
+                ) AS type
                 RETURN type, count(*) AS count
                 ORDER BY count DESC, type ASC
                 """
@@ -344,6 +368,89 @@ class CoreGraphService:
             record = session.execute_read(lambda tx: tx.run(isolated_query, **params).single())
             return self._format_graph_result(record)
 
+    def get_shortest_path(
+        self,
+        node_ids: list[str],
+        graph_name: str | None = None,
+        max_hops: int | None = None,
+        max_nodes: int = 80,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return shortest undirected paths between canonical KG node IDs."""
+        assert self.driver is not None, "Database is not connected"
+        self.use_database(self.kgdb_name)
+
+        seed_ids = list(
+            dict.fromkeys(
+                str(node_id).strip()
+                for node_id in (node_ids or [])
+                if str(node_id).strip()
+            )
+        )[:8]
+        if not seed_ids:
+            return {"nodes": [], "edges": []}
+
+        graph_filter = str(
+            graph_name
+            or self._configured_graph_name()
+            or "yunesa_academic_kg"
+        ).strip()
+        depth = self._safe_shortest_path_hops(max_hops)
+        node_limit = self._safe_limit(max_nodes, default=80, minimum=1, maximum=80)
+        edge_limit = min(node_limit * 4, 320)
+        pairs = [
+            {"source": source, "target": target}
+            for index, source in enumerate(seed_ids)
+            for target in seed_ids[index + 1 :]
+            if source != target
+        ]
+
+        path_query = f"""
+            UNWIND $pairs AS pair
+            MATCH (source:KGNode {{id: pair.source, graph_name: $graph_name}})
+            MATCH (target:KGNode {{id: pair.target, graph_name: $graph_name}})
+            MATCH path = shortestPath((source)-[*..{depth}]-(target))
+            WHERE all(node IN nodes(path) WHERE node.graph_name = $graph_name)
+              AND all(rel IN relationships(path) WHERE rel.graph_name = $graph_name)
+            WITH path
+            LIMIT $path_limit
+            WITH
+                reduce(all_nodes = [], item IN collect(path) | all_nodes + nodes(item)) AS raw_nodes,
+                reduce(all_rels = [], item IN collect(path) | all_rels + relationships(item)) AS raw_rels
+            UNWIND raw_nodes AS node
+            WITH collect(DISTINCT node)[0..toInteger($node_limit)] AS nodes, raw_rels
+            UNWIND raw_rels AS rel
+            WITH nodes, collect(DISTINCT rel)[0..toInteger($edge_limit)] AS rels
+            RETURN nodes, rels
+        """
+        seed_query = """
+            MATCH (node:KGNode)
+            WHERE node.graph_name = $graph_name
+              AND node.id IN $node_ids
+            RETURN collect(DISTINCT node)[0..toInteger($node_limit)] AS nodes, [] AS rels
+        """
+        params = {
+            "pairs": pairs,
+            "path_limit": max(1, min(len(pairs), 28)),
+            "node_ids": seed_ids,
+            "graph_name": graph_filter,
+            "node_limit": node_limit,
+            "edge_limit": edge_limit,
+        }
+
+        with self.driver.session(database=self._neo4j_database()) as session:
+            if pairs:
+                record = session.execute_read(
+                    lambda tx: tx.run(path_query, **params).single()
+                )
+                result = self._format_graph_result(record)
+                if result["nodes"]:
+                    return result
+
+            record = session.execute_read(
+                lambda tx: tx.run(seed_query, **params).single()
+            )
+            return self._format_graph_result(record)
+
     def save_graph_info(self, graph_name="neo4j"):
         """Save basic graph database info to a JSON file"""
         try:
@@ -384,7 +491,7 @@ class CoreGraphService:
     async def aget_embedding(self, text, batch_size=None):
         if self.embed_model is None:
             self.embed_model = select_embedding_model(config.embed_model)
-            
+
         if isinstance(text, list):
             outputs = await self.embed_model.abatch_encode(text, batch_size=batch_size or 40)
             return outputs
@@ -587,19 +694,27 @@ class CoreGraphService:
         self.use_database(kgdb_name)
 
         def _process_record(record):
-            if not record: return None
+            if not record:
+                return None
             data = dict(record)
             props = data.pop("properties", {}) or {}
-            if "embedding" in props: del props["embedding"]
+            if "embedding" in props:
+                del props["embedding"]
             return {**props, **data}
 
         def query(tx, name, limit):
             query_str = """
             MATCH (n:Entity {name: $name})
             OPTIONAL MATCH (n)-[r]-(m:Entity)
-            RETURN 
+            RETURN
                 {id: elementId(n), name: n.name, properties: properties(n)} as h,
-                {id: elementId(r), type: type(r), source_id: elementId(startNode(r)), target_id: elementId(endNode(r)), properties: properties(r)} as r,
+                {
+                    id: elementId(r),
+                    type: type(r),
+                    source_id: elementId(startNode(r)),
+                    target_id: elementId(endNode(r)),
+                    properties: properties(r)
+                } as r,
                 {id: elementId(m), name: m.name, properties: properties(m)} as t
             LIMIT $limit
             """
@@ -609,9 +724,11 @@ class CoreGraphService:
                 h = _process_record(item["h"])
                 r = _process_record(item["r"])
                 t = _process_record(item["t"])
-                if h: res["nodes"].append(h)
-                if t: res["nodes"].append(t)
-                if r: 
+                if h:
+                    res["nodes"].append(h)
+                if t:
+                    res["nodes"].append(t)
+                if r:
                     res["edges"].append(r)
                     res["triples"].append((h["name"], r["type"], t["name"]))
             return res

@@ -540,17 +540,18 @@ const loadData = async () => {
     startSubtitleCarousel()
     const starsCount = await fetchGithubStars()
     startBadgeTyping(starsCount)
+    isLoading.value = false
+    await nextTick()
+    if (graphContainerRef.value) {
+      initGraph()
+    }
   } catch (e) {
     console.error('Loading failed:', e)
     stopBadgeTyping()
     stopSubtitleCarousel()
     stopStarsFetch()
     typedBadge.value = ''
-  } finally {
     isLoading.value = false
-    // Init graph after loading completes, only if container is rendered
-    await nextTick()
-    if (graphContainerRef.value) initGraph()
   }
 }
 

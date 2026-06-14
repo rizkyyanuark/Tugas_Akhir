@@ -314,11 +314,13 @@ def _academic_tool_response(
 
     graph_context = payload.get("graph", {})
     academic = payload.get("academic_retrieval", {}) or {}
+    keyword_decomposition = dict(academic.get("keyword_decomposition", {}) or {})
+    keyword_decomposition.pop("prompt", None)
     citations = {
         "entities": graph_context.get("nodes", []),
         "relationships": graph_context.get("edges", []),
         "chunks": payload.get("chunks", []),
-        "academic_retrieval": academic,
+        "academic_retrieval": {**academic, "keyword_decomposition": keyword_decomposition},
         "query": query_text,
         "kb_name": kb_name,
         "retrieval_mode": retrieval_mode,
@@ -336,6 +338,8 @@ def _academic_tool_response(
         "academic_retrieval": {
             "status": academic.get("status"),
             "mode": academic.get("mode"),
+            "academicrag_mode": academic.get("academicrag_mode"),
+            "kg_mode": academic.get("kg_mode"),
             "graph_name": academic.get("graph_name"),
             "milvus_database": academic.get("milvus_database"),
             "paper_chunks": academic.get("paper_chunks", [])[:8],
@@ -347,9 +351,11 @@ def _academic_tool_response(
             "keywords": academic.get("keywords", [])[:8],
             "entities": academic.get("entities", [])[:12],
             "relationships": academic.get("relationships", [])[:12],
-            "keyword_decomposition": academic.get("keyword_decomposition", {}),
+            "subgraph": academic.get("subgraph", {}),
+            "keyword_decomposition": keyword_decomposition,
             "local_query": academic.get("local_query"),
             "global_query": academic.get("global_query"),
+            "route_plan": academic.get("route_plan", {}),
             "diagnostics": academic.get("diagnostics", {}),
         },
         "graph": {
