@@ -343,11 +343,12 @@ def _academic_tool_response(
             "graph_name": academic.get("graph_name"),
             "milvus_database": academic.get("milvus_database"),
             "paper_chunks": academic.get("paper_chunks", [])[:8],
-            "author_publications": academic.get("author_publications", [])[:24],
+            "author_publications": academic.get("author_publications", [])[:60],
             "publication_details": academic.get("publication_details", [])[:12],
             "lecturer_topic_publications": academic.get("lecturer_topic_publications", [])[:24],
             "topic_frequencies": academic.get("topic_frequencies", [])[:15],
             "collaborations": academic.get("collaborations", [])[:24],
+            "structured_counts": academic.get("structured_counts", {}),
             "keywords": academic.get("keywords", [])[:8],
             "entities": academic.get("entities", [])[:12],
             "relationships": academic.get("relationships", [])[:12],
@@ -366,7 +367,11 @@ def _academic_tool_response(
         },
         "answer_policy": (
             "Use only retrieved evidence. If grounding.status is empty or supporting_only, "
-            "state that the requested academic data was not found and do not answer from prior knowledge."
+            "state that the requested academic data was not found and do not answer from prior knowledge. "
+            "For lecturer publication list questions, enumerate author_publications rows returned by "
+            "the tool and state the returned count. If structured_counts.author_publications.complete "
+            "is false, say that the list is capped by the retrieval limit. For exact publication "
+            "author/collaboration questions, prioritize publication_details over general collaborations."
         ),
     }
     return Command(

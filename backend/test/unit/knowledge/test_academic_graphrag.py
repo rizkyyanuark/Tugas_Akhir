@@ -726,6 +726,40 @@ def test_compact_evidence_escapes_csv_content() -> None:
     assert '"Line one,\nline two"' in evidence
 
 
+def test_author_publication_context_keeps_more_than_twenty_four_sources() -> None:
+    chunks = [
+        {
+            "rank": index,
+            "source": f"Paper {index}",
+            "score": 1.0,
+            "content": f"Title: Paper {index}",
+        }
+        for index in range(1, 31)
+    ]
+    academic = {
+        "author_publications": [
+            {
+                "author": "Yuni Yamasari",
+                "paper_id": f"paper-{index}",
+                "title": f"Paper {index}",
+            }
+            for index in range(1, 31)
+        ],
+        "keywords": [],
+        "entities": [],
+        "relationships": [],
+    }
+
+    evidence = AcademicGraphRAGService._compact_evidence_text(
+        chunks,
+        {"nodes": [], "edges": [], "triples": []},
+        academic=academic,
+    )
+
+    assert '"Paper 25","Title: Paper 25","1.0"' in evidence
+    assert '"Paper 30","Title: Paper 30","1.0"' in evidence
+
+
 def test_structured_rows_map_to_deterministic_virtual_graph() -> None:
     academic = {
         "lecturer_topic_publications": [
@@ -936,6 +970,40 @@ def test_tool_response_preserves_raw_citation_payload() -> None:
         {"title": "Paper A"}
     ]
     assert "prompt" not in citation["academic_retrieval"]["keyword_decomposition"]
+
+
+def test_tool_response_returns_author_publication_enumeration_window() -> None:
+    author_rows = [{"title": f"Paper {index}"} for index in range(1, 31)]
+    payload = {
+        "evidence_text": "-----Entities-----",
+        "chunks": [],
+        "graph": {"status": "ok", "nodes": [], "edges": [], "triples": []},
+        "academic_retrieval": {
+            "status": "ok",
+            "author_publications": author_rows,
+            "structured_counts": {
+                "author_publications": {
+                    "returned": 30,
+                    "limit": 60,
+                    "complete": True,
+                }
+            },
+        },
+        "grounding": {"status": "grounded"},
+    }
+
+    response = _academic_tool_response(
+        payload=payload,
+        query_text="paper Yuni Yamasari",
+        kb_name="yunesa_academic_kg",
+        retrieval_mode="mix",
+        tool_call_id="tool-1",
+    )
+
+    tool_payload = response.update["messages"][0].content
+    assert "Paper 30" in tool_payload
+    assert '"returned": 30' in tool_payload
+    assert '"complete": true' in tool_payload
 
 
 def test_broad_graph_triples_are_supporting_not_direct_evidence() -> None:

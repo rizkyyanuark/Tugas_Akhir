@@ -102,7 +102,7 @@
                 <ToolCallsGroupComponent
                   v-else
                   :tool-calls="displayItem.toolCalls"
-                  :is-active="isToolGroupActive(row.conv, itemIndex, row.displayItems)"
+                  :is-active="isToolGroupActive(row.conv, displayItem)"
                 />
               </template>
               <!-- Show the model used by the last message in the conversation -->
@@ -116,7 +116,7 @@
             </div>
 
             <!-- Loading state while generating - enhanced conditions support the main chat and resume flow -->
-            <div class="generating-status" v-if="isReplyLoading && conversations.length > 0">
+            <div class="generating-status" v-if="isGeneratingStatusVisible">
               <div class="generating-indicator">
                 <div class="loading-dots">
                   <div></div>
@@ -484,9 +484,14 @@ const isDisplayMessageProcessing = (conv, displayItem) => {
   )
 }
 
-const isToolGroupActive = (conv, itemIndex, displayItems) => {
+const hasRunningToolCall = (toolCalls) =>
+  Array.isArray(toolCalls) && toolCalls.some((toolCall) => !toolCall?.tool_call_result)
+
+const isToolGroupActive = (conv, displayItem) => {
   return Boolean(
-    isReplyLoading.value && conv?.status === 'streaming' && itemIndex === displayItems.length - 1
+    conv?.status === 'streaming' &&
+      displayItem?.type === 'tool-group' &&
+      (isReplyLoading.value || hasRunningToolCall(displayItem.toolCalls))
   )
 }
 
@@ -545,6 +550,9 @@ const isReplyLoading = computed(() => {
   const threadState = currentThreadState.value
   return Boolean(threadState?.replyLoadingVisible && !hasStreamingAssistantContent.value)
 })
+const isGeneratingStatusVisible = computed(() =>
+  Boolean(isProcessing.value && conversations.value.length > 0)
+)
 
 const getToolNameFromCall = (toolCall) =>
   String(toolCall?.name || toolCall?.function?.name || '').trim()
