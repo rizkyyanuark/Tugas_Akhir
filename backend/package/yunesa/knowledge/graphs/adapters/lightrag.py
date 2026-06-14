@@ -1,5 +1,7 @@
 from typing import Any
 
+import asyncio
+
 from yunesa.utils import logger
 
 from .base import BaseNeo4jAdapter, GraphAdapter, GraphMetadata
@@ -46,6 +48,95 @@ class LightRAGGraphAdapter(GraphAdapter):
                 return self._process_query_result(result, limit=limit)
         except Exception as e:
             logger.error(f"Neo4j query failed: {e}")
+            return {"nodes": [], "edges": []}
+
+    async def get_shortest_path(
+        self,
+        node_ids: list[str],
+        max_hops: int = 3,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Retrieve a bounded shortest-path subgraph for a LightRAG namespace."""
+        kb_id = kwargs.get("kb_id") or self.kb_id
+        max_nodes = max(1, min(int(kwargs.get("max_nodes", 80)), 80))
+        depth = max(1, min(int(max_hops or 3), 6))
+        seed_ids = list(
+            dict.fromkeys(
+                str(item).strip()
+                for item in (node_ids or [])
+                if str(item).strip()
+            )
+        )[:8]
+        if not seed_ids:
+            return {"nodes": [], "edges": []}
+        if kb_id and not all(char.isalnum() or char == "_" for char in kb_id):
+            logger.warning(f"Invalid kb_id format: {kb_id}")
+            return {"nodes": [], "edges": []}
+
+        label_filter = f":`{kb_id}`" if kb_id else ":Entity"
+        pairs = [
+            {"source": source, "target": target}
+            for index, source in enumerate(seed_ids)
+            for target in seed_ids[index + 1 :]
+            if source != target
+        ]
+
+        def run_query() -> dict[str, Any]:
+            path_query = f"""
+                UNWIND $pairs AS pair
+                MATCH (source{label_filter}), (target{label_filter})
+                WHERE (
+                    elementId(source) = pair.source
+                    OR source.entity_id = pair.source
+                    OR source.id = pair.source
+                )
+                AND (
+                    elementId(target) = pair.target
+                    OR target.entity_id = pair.target
+                    OR target.id = pair.target
+                )
+                MATCH path = shortestPath((source)-[*..{depth}]-(target))
+                WITH path
+                LIMIT $path_limit
+                WITH
+                    reduce(all_nodes = [], item IN collect(path) | all_nodes + nodes(item)) AS raw_nodes,
+                    reduce(all_rels = [], item IN collect(path) | all_rels + relationships(item)) AS raw_rels
+                UNWIND raw_nodes AS node
+                WITH collect(DISTINCT node)[0..$node_limit] AS nodes, raw_rels
+                UNWIND raw_rels AS rel
+                WITH nodes, collect(DISTINCT rel) AS rels
+                RETURN nodes, rels
+            """
+            seed_query = f"""
+                MATCH (node{label_filter})
+                WHERE elementId(node) IN $node_ids
+                   OR node.entity_id IN $node_ids
+                   OR node.id IN $node_ids
+                RETURN collect(DISTINCT node)[0..$node_limit] AS nodes, [] AS rels
+            """
+            with self._db.driver.session() as session:
+                if pairs:
+                    record = session.run(
+                        path_query,
+                        pairs=pairs,
+                        path_limit=max(1, min(len(pairs), 28)),
+                        node_limit=max_nodes,
+                    ).single()
+                    if record:
+                        result = self._process_path_record(record)
+                        if result["nodes"]:
+                            return result
+                record = session.run(
+                    seed_query,
+                    node_ids=seed_ids,
+                    node_limit=max_nodes,
+                ).single()
+                return self._process_path_record(record)
+
+        try:
+            return await asyncio.to_thread(run_query)
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"LightRAG shortest-path query failed: {exc}")
             return {"nodes": [], "edges": []}
 
     async def get_labels(self) -> list[str]:
@@ -149,15 +240,14 @@ class LightRAGGraphAdapter(GraphAdapter):
 
     def normalize_edge(self, raw_edge: Any) -> dict[str, Any]:
         """Normalize edge format."""
-        logger.info(raw_edge._properties)
         if hasattr(raw_edge, "element_id"):  # neo4j.graph.Relationship
             edge_id = raw_edge.element_id
-            edge_type = raw_edge._properties["keywords"] or raw_edge.type
+            properties = dict(raw_edge.items())
+            edge_type = properties.get("keywords") or raw_edge.type
             start_node_id = raw_edge.start_node.element_id if hasattr(
                 raw_edge.start_node, "element_id") else None
             end_node_id = raw_edge.end_node.element_id if hasattr(
                 raw_edge.end_node, "element_id") else None
-            properties = dict(raw_edge.items())
         elif isinstance(raw_edge, dict):
             edge_id = raw_edge.get("id")
             edge_type = raw_edge.get("type")
@@ -168,7 +258,11 @@ class LightRAGGraphAdapter(GraphAdapter):
             return {}
 
         return self._create_standard_edge(
-            edge_id=edge_id, source_id=start_node_id, target_id=end_node_id, edge_type=edge_type, properties=properties
+            edge_id=edge_id,
+            source_id=start_node_id,
+            target_id=end_node_id,
+            edge_type=edge_type,
+            properties=properties,
         )
 
     def _build_cypher_query(self, keyword: str, kb_id: str = None, limit: int = 50, max_depth: int = 0) -> str:
@@ -332,3 +426,24 @@ class LightRAGGraphAdapter(GraphAdapter):
                 valid_edges.append(edge)
 
         return {"nodes": nodes, "edges": valid_edges}
+
+    def _process_path_record(self, record: Any) -> dict[str, list]:
+        if not record:
+            return {"nodes": [], "edges": []}
+        nodes = [
+            self.normalize_node(node)
+            for node in (record.get("nodes") or [])
+            if node is not None
+        ]
+        node_ids = {str(node.get("id") or "") for node in nodes}
+        edges = []
+        for rel in record.get("rels") or []:
+            if rel is None:
+                continue
+            edge = self.normalize_edge(rel)
+            if (
+                str(edge.get("source_id") or "") in node_ids
+                and str(edge.get("target_id") or "") in node_ids
+            ):
+                edges.append(edge)
+        return {"nodes": nodes, "edges": edges}

@@ -1,5 +1,7 @@
 ﻿from typing import TYPE_CHECKING, Any
 
+import asyncio
+
 from .base import GraphAdapter, GraphMetadata
 
 if TYPE_CHECKING:
@@ -36,12 +38,30 @@ class CoreGraphAdapter(GraphAdapter):
 
     async def query_nodes(self, keyword: str, **kwargs) -> dict[str, Any]:
         params = self._normalize_query_params(keyword, kwargs)
-        raw_results = self.service.query_subgraph(
+        raw_results = await asyncio.to_thread(
+            self.service.query_subgraph,
             keyword=params["keyword"] or "*",
             max_depth=params.get("hops", 2),
             max_nodes=kwargs.get("max_nodes", 100),
+            graph_name=kwargs.get("graph_name") or self.config.get("graph_name"),
         )
 
+        return self._format_results(raw_results)
+
+    async def get_shortest_path(
+        self,
+        node_ids: list[str],
+        max_hops: int = 3,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Retrieve shortest paths without blocking the async agent runtime."""
+        raw_results = await asyncio.to_thread(
+            self.service.get_shortest_path,
+            node_ids=node_ids,
+            graph_name=kwargs.get("graph_name") or self.config.get("graph_name"),
+            max_hops=max_hops,
+            max_nodes=kwargs.get("max_nodes", 80),
+        )
         return self._format_results(raw_results)
 
     def normalize_node(self, raw_node: Any) -> dict[str, Any]:
