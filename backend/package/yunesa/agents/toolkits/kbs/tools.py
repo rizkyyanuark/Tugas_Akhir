@@ -327,6 +327,15 @@ def _academic_tool_response(
         "storage_layer": payload.get("storage_layer", {}),
         "grounding": payload.get("grounding", {}),
     }
+    author_publication_meta = (
+        academic.get("structured_counts", {}).get("author_publications", {})
+        if isinstance(academic.get("structured_counts"), dict)
+        else {}
+    )
+    author_publication_payload_limit = (
+        60 if author_publication_meta.get("enumeration_query") else 12
+    )
+
     tool_payload = {
         "type": "academic_graphrag_result",
         "query": query_text,
@@ -343,7 +352,9 @@ def _academic_tool_response(
             "graph_name": academic.get("graph_name"),
             "milvus_database": academic.get("milvus_database"),
             "paper_chunks": academic.get("paper_chunks", [])[:8],
-            "author_publications": academic.get("author_publications", [])[:60],
+            "author_publications": academic.get("author_publications", [])[
+                :author_publication_payload_limit
+            ],
             "publication_details": academic.get("publication_details", [])[:12],
             "lecturer_topic_publications": academic.get("lecturer_topic_publications", [])[:24],
             "topic_frequencies": academic.get("topic_frequencies", [])[:15],
