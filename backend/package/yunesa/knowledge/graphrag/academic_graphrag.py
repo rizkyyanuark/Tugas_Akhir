@@ -351,6 +351,32 @@ class AcademicGraphRAGService:
         return has_marker and has_person_hint
 
     @classmethod
+    def _is_author_publication_enumeration_query(cls, query_text: str) -> bool:
+        if not cls._is_author_publication_query(query_text):
+            return False
+
+        text = re.sub(r"\s+", " ", str(query_text or "").casefold()).strip()
+        return any(
+            marker in text
+            for marker in (
+                "apa saja paper",
+                "paper apa saja",
+                "apa saja publikasi",
+                "publikasi apa saja",
+                "apa saja penelitian",
+                "daftar paper",
+                "daftar publikasi",
+                "daftar penelitian",
+                "list paper",
+                "list publikasi",
+                "papers by",
+                "publications by",
+                "papers written by",
+                "publications written by",
+            )
+        )
+
+    @classmethod
     def _extract_author_name_candidates(cls, query_text: str) -> list[str]:
         text = re.sub(r"\s+", " ", str(query_text or "")).strip()
         candidates: list[str] = []
@@ -2503,8 +2529,16 @@ class AcademicGraphRAGService:
             )
             relationship_signatures.add(signature)
 
+        structured_counts = (
+            academic.get("structured_counts", {}) if isinstance(academic, dict) else {}
+        )
+        author_publication_meta = structured_counts.get("author_publications", {})
         source_limit = 24
-        if academic and academic.get("author_publications"):
+        if (
+            academic
+            and academic.get("author_publications")
+            and author_publication_meta.get("enumeration_query")
+        ):
             source_limit = DEFAULT_STRUCTURED_ENUMERATION_LIMIT
         elif academic and academic.get("lecturer_topic_publications"):
             source_limit = 40
@@ -2800,11 +2834,22 @@ class AcademicGraphRAGService:
         ) as span:
             mode = self.normalize_mode(retrieval_mode, include_graph=include_graph)
             resolved_graph_name = self._academic_graph_name(graph_name)
+            author_publication_enumeration_query = (
+                self._is_author_publication_enumeration_query(intent_query)
+            )
+            author_publication_context_limit = int(
+                os.getenv("YUNESA_AUTHOR_PUBLICATION_CONTEXT_LIMIT", "12")
+            )
             author_publication_limit = int(
                 os.getenv(
                     "YUNESA_AUTHOR_PUBLICATION_QUERY_LIMIT",
                     str(DEFAULT_STRUCTURED_ENUMERATION_LIMIT),
                 )
+            )
+            author_publication_window = (
+                author_publication_limit
+                if author_publication_enumeration_query
+                else author_publication_context_limit
             )
             academic = await self.query_academic_indexes(
                 semantic_query,
@@ -2817,15 +2862,16 @@ class AcademicGraphRAGService:
             author_publications_raw = await self.query_author_publications(
                 intent_query,
                 graph_name=resolved_graph_name,
-                limit=author_publication_limit + 1,
+                limit=author_publication_window + 1,
             )
-            author_publications_capped = len(author_publications_raw) > author_publication_limit
-            author_publications = author_publications_raw[:author_publication_limit]
+            author_publications_capped = len(author_publications_raw) > author_publication_window
+            author_publications = author_publications_raw[:author_publication_window]
             academic["author_publications"] = author_publications
             academic.setdefault("structured_counts", {})["author_publications"] = {
                 "returned": len(author_publications),
-                "limit": author_publication_limit,
+                "limit": author_publication_window,
                 "complete": not author_publications_capped,
+                "enumeration_query": author_publication_enumeration_query,
             }
             publication_details = await self.query_publication_details(
                 intent_query,

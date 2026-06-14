@@ -745,6 +745,14 @@ def test_author_publication_context_keeps_more_than_twenty_four_sources() -> Non
             }
             for index in range(1, 31)
         ],
+        "structured_counts": {
+            "author_publications": {
+                "returned": 30,
+                "limit": 60,
+                "complete": True,
+                "enumeration_query": True,
+            }
+        },
         "keywords": [],
         "entities": [],
         "relationships": [],
@@ -986,6 +994,7 @@ def test_tool_response_returns_author_publication_enumeration_window() -> None:
                     "returned": 30,
                     "limit": 60,
                     "complete": True,
+                    "enumeration_query": True,
                 }
             },
         },
