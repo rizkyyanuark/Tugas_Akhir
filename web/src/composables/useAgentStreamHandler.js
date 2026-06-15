@@ -173,10 +173,8 @@ export function useAgentStreamHandler({
         return false
 
       case 'finished':
-        streamSmoother?.flushThread(threadId)
-        // Mark the stream as finished first, but keep the message visible until history loading completes
+        // Keep isStreaming active while the visual smoother drains the final buffered tokens.
         if (threadState) {
-          threadState.isStreaming = false
           threadState.pendingRequestId = null
           threadState.replyLoadingVisible = false
           console.log(`${debugPrefix}[finished]`, {

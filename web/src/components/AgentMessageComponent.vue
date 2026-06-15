@@ -337,9 +337,9 @@ const parsedData = computed(() => {
   let displayContent = content
   if (props.isProcessing && content) {
     if (isInsideCode(content)) {
-      displayContent = content + '▋'
+      displayContent = content + ' |'
     } else {
-      displayContent = content + ' <span class="typing-cursor">▋</span>'
+      displayContent = content + ' <span class="typing-cursor"></span>'
     }
   }
 
@@ -656,14 +656,16 @@ const technicalError = computed(() => classifyTechnicalError(parsedData.value.co
 
 :deep(.typing-cursor) {
   display: inline-block;
-  color: var(--main-color, #1890ff);
+  width: 2px;
+  height: 1em;
+  background: var(--main-color, #1890ff);
+  vertical-align: -0.12em;
   animation: blink 0.8s step-end infinite;
   margin-left: 2px;
-  font-weight: 600;
 }
 
 .is-reasoning .reasoning-content::after {
-  content: '▋';
+  content: '|';
   display: inline-block;
   color: var(--gray-500);
   animation: blink 0.8s step-end infinite;

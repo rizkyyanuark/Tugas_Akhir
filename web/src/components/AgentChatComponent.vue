@@ -87,7 +87,7 @@
           <div class="chat-box">
             <div class="conv-box" v-for="row in conversationRows" :key="row.key">
               <template
-                v-for="(displayItem, itemIndex) in row.displayItems"
+                v-for="displayItem in row.displayItems"
                 :key="displayItem.key"
               >
                 <AgentMessageComponent
@@ -551,7 +551,7 @@ const isReplyLoading = computed(() => {
   return Boolean(threadState?.replyLoadingVisible && !hasStreamingAssistantContent.value)
 })
 const isGeneratingStatusVisible = computed(() =>
-  Boolean(isProcessing.value && conversations.value.length > 0)
+  Boolean(isReplyLoading.value && conversations.value.length > 0)
 )
 
 const getToolNameFromCall = (toolCall) =>
@@ -692,23 +692,6 @@ const setThreadAgentConfigId = (threadId, agentConfigId) => {
   }
 }
 
-const syncSelectedConfigForThread = async (thread) => {
-  const threadAgentConfigId = thread?.metadata?.agent_config_id
-  if (!threadAgentConfigId) return
-
-  const targetAgentId = thread.agent_id || currentAgentId.value
-  if (!targetAgentId) return
-
-  const configList = agentStore.agentConfigs[targetAgentId] || []
-  if (!configList.length) {
-    await agentStore.fetchAgentConfigs(targetAgentId)
-  }
-
-  if (selectedAgentConfigId.value !== threadAgentConfigId) {
-    await agentStore.selectAgentConfig(threadAgentConfigId)
-  }
-}
-
 // Get the thread list for the current agent
 const fetchThreads = async (agentId = null) => {
   const targetAgentId = props.singleMode ? agentId || currentAgentId.value : agentId
@@ -764,7 +747,10 @@ const createThread = async (agentId, title = 'New Conversation') => {
 
   chatState.isCreatingThread = true
   try {
-    const thread = await threadApi.createThread(agentId, title)
+    const agentConfigId = await agentStore.ensureSelectedAgentConfig(agentId)
+    const thread = await threadApi.createThread(agentId, title, {
+      agent_config_id: agentConfigId
+    })
     if (thread) {
       threads.value.unshift(thread)
       threadMessages.value[thread.id] = []
@@ -1012,7 +998,9 @@ const selectChat = async (chatId) => {
   }
 
   try {
-    await syncSelectedConfigForThread(targetChat)
+    // Keep the active valid profile when moving between rooms. The room metadata remains
+    // an audit record and is rebound to this profile on the next message.
+    await agentStore.ensureSelectedAgentConfig(targetAgentId)
   } catch (error) {
     chatState.currentThreadId = previousThreadId
     handleChatError(error, 'load')
@@ -1132,7 +1120,15 @@ const handleSendMessage = async () => {
   const text = userInput.value.trim()
   if (!text || !currentAgent.value || isProcessing.value || sendCooldownActive.value) return
 
-  if (!selectedAgentConfigId.value) {
+  let activeAgentConfigId = null
+  try {
+    activeAgentConfigId = await agentStore.ensureSelectedAgentConfig(currentAgentId.value)
+  } catch (error) {
+    handleChatError(error, 'load')
+    return
+  }
+
+  if (!activeAgentConfigId) {
     message.error('Please select an agent configuration before sending a message')
     return
   }
@@ -1148,6 +1144,7 @@ const handleSendMessage = async () => {
       return
     }
   }
+  setThreadAgentConfigId(threadId, activeAgentConfigId)
 
   userInput.value = ''
 
@@ -1190,7 +1187,7 @@ const handleSendMessage = async () => {
     try {
       const runResp = await agentApi.createAgentRun({
         query: text,
-        agent_config_id: selectedAgentConfigId.value,
+        agent_config_id: activeAgentConfigId,
         thread_id: threadId,
         meta: { request_id: requestId }
       })
@@ -1258,8 +1255,12 @@ const handleSendMessage = async () => {
     threadState.replyLoadingVisible = false
   } finally {
     threadState.streamAbortController = null
+    await streamSmoother.finishThread(threadId)
+    threadState.isStreaming = false
+    threadState.pendingRequestId = null
+    threadState.replyLoadingVisible = false
     // Load history asynchronously and keep the current message visible until history loading completes
-    fetchThreadMessages({ agentId: currentAgentId.value, threadId: threadId }).finally(() => {
+    await fetchThreadMessages({ agentId: currentAgentId.value, threadId: threadId }).finally(() => {
       // After history loading completes, safely clear the current in-progress conversation
       resetOnGoingConv(threadId)
       handleAgentStateRefresh(threadId)

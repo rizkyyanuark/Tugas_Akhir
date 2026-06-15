@@ -30,7 +30,7 @@
 
 <script setup>
 import { Graph } from '@antv/g6'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps({
@@ -62,6 +62,10 @@ const themeStore = useThemeStore()
 let graphInstance = null
 let resizeObserver = null
 let renderTimeout = null
+let resizeTimer = null
+let fitTimer = null
+let highlightTimer = null
+let isMounted = false
 let retryCount = 0
 const MAX_RETRIES = 5
 
@@ -125,47 +129,66 @@ function getNodeColor(original = {}) {
 function formatData() {
   const data = props.graphData || { nodes: [], edges: [] }
   const degrees = new Map()
+  const getEndpoint = (edge, side) =>
+    edge?.[`${side}_id`] ?? edge?.[side] ?? edge?.[`${side}Id`] ?? null
 
-  for (const n of data.nodes) {
+  for (const n of data.nodes || []) {
+    if (n?.id === undefined || n?.id === null) continue
     degrees.set(String(n.id), 0)
   }
-  for (const e of data.edges) {
-    const s = String(e.source_id)
-    const t = String(e.target_id)
+  for (const e of data.edges || []) {
+    const source = getEndpoint(e, 'source')
+    const target = getEndpoint(e, 'target')
+    if (source === null || target === null) continue
+    const s = String(source)
+    const t = String(target)
     degrees.set(s, (degrees.get(s) || 0) + 1)
     degrees.set(t, (degrees.get(t) || 0) + 1)
   }
 
-  const nodes = (data.nodes || []).map((n) => ({
-    id: String(n.id),
-    data: {
-      label: n[props.labelField] ?? n.name ?? String(n.id),
-      nodeType: getNodeType(n),
-      degree: degrees.get(String(n.id)) || 0,
-      original: n // Preserve original data
-    }
-  }))
+  const nodes = (data.nodes || [])
+    .filter((n) => n?.id !== undefined && n?.id !== null)
+    .map((n) => ({
+      id: String(n.id),
+      data: {
+        label: n[props.labelField] ?? n.name ?? String(n.id),
+        nodeType: getNodeType(n),
+        degree: degrees.get(String(n.id)) || 0,
+        original: n
+      }
+    }))
+  const nodeIds = new Set(nodes.map((node) => node.id))
 
-  const edges = (data.edges || []).map((e, idx) => ({
-    id: e.id ? String(e.id) : `edge-${idx}`,
-    source: String(e.source_id),
-    target: String(e.target_id),
-    data: {
-      label: e.type ?? '',
-      original: e // Preserve original data
-    }
-  }))
+  const edges = (data.edges || [])
+    .map((e, idx) => {
+      const source = getEndpoint(e, 'source')
+      const target = getEndpoint(e, 'target')
+      if (source === null || target === null) return null
+      const sourceId = String(source)
+      const targetId = String(target)
+      if (!nodeIds.has(sourceId) || !nodeIds.has(targetId)) return null
+      return {
+        id: e.id ? String(e.id) : `edge-${idx}`,
+        source: sourceId,
+        target: targetId,
+        data: {
+          label: e.type ?? e.relation ?? '',
+          original: e
+        }
+      }
+    })
+    .filter(Boolean)
 
   return { nodes, edges }
 }
 
 function initGraph() {
-  if (!container.value) return
+  if (!container.value || !isMounted) return
 
   const width = container.value.offsetWidth
   const height = container.value.offsetHeight
 
-  if (width === 0 && height === 0) {
+  if (width <= 0 || height <= 0) {
     if (retryCount < MAX_RETRIES) {
       retryCount++
       clearTimeout(renderTimeout)
@@ -274,37 +297,54 @@ function initGraph() {
   emit('ready', graphInstance)
 }
 
-function setGraphData() {
+async function resizeAndFit() {
+  await nextTick()
+  if (!graphInstance || !container.value || !isMounted) return
+  const width = container.value.offsetWidth
+  const height = container.value.offsetHeight
+  if (width <= 0 || height <= 0) return
+
+  try {
+    if (typeof graphInstance.setSize === 'function') {
+      graphInstance.setSize(width, height)
+    } else if (typeof graphInstance.changeSize === 'function') {
+      graphInstance.changeSize(width, height)
+    }
+  } catch {
+    return
+  }
+
+  clearTimeout(fitTimer)
+  fitTimer = setTimeout(() => {
+    if (!graphInstance || !isMounted) return
+    try {
+      graphInstance.fitView()
+    } catch {
+      // ignore transient layout state
+    }
+  }, 120)
+}
+
+async function setGraphData() {
   if (!graphInstance) initGraph()
-  if (!graphInstance) return
+  if (!graphInstance || !isMounted) return
   const data = formatData()
 
-  console.log('Start setting graph data:', {
-    nodes: data.nodes.length,
-    edges: data.edges.length
-  })
-
   graphInstance.setData(data)
-  graphInstance.render()
+  await Promise.resolve(graphInstance.render())
+  await resizeAndFit()
 
-  // Manually trigger layout recalculation to ensure node distribution
-  setTimeout(() => {
+  clearTimeout(highlightTimer)
+  highlightTimer = setTimeout(() => {
+    if (!graphInstance || !isMounted) return
+    applyHighlightKeywords()
     try {
-      if (graphInstance && graphInstance.layout) {
-        graphInstance.layout()
-        console.log('Triggered layout recalculation')
-      }
-    } catch (error) {
-      console.warn('Layout recalculation failed:', error)
+      graphInstance.fitView()
+    } catch {
+      // ignore transient layout state
     }
-
-    // Wait for force layout to stabilize before applying highlights
-    setTimeout(() => {
-      applyHighlightKeywords()
-      emit('data-rendered')
-      console.log('Graph render complete, layout stabilized')
-    }, 1500)
-  }, 10) // Wait 10ms to ensure layout starts
+    emit('data-rendered')
+  }, 900)
 }
 
 // Keyword highlighting
@@ -349,11 +389,13 @@ function clearHighlights() {
 }
 
 function renderGraph() {
+  if (!isMounted) return
   if (!graphInstance) initGraph()
-  setGraphData()
+  void setGraphData()
 }
 
 function refreshGraph() {
+  if (!isMounted) return
   if (graphInstance) {
     try {
       graphInstance.destroy()
@@ -432,7 +474,7 @@ watch(
   () => props.graphData,
   () => {
     clearTimeout(renderTimeout)
-    renderTimeout = setTimeout(() => setGraphData(), 50)
+    renderTimeout = setTimeout(() => void setGraphData(), 50)
   },
   { deep: true }
 )
@@ -460,6 +502,7 @@ watch(
 )
 
 onMounted(() => {
+  isMounted = true
   // Use ResizeObserver to rerender on container resize
   if (window.ResizeObserver) {
     resizeObserver = new ResizeObserver(() => {
@@ -470,7 +513,10 @@ onMounted(() => {
         if (!graphInstance) {
           renderGraph()
         } else {
-          graphInstance.changeSize(width, height)
+          clearTimeout(resizeTimer)
+          resizeTimer = setTimeout(() => {
+            void resizeAndFit()
+          }, 80)
         }
       }
     })
@@ -482,13 +528,17 @@ onMounted(() => {
     renderGraph()
   }, 300)
 
-  window.addEventListener('resize', refreshGraph)
+  window.addEventListener('resize', resizeAndFit)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', refreshGraph)
+  isMounted = false
+  window.removeEventListener('resize', resizeAndFit)
   if (resizeObserver && container.value) resizeObserver.unobserve(container.value)
   clearTimeout(renderTimeout)
+  clearTimeout(resizeTimer)
+  clearTimeout(fitTimer)
+  clearTimeout(highlightTimer)
   try {
     graphInstance?.destroy()
   } catch {
@@ -507,7 +557,8 @@ defineExpose({
   clearFocus,
   setData: setGraphData,
   applyHighlightKeywords,
-  clearHighlights
+  clearHighlights,
+  resizeAndFit
 })
 </script>
 

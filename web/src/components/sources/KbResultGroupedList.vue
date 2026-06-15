@@ -105,17 +105,17 @@
       <div v-show="activeTab === 'visual' && graphCounts.nodes > 0" class="graph-visual-wrapper">
         <GraphCanvas
           ref="graphRef"
-          :graph-data="graph.graphData"
-          @node-click="graph.handleNodeClick"
-          @edge-click="graph.handleEdgeClick"
-          @canvas-click="graph.handleCanvasClick"
+          :graph-data="graphController.graphData"
+          @node-click="graphController.handleNodeClick"
+          @edge-click="graphController.handleEdgeClick"
+          @canvas-click="graphController.handleCanvasClick"
         />
         <!-- Floating details card -->
         <GraphDetailPanel
-          :visible="graph.showDetailDrawer"
-          :item="graph.selectedItem"
-          :type="graph.selectedItemType"
-          @close="graph.handleCanvasClick"
+          :visible="graphController.showDetailDrawer"
+          :item="graphController.selectedItem"
+          :type="graphController.selectedItemType"
+          @close="graphController.handleCanvasClick"
         />
       </div>
 
@@ -145,7 +145,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, reactive } from 'vue'
+import { computed, nextTick, ref, watch, reactive } from 'vue'
 import { FileText, ChevronDown, Eye, Network, List } from 'lucide-vue-next'
 import KbChunkDetailModal from './KbChunkDetailModal.vue'
 import GraphCanvas from '@/components/GraphCanvas.vue'
@@ -188,22 +188,28 @@ const props = defineProps({
 })
 
 const graphRef = ref(null)
-const graph = reactive(useGraph(graphRef))
+const graphController = reactive(useGraph(graphRef))
 const activeTab = ref('visual')
 
 watch(
   () => props.graph,
   (newGraph) => {
     if (newGraph && (newGraph.nodes?.length > 0 || newGraph.edges?.length > 0)) {
-      graph.updateGraphData(newGraph.nodes, newGraph.edges)
+      graphController.updateGraphData(newGraph.nodes, newGraph.edges)
       activeTab.value = 'visual'
     } else {
-      graph.clearGraph()
+      graphController.clearGraph()
       activeTab.value = 'list'
     }
   },
   { immediate: true, deep: true }
 )
+
+watch(activeTab, async (tab) => {
+  if (tab !== 'visual' || graphCounts.value.nodes === 0) return
+  await nextTick()
+  await graphRef.value?.resizeAndFit?.()
+})
 
 const expandedFiles = ref(new Set())
 const modalVisible = ref(false)

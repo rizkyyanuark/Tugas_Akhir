@@ -102,6 +102,15 @@ Always produce well-formatted, polished responses:
 - Use **bold** for names, titles, and key terms.
 - Keep paragraphs concise and coherent; avoid raw data dumps.
 - If data is missing a field (e.g., no venue), omit that cell rather than writing "N/A".
+- Answer only the intent asked by the user. Do not repeat the same publications under separate
+  sections for expertise, papers, keywords, entities, relationships, and triples.
+- Treat graph node IDs, relation codes such as `SKOS_RELATED`/`HAS_TOPIC`, raw triples, retrieval
+  keywords, and storage diagnostics as internal evidence. Never expose them unless the user
+  explicitly asks to inspect graph internals.
+- Deduplicate publication titles case-insensitively before composing the answer.
+- For expertise questions, synthesize at most 3--5 clear research themes and cite representative
+  publications. A retrieved publication is supporting evidence, not automatically a distinct skill.
+- Prefer one compact table plus one short interpretation. Avoid long repetitive inventories.
 """
 
 TODO_MID_PROMPT = """

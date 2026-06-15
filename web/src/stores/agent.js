@@ -372,6 +372,44 @@ export const useAgentStore = defineStore(
       await loadAgentConfig(targetAgentId, configId)
     }
 
+    async function ensureSelectedAgentConfig(agentId = null) {
+      const targetAgentId = agentId || selectedAgentId.value
+      if (!targetAgentId) return null
+
+      if (selectedAgentId.value !== targetAgentId) {
+        await selectAgent(targetAgentId)
+      }
+
+      if (!agentConfigs.value[targetAgentId]?.length) {
+        await fetchAgentConfigs(targetAgentId)
+      }
+
+      const list = agentConfigs.value[targetAgentId] || []
+      const selectedId = selectedAgentConfigId.value
+      const selectedItem = selectedId
+        ? list.find((item) => String(item.id) === String(selectedId))
+        : null
+      const resolvedItem = selectedItem || list.find((item) => item.is_default) || list[0] || null
+
+      if (!resolvedItem) {
+        selectedAgentConfigId.value = null
+        agentConfig.value = {}
+        originalAgentConfig.value = {}
+        return null
+      }
+
+      if (
+        !selectedItem ||
+        String(selectedAgentConfigId.value) !== String(resolvedItem.id) ||
+        Object.keys(agentConfig.value || {}).length === 0
+      ) {
+        selectedAgentConfigId.value = resolvedItem.id
+        await loadAgentConfig(targetAgentId, resolvedItem.id)
+      }
+
+      return resolvedItem.id
+    }
+
     /**
      * Save agent configuration
      * @param {Object} options - Extra parameters (e.g., { reload_graph: true })
@@ -538,6 +576,7 @@ export const useAgentStore = defineStore(
       setDefaultAgent,
       selectAgent,
       selectAgentConfig,
+      ensureSelectedAgentConfig,
       fetchAgentConfigs,
       loadAgentConfig,
       saveAgentConfig,

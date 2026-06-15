@@ -332,6 +332,108 @@ def _format_author_publication_answer_hint(
     return "\n".join([header, separator] + table_rows)
 
 
+def _build_ui_graph(graph_context: dict[str, Any]) -> dict[str, Any]:
+    """Create a readable graph payload without exposing internal database identifiers."""
+    raw_nodes = list(graph_context.get("nodes", []) or [])[:32]
+    raw_edges = list(graph_context.get("edges", []) or [])[:48]
+    node_id_map: dict[str, str] = {}
+    display_name_map: dict[str, str] = {}
+    nodes: list[dict[str, Any]] = []
+
+    for index, node in enumerate(raw_nodes, start=1):
+        if not isinstance(node, dict):
+            continue
+        original_id = str(node.get("id") or "").strip()
+        if not original_id:
+            continue
+
+        properties = node.get("properties") if isinstance(node.get("properties"), dict) else {}
+        name = str(
+            node.get("name")
+            or node.get("title")
+            or properties.get("name")
+            or properties.get("title")
+            or f"Entity {index}"
+        ).strip()
+        node_type = str(
+            node.get("type")
+            or properties.get("node_type")
+            or properties.get("concept_type")
+            or "Entity"
+        ).strip()
+        public_id = f"node-{index}"
+        node_id_map[original_id] = public_id
+        display_name_map[original_id] = name
+
+        safe_properties = {
+            key: properties.get(key)
+            for key in (
+                "year",
+                "venue",
+                "doi",
+                "url",
+                "affiliation",
+                "program_studi",
+                "concept_type",
+            )
+            if properties.get(key) not in (None, "")
+        }
+        nodes.append(
+            {
+                "id": public_id,
+                "name": name,
+                "type": node_type,
+                "properties": safe_properties,
+            }
+        )
+
+    edges: list[dict[str, Any]] = []
+    triples: list[dict[str, str]] = []
+    seen_edges: set[tuple[str, str, str]] = set()
+    for index, edge in enumerate(raw_edges, start=1):
+        if not isinstance(edge, dict):
+            continue
+        source_raw = str(
+            edge.get("source_id") or edge.get("source") or edge.get("sourceId") or ""
+        ).strip()
+        target_raw = str(
+            edge.get("target_id") or edge.get("target") or edge.get("targetId") or ""
+        ).strip()
+        source_id = node_id_map.get(source_raw)
+        target_id = node_id_map.get(target_raw)
+        if not source_id or not target_id:
+            continue
+
+        relation = str(edge.get("type") or edge.get("relation") or "RELATED_TO").strip()
+        signature = (source_id, target_id, relation)
+        if signature in seen_edges:
+            continue
+        seen_edges.add(signature)
+        edges.append(
+            {
+                "id": f"edge-{index}",
+                "source_id": source_id,
+                "target_id": target_id,
+                "type": relation,
+            }
+        )
+        if len(triples) < 32:
+            triples.append(
+                {
+                    "source": display_name_map[source_raw],
+                    "relation": relation,
+                    "target": display_name_map[target_raw],
+                }
+            )
+
+    return {
+        "status": graph_context.get("status"),
+        "nodes": nodes,
+        "edges": edges,
+        "triples": triples,
+    }
+
+
 
 def _academic_tool_response(
     *,
@@ -446,6 +548,7 @@ def _academic_tool_response(
         "collaborations": academic.get("collaborations", [])[:24] if academic.get("collaborations") else [],
         "structured_counts": academic.get("structured_counts", {}),
     }
+    ui_graph = _build_ui_graph(graph_context)
 
     tool_payload = {
         "type": "academic_graphrag_result",
@@ -456,12 +559,8 @@ def _academic_tool_response(
         "answer_hints": answer_hints,
         "grounding": payload.get("grounding", {}),
         "academic_retrieval": llm_academic_retrieval,
-        # graph key is read by the frontend for visualization only (not sent to LLM reasoning)
-        "graph": {
-            "nodes": graph_context.get("nodes", [])[:32],
-            "edges": graph_context.get("edges", [])[:48],
-            "triples": graph_context.get("triples", [])[:32],
-        },
+        # Retained for the frontend visualizer. Raw IDs/provenance remain in citations.
+        "graph": ui_graph,
         "answer_policy": (
             "Use only retrieved evidence. If grounding.status is empty or supporting_only, "
             "state that the requested academic data was not found and do not answer from prior knowledge. "
@@ -475,7 +574,12 @@ def _academic_tool_response(
             "No | Judul | Tahun | Venue/DOI. Open with a brief one-sentence contextual summary before "
             "the table. Close with a concise paragraph noting the total count and any retrieval cap. "
             "Use bold (**text**) for key terms. Never output a plain bullet list for publication "
-            "queries — always use the numbered table format."
+            "queries; always use the numbered table format. The graph field is UI diagnostic data, "
+            "not an answer outline. Never dump entity IDs, keyword inventories, relationship codes, "
+            "or raw triples unless the user explicitly asks to inspect graph internals. Deduplicate "
+            "publication titles case-insensitively. Answer the requested intent directly and do not "
+            "repeat the same evidence under expertise, publications, keywords, entities, "
+            "relationships, and triples sections."
         ),
     }
 

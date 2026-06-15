@@ -165,6 +165,46 @@ export function useAgentRunStream({
     }
   }
 
+  const finalizeRunPresentation = ({
+    threadId,
+    runId,
+    terminalStatus,
+    historyDelay = 300,
+    graceful = true
+  }) => {
+    const ts = getThreadState(threadId)
+    if (!ts || ts.presentationFinalizingRunId === runId) return
+
+    ts.presentationFinalizingRunId = runId
+    ts.replyLoadingVisible = false
+    ts.activeRunId = null
+    ts.lastRetryableJobTry = null
+    clearActiveRunSnapshot(threadId)
+
+    const drainPromise = graceful
+      ? streamSmoother?.finishThread(threadId) || Promise.resolve()
+      : Promise.resolve(streamSmoother?.flushThread(threadId))
+
+    void drainPromise
+      .then(() => {
+        ts.isStreaming = false
+        return fetchThreadMessages({
+          agentId: unref(currentAgentId),
+          threadId,
+          delay: historyDelay
+        })
+      })
+      .finally(() => {
+        resetOnGoingConv(threadId)
+        fetchAgentState(unref(currentAgentId), threadId)
+        onScrollToBottom()
+        ts.presentationFinalizingRunId = null
+        if (terminalStatus) {
+          ts.lastTerminalStatus = terminalStatus
+        }
+      })
+  }
+
   const startRunStream = async (threadId, runId, afterSeq = '0') => {
     if (!threadId || !runId || !useRunsApi) return
     const ts = getThreadState(threadId)
@@ -236,18 +276,15 @@ export function useAgentRunStream({
         }
 
         if (event === 'close') {
-          streamSmoother?.flushThread(threadId)
-          ts.isStreaming = false
           ts.replyLoadingVisible = false
           if (RUN_TERMINAL_STATUSES.has(data.status)) {
-            ts.activeRunId = null
-            ts.lastRetryableJobTry = null
-            clearActiveRunSnapshot(threadId)
-            fetchThreadMessages({ agentId: unref(currentAgentId), threadId, delay: 200 }).finally(
-              () => {
-                fetchAgentState(unref(currentAgentId), threadId)
-              }
-            )
+            finalizeRunPresentation({
+              threadId,
+              runId,
+              terminalStatus: data.status,
+              historyDelay: 200,
+              graceful: data.status === 'completed'
+            })
           } else if (ts.activeRunId === runId) {
             setTimeout(() => {
               if (ts.activeRunId === runId && !ts.runStreamAbortController) {
@@ -265,18 +302,14 @@ export function useAgentRunStream({
           approvalStatuses.includes(event) ||
           approvalStatuses.includes(chunkStatus)
         ) {
-          ts.isStreaming = false
-          ts.replyLoadingVisible = false
-          ts.activeRunId = null
-          ts.lastRetryableJobTry = null
-          clearActiveRunSnapshot(threadId)
-          fetchThreadMessages({ agentId: unref(currentAgentId), threadId, delay: 300 }).finally(
-            () => {
-              resetOnGoingConv(threadId)
-              fetchAgentState(unref(currentAgentId), threadId)
-              onScrollToBottom()
-            }
-          )
+          const isNormalCompletion = event === 'finished'
+          finalizeRunPresentation({
+            threadId,
+            runId,
+            terminalStatus: isNormalCompletion ? 'completed' : event,
+            historyDelay: 300,
+            graceful: isNormalCompletion
+          })
         }
       })
     } catch (error) {
@@ -296,7 +329,7 @@ export function useAgentRunStream({
       if (ts.runStreamAbortController === runController) {
         ts.runStreamAbortController = null
       }
-      if (!ts.activeRunId) {
+      if (!ts.activeRunId && !ts.presentationFinalizingRunId) {
         ts.isStreaming = false
         ts.replyLoadingVisible = false
       }

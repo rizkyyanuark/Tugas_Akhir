@@ -22,6 +22,7 @@ export function useAgentThreadState({
         streamAbortController: null,
         runStreamAbortController: null,
         activeRunId: null,
+        presentationFinalizingRunId: null,
         runLastSeq: '0',
         lastRetryableJobTry: null,
         onGoingConv: createOnGoingConvState(),
@@ -87,6 +88,7 @@ export function useAgentThreadState({
       threadState.onGoingConv = createOnGoingConvState()
       threadState.pendingRequestId = null
       threadState.replyLoadingVisible = false
+      threadState.presentationFinalizingRunId = null
       return
     }
 

@@ -157,7 +157,6 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
             "qwen/qwen3-32b",
-            "gemma2-9b-it",
         ],
     ),
     # "moonshot": ChatModelProvider(

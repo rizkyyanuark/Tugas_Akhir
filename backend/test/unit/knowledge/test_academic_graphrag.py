@@ -981,6 +981,59 @@ def test_tool_response_preserves_raw_citation_payload() -> None:
     assert "prompt" not in citation["academic_retrieval"]["keyword_decomposition"]
 
 
+def test_tool_response_sanitizes_graph_payload_for_ui_and_llm() -> None:
+    payload = {
+        "evidence_text": "-----Entities-----",
+        "chunks": [],
+        "graph": {
+            "status": "ok",
+            "nodes": [
+                {
+                    "id": "concept:internal-secret-id",
+                    "name": "Machine learning",
+                    "type": "Concept",
+                },
+                {
+                    "id": "publication:internal-paper-id",
+                    "name": "Paper A",
+                    "type": "Publication",
+                },
+            ],
+            "edges": [
+                {
+                    "id": "relationship:internal-id",
+                    "source_id": "publication:internal-paper-id",
+                    "target_id": "concept:internal-secret-id",
+                    "type": "HAS_TOPIC",
+                }
+            ],
+            "triples": [],
+        },
+        "academic_retrieval": {"status": "ok"},
+        "grounding": {"status": "grounded"},
+    }
+
+    response = _academic_tool_response(
+        payload=payload,
+        query_text="Paper A",
+        kb_name="yunesa_academic_kg",
+        retrieval_mode="mix",
+        tool_call_id="tool-1",
+    )
+
+    parsed_payload = json.loads(response.update["messages"][0].content)
+    assert [node["id"] for node in parsed_payload["graph"]["nodes"]] == [
+        "node-1",
+        "node-2",
+    ]
+    assert parsed_payload["graph"]["edges"][0]["source_id"] == "node-2"
+    assert parsed_payload["graph"]["edges"][0]["target_id"] == "node-1"
+    assert "concept:internal-secret-id" not in response.update["messages"][0].content
+    assert response.update["citations"][0]["entities"][0]["id"] == (
+        "concept:internal-secret-id"
+    )
+
+
 def test_tool_response_returns_author_publication_enumeration_window() -> None:
     author_rows = [
         {
@@ -1024,7 +1077,7 @@ def test_tool_response_returns_author_publication_enumeration_window() -> None:
     assert '"complete": true' in tool_payload
     assert "answer_hints" in parsed_payload
     assert "author_publications_markdown" in parsed_payload["answer_hints"]
-    assert "30. Paper 30" in parsed_payload["answer_hints"]["author_publications_markdown"]
+    assert "| 30 | Paper 30 |" in parsed_payload["answer_hints"]["author_publications_markdown"]
     assert "Do not rename titles" in parsed_payload["answer_hints"][
         "author_publications_instruction"
     ]

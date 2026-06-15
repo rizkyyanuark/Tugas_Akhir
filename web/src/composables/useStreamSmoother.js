@@ -70,7 +70,8 @@ const DEFAULT_OPTIONS = {
   overflowDivisor: 96,
   maxBurstFactor: 3,
   reserveReleaseDelayMs: 160,
-  reserveDecayWindowMs: 420
+  reserveDecayWindowMs: 420,
+  finalDrainWindowMs: 700
 }
 
 const getIncomingSize = (chunk) => {
@@ -101,7 +102,9 @@ const createController = (chunk, options) => ({
   lastFrameAt: Date.now(),
   carryChars: 0,
   avgIntervalMs: options.defaultIntervalMs,
-  avgChunkChars: Math.max(options.minReserveChars, getIncomingSize(chunk))
+  avgChunkChars: Math.max(options.minReserveChars, getIncomingSize(chunk)),
+  finalizing: false,
+  finalCharsPerMs: 0
 })
 
 const mergeSkeleton = (controller, chunk) => {
@@ -174,6 +177,8 @@ const getReserveSize = (controller, options) => {
 }
 
 const getDynamicReserve = (controller, options, now) => {
+  if (controller.finalizing) return 0
+
   const reserveSize = getReserveSize(controller, options)
   const elapsedSincePush = Math.max(0, now - controller.lastPushAt)
   const releaseDelay = Math.max(0, options.reserveReleaseDelayMs)
@@ -194,6 +199,16 @@ const getDynamicReserve = (controller, options, now) => {
 const getChunkSize = (controller, pending, options) => {
   const now = Date.now()
   const deltaMs = Math.max(16, now - controller.lastFrameAt)
+
+  if (controller.finalizing) {
+    controller.lastFrameAt = now
+    controller.carryChars += Math.max(1 / 16, controller.finalCharsPerMs) * deltaMs
+    const budget = Math.max(options.minChunkSize, Math.floor(controller.carryChars))
+    const emitCount = Math.min(budget, pending, options.maxChunkSize)
+    controller.carryChars = Math.max(0, controller.carryChars - emitCount)
+    return emitCount
+  }
+
   const charsPerMs = controller.avgChunkChars / Math.max(1, controller.avgIntervalMs)
   const baseRate = charsPerMs * options.basePaceMultiplier
   const dynamicReserve = getDynamicReserve(controller, options, now)
@@ -236,12 +251,27 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
   }
 
   const controllersByThread = new Map()
+  const finalizersByThread = new Map()
 
   const getThreadControllers = (threadId) => {
     if (!controllersByThread.has(threadId)) {
       controllersByThread.set(threadId, new Map())
     }
     return controllersByThread.get(threadId)
+  }
+
+  const resolveThreadFinalizers = (threadId) => {
+    const threadControllers = controllersByThread.get(threadId)
+    const hasPending = threadControllers
+      ? [...threadControllers.values()].some(
+          (controller) => controller.scheduled || getBufferedLength(controller) > 0
+        )
+      : false
+    if (hasPending) return
+
+    const finalizers = finalizersByThread.get(threadId) || []
+    finalizers.forEach((resolve) => resolve())
+    finalizersByThread.delete(threadId)
   }
 
   const emitDelta = (threadId, messageId, forceFlush = false) => {
@@ -255,6 +285,7 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
     if (pending <= 0) {
       controller.scheduled = false
       controller.frameId = null
+      resolveThreadFinalizers(threadId)
       return
     }
 
@@ -325,6 +356,7 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
 
     controller.scheduled = false
     controller.frameId = null
+    resolveThreadFinalizers(threadId)
   }
 
   const schedule = (threadId, messageId) => {
@@ -402,18 +434,51 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
       }
       emitDelta(threadId, messageId, true)
     })
+    resolveThreadFinalizers(threadId)
+  }
+
+  const finishThread = (threadId) => {
+    const threadControllers = controllersByThread.get(threadId)
+    if (
+      !threadControllers ||
+      ![...threadControllers.values()].some((controller) => getBufferedLength(controller) > 0)
+    ) {
+      return Promise.resolve()
+    }
+
+    const completion = new Promise((resolve) => {
+      const finalizers = finalizersByThread.get(threadId) || []
+      finalizers.push(resolve)
+      finalizersByThread.set(threadId, finalizers)
+    })
+
+    threadControllers.forEach((controller, messageId) => {
+      const pending = getBufferedLength(controller)
+      if (pending <= 0) return
+      controller.finalizing = true
+      controller.finalCharsPerMs = pending / Math.max(1, resolvedOptions.finalDrainWindowMs)
+      controller.lastFrameAt = Date.now()
+      schedule(threadId, messageId)
+    })
+
+    resolveThreadFinalizers(threadId)
+    return completion
   }
 
   const resetThread = (threadId = null) => {
     if (threadId) {
       const threadControllers = controllersByThread.get(threadId)
-      if (!threadControllers) return
+      if (!threadControllers) {
+        resolveThreadFinalizers(threadId)
+        return
+      }
       threadControllers.forEach((controller) => {
         if (controller.frameId !== null) {
           caf(controller.frameId)
         }
       })
       controllersByThread.delete(threadId)
+      resolveThreadFinalizers(threadId)
       return
     }
 
@@ -425,11 +490,16 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
       })
     })
     controllersByThread.clear()
+    finalizersByThread.forEach((finalizers) => {
+      finalizers.forEach((resolve) => resolve())
+    })
+    finalizersByThread.clear()
   }
 
   return {
     pushChunk,
     flushThread,
+    finishThread,
     resetThread
   }
 }

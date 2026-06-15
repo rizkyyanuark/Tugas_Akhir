@@ -44,8 +44,10 @@ export function useGraph(graphRef) {
   const updateGraphData = (nodes, edges) => {
     graphData.nodes = nodes || []
     graphData.edges = edges || []
-    // Refresh graph visual after data update
-    refreshGraph()
+    nextTick(async () => {
+      await graphRef?.value?.setData?.()
+      await graphRef?.value?.resizeAndFit?.()
+    })
   }
 
   const refreshGraph = () => {
