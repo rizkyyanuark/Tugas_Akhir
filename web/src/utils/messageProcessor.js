@@ -418,6 +418,11 @@ export class MessageProcessor {
         ? message.content.trim()
         : String(message?.content || '').trim()
     content = MessageProcessor.stripTextualToolCallContent(content)
+
+    // Strip special tokens that may leak from LLM (such as Llama's reserved special tokens)
+    content = content.replace(/<\|reserved_special_token_\d+\|>/g, '')
+    content = content.replace(/<\|(?:start_header_id|end_header_id|eot_id|python_tag)\|>/g, '')
+
     let reasoningContent = message?.additional_kwargs?.reasoning_content || ''
 
     if (!reasoningContent && content) {
@@ -430,7 +435,7 @@ export class MessageProcessor {
       }
     }
 
-    return { content, reasoningContent }
+    return { content: content.trim(), reasoning_content: reasoningContent }
   }
 
   /**

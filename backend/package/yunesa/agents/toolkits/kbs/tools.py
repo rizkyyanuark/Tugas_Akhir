@@ -564,6 +564,8 @@ def _academic_tool_response(
         "answer_policy": (
             "Use only retrieved evidence. If grounding.status is empty or supporting_only, "
             "state that the requested academic data was not found and do not answer from prior knowledge. "
+            "Prioritize synthesising context from the structured RAG chunks and triples. "
+            "Clearly respond in the same language as the user's question (e.g. if the user asks in Indonesian, answer in Indonesian; if in English, answer in English). "
             "For lecturer publication list questions, enumerate author_publications rows returned by "
             "the tool and state the returned count. If structured_counts.author_publications.complete "
             "is false, say that the list is capped by the retrieval limit. For exact publication "
@@ -575,10 +577,11 @@ def _academic_tool_response(
             "the table. Close with a concise paragraph noting the total count and any retrieval cap. "
             "Use bold (**text**) for key terms. Never output a plain bullet list for publication "
             "queries; always use the numbered table format. The graph field is UI diagnostic data, "
-            "not an answer outline. Never dump entity IDs, keyword inventories, relationship codes, "
-            "or raw triples unless the user explicitly asks to inspect graph internals. Deduplicate "
-            "publication titles case-insensitively. Answer the requested intent directly and do not "
-            "repeat the same evidence under expertise, publications, keywords, entities, "
+            "not an answer outline. Never dump entity IDs, concept/node IDs, keyword inventories, "
+            "relationship codes (such as SKOS_RELATED, SKOS_BROADER, or other Neo4j relationship types), "
+            "or raw triples in the response text unless the user explicitly asks to inspect graph internals. "
+            "Deduplicate publication titles case-insensitively. Answer the requested intent directly and "
+            "do not repeat the same evidence under expertise, publications, keywords, entities, "
             "relationships, and triples sections."
         ),
     }

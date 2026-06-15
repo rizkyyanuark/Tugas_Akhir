@@ -191,8 +191,76 @@ const graphRef = ref(null)
 const graphController = reactive(useGraph(graphRef))
 const activeTab = ref('visual')
 
+const computedGraph = computed(() => {
+  const hasNodesOrEdges = (props.graph?.nodes?.length > 0) || (props.graph?.edges?.length > 0)
+  if (hasNodesOrEdges) {
+    return {
+      nodes: props.graph.nodes || [],
+      edges: props.graph.edges || []
+    }
+  }
+
+  // Otherwise construct nodes/edges dynamically from triples
+  const nodesMap = new Map()
+  const edges = []
+  let edgeId = 0
+
+  const triples = graphTriples.value
+  triples.forEach((triple) => {
+    let source = ''
+    let relation = ''
+    let target = ''
+    if (Array.isArray(triple) && triple.length >= 3) {
+      [source, relation, target] = triple
+    } else if (triple && typeof triple === 'object') {
+      source = triple.source
+      relation = triple.relation
+      target = triple.target
+    }
+
+    if (source && typeof source === 'string') {
+      const trimmedSource = source.trim()
+      if (trimmedSource && !nodesMap.has(trimmedSource)) {
+        nodesMap.set(trimmedSource, {
+          id: trimmedSource,
+          name: trimmedSource
+        })
+      }
+    }
+
+    if (target && typeof target === 'string') {
+      const trimmedTarget = target.trim()
+      if (trimmedTarget && !nodesMap.has(trimmedTarget)) {
+        nodesMap.set(trimmedTarget, {
+          id: trimmedTarget,
+          name: trimmedTarget
+        })
+      }
+    }
+
+    if (source && target && relation) {
+      const trimmedSource = source.trim()
+      const trimmedTarget = target.trim()
+      const trimmedRelation = String(relation).trim()
+      if (trimmedSource && trimmedTarget && trimmedRelation) {
+        edges.push({
+          source_id: trimmedSource,
+          target_id: trimmedTarget,
+          type: trimmedRelation,
+          id: `edge_${edgeId++}`
+        })
+      }
+    }
+  })
+
+  return {
+    nodes: Array.from(nodesMap.values()),
+    edges: edges
+  }
+})
+
 watch(
-  () => props.graph,
+  computedGraph,
   (newGraph) => {
     if (newGraph && (newGraph.nodes?.length > 0 || newGraph.edges?.length > 0)) {
       graphController.updateGraphData(newGraph.nodes, newGraph.edges)
@@ -208,7 +276,9 @@ watch(
 watch(activeTab, async (tab) => {
   if (tab !== 'visual' || graphCounts.value.nodes === 0) return
   await nextTick()
-  await graphRef.value?.resizeAndFit?.()
+  setTimeout(() => {
+    graphRef.value?.resizeAndFit?.()
+  }, 150)
 })
 
 const expandedFiles = ref(new Set())
@@ -261,8 +331,8 @@ const graphTriples = computed(() =>
 )
 
 const graphCounts = computed(() => ({
-  nodes: Array.isArray(props.graph?.nodes) ? props.graph.nodes.length : 0,
-  edges: Array.isArray(props.graph?.edges) ? props.graph.edges.length : 0,
+  nodes: computedGraph.value.nodes.length,
+  edges: computedGraph.value.edges.length,
   triples: graphTriples.value.length
 }))
 

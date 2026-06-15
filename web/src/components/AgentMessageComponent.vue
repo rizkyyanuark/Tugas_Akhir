@@ -835,51 +835,62 @@ const technicalError = computed(() => classifyTechnicalError(props.message))
   }
 
   table {
+    display: block;
     width: 100%;
+    overflow-x: auto;
     border-collapse: collapse;
-    margin: 2em 0;
-    font-size: 15px;
-    display: table;
-    outline: 1px solid var(--gray-100);
-    outline-offset: 14px;
-    border-radius: 12px;
-
-    thead tr th {
-      padding-top: 0;
-    }
+    margin: 1.5em 0;
+    font-size: 14px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
 
     thead th,
     tbody th {
-      border: none;
-      border-bottom: 1px solid var(--gray-200);
-    }
-
-    tbody tr:last-child td {
-      border-bottom: 1px solid var(--gray-200);
-      border: none;
-      padding-bottom: 0;
+      border-bottom: 2px solid var(--gray-200);
     }
   }
 
   th,
   td {
-    padding: 0.5rem 0rem;
+    padding: 10px 14px;
     text-align: left;
-    border: none;
+    border: 1px solid var(--gray-200);
+    min-width: 80px;
   }
 
   td {
-    border-bottom: 1px solid var(--gray-100);
     color: var(--gray-800);
+    word-break: normal;
   }
 
   th {
     font-weight: 600;
-    color: var(--gray-800);
+    color: var(--gray-900);
+    background-color: var(--gray-50);
+    white-space: nowrap;
   }
 
   tr {
     background-color: var(--gray-0);
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: var(--gray-25);
+    }
+  }
+
+  /* Specific rules for short table columns */
+  th:first-child,
+  td:first-child {
+    min-width: 40px;
+    max-width: 60px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  th:nth-child(3),
+  td:nth-child(3) {
+    white-space: nowrap;
   }
 
   // tbody tr:last-child td {
