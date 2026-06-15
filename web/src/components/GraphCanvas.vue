@@ -463,10 +463,16 @@ onMounted(() => {
   // Use ResizeObserver to rerender on container resize
   if (window.ResizeObserver) {
     resizeObserver = new ResizeObserver(() => {
-      if (!container.value || !graphInstance) return
+      if (!container.value) return
       const width = container.value.offsetWidth
       const height = container.value.offsetHeight
-      graphInstance.changeSize(width, height)
+      if (width > 0 && height > 0) {
+        if (!graphInstance) {
+          renderGraph()
+        } else {
+          graphInstance.changeSize(width, height)
+        }
+      }
     })
     if (container.value) resizeObserver.observe(container.value)
   }

@@ -1,7 +1,7 @@
 <template>
   <div class="source-section">
     <div class="section-title">Knowledge Base Sources ({{ chunks.length }})</div>
-    <KbResultGroupedList :chunks="chunks" :show-summary="false" />
+    <KbResultGroupedList :chunks="chunks" :graph="graph" :show-summary="false" />
   </div>
 </template>
 
@@ -12,6 +12,10 @@ defineProps({
   chunks: {
     type: Array,
     default: () => []
+  },
+  graph: {
+    type: Object,
+    default: () => ({})
   }
 })
 </script>

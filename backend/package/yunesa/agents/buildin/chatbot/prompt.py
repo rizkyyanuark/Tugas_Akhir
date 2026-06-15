@@ -36,6 +36,9 @@ input and use the available knowledge-base tools for retrieval.
   unless the user asks for a summary. State the returned count. If `structured_counts.author_publications.complete`
   is false, explicitly say the list is capped by the retrieval limit instead of presenting it as complete.
   Prefer a compact table with title, year, authors, venue/DOI when many rows are returned.
+- When the tool returns `answer_hints.author_publications_markdown`, use that exact list as the
+  answer basis. Do not replace titles with paraphrases, do not invent "notable" publications,
+  and do not stop at a summary unless the user explicitly asks for a summary.
 - For questions asking which lecturers/authors wrote papers about a topic, answer from
   `lecturer_topic_publications` first. Each item contains the lecturer, affiliation, matched terms,
   title, year, authors, and DOI. Do not answer "authors unavailable" when this evidence is present.

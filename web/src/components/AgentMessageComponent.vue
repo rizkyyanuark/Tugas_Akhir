@@ -16,7 +16,7 @@
 
     <!-- Assistant message -->
     <div v-else-if="message.type === 'ai'" class="assistant-message">
-      <div v-if="parsedData.reasoning_content" class="reasoning-box">
+      <div v-if="parsedData.reasoning_content" class="reasoning-box" :class="{ 'is-reasoning': message.status === 'reasoning' && isProcessing }">
         <a-collapse v-model:activeKey="reasoningActiveKey" :bordered="false">
           <template #expandIcon="{ isActive }">
             <caret-right-outlined :rotate="isActive ? 90 : 0" />
@@ -318,10 +318,33 @@ const classifyTechnicalError = (content, messageObject) => {
   return null
 }
 
+// Detect if text ends inside an unclosed code block or inline code
+const isInsideCode = (text) => {
+  if (!text) return false
+  const blockMatches = text.match(/```/g)
+  if (blockMatches && blockMatches.length % 2 !== 0) {
+    return true
+  }
+  const cleanText = text.replace(/```[\s\S]*?```/g, '')
+  const inlineMatches = cleanText.match(/`/g)
+  return inlineMatches ? inlineMatches.length % 2 !== 0 : false
+}
+
 const parsedData = computed(() => {
   const { content, reasoningContent } = MessageProcessor.parseAssistantMessageBody(props.message)
+
+  // Append typing cursor when actively streaming
+  let displayContent = content
+  if (props.isProcessing && content) {
+    if (isInsideCode(content)) {
+      displayContent = content + '▋'
+    } else {
+      displayContent = content + ' <span class="typing-cursor">▋</span>'
+    }
+  }
+
   return {
-    content,
+    content: displayContent,
     reasoning_content: reasoningContent
   }
 })
@@ -619,6 +642,32 @@ const technicalError = computed(() => classifyTechnicalError(parsedData.value.co
   100% {
     color: var(--gray-700);
   }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+:deep(.typing-cursor) {
+  display: inline-block;
+  color: var(--main-color, #1890ff);
+  animation: blink 0.8s step-end infinite;
+  margin-left: 2px;
+  font-weight: 600;
+}
+
+.is-reasoning .reasoning-content::after {
+  content: '▋';
+  display: inline-block;
+  color: var(--gray-500);
+  animation: blink 0.8s step-end infinite;
+  margin-left: 4px;
 }
 
 @keyframes fadeInUp {

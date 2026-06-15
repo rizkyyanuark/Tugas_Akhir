@@ -6,6 +6,7 @@ from langchain.agents.middleware import ModelRetryMiddleware, TodoListMiddleware
 from yunesa.agents import BaseAgent, BaseState, load_chat_model
 from yunesa.agents.backends import create_agent_composite_backend
 from yunesa.agents.middlewares import (
+    QueryReformulationMiddleware,
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
     TextualToolCallMiddleware,
@@ -41,6 +42,7 @@ async def _build_middlewares(context):
 
     # all middlewares
     middlewares = [
+        QueryReformulationMiddleware(),  # Reformulate multi-turn queries
         KnowledgeBaseMiddleware(),  # Knowledge-base tools
         # Apply runtime config (model/tools/MCP/prompt)
         RuntimeConfigMiddleware(extra_tools=all_mcp_tools),

@@ -354,7 +354,12 @@ async def chat_agent(
             current_user=current_user,
             db=db,
         ),
-        media_type="application/json",
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -564,7 +569,12 @@ async def resume_thread_chat(
             current_user=current_user,
             db=db,
         ),
-        media_type="application/json",
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

@@ -301,6 +301,45 @@ def _runtime_trace_metadata(runtime: ToolRuntime | None, tool_call_id: str | Non
     return result
 
 
+def _format_author_publication_answer_hint(
+    rows: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> str:
+    lines: list[str] = []
+    for index, row in enumerate(rows[:limit], start=1):
+        title = str(row.get("title") or "").strip()
+        if not title:
+            continue
+
+        details: list[str] = []
+        year = str(row.get("year") or "").strip()
+        if year:
+            details.append(f"year: {year}")
+
+        authors = row.get("authors")
+        if isinstance(authors, list):
+            author_text = ", ".join(
+                str(author).strip() for author in authors if str(author).strip()
+            )
+        else:
+            author_text = str(authors or row.get("author") or "").strip()
+        if author_text:
+            details.append(f"authors: {author_text}")
+
+        venue = str(row.get("venue") or "").strip()
+        if venue:
+            details.append(f"venue: {venue}")
+
+        doi = str(row.get("doi") or "").strip()
+        if doi:
+            details.append(f"doi: {doi}")
+
+        suffix = f" ({'; '.join(details)})" if details else ""
+        lines.append(f"{index}. {title}{suffix}")
+    return "\n".join(lines)
+
+
 def _academic_tool_response(
     *,
     payload: dict[str, Any],
@@ -335,6 +374,22 @@ def _academic_tool_response(
     author_publication_payload_limit = (
         60 if author_publication_meta.get("enumeration_query") else 12
     )
+    author_publication_rows = academic.get("author_publications", [])[
+        :author_publication_payload_limit
+    ]
+    answer_hints: dict[str, Any] = {}
+    if author_publication_meta.get("enumeration_query") and author_publication_rows:
+        answer_hints["author_publications_markdown"] = (
+            _format_author_publication_answer_hint(
+                author_publication_rows,
+                limit=author_publication_payload_limit,
+            )
+        )
+        answer_hints["author_publications_instruction"] = (
+            "For this publication-list query, answer from this exact list. "
+            "Do not rename titles, do not invent titles, and do not summarize as "
+            "'notable publications' unless the user explicitly asks for a summary."
+        )
 
     tool_payload = {
         "type": "academic_graphrag_result",
@@ -342,6 +397,7 @@ def _academic_tool_response(
         "kb_name": kb_name,
         "retrieval_mode": retrieval_mode,
         "summary": payload.get("evidence_text") or "",
+        "answer_hints": answer_hints,
         "grounding": payload.get("grounding", {}),
         "chunks": payload.get("chunks", []),
         "academic_retrieval": {
@@ -352,9 +408,7 @@ def _academic_tool_response(
             "graph_name": academic.get("graph_name"),
             "milvus_database": academic.get("milvus_database"),
             "paper_chunks": academic.get("paper_chunks", [])[:8],
-            "author_publications": academic.get("author_publications", [])[
-                :author_publication_payload_limit
-            ],
+            "author_publications": author_publication_rows,
             "publication_details": academic.get("publication_details", [])[:12],
             "lecturer_topic_publications": academic.get("lecturer_topic_publications", [])[:24],
             "topic_frequencies": academic.get("topic_frequencies", [])[:15],
@@ -382,7 +436,9 @@ def _academic_tool_response(
             "For lecturer publication list questions, enumerate author_publications rows returned by "
             "the tool and state the returned count. If structured_counts.author_publications.complete "
             "is false, say that the list is capped by the retrieval limit. For exact publication "
-            "author/collaboration questions, prioritize publication_details over general collaborations."
+            "author/collaboration questions, prioritize publication_details over general collaborations. "
+            "When answer_hints.author_publications_markdown is present, use that exact list and do "
+            "not rename, paraphrase, or invent publication titles."
         ),
     }
     return Command(

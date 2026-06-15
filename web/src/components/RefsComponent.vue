@@ -64,7 +64,11 @@
 
     <!-- Source details panel -->
     <div v-if="isSourcesExpanded" class="sources-panel-body">
-      <KnowledgeSourceSection v-if="knowledgeChunks.length > 0" :chunks="knowledgeChunks" />
+      <KnowledgeSourceSection
+        v-if="knowledgeChunks.length > 0"
+        :chunks="knowledgeChunks"
+        :graph="graphData"
+      />
       <WebSearchSourceSection v-if="webSources.length > 0" :sources="webSources" />
     </div>
   </div>
@@ -135,6 +139,22 @@ const knowledgeChunks = computed(() =>
 const webSources = computed(() =>
   Array.isArray(props.sources?.webSources) ? props.sources.webSources : []
 )
+
+const graphData = computed(() => {
+  if (!msg.value?.tool_calls) return null
+  const queryKbCall = msg.value.tool_calls.find(
+    (tc) =>
+      (tc.name === 'query_kb' || tc.function?.name === 'query_kb') &&
+      tc.tool_call_result?.content
+  )
+  if (!queryKbCall) return null
+  try {
+    const data = JSON.parse(queryKbCall.tool_call_result.content)
+    return data?.graph
+  } catch {
+    return null
+  }
+})
 
 const hasSources = computed(() => knowledgeChunks.value.length > 0 || webSources.value.length > 0)
 

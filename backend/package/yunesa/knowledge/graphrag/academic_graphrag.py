@@ -1413,7 +1413,7 @@ class AcademicGraphRAGService:
 
     @staticmethod
     def _use_llm_keyword_extraction() -> bool:
-        mode = os.getenv("YUNESA_ACADEMIC_KEYWORD_EXTRACTION_MODE", "heuristic")
+        mode = os.getenv("YUNESA_ACADEMIC_KEYWORD_EXTRACTION_MODE", "llm")
         return mode.strip().lower() in {"llm", "model", "academicrag"}
 
     @staticmethod
@@ -2442,6 +2442,32 @@ class AcademicGraphRAGService:
                 "message": str(exc),
             }
 
+    @staticmethod
+    def _encode_string_by_tiktoken(content: str, model_name: str = "gpt-4") -> list[int]:
+        import tiktoken
+        try:
+            encoder = tiktoken.encoding_for_model(model_name)
+        except Exception:
+            encoder = tiktoken.get_encoding("cl100k_base")
+        return encoder.encode(content)
+
+    @classmethod
+    def _truncate_list_by_token_size(
+        cls,
+        list_data: list[Any],
+        key: Callable[[Any], str],
+        max_token_size: int,
+        model_name: str = "gpt-4",
+    ) -> list[Any]:
+        if max_token_size <= 0:
+            return []
+        tokens = 0
+        for i, data in enumerate(list_data):
+            tokens += len(cls._encode_string_by_tiktoken(key(data), model_name=model_name))
+            if tokens > max_token_size:
+                return list_data[:i]
+        return list_data
+
     @classmethod
     def _compact_evidence_text(
         cls,
@@ -2451,16 +2477,15 @@ class AcademicGraphRAGService:
         grounding: dict[str, Any] | None = None,
         mode: str = "mix",
     ) -> str:
-        del grounding, mode
-        # ---------------------------------------------------------------------------
-        # Context-pruning limits (permanent fix for LLM token-limit overflow).
-        # Validated in batch testing: 15 entities + 15 relations + 5 sources keeps
-        # payloads at ~1 000–2 200 tokens, well within Qwen2.5-72B context budget.
-        # Override via environment variables for per-deployment tuning.
-        # ---------------------------------------------------------------------------
-        _MAX_ENTITY_ROWS = int(os.getenv("YUNESA_EVIDENCE_MAX_ENTITIES", "15"))
-        _MAX_RELATION_ROWS = int(os.getenv("YUNESA_EVIDENCE_MAX_RELATIONS", "15"))
-        _BASE_SOURCE_LIMIT = int(os.getenv("YUNESA_EVIDENCE_MAX_SOURCES", "5"))
+        del grounding
+        # Fetch limits according to original AcademicRAG parameters
+        param = AcademicQueryParam.from_runtime(mode)
+        is_global = param.resolved_kg_mode() == "global"
+        
+        # Max tokens from environment or QueryParam defaults
+        max_entity_tokens = int(os.getenv("MAX_TOKEN_ENTITY_DESC", str(param.max_token_for_local_context)))
+        max_relation_tokens = int(os.getenv("MAX_TOKEN_RELATION_DESC", str(param.max_token_for_global_context if is_global else param.max_token_for_local_context)))
+        max_text_tokens = int(os.getenv("MAX_TOKEN_TEXT_CHUNK", str(param.max_token_for_text_unit)))
 
         combined_graph = cls._merge_graph_results(
             [
@@ -2476,13 +2501,18 @@ class AcademicGraphRAGService:
             for node in combined_graph.get("nodes", [])
         }
 
-        # --- Entities (pruned to _MAX_ENTITY_ROWS) ---
+        # --- Entities (truncated based on description token size) ---
+        nodes = combined_graph.get("nodes", [])
+        truncated_nodes = cls._truncate_list_by_token_size(
+            nodes,
+            key=lambda x: str(x.get("properties", {}).get("description") or x.get("properties", {}).get("abstract") or x.get("name") or x.get("id") or ""),
+            max_token_size=max_entity_tokens
+        )
+
         entity_rows: list[list[Any]] = [
             ["id", "entity", "type", "description", "source"]
         ]
-        for index, node in enumerate(
-            combined_graph.get("nodes", [])[:_MAX_ENTITY_ROWS], start=1
-        ):
+        for index, node in enumerate(truncated_nodes, start=1):
             properties = node.get("properties") or {}
             description = (
                 properties.get("description")
@@ -2503,73 +2533,89 @@ class AcademicGraphRAGService:
                 ]
             )
 
-        # --- Relationships (pruned to _MAX_RELATION_ROWS) ---
+        # --- Relationships (truncated based on relationship description/triples token size) ---
+        all_relations = []
+        for edge in combined_graph.get("edges", []):
+            all_relations.append({
+                "is_edge": True,
+                "data": edge,
+                "description": str((edge.get("properties") or {}).get("description") or "")
+            })
+        for triple in (graph.get("triples", []) or []):
+            all_relations.append({
+                "is_edge": False,
+                "data": triple,
+                "description": f"{triple.get('source')} {triple.get('relation')} {triple.get('target')}"
+            })
+            
+        # Deduplicate relationships by source, type, and target
+        relationship_signatures: set[tuple[str, str, str]] = set()
+        deduped_relations = []
+        for r in all_relations:
+            if r["is_edge"]:
+                source_id = str(r["data"].get("source_id") or r["data"].get("source") or "")
+                target_id = str(r["data"].get("target_id") or r["data"].get("target") or "")
+                relation = str(r["data"].get("type") or "RELATED_TO")
+            else:
+                source_id = str(r["data"].get("source") or "")
+                relation = str(r["data"].get("relation") or "RELATED_TO")
+                target_id = str(r["data"].get("target") or "")
+            sig = (source_id, relation, target_id)
+            if sig not in relationship_signatures:
+                relationship_signatures.add(sig)
+                deduped_relations.append(r)
+
+        truncated_relations = cls._truncate_list_by_token_size(
+            deduped_relations,
+            key=lambda x: x["description"],
+            max_token_size=max_relation_tokens
+        )
+
         relationship_rows: list[list[Any]] = [
             ["id", "source", "target", "relation", "description", "source"]
         ]
-        relationship_signatures: set[tuple[str, str, str]] = set()
-        for index, edge in enumerate(
-            combined_graph.get("edges", [])[:_MAX_RELATION_ROWS], start=1
-        ):
-            properties = edge.get("properties") or {}
-            source_id = str(edge.get("source_id") or edge.get("source") or "")
-            target_id = str(edge.get("target_id") or edge.get("target") or "")
-            relation = str(edge.get("type") or "RELATED_TO")
-            relationship_signatures.add((source_id, relation, target_id))
-            relationship_rows.append(
-                [
-                    index,
-                    node_names.get(source_id, source_id),
-                    node_names.get(target_id, target_id),
-                    relation,
-                    cls._clip_text(properties.get("description") or "", 600),
-                    properties.get("source") or "neo4j",
-                ]
-            )
-        # Fill remaining relation slots from raw triples (deduplicated)
-        remaining_relation_slots = max(
-            0, _MAX_RELATION_ROWS - (len(relationship_rows) - 1)
-        )
-        for triple in (graph.get("triples", []) or [])[:remaining_relation_slots * 2]:
-            if len(relationship_rows) - 1 >= _MAX_RELATION_ROWS:
-                break
-            source = str(triple.get("source") or "")
-            relation = str(triple.get("relation") or "RELATED_TO")
-            target = str(triple.get("target") or "")
-            signature = (source, relation, target)
-            if not source or not target or signature in relationship_signatures:
-                continue
-            relationship_rows.append(
-                [
-                    len(relationship_rows),
-                    source,
-                    target,
-                    relation,
-                    "",
-                    "neo4j",
-                ]
-            )
-            relationship_signatures.add(signature)
+        for index, r in enumerate(truncated_relations, start=1):
+            if r["is_edge"]:
+                edge = r["data"]
+                properties = edge.get("properties") or {}
+                source_id = str(edge.get("source_id") or edge.get("source") or "")
+                target_id = str(edge.get("target_id") or edge.get("target") or "")
+                relation = str(edge.get("type") or "RELATED_TO")
+                relationship_rows.append(
+                    [
+                        index,
+                        node_names.get(source_id, source_id),
+                        node_names.get(target_id, target_id),
+                        relation,
+                        cls._clip_text(properties.get("description") or "", 600),
+                        properties.get("source") or "neo4j",
+                    ]
+                )
+            else:
+                triple = r["data"]
+                source = str(triple.get("source") or "")
+                relation = str(triple.get("relation") or "RELATED_TO")
+                target = str(triple.get("target") or "")
+                relationship_rows.append(
+                    [
+                        index,
+                        source,
+                        target,
+                        relation,
+                        "",
+                        "neo4j",
+                    ]
+                )
 
-        # --- Sources (limit scales with query type, anchored at _BASE_SOURCE_LIMIT) ---
-        structured_counts = (
-            academic.get("structured_counts", {}) if isinstance(academic, dict) else {}
+        # --- Sources (truncated based on content token size) ---
+        truncated_chunks = cls._truncate_list_by_token_size(
+            chunks or [],
+            key=lambda x: str(x.get("content") or ""),
+            max_token_size=max_text_tokens
         )
-        author_publication_meta = structured_counts.get("author_publications", {})
-        if (
-            academic
-            and academic.get("author_publications")
-            and author_publication_meta.get("enumeration_query")
-        ):
-            # Enumeration queries ("list all papers by X") warrant more source rows
-            source_limit = int(os.getenv("YUNESA_EVIDENCE_ENUM_MAX_SOURCES", "24"))
-        elif academic and academic.get("lecturer_topic_publications"):
-            source_limit = int(os.getenv("YUNESA_EVIDENCE_TOPIC_MAX_SOURCES", "12"))
-        else:
-            source_limit = _BASE_SOURCE_LIMIT
 
         source_rows: list[list[Any]] = [["id", "source", "content", "score"]]
-        for index, chunk in enumerate((chunks or [])[:source_limit], start=1):
+        for index, chunk in enumerate(truncated_chunks, start=1):
             source_rows.append(
                 [
                     index,

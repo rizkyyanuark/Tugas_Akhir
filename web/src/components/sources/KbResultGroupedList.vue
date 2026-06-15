@@ -54,8 +54,26 @@
 
     <div v-if="hasAcademicEvidence || hasGraphEvidence" class="graph-evidence">
       <div class="evidence-header">
-        <Network :size="14" />
-        <span>Graph and Academic Evidence</span>
+        <div class="header-left">
+          <Network :size="14" />
+          <span>Graph and Academic Evidence</span>
+        </div>
+        <div v-if="graphCounts.nodes > 0" class="evidence-tabs">
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'visual' }"
+            @click="activeTab = 'visual'"
+          >
+            <Network :size="12" /> Visual Graph
+          </button>
+          <button
+            class="tab-btn"
+            :class="{ active: activeTab === 'list' }"
+            @click="activeTab = 'list'"
+          >
+            <List :size="12" /> Triples List
+          </button>
+        </div>
       </div>
       <div class="evidence-metrics">
         <span v-if="groundingStatus" class="metric-chip">Grounding: {{ groundingStatus }}</span>
@@ -82,7 +100,26 @@
         >
         <span v-if="graphCounts.triples" class="metric-chip">Triples: {{ graphCounts.triples }}</span>
       </div>
-      <div v-if="graphTriples.length" class="triple-list">
+
+      <!-- Graph Canvas Visualizer -->
+      <div v-show="activeTab === 'visual' && graphCounts.nodes > 0" class="graph-visual-wrapper">
+        <GraphCanvas
+          ref="graphRef"
+          :graph-data="graph.graphData"
+          @node-click="graph.handleNodeClick"
+          @edge-click="graph.handleEdgeClick"
+          @canvas-click="graph.handleCanvasClick"
+        />
+        <!-- Floating details card -->
+        <GraphDetailPanel
+          :visible="graph.showDetailDrawer"
+          :item="graph.selectedItem"
+          :type="graph.selectedItemType"
+          @close="graph.handleCanvasClick"
+        />
+      </div>
+
+      <div v-show="activeTab === 'list' || graphCounts.nodes === 0" v-if="graphTriples.length" class="triple-list">
         <div v-for="(triple, index) in graphTriples" :key="getTripleKey(triple, index)" class="triple-item">
           <span class="triple-source">{{ triple.source }}</span>
           <span class="triple-relation">{{ triple.relation }}</span>
@@ -108,9 +145,12 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { FileText, ChevronDown, Eye, Network } from 'lucide-vue-next'
+import { computed, ref, watch, reactive } from 'vue'
+import { FileText, ChevronDown, Eye, Network, List } from 'lucide-vue-next'
 import KbChunkDetailModal from './KbChunkDetailModal.vue'
+import GraphCanvas from '@/components/GraphCanvas.vue'
+import GraphDetailPanel from '@/components/GraphDetailPanel.vue'
+import { useGraph } from '@/composables/useGraph'
 
 const props = defineProps({
   chunks: {
@@ -146,6 +186,24 @@ const props = defineProps({
     default: ''
   }
 })
+
+const graphRef = ref(null)
+const graph = reactive(useGraph(graphRef))
+const activeTab = ref('visual')
+
+watch(
+  () => props.graph,
+  (newGraph) => {
+    if (newGraph && (newGraph.nodes?.length > 0 || newGraph.edges?.length > 0)) {
+      graph.updateGraphData(newGraph.nodes, newGraph.edges)
+      activeTab.value = 'visual'
+    } else {
+      graph.clearGraph()
+      activeTab.value = 'list'
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 const expandedFiles = ref(new Set())
 const modalVisible = ref(false)
@@ -431,12 +489,50 @@ const openChunkDetail = (chunk, index) => {
     .evidence-header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
       padding: 8px 12px;
       background: var(--gray-10);
       color: var(--gray-800);
       font-size: 13px;
       font-weight: 500;
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .evidence-tabs {
+        display: flex;
+        gap: 6px;
+
+        .tab-btn {
+          background: transparent;
+          border: 1px solid transparent;
+          color: var(--gray-600);
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: var(--gray-50);
+            color: var(--gray-800);
+          }
+
+          &.active {
+            background: var(--main-50);
+            color: var(--main-700);
+            border-color: var(--main-100);
+          }
+        }
+      }
     }
 
     .evidence-metrics {
@@ -453,6 +549,27 @@ const openChunkDetail = (chunk, index) => {
         color: var(--gray-700);
         background: var(--gray-25);
         font-size: 11px;
+      }
+    }
+
+    .graph-visual-wrapper {
+      position: relative;
+      width: 100%;
+      height: 350px;
+      overflow: hidden;
+      border-top: 1px solid var(--gray-100);
+      background: var(--gray-25);
+
+      :deep(.detail-card) {
+        top: 10px;
+        right: 10px;
+        width: 240px;
+        max-height: calc(100% - 20px);
+
+        .info-card {
+          border-radius: 6px;
+          border-color: var(--gray-200);
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 
@@ -981,7 +982,14 @@ def test_tool_response_preserves_raw_citation_payload() -> None:
 
 
 def test_tool_response_returns_author_publication_enumeration_window() -> None:
-    author_rows = [{"title": f"Paper {index}"} for index in range(1, 31)]
+    author_rows = [
+        {
+            "title": f"Paper {index}",
+            "year": 2020 + (index % 5),
+            "authors": "Yuni Yamasari",
+        }
+        for index in range(1, 31)
+    ]
     payload = {
         "evidence_text": "-----Entities-----",
         "chunks": [],
@@ -1010,9 +1018,16 @@ def test_tool_response_returns_author_publication_enumeration_window() -> None:
     )
 
     tool_payload = response.update["messages"][0].content
+    parsed_payload = json.loads(tool_payload)
     assert "Paper 30" in tool_payload
     assert '"returned": 30' in tool_payload
     assert '"complete": true' in tool_payload
+    assert "answer_hints" in parsed_payload
+    assert "author_publications_markdown" in parsed_payload["answer_hints"]
+    assert "30. Paper 30" in parsed_payload["answer_hints"]["author_publications_markdown"]
+    assert "Do not rename titles" in parsed_payload["answer_hints"][
+        "author_publications_instruction"
+    ]
 
 
 def test_broad_graph_triples_are_supporting_not_direct_evidence() -> None:
