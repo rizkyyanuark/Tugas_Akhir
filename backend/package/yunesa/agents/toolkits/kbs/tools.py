@@ -156,7 +156,7 @@ async def get_mindmap(kb_name: str, runtime: ToolRuntime) -> str:
 class QueryKBInput(BaseModel):
     """Input model for knowledge base retrieval."""
 
-    kb_name: str = Field(description="Knowledge base name to query")
+    kb_name: str = Field(description="Knowledge base name to query. For academic, lecturer, or publication questions, always query using 'yunesa_academic_kg'.")
     query_text: str = Field(
         description=(
             "Keywords for retrieval. Prefer focused keywords that help answer the question "
@@ -391,6 +391,69 @@ def _academic_tool_response(
             "'notable publications' unless the user explicitly asks for a summary."
         )
 
+    # Helper functions to prune publication items and remove verbose fields like abstract and tldr to save context tokens.
+    def _prune_pub(pub):
+        if not isinstance(pub, dict):
+            return pub
+        return {
+            k: v for k, v in {
+                "title": pub.get("title"),
+                "year": pub.get("year"),
+                "authors": pub.get("authors"),
+                "doi": pub.get("doi"),
+                "venue": pub.get("venue"),
+                "paper_id": pub.get("paper_id"),
+            }.items() if v is not None
+        }
+
+    def _prune_pub_detail(pub):
+        if not isinstance(pub, dict):
+            return pub
+        return {
+            k: v for k, v in {
+                "title": pub.get("title"),
+                "year": pub.get("year"),
+                "authors": pub.get("authors"),
+                "doi": pub.get("doi"),
+                "venue": pub.get("venue"),
+                "concepts": pub.get("concepts"),
+                "paper_id": pub.get("paper_id"),
+            }.items() if v is not None
+        }
+
+    def _prune_lecturer_topic(pub):
+        if not isinstance(pub, dict):
+            return pub
+        return {
+            k: v for k, v in {
+                "lecturer": pub.get("lecturer"),
+                "affiliation": pub.get("affiliation"),
+                "matched_terms": pub.get("matched_terms"),
+                "title": pub.get("title"),
+                "year": pub.get("year"),
+                "authors": pub.get("authors"),
+                "doi": pub.get("doi"),
+                "paper_id": pub.get("paper_id"),
+            }.items() if v is not None
+        }
+
+    # Build a heavily pruned payload specifically for the LLM's context.
+    # Exclude verbose raw subgraphs and chunks since the formatted CSV representation
+    # is already provided in the `summary` field, and full metadata is preserved in `citations`
+    # for frontend rendering/observability.
+    llm_academic_retrieval = {
+        "status": academic.get("status"),
+        "mode": academic.get("mode"),
+        "academicrag_mode": academic.get("academicrag_mode"),
+        "kg_mode": academic.get("kg_mode"),
+        "author_publications": [_prune_pub(p) for p in author_publication_rows],
+        "publication_details": [_prune_pub_detail(p) for p in academic.get("publication_details", []) or []],
+        "lecturer_topic_publications": [_prune_lecturer_topic(p) for p in academic.get("lecturer_topic_publications", []) or []],
+        "topic_frequencies": academic.get("topic_frequencies", [])[:15] if academic.get("topic_frequencies") else [],
+        "collaborations": academic.get("collaborations", [])[:24] if academic.get("collaborations") else [],
+        "structured_counts": academic.get("structured_counts", {}),
+    }
+
     tool_payload = {
         "type": "academic_graphrag_result",
         "query": query_text,
@@ -399,37 +462,7 @@ def _academic_tool_response(
         "summary": payload.get("evidence_text") or "",
         "answer_hints": answer_hints,
         "grounding": payload.get("grounding", {}),
-        "chunks": payload.get("chunks", []),
-        "academic_retrieval": {
-            "status": academic.get("status"),
-            "mode": academic.get("mode"),
-            "academicrag_mode": academic.get("academicrag_mode"),
-            "kg_mode": academic.get("kg_mode"),
-            "graph_name": academic.get("graph_name"),
-            "milvus_database": academic.get("milvus_database"),
-            "paper_chunks": academic.get("paper_chunks", [])[:8],
-            "author_publications": author_publication_rows,
-            "publication_details": academic.get("publication_details", [])[:12],
-            "lecturer_topic_publications": academic.get("lecturer_topic_publications", [])[:24],
-            "topic_frequencies": academic.get("topic_frequencies", [])[:15],
-            "collaborations": academic.get("collaborations", [])[:24],
-            "structured_counts": academic.get("structured_counts", {}),
-            "keywords": academic.get("keywords", [])[:8],
-            "entities": academic.get("entities", [])[:12],
-            "relationships": academic.get("relationships", [])[:12],
-            "subgraph": academic.get("subgraph", {}),
-            "keyword_decomposition": keyword_decomposition,
-            "local_query": academic.get("local_query"),
-            "global_query": academic.get("global_query"),
-            "route_plan": academic.get("route_plan", {}),
-            "diagnostics": academic.get("diagnostics", {}),
-        },
-        "graph": {
-            "status": graph_context.get("status"),
-            "nodes": graph_context.get("nodes", [])[:24],
-            "edges": graph_context.get("edges", [])[:32],
-            "triples": graph_context.get("triples", [])[:32],
-        },
+        "academic_retrieval": llm_academic_retrieval,
         "answer_policy": (
             "Use only retrieved evidence. If grounding.status is empty or supporting_only, "
             "state that the requested academic data was not found and do not answer from prior knowledge. "
@@ -441,6 +474,7 @@ def _academic_tool_response(
             "not rename, paraphrase, or invent publication titles."
         ),
     }
+
     return Command(
         update={
             "citations": [citations],
@@ -501,7 +535,7 @@ async def query_kb(
     related document chunks from the target knowledge base by keywords.
 
     Args:
-        kb_name: Knowledge base name
+        kb_name: Knowledge base name. For academic, lecturer, or publication questions, always use 'yunesa_academic_kg'.
         query_text: Retrieval keywords
         file_name: Optional filename filter
 
