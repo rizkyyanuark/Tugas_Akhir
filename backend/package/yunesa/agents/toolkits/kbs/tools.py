@@ -306,38 +306,31 @@ def _format_author_publication_answer_hint(
     *,
     limit: int,
 ) -> str:
-    lines: list[str] = []
+    """Format author publications as a Markdown table for the LLM answer hint."""
+    table_rows: list[str] = []
     for index, row in enumerate(rows[:limit], start=1):
         title = str(row.get("title") or "").strip()
         if not title:
             continue
 
-        details: list[str] = []
-        year = str(row.get("year") or "").strip()
-        if year:
-            details.append(f"year: {year}")
-
-        authors = row.get("authors")
-        if isinstance(authors, list):
-            author_text = ", ".join(
-                str(author).strip() for author in authors if str(author).strip()
-            )
-        else:
-            author_text = str(authors or row.get("author") or "").strip()
-        if author_text:
-            details.append(f"authors: {author_text}")
+        year = str(row.get("year") or "").strip() or "-"
 
         venue = str(row.get("venue") or "").strip()
-        if venue:
-            details.append(f"venue: {venue}")
-
         doi = str(row.get("doi") or "").strip()
-        if doi:
-            details.append(f"doi: {doi}")
+        venue_doi = venue or (f"doi:{doi}" if doi else "-")
 
-        suffix = f" ({'; '.join(details)})" if details else ""
-        lines.append(f"{index}. {title}{suffix}")
-    return "\n".join(lines)
+        # Escape pipe characters in title to avoid breaking the table
+        title_safe = title.replace("|", "\\|")
+        venue_safe = venue_doi.replace("|", "\\|")
+        table_rows.append(f"| {index} | {title_safe} | {year} | {venue_safe} |")
+
+    if not table_rows:
+        return ""
+
+    header = "| No | Judul | Tahun | Venue/DOI |"
+    separator = "|---|---|---|---|"
+    return "\n".join([header, separator] + table_rows)
+
 
 
 def _academic_tool_response(
@@ -463,6 +456,12 @@ def _academic_tool_response(
         "answer_hints": answer_hints,
         "grounding": payload.get("grounding", {}),
         "academic_retrieval": llm_academic_retrieval,
+        # graph key is read by the frontend for visualization only (not sent to LLM reasoning)
+        "graph": {
+            "nodes": graph_context.get("nodes", [])[:32],
+            "edges": graph_context.get("edges", [])[:48],
+            "triples": graph_context.get("triples", [])[:32],
+        },
         "answer_policy": (
             "Use only retrieved evidence. If grounding.status is empty or supporting_only, "
             "state that the requested academic data was not found and do not answer from prior knowledge. "
@@ -471,7 +470,12 @@ def _academic_tool_response(
             "is false, say that the list is capped by the retrieval limit. For exact publication "
             "author/collaboration questions, prioritize publication_details over general collaborations. "
             "When answer_hints.author_publications_markdown is present, use that exact list and do "
-            "not rename, paraphrase, or invent publication titles."
+            "not rename, paraphrase, or invent publication titles. "
+            "FORMATTING: Always present publication lists as a numbered Markdown table with columns "
+            "No | Judul | Tahun | Venue/DOI. Open with a brief one-sentence contextual summary before "
+            "the table. Close with a concise paragraph noting the total count and any retrieval cap. "
+            "Use bold (**text**) for key terms. Never output a plain bullet list for publication "
+            "queries — always use the numbered table format."
         ),
     }
 

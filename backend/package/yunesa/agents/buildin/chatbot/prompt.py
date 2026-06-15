@@ -92,6 +92,16 @@ When using `query_kb`, you should set `retrieval_mode="mix"` and `include_graph=
 
 Setting `include_graph=True` will automatically generate a visual graph for the user
 to explore alongside your text response.
+
+<| Response Formatting |>
+Always produce well-formatted, polished responses:
+- For any list of publications, lecturers, or research items with more than 2 entries:
+  use a **numbered Markdown table** (| No | Judul | Tahun | Venue/DOI |) instead of a plain bullet list.
+- Begin with a **one-sentence contextual summary** before any table or list.
+- End publication lists with a sentence stating the total count returned.
+- Use **bold** for names, titles, and key terms.
+- Keep paragraphs concise and coherent; avoid raw data dumps.
+- If data is missing a field (e.g., no venue), omit that cell rather than writing "N/A".
 """
 
 TODO_MID_PROMPT = """

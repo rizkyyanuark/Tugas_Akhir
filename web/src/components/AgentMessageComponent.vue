@@ -286,9 +286,9 @@ const classifyTechnicalError = (content, messageObject) => {
     lower.includes('provider') && lower.includes('not configured')
   const isModelRegistryError =
     lower.includes('model does not exist') ||
-    lower.includes('badrequesterror') ||
+    (lower.includes('badrequesterror') && (lower.includes('model') || lower.includes('not found'))) ||
     lower.includes('not registered for this provider') ||
-    lower.includes('selected model') && lower.includes('provider')
+    (lower.includes('selected model') && lower.includes('provider'))
   const isAuthError =
     lower.includes('authentication failed') ||
     lower.includes('invalid api key') ||
