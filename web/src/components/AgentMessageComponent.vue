@@ -272,32 +272,37 @@ const validToolCalls = computed(() => {
   })
 })
 
-const classifyTechnicalError = (content, messageObject) => {
-  const text = String(
-    content ||
-      messageObject?.error_message ||
-      messageObject?.extra_metadata?.error_message ||
-      ''
-  ).trim()
-  if (!text) return null
+const classifyTechnicalError = (messageObject) => {
+  // Only classify errors from explicit error fields — never from content text.
+  // Content-based keyword matching caused false positives when tool call JSON
+  // leaked into the displayed content (e.g. <fungsi=query_kb>{...}).
+  const errorType = messageObject?.error_type || messageObject?.extra_metadata?.error_type
+  const errorMsg = String(
+    messageObject?.error_message || messageObject?.extra_metadata?.error_message || ''
+  ).toLowerCase()
 
-  const lower = text.toLowerCase()
-  const isProviderConfigError =
-    lower.includes('provider') && lower.includes('not configured')
-  const isModelRegistryError =
-    lower.includes('model does not exist') ||
-    (lower.includes('badrequesterror') && (lower.includes('model') || lower.includes('not found'))) ||
-    lower.includes('not registered for this provider') ||
-    (lower.includes('selected model') && lower.includes('provider'))
+  if (!errorType && !errorMsg) return null
+
   const isAuthError =
-    lower.includes('authentication failed') ||
-    lower.includes('invalid api key') ||
-    lower.includes('api key') && (lower.includes('missing') || lower.includes('invalid'))
-  const isProviderRuntimeError =
-    lower.includes('model call failed') ||
-    lower.includes('failed after') && lower.includes('attempt')
+    errorMsg.includes('authentication failed') ||
+    errorMsg.includes('invalid api key') ||
+    (errorMsg.includes('api key') && (errorMsg.includes('missing') || errorMsg.includes('invalid')))
 
-  if (isProviderConfigError || isModelRegistryError || isAuthError || isProviderRuntimeError) {
+  const isProviderConfigError =
+    errorMsg.includes('provider') && errorMsg.includes('not configured')
+
+  const isModelRegistryError =
+    errorType === 'model_unavailable' ||
+    errorMsg.includes('model does not exist') ||
+    errorMsg.includes('not registered for this provider') ||
+    errorMsg.includes('badrequesterror') ||
+    (errorMsg.includes('selected model') && errorMsg.includes('provider'))
+
+  const isProviderRuntimeError =
+    errorMsg.includes('model call failed') ||
+    (errorMsg.includes('failed after') && errorMsg.includes('attempt'))
+
+  if (isAuthError || isProviderConfigError || isModelRegistryError || isProviderRuntimeError) {
     if (isAuthError || isProviderConfigError) {
       return {
         title: 'AI provider is not configured',
@@ -349,7 +354,7 @@ const parsedData = computed(() => {
   }
 })
 
-const technicalError = computed(() => classifyTechnicalError(parsedData.value.content, props.message))
+const technicalError = computed(() => classifyTechnicalError(props.message))
 </script>
 
 <style lang="less" scoped>

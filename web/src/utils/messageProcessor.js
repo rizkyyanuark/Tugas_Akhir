@@ -4,21 +4,36 @@
 export class MessageProcessor {
   static parseTextualToolCall(content) {
     if (typeof content !== 'string') return null
-    const match = content.match(
+
+    // Format 1: <function(name){...}> — standard textual tool call
+    const stdMatch = content.match(
       /^\s*<function\(([A-Za-z_][\w.-]*)\)\s*(\{[\s\S]*\})\s*(?:<\/function>)?>\s*$/
     )
-    if (!match) return null
-
-    try {
-      const args = JSON.parse(match[2])
-      if (!args || typeof args !== 'object' || Array.isArray(args)) return null
-      return {
-        name: match[1],
-        args
+    if (stdMatch) {
+      try {
+        const args = JSON.parse(stdMatch[2])
+        if (!args || typeof args !== 'object' || Array.isArray(args)) return null
+        return { name: stdMatch[1], args }
+      } catch {
+        return null
       }
-    } catch {
-      return null
     }
+
+    // Format 2: <fungsi=name>{...} — format emitted by some Groq/Llama models
+    const funsiMatch = content.match(
+      /^\s*<fungsi=([A-Za-z_][\w.-]*)>\s*(\{[\s\S]*\})\s*$/
+    )
+    if (funsiMatch) {
+      try {
+        const args = JSON.parse(funsiMatch[2])
+        if (!args || typeof args !== 'object' || Array.isArray(args)) return null
+        return { name: funsiMatch[1], args }
+      } catch {
+        return null
+      }
+    }
+
+    return null
   }
 
   static normalizeTextualToolCallMessage(message) {
