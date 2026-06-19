@@ -122,6 +122,75 @@ class AcademicGraphRAGService:
     def uses_graph(cls, mode: str, include_graph: bool = False) -> bool:
         return mode in {"subgraph", "graph", "hybrid", "mix"}
 
+    @classmethod
+    def route_retrieval_mode(
+        cls,
+        query_text: str,
+        *,
+        requested_mode: str | None = None,
+        include_graph: bool = False,
+    ) -> dict[str, Any]:
+        """Choose an effective retrieval mode for default academic UI queries.
+
+        The public API still exposes the AcademicRAG modes directly. This router
+        only intervenes when callers use the broad default (`mix`). Explicit
+        modes stay untouched so evaluation scripts can compare modes cleanly.
+        """
+        normalized_mode = cls.normalize_mode(requested_mode, include_graph=include_graph)
+        if normalized_mode not in {"mix"}:
+            return {
+                "requested_mode": normalized_mode,
+                "effective_mode": normalized_mode,
+                "auto_routed": False,
+                "reason": "explicit_mode",
+                "intents": AcademicQueryPlanner.classify_intents(query_text),
+            }
+
+        intents = AcademicQueryPlanner.classify_intents(query_text)
+        text = str(query_text or "").casefold()
+        reasons: list[str] = []
+        effective_mode = normalized_mode
+
+        if cls._is_topic_frequency_query(query_text):
+            effective_mode = "subgraph"
+            reasons.append("topic_frequency_structured_query")
+        elif cls._is_collaboration_query(query_text):
+            effective_mode = "subgraph"
+            reasons.append("collaboration_structured_query")
+        elif cls._is_author_publication_query(query_text):
+            effective_mode = "subgraph"
+            reasons.append("author_publication_structured_query")
+        elif cls._has_specific_publication_reference(query_text):
+            effective_mode = "subgraph"
+            reasons.append("publication_detail_structured_query")
+        elif cls._is_lecturer_topic_query(query_text):
+            effective_mode = "subgraph"
+            reasons.append("lecturer_topic_structured_query")
+        elif any(
+            marker in text
+            for marker in (
+                "terhubung",
+                "hubungan",
+                "relasi",
+                "path",
+                "jalur",
+                "multi-hop",
+                "multihop",
+                "antara dosen",
+                "dosen dan",
+            )
+        ):
+            effective_mode = "hybrid"
+            reasons.append("multi_hop_or_relationship_query")
+
+        return {
+            "requested_mode": normalized_mode,
+            "effective_mode": effective_mode,
+            "auto_routed": effective_mode != normalized_mode,
+            "reason": ",".join(reasons) if reasons else "default_mix",
+            "intents": intents,
+        }
+
     @staticmethod
     def storage_layer() -> dict[str, Any]:
         return {
@@ -547,6 +616,36 @@ class AcademicGraphRAGService:
                         candidates.append(title_candidate)
 
         return cls._dedupe_terms(candidates, max_terms=4)
+
+    @classmethod
+    def _has_specific_publication_reference(cls, query_text: str) -> bool:
+        """Detect a concrete publication reference, not a generic paper search."""
+        text = re.sub(r"\s+", " ", str(query_text or "")).strip()
+        lowered = text.casefold()
+        if re.search(r"""["â€œ'][^"â€']{12,240}["â€']""", text):
+            return True
+        if any(marker in lowered for marker in ("berjudul", "judul ", "entitled", "title ")):
+            return bool(cls._extract_publication_title_candidates(query_text))
+        if any(
+            marker in lowered
+            for marker in (
+                "paper apa",
+                "apa paper",
+                "publikasi apa",
+                "apa publikasi",
+                "penelitian apa",
+                "apa penelitian",
+                "membahas",
+                "tentang",
+                "carikan",
+                "cari ",
+                "find ",
+                "which paper",
+                "what paper",
+            )
+        ):
+            return False
+        return bool(cls._extract_publication_title_candidates(query_text))
 
     @staticmethod
     def _format_values(value: Any) -> str:
@@ -2675,6 +2774,8 @@ class AcademicGraphRAGService:
         keyword_decomposition = academic.get("keyword_decomposition") or {}
         return {
             "mode": payload.get("mode"),
+            "requested_mode": payload.get("requested_mode"),
+            "route_decision": payload.get("route_decision"),
             "kb_name": (payload.get("knowledge_base") or {}).get("name"),
             "collection_id": (payload.get("knowledge_base") or {}).get("collection_id"),
             "chunks": len(payload.get("chunks", []) or []),
@@ -2708,7 +2809,54 @@ class AcademicGraphRAGService:
         academic: dict[str, Any],
         query_text: str = "",
     ) -> dict[str, Any]:
-        direct_count = len(chunks)
+        # Extract query terms and filter out generic/question stopwords
+        terms = cls._query_terms(query_text, max_terms=24)
+        generic_stopwords = {
+            # English
+            "paper", "papers", "publication", "publications", "article", "articles", "lecturer", "lecturers",
+            "researcher", "researchers", "professor", "professors", "author", "authors", "write", "written",
+            "topic", "topics", "study", "studies", "research", "researching", "list", "find", "search", "show",
+            "get", "about", "using", "use", "used", "method", "methods", "algorithm", "algorithms",
+            "dataset", "datasets", "model", "models", "approach", "approaches", "framework", "frameworks",
+            "results", "result", "performance", "analysis", "evaluation", "evaluate", "implement", "implementation",
+            # Indonesian
+            "paper", "publikasi", "artikel", "dosen", "peneliti", "penulis", "tulis", "ditulis",
+            "topik", "penelitian", "riset", "daftar", "cari", "carikan", "tunjukkan", "dapatkan",
+            "tentang", "menggunakan", "penerapan", "implementasi", "metode", "algoritma", "dataset",
+            "model", "pendekatan", "kerangka", "hasil", "performa", "analisa", "analisis", "evaluasi",
+            "siapa", "apa", "bagaimana", "dimana", "kapan", "mengapa", "kenapa", "saja", "yang", "dengan",
+            "pada", "dan", "untuk", "oleh", "di", "ke", "dari", "adalah", "yaitu", "yakni", "sebagai",
+            "dalam", "secara", "bahwa", "ini", "itu", "saya", "kami", "mereka", "kita", "kamu", "dia",
+        }
+        topic_terms = [t.lower() for t in terms if t.lower() not in generic_stopwords and len(t) >= 3]
+
+        # Check if topic terms are found in retrieved chunks, academic details, or graph nodes/triples
+        has_topic_match = True
+        if topic_terms:
+            content_parts = []
+            for chunk in chunks or []:
+                content_parts.append(str(chunk.get("content") or ""))
+                content_parts.append(str(chunk.get("source") or ""))
+
+            for key in ("publication_details", "author_publications", "lecturer_topic_publications", "topic_frequencies", "collaborations"):
+                for item in academic.get(key, []) or []:
+                    if isinstance(item, dict):
+                        content_parts.extend(str(val) for val in item.values() if val)
+
+            for node in graph.get("nodes", []) or []:
+                if isinstance(node, dict):
+                    content_parts.append(str(node.get("name") or ""))
+                    content_parts.append(str(node.get("label") or ""))
+
+            for triple in graph.get("triples", []) or []:
+                if isinstance(triple, dict):
+                    content_parts.append(str(triple.get("source") or ""))
+                    content_parts.append(str(triple.get("target") or ""))
+
+            search_text = " ".join(content_parts).lower()
+            has_topic_match = any(term in search_text for term in topic_terms)
+
+        direct_count = len(chunks) if has_topic_match else 0
         structured_direct_count = sum(
             len(academic.get(key, []) or [])
             for key in (
@@ -2718,7 +2866,7 @@ class AcademicGraphRAGService:
                 "topic_frequencies",
                 "collaborations",
             )
-        )
+        ) if has_topic_match else 0
         direct_count += structured_direct_count
         relation_intent = any(
             marker in str(query_text or "").casefold()
@@ -2735,7 +2883,7 @@ class AcademicGraphRAGService:
         )
         graph_direct_count = (
             len(graph.get("triples", []) or [])
-            if relation_intent and structured_direct_count == 0
+            if relation_intent and structured_direct_count == 0 and has_topic_match
             else 0
         )
         direct_count += graph_direct_count
@@ -2912,7 +3060,13 @@ class AcademicGraphRAGService:
             },
             tags=["context-assembly", "hybrid-retrieval"],
         ) as span:
-            mode = self.normalize_mode(retrieval_mode, include_graph=include_graph)
+            requested_mode = self.normalize_mode(retrieval_mode, include_graph=include_graph)
+            route_decision = self.route_retrieval_mode(
+                intent_query,
+                requested_mode=requested_mode,
+                include_graph=include_graph,
+            )
+            mode = str(route_decision["effective_mode"])
             resolved_graph_name = self._academic_graph_name(graph_name)
             author_publication_enumeration_query = (
                 self._is_author_publication_enumeration_query(intent_query)
@@ -2939,6 +3093,7 @@ class AcademicGraphRAGService:
                 keyword_top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_KEYWORD_TOP_K", "8")),
             )
             academic = dict(academic or {})
+            academic["route_decision"] = route_decision
             author_publications_raw = await self.query_author_publications(
                 intent_query,
                 graph_name=resolved_graph_name,
@@ -2980,7 +3135,7 @@ class AcademicGraphRAGService:
             # Only clear individual publication evidence for general collaboration queries.
             # If the query is about a specific publication (title candidate extracted),
             # we must keep the publication details to allow the LLM to verify sole-authorship.
-            has_specific_pub = bool(self._extract_publication_title_candidates(intent_query))
+            has_specific_pub = self._has_specific_publication_reference(intent_query)
             if publication_details and has_specific_pub:
                 collaborations = []
                 academic["collaborations"] = []
@@ -3073,6 +3228,8 @@ class AcademicGraphRAGService:
 
             payload = {
                 "mode": mode,
+                "requested_mode": requested_mode,
+                "route_decision": route_decision,
                 "query": query_text,
                 "original_query": intent_query,
                 "knowledge_base": {"name": kb_name, "collection_id": collection_id},

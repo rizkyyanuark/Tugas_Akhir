@@ -28,18 +28,25 @@ LECTURERS_DAG_COMMANDS = [
     "lec_load",
 ]
 
+KG_DAG_COMMANDS = [
+    "kg_load_data",
+    "kg_extract_entities",
+    "kg_build_graph",
+    "kg_write_stores",
+]
+
 
 def test_all_dag_commands_in_task_choices():
     from knowledge.etl.run_worker import TASK_CHOICES
 
-    for cmd in PAPERS_DAG_COMMANDS + LECTURERS_DAG_COMMANDS:
+    for cmd in PAPERS_DAG_COMMANDS + LECTURERS_DAG_COMMANDS + KG_DAG_COMMANDS:
         assert cmd in TASK_CHOICES, f"DAG command '{cmd}' missing from TASK_CHOICES"
 
 
 def test_task_registry_handlers_are_callable():
     from knowledge.etl.run_worker import TASK_REGISTRY
 
-    for cmd in PAPERS_DAG_COMMANDS + LECTURERS_DAG_COMMANDS:
+    for cmd in PAPERS_DAG_COMMANDS + LECTURERS_DAG_COMMANDS + KG_DAG_COMMANDS:
         assert cmd in TASK_REGISTRY, f"No handler registered for '{cmd}'"
         assert callable(TASK_REGISTRY[cmd]), f"Handler for '{cmd}' is not callable"
 
@@ -76,6 +83,20 @@ def test_papers_service_functions_importable():
     assert callable(run_supabase_insert)
 
 
+def test_kg_service_functions_importable():
+    from knowledge.etl.services.kg_service import (
+        run_kg_build,
+        run_kg_data_load,
+        run_kg_entity_extraction,
+        run_kg_write_stores,
+    )
+
+    assert callable(run_kg_data_load)
+    assert callable(run_kg_entity_extraction)
+    assert callable(run_kg_build)
+    assert callable(run_kg_write_stores)
+
+
 def test_scholar_scraping_requires_brightdata_proxy(monkeypatch):
     import knowledge.etl.services.unesa_papers as service
 
@@ -103,6 +124,34 @@ def test_document_type_normalization_for_enrichment():
     assert normalize_document_type("conference-paper") == "conference paper"
     assert normalize_document_type("proceedings-article") == "conference paper"
     assert normalize_document_type("Book Chapter") == "book chapter"
+
+
+def test_venue_name_normalization_for_enrichment():
+    from knowledge.etl.transform.enricher import normalize_venue_name
+
+    assert (
+        normalize_venue_name("Journal of Informatics and Computer Science (JINACS) 3 (04), 394-402, 2022")
+        == "Journal of Informatics and Computer Science (JINACS)"
+    )
+    assert (
+        normalize_venue_name("International Journal of Intelligent Engineering and Systems 13 (4), 156-170, 2020")
+        == "International Journal of Intelligent Engineering and Systems"
+    )
+    assert (
+        normalize_venue_name("Proceeding - 2020 3rd International Conference on Vocational Education and Electrical Engineering")
+        == "Proceeding - 2020 3rd International Conference on Vocational Education and Electrical Engineering"
+    )
+
+
+def test_keyword_cleaner_rejects_tag_cloud_artifact():
+    from knowledge.etl.transform.cleaner import clean_keyword_text
+
+    artifact = '= [{"text":"bahan bakar", "size":1}, {"text":"facebook", "size":1}]'
+
+    assert clean_keyword_text(artifact) == ""
+    assert clean_keyword_text("Machine Learning; Education | Support Vector Machine") == (
+        "machine learning,education,support vector machine"
+    )
 
 
 def test_supabase_loader_normalizes_document_type_before_upsert():
@@ -134,6 +183,7 @@ def test_supabase_loader_normalizes_document_type_before_upsert():
             [{
                 "Title": "Document Type Normalization Paper",
                 "Year": "2026",
+                "Journal": "Journal of Informatics and Computer Science (JINACS) 3 (04), 394-402, 2022",
                 "Document Type": "articles",
             }]
         )
@@ -143,6 +193,7 @@ def test_supabase_loader_normalizes_document_type_before_upsert():
     assert captured["table"] == "papers"
     assert captured["on_conflict"] == "paper_id"
     assert captured["rows"][0]["document_type"] == "article"
+    assert captured["rows"][0]["journal"] == "Journal of Informatics and Computer Science (JINACS)"
 
 
 def test_scopus_processing_helper_cleans_and_deduplicates(monkeypatch):

@@ -33,6 +33,37 @@ def test_academic_modes_preserve_reference_semantics() -> None:
     ]
 
 
+def test_default_mix_routes_structured_academic_queries() -> None:
+    author_route = AcademicGraphRAGService.route_retrieval_mode(
+        "Apa saja paper yang ditulis oleh Yuni Yamasari?",
+        requested_mode="mix",
+    )
+    assert author_route["effective_mode"] == "subgraph"
+    assert author_route["auto_routed"] is True
+    assert author_route["reason"] == "author_publication_structured_query"
+
+    lecturer_topic_route = AcademicGraphRAGService.route_retrieval_mode(
+        "Dosen S2 Informatika mana yang menulis paper tentang machine learning di bidang pendidikan?",
+        requested_mode="mix",
+    )
+    assert lecturer_topic_route["effective_mode"] == "subgraph"
+    assert lecturer_topic_route["intents"]["lecturer_topic_publications"] is True
+
+    factual_route = AcademicGraphRAGService.route_retrieval_mode(
+        "Paper apa yang membahas retinopati diabetik dengan EfficientNet dan dataset APTOS?",
+        requested_mode="mix",
+    )
+    assert factual_route["effective_mode"] == "mix"
+    assert factual_route["auto_routed"] is False
+
+    explicit_vector_route = AcademicGraphRAGService.route_retrieval_mode(
+        "Apa paper tentang EfficientNet?",
+        requested_mode="vector",
+    )
+    assert explicit_vector_route["effective_mode"] == "vector"
+    assert explicit_vector_route["auto_routed"] is False
+
+
 def test_normalize_milvus_uri_uses_explicit_https_port() -> None:
     assert (
         normalize_milvus_uri("https://example.serverless.zilliz.com")
@@ -1083,6 +1114,58 @@ def test_tool_response_returns_author_publication_enumeration_window() -> None:
     ]
 
 
+def test_tool_response_adds_structured_answer_hints_for_relational_rows() -> None:
+    payload = {
+        "evidence_text": "-----Entities-----",
+        "chunks": [],
+        "graph": {"status": "ok", "nodes": [], "edges": [], "triples": []},
+        "academic_retrieval": {
+            "status": "ok",
+            "route_decision": {
+                "requested_mode": "mix",
+                "effective_mode": "subgraph",
+                "auto_routed": True,
+                "reason": "lecturer_topic_structured_query",
+            },
+            "lecturer_topic_publications": [
+                {
+                    "lecturer": "Yuni Yamasari",
+                    "affiliation": "S2 Informatika",
+                    "matched_terms": ["machine learning", "education"],
+                    "title": "Combining the Unsupervised Discretization Method and the Statistical Machine Learning on the Students' Performance",
+                    "year": 2020,
+                    "doi": "10.example/test",
+                }
+            ],
+            "topic_frequencies": [
+                {
+                    "topic": "machine learning",
+                    "concept_type": "ResearchTopic",
+                    "publication_count": 12,
+                    "sample_titles": ["Paper A", "Paper B"],
+                }
+            ],
+        },
+        "grounding": {"status": "grounded"},
+    }
+
+    response = _academic_tool_response(
+        payload=payload,
+        query_text="Dosen S2 Informatika mana yang menulis paper tentang machine learning?",
+        kb_name="yunesa_academic_kg",
+        retrieval_mode="mix",
+        tool_call_id="tool-1",
+    )
+
+    parsed_payload = json.loads(response.update["messages"][0].content)
+    hints = parsed_payload["answer_hints"]
+    assert "lecturer_topic_publications_markdown" in hints
+    assert "Yuni Yamasari" in hints["lecturer_topic_publications_markdown"]
+    assert "topic_frequencies_markdown" in hints
+    assert "machine learning" in hints["topic_frequencies_markdown"]
+    assert parsed_payload["academic_retrieval"]["route_decision"]["effective_mode"] == "subgraph"
+
+
 def test_broad_graph_triples_are_supporting_not_direct_evidence() -> None:
     grounding = AcademicGraphRAGService._grounding_status(
         [],
@@ -1195,3 +1278,35 @@ def test_search_stage_timeout_returns_empty_rows(monkeypatch) -> None:
     )
 
     assert result == {"paper_chunks": []}
+
+
+def test_grounding_status_with_irrelevant_query_topic_is_empty() -> None:
+    # A query with specific topic terms that don't match any retrieved text
+    grounding = AcademicGraphRAGService._grounding_status(
+        [
+            {
+                "content": "Optimizing ANN Architecture for Classifying Student Stress Levels",
+                "source": "Paper A",
+            }
+        ],
+        {"triples": []},
+        {"keywords": [], "entities": [], "relationships": []},
+        query_text="carikan saya paper implementasi graph di lingkungan peternakan ayam?",
+    )
+    assert grounding["status"] == "empty"
+    assert grounding["answerable"] is False
+
+    # A query with matching topic terms
+    grounding_matching = AcademicGraphRAGService._grounding_status(
+        [
+            {
+                "content": "Optimizing ANN Architecture for Classifying Student Stress Levels",
+                "source": "Paper A",
+            }
+        ],
+        {"triples": []},
+        {"keywords": [], "entities": [], "relationships": []},
+        query_text="dosen stress levels",
+    )
+    assert grounding_matching["status"] == "grounded"
+    assert grounding_matching["answerable"] is True

@@ -12,8 +12,9 @@
       :active-key="knowledgeActiveView"
       :items="knowledgeViewItems"
       aria-label="Knowledge base view switch"
+      @change="handleKnowledgeViewChange"
     >
-      <template #actions>
+      <template #actions v-if="knowledgeActiveView === 'graph'">
         <div class="db-selector">
           <div class="status-wrapper">
             <div class="status-indicator" :class="graphStatusClass"></div>
@@ -41,7 +42,7 @@
       </template>
     </ViewSwitchHeader>
 
-    <div class="container-outter">
+    <div v-if="knowledgeActiveView === 'graph'" class="container-outter">
       <GraphCanvas
         ref="graphRef"
         :graph-data="graph.graphData"
@@ -98,6 +99,7 @@
         style="width: 380px"
       />
     </div>
+    <EntityResolutionCuration v-else />
 
   </div>
 </template>
@@ -114,15 +116,17 @@ import {
 } from '@ant-design/icons-vue'
 import ViewSwitchHeader from '@/components/ViewSwitchHeader.vue'
 import { neo4jApi, unifiedApi } from '@/apis/graph_api'
+import EntityResolutionCuration from '@/components/EntityResolutionCuration.vue'
 import GraphCanvas from '@/components/GraphCanvas.vue'
 import GraphDetailPanel from '@/components/GraphDetailPanel.vue'
 import { useGraph } from '@/composables/useGraph'
 
 const configStore = useConfigStore()
 const cur_embed_model = computed(() => configStore.config?.embed_model)
-const knowledgeActiveView = 'graph'
+const knowledgeActiveView = ref('graph')
 const knowledgeViewItems = [
-  { key: 'graph', label: 'Knowledge Graph', path: '/graph' }
+  { key: 'graph', label: 'Knowledge Graph' },
+  { key: 'aliases', label: 'Entity Resolution' }
 ]
 const modelMatched = computed(
   () =>
@@ -205,6 +209,10 @@ const handleDbChange = () => {
     loadLightRAGStats()
   }
   loadSampleNodes()
+}
+
+const handleKnowledgeViewChange = (item) => {
+  knowledgeActiveView.value = item.key
 }
 
 const loadLightRAGStats = () => {

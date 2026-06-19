@@ -123,7 +123,7 @@ class SupabaseLoader:
         Papers missing DOI are now gracefully handled via Title+Year hashes.
         """
         from knowledge.etl.utils.hasher import generate_paper_id
-        from knowledge.etl.transform.enricher import normalize_document_type
+        from knowledge.etl.transform.enricher import normalize_document_type, normalize_venue_name
 
         records: List[Dict[str, Any]] = []
         skipped = 0
@@ -153,7 +153,7 @@ class SupabaseLoader:
                 "title": title,
                 "abstract": self._clean_value(row.get('Abstract') or row.get('abstract')),
                 "year": year,
-                "journal": self._clean_value(row.get('Journal') or row.get('journal')),
+                "journal": self._clean_value(normalize_venue_name(row.get('Journal') or row.get('journal'))),
                 "document_type": normalize_document_type(row.get('Document Type') or row.get('document_type')),
                 "authors": self._clean_value(row.get('Authors') or row.get('authors')),
                 "author_ids": self._clean_value(row.get('Author IDs') or row.get('author_ids')),

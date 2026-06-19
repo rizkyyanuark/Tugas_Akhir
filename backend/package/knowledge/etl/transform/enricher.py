@@ -16,7 +16,7 @@ from knowledge.etl.config import (
     GROQ_TLDR_OVERWRITE_EXISTING,
     GROQ_TLDR_SLEEP_SECONDS,
 )
-from knowledge.etl.transform.cleaner import clean_abstract_text, clean_text
+from knowledge.etl.transform.cleaner import clean_abstract_text, clean_keyword_text, clean_text
 from knowledge.etl.transform.ieee_keywords import generate_ieee_keywords
 from knowledge.etl.extract.semantic_scholar import extract_s2_metadata
 from knowledge.etl.extract.openalex import extract_openalex_metadata
@@ -73,6 +73,40 @@ def normalize_document_type(value: Any) -> str:
         return "article"
 
     return doc_type
+
+
+def normalize_venue_name(value: Any) -> str:
+    """Canonicalize venue names without losing paper-level bibliographic data.
+
+    Google Scholar commonly returns the venue field with volume, issue, pages,
+    and year appended, for example:
+    ``Journal of Informatics and Computer Science (JINACS) 3 (04), 394-402, 2022``.
+    That suffix should not be part of the venue identity because it creates one
+    Venue node per article page range. This function strips only clear
+    bibliographic suffixes and keeps conference years that are part of the venue
+    title, such as ``2020 3rd International Conference ...``.
+    """
+    venue = clean_text(value)
+    if not venue:
+        return ""
+
+    venue = re.sub(r"\s+", " ", venue).strip(" ,.-")
+    venue = re.sub(
+        r"\s+\d+\s*\([^)]*\)\s*,\s*\d+\s*[-–]\s*\d+\s*,\s*(?:19|20)\d{2}\s*$",
+        "",
+        venue,
+    )
+    venue = re.sub(
+        r"\s+\d+\s*,\s*\d+\s*[-–]\s*\d+\s*,\s*(?:19|20)\d{2}\s*$",
+        "",
+        venue,
+    )
+    venue = re.sub(
+        r"\s*,\s*\d+\s*[-–]\s*\d+\s*,\s*(?:19|20)\d{2}\s*$",
+        "",
+        venue,
+    )
+    return re.sub(r"\s+", " ", venue).strip(" ,.-")
 
 
 def _has_enrichment_value(value: Any) -> bool:
@@ -629,7 +663,7 @@ def enrich_paper_batch(
         row = df.loc[i]
         title = clean_text(row.get("Title", ""))
         abstract = clean_abstract_text(row.get("Abstract", ""))
-        keywords = clean_text(row.get("Keywords", ""))
+        keywords = clean_keyword_text(row.get("Keywords", ""))
         doi = clean_text(row.get("DOI", ""))
         tldr = clean_text(row.get("TLDR", ""))
         doc_type = clean_text(row.get("Document Type", ""))
@@ -902,6 +936,7 @@ def enrich_paper_batch(
             doc_type = "article"
             source_contributions["input"].append("DocType(default)")
         doc_type = normalize_document_type(doc_type)
+        journal = normalize_venue_name(journal)
         missing_required = missing_required_enrichment_fields(
             abstract=abstract,
             keywords=keywords,

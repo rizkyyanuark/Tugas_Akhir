@@ -71,7 +71,7 @@ const DEFAULT_OPTIONS = {
   maxBurstFactor: 3,
   reserveReleaseDelayMs: 160,
   reserveDecayWindowMs: 420,
-  finalDrainWindowMs: 700
+  finalDrainWindowMs: 200
 }
 
 const getIncomingSize = (chunk) => {
@@ -264,7 +264,7 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
     const threadControllers = controllersByThread.get(threadId)
     const hasPending = threadControllers
       ? [...threadControllers.values()].some(
-          (controller) => controller.scheduled || getBufferedLength(controller) > 0
+          (controller) => controller.finalizing && (controller.scheduled || getBufferedLength(controller) > 0)
         )
       : false
     if (hasPending) return
@@ -285,6 +285,7 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
     if (pending <= 0) {
       controller.scheduled = false
       controller.frameId = null
+      threadControllers?.delete(messageId)
       resolveThreadFinalizers(threadId)
       return
     }
@@ -356,6 +357,7 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
 
     controller.scheduled = false
     controller.frameId = null
+    threadControllers?.delete(messageId)
     resolveThreadFinalizers(threadId)
   }
 
@@ -447,9 +449,24 @@ export function useStreamSmoother({ getThreadState, options = {} }) {
     }
 
     const completion = new Promise((resolve) => {
+      let resolved = false
+      const safeResolve = () => {
+        if (!resolved) {
+          resolved = true
+          resolve()
+        }
+      }
       const finalizers = finalizersByThread.get(threadId) || []
-      finalizers.push(resolve)
+      finalizers.push(safeResolve)
       finalizersByThread.set(threadId, finalizers)
+
+      // Safety timeout to prevent the UI typing cursor from hanging if the smooth animation gets stuck
+      setTimeout(() => {
+        if (!resolved) {
+          console.warn('[StreamSmoother] Safety timeout hit, flushing thread:', threadId)
+          flushThread(threadId)
+        }
+      }, 1200)
     })
 
     threadControllers.forEach((controller, messageId) => {

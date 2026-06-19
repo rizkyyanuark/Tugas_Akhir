@@ -172,6 +172,52 @@ export const neo4jApi = {
 }
 
 // =============================================================================
+// === Entity resolution alias curation API ===
+// =============================================================================
+
+export const entityResolutionApi = {
+  listSuggestions: async (status = 'all') => {
+    const queryParams = new URLSearchParams()
+    if (status && status !== 'all') {
+      queryParams.set('status', status)
+    }
+    const suffix = queryParams.toString() ? `?${queryParams.toString()}` : ''
+    return await apiGet(`/api/entity-resolution/suggestions${suffix}`, {}, true)
+  },
+
+  syncSuggestions: async (sourcePath = null) => {
+    return await apiPost(
+      '/api/entity-resolution/suggestions/sync',
+      sourcePath ? { source_path: sourcePath } : {},
+      {},
+      true
+    )
+  },
+
+  approveSuggestion: async (suggestionId, payload) => {
+    return await apiPost(
+      `/api/entity-resolution/suggestions/${suggestionId}/approve`,
+      payload,
+      {},
+      true
+    )
+  },
+
+  rejectSuggestion: async (suggestionId, reason = '') => {
+    return await apiPost(
+      `/api/entity-resolution/suggestions/${suggestionId}/reject`,
+      { reason },
+      {},
+      true
+    )
+  },
+
+  exportApprovedAliases: async () => {
+    return await apiPost('/api/entity-resolution/aliases/export', {}, {}, true)
+  }
+}
+
+// =============================================================================
 // === Utility function group ===
 // =============================================================================
 

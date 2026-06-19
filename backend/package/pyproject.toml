@@ -61,6 +61,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "redis>=5.2.0",
     "requests>=2.32.3",
+    "rdflib>=6.3.1",
     "s3fs>=2025.0.0",
     "selenium>=4.21.0",
     "sqlalchemy[asyncio]>=2.0.0",
@@ -84,6 +85,10 @@ test = [
     "pytest-asyncio>=0.24.0",
     "pytest-httpx>=0.32.0",
     "pytest-cov>=6.0.0",
+]
+kg = [
+    "gliner>=0.2.26",
+    "torch>=2.0.0",
 ]
 
 [tool.setuptools]
