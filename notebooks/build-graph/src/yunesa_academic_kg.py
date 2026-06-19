@@ -34,6 +34,12 @@ import pandas as pd
 
 
 try:
+    import yaml
+except ImportError:  # pragma: no cover - optional dependency guard
+    yaml = None
+
+
+try:
     import rdflib
     from rdflib.namespace import RDF, RDFS, SKOS
 except ImportError:  # pragma: no cover - notebook dependency guard
@@ -390,6 +396,105 @@ GENERIC_IEEE_TEXT_TERMS = {
 }
 
 
+DEFAULT_CONCEPT_ALIASES = {
+    "support_vector_machine": {
+        "canonical_label": "Support Vector Machine",
+        "concept_type": "Model",
+        "aliases": ["svm", "support vector machine", "support-vector machine"],
+    },
+    "convolutional_neural_network": {
+        "canonical_label": "Convolutional Neural Network",
+        "concept_type": "Model",
+        "aliases": ["cnn", "convolutional neural network"],
+    },
+    "artificial_neural_network": {
+        "canonical_label": "Artificial Neural Network",
+        "concept_type": "Model",
+        "aliases": ["ann", "artificial neural network"],
+    },
+    "long_short_term_memory": {
+        "canonical_label": "Long Short-Term Memory",
+        "concept_type": "Model",
+        "aliases": ["lstm", "long short term memory", "long short-term memory"],
+    },
+    "bidirectional_lstm": {
+        "canonical_label": "Bidirectional LSTM",
+        "concept_type": "Model",
+        "aliases": ["bilstm", "bi lstm", "bidirectional lstm"],
+    },
+    "k_nearest_neighbors": {
+        "canonical_label": "K-Nearest Neighbors",
+        "concept_type": "Model",
+        "aliases": ["knn", "k nearest neighbors", "k-nearest neighbors"],
+    },
+    "naive_bayes": {
+        "canonical_label": "Naive Bayes",
+        "concept_type": "Model",
+        "aliases": ["naive bayes", "naive bayes classifier"],
+    },
+    "decision_tree": {
+        "canonical_label": "Decision Tree",
+        "concept_type": "Model",
+        "aliases": ["decision tree", "decision trees", "tree algorithm", "tree algorithms"],
+    },
+    "efficientnet": {
+        "canonical_label": "EfficientNet",
+        "concept_type": "Model",
+        "aliases": ["efficientnet", "efficient net"],
+    },
+    "vision_transformer": {
+        "canonical_label": "Vision Transformer",
+        "concept_type": "Model",
+        "aliases": ["vit", "vision transformer"],
+    },
+    "auc": {
+        "canonical_label": "AUC",
+        "concept_type": "Metric",
+        "aliases": ["auc", "roc auc", "roc-auc", "area under curve", "area under the curve"],
+    },
+    "accuracy": {
+        "canonical_label": "Accuracy",
+        "concept_type": "Metric",
+        "aliases": ["accuracy", "akurasi"],
+    },
+    "precision": {
+        "canonical_label": "Precision",
+        "concept_type": "Metric",
+        "aliases": ["precision"],
+    },
+    "recall": {
+        "canonical_label": "Recall",
+        "concept_type": "Metric",
+        "aliases": ["recall"],
+    },
+    "f1_score": {
+        "canonical_label": "F1-score",
+        "concept_type": "Metric",
+        "aliases": ["f1", "f1 score", "f1-score", "f1score"],
+    },
+    "aptos_2019": {
+        "canonical_label": "APTOS 2019",
+        "concept_type": "Dataset",
+        "aliases": ["aptos", "aptos 2019", "aptos dataset", "aptos 2019 blindness detection"],
+    },
+    "imagenet": {
+        "canonical_label": "ImageNet",
+        "concept_type": "Dataset",
+        "aliases": ["imagenet", "image net"],
+    },
+    "cifar_10": {
+        "canonical_label": "CIFAR-10",
+        "concept_type": "Dataset",
+        "aliases": ["cifar10", "cifar-10", "cifar 10"],
+    },
+    "mnist": {
+        "canonical_label": "MNIST",
+        "concept_type": "Dataset",
+        "aliases": ["mnist"],
+    },
+}
+
+
 @dataclass(frozen=True)
 class KGConfig:
     """Runtime configuration for the notebook pipeline."""
@@ -399,6 +504,7 @@ class KGConfig:
     output_dir: Path
     thesaurus_path: Path
     taxonomy_path: Path
+    concept_aliases_path: Path
     sample_size: int = 50
     max_concepts_per_paper: int = 14
     max_ieee_terms: int | None = None
@@ -410,12 +516,19 @@ class KGConfig:
         notebooks_dir = build_graph_dir.parent
         project_root = notebooks_dir.parent
         output_dir = build_graph_dir / "outputs" / "academic_kg"
+        approved_aliases_path = build_graph_dir / "config" / "concept_aliases.approved.yml"
+        concept_aliases_path = (
+            approved_aliases_path
+            if approved_aliases_path.exists()
+            else build_graph_dir / "config" / "concept_aliases.yml"
+        )
         return cls(
             project_root=project_root,
             build_graph_dir=build_graph_dir,
             output_dir=output_dir,
             thesaurus_path=build_graph_dir / "ieee-thesaurus.ttl",
             taxonomy_path=build_graph_dir / "ieee-taxonomy.ttl",
+            concept_aliases_path=concept_aliases_path,
             sample_size=sample_size,
         )
 
@@ -477,6 +590,58 @@ class AcademicExtractionConfig:
             "relation_threshold": self.relation_threshold,
             "max_text_chars": self.max_text_chars,
         }
+
+
+@dataclass(frozen=True)
+class LLMAliasSuggestionConfig:
+    """LLM-assisted concept alias review settings.
+
+    Suggestions are intentionally written as review artifacts. They are not
+    merged into the production alias file unless a human accepts them.
+    """
+
+    provider: str = "groq"
+    model: str = "llama-3.3-70b-versatile"
+    max_candidates: int = 60
+    batch_size: int = 15
+    min_confidence_for_auto_candidate: float = 0.95
+
+    @classmethod
+    def from_env(cls) -> "LLMAliasSuggestionConfig":
+        return cls(
+            provider=os.getenv("YUNESA_ENTITY_RESOLUTION_LLM_PROVIDER", "groq"),
+            model=os.getenv("YUNESA_ENTITY_RESOLUTION_LLM_MODEL", "llama-3.3-70b-versatile"),
+            max_candidates=int(os.getenv("YUNESA_ENTITY_RESOLUTION_LLM_MAX_CANDIDATES", "60")),
+            batch_size=int(os.getenv("YUNESA_ENTITY_RESOLUTION_LLM_BATCH_SIZE", "15")),
+            min_confidence_for_auto_candidate=float(
+                os.getenv("YUNESA_ENTITY_RESOLUTION_LLM_MIN_CONFIDENCE", "0.95")
+            ),
+        )
+
+
+def extraction_runtime_status() -> dict[str, Any]:
+    """Return non-secret runtime readiness for optional GLiNER/GLiREL extraction."""
+    checks: dict[str, Any] = {}
+    for module_name in ["gliner", "glirel", "transformers", "datasets", "pyarrow"]:
+        checks[module_name] = {
+            "ok": importlib.util.find_spec(module_name) is not None,
+            "error": "",
+        }
+    try:
+        importlib.import_module("pyarrow.dataset")
+        checks["pyarrow.dataset"] = {"ok": True, "error": ""}
+    except Exception as exc:
+        checks["pyarrow.dataset"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    checks["gliner_ready"] = all(
+        checks[name]["ok"]
+        for name in ["gliner", "transformers", "datasets", "pyarrow", "pyarrow.dataset"]
+    )
+    checks["glirel_ready"] = all(
+        checks[name]["ok"]
+        for name in ["glirel", "transformers", "datasets", "pyarrow", "pyarrow.dataset"]
+    )
+    checks["ready"] = checks["gliner_ready"] and checks["glirel_ready"]
+    return checks
 
 
 def is_colab_runtime() -> bool:
@@ -807,6 +972,34 @@ def canonical_document_type(value: Any) -> str:
     return mapping.get(doc, doc.replace("-", " "))
 
 
+def canonical_venue_name(value: Any) -> str:
+    """Return a stable venue identity for KG nodes.
+
+    Scholar venue strings can include article-specific bibliographic suffixes
+    such as volume, issue, page range, and year. Those suffixes belong on the
+    publication, not on the Venue node identity.
+    """
+    venue = re.sub(r"\s+", " ", safe_str(value)).strip(" ,.-")
+    if not venue:
+        return ""
+    venue = re.sub(
+        r"\s+\d+\s*\([^)]*\)\s*,\s*\d+\s*[-–]\s*\d+\s*,\s*(?:19|20)\d{2}\s*$",
+        "",
+        venue,
+    )
+    venue = re.sub(
+        r"\s+\d+\s*,\s*\d+\s*[-–]\s*\d+\s*,\s*(?:19|20)\d{2}\s*$",
+        "",
+        venue,
+    )
+    venue = re.sub(
+        r"\s*,\s*\d+\s*[-–]\s*\d+\s*,\s*(?:19|20)\d{2}\s*$",
+        "",
+        venue,
+    )
+    return re.sub(r"\s+", " ", venue).strip(" ,.-")
+
+
 def canonical_relation(value: Any) -> str:
     """Map legacy/internal relation labels into the thesis ontology vocabulary."""
     relation = re.sub(r"[^A-Za-z0-9_]", "_", safe_str(value).upper()).strip("_")
@@ -1061,6 +1254,187 @@ class IeeeSemanticIndex:
             "concept_uris": len(self.uri_to_label),
             "relations": len(self.uri_relations),
             "source_counts": dict(self.source_counts),
+        }
+
+
+def _metric_label_from_base(base: str) -> str:
+    mapping = {
+        "roc auc": "AUC",
+        "auc": "AUC",
+        "accuracy": "Accuracy",
+        "precision": "Precision",
+        "recall": "Recall",
+        "f1": "F1-score",
+        "f1-score": "F1-score",
+        "f1 score": "F1-score",
+        "rmse": "RMSE",
+        "mae": "MAE",
+        "flops": "FLOPs",
+    }
+    return mapping.get(normalize_text(base), safe_str(base))
+
+
+def _extract_metric_value(label: Any) -> dict[str, Any]:
+    text = safe_str(label)
+    norm = normalize_text(text)
+    base_match = re.search(r"\b(roc auc|f1 score|f1-score|f1|auc|accuracy|precision|recall|rmse|mae|flops)\b", norm)
+    if not base_match:
+        return {}
+
+    tail = norm[base_match.end() :]
+    value_match = re.search(r"(\d+(?:\.\d+)?)\s*%", tail)
+    unit = "%"
+    if not value_match:
+        value_match = re.search(
+            r"\b(?:of|around|about|sebesar|=|:)\s*(0?\.\d+|1\.0+|\d+(?:\.\d+)?)\b",
+            tail,
+            flags=re.IGNORECASE,
+        )
+        unit = ""
+
+    result = {
+        "metric_base": normalize_text(base_match.group(1)).replace("f1 score", "f1-score"),
+        "metric_label": _metric_label_from_base(base_match.group(1)),
+    }
+    if value_match:
+        value_text = value_match.group(1)
+        try:
+            result["metric_value"] = float(value_text)
+            result["metric_unit"] = unit
+        except ValueError:
+            pass
+    return result
+
+
+def _load_alias_records(path: Path | None = None) -> dict[str, dict[str, Any]]:
+    """Load curated concept aliases and merge them with built-in aliases."""
+    records = json.loads(json.dumps(DEFAULT_CONCEPT_ALIASES))
+    if not path or not path.exists():
+        return records
+
+    loaded: dict[str, Any] = {}
+    try:
+        if yaml is not None:
+            loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        else:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return records
+
+    alias_records = loaded.get("aliases", loaded) if isinstance(loaded, dict) else {}
+    if not isinstance(alias_records, dict):
+        return records
+
+    for key, value in alias_records.items():
+        if not isinstance(value, dict):
+            continue
+        canonical_key = slugify(value.get("canonical_key") or key)
+        aliases = [safe_str(item) for item in value.get("aliases", []) if safe_str(item)]
+        canonical_label = safe_str(value.get("canonical_label") or value.get("label") or key)
+        if canonical_label and canonical_label not in aliases:
+            aliases.append(canonical_label)
+        records[canonical_key] = {
+            "canonical_label": canonical_label,
+            "concept_type": safe_str(value.get("concept_type") or "ResearchTopic"),
+            "aliases": aliases,
+            "source": safe_str(value.get("source") or "curated_alias"),
+        }
+    return records
+
+
+class AcademicConceptResolver:
+    """Resolve raw concept labels into canonical KG identities.
+
+    The resolver is deterministic by default: metric-value parsing, curated
+    aliases, IEEE URI identity, then local fallback. LLM-assisted suggestions
+    can be layered later by writing candidates into the alias file, not by
+    directly changing production graph identities.
+    """
+
+    def __init__(self, alias_path: Path | None = None) -> None:
+        self.alias_path = alias_path
+        self.alias_records = _load_alias_records(alias_path)
+        self.alias_lookup: dict[str, dict[str, Any]] = {}
+        for canonical_key, record in self.alias_records.items():
+            aliases = list(record.get("aliases") or [])
+            canonical_label = safe_str(record.get("canonical_label"))
+            if canonical_label:
+                aliases.append(canonical_label)
+            for alias in aliases:
+                norm = normalize_text(alias)
+                if norm:
+                    self.alias_lookup[norm] = {"canonical_key": canonical_key, **record}
+
+    @classmethod
+    def from_path(cls, alias_path: Path | None = None) -> "AcademicConceptResolver":
+        return cls(alias_path=alias_path)
+
+    def resolve(
+        self,
+        *,
+        label: Any,
+        concept_type: Any = "",
+        ieee_uri: Any = "",
+        source: Any = "",
+    ) -> dict[str, Any]:
+        raw_label = safe_str(label)
+        norm = normalize_text(raw_label)
+        inferred_type = canonical_concept_type(concept_type, fallback_label=raw_label)
+
+        metric = _extract_metric_value(raw_label)
+        if metric and inferred_type == "Metric":
+            canonical_label = metric["metric_label"]
+            canonical_key = f"metric:{slugify(canonical_label)}"
+            return {
+                "raw_label": raw_label,
+                "label": canonical_label,
+                "canonical_label": canonical_label,
+                "canonical_key": canonical_key,
+                "concept_type": "Metric",
+                "resolution_source": "metric_value_parser" if "metric_value" in metric else "metric_parser",
+                **metric,
+            }
+
+        alias_record = self.alias_lookup.get(norm)
+        if alias_record:
+            resolved_type = canonical_concept_type(alias_record.get("concept_type"), fallback_label=raw_label)
+            canonical_label = safe_str(alias_record.get("canonical_label") or raw_label)
+            return {
+                "raw_label": raw_label,
+                "label": canonical_label,
+                "canonical_label": canonical_label,
+                "canonical_key": f"alias:{alias_record['canonical_key']}",
+                "concept_type": resolved_type,
+                "resolution_source": alias_record.get("source") or "curated_alias",
+            }
+
+        uri = safe_str(ieee_uri)
+        if uri:
+            canonical_key = f"ieee_label:{slugify(raw_label)}" if norm else f"ieee:{uri}"
+            return {
+                "raw_label": raw_label,
+                "label": raw_label,
+                "canonical_label": raw_label,
+                "canonical_key": canonical_key,
+                "concept_type": inferred_type,
+                "resolution_source": safe_str(source) or "ieee_uri",
+            }
+
+        local_key = f"local:{inferred_type}:{slugify(norm or raw_label)}"
+        return {
+            "raw_label": raw_label,
+            "label": raw_label,
+            "canonical_label": raw_label,
+            "canonical_key": local_key,
+            "concept_type": inferred_type,
+            "resolution_source": safe_str(source) or "local_fallback",
+        }
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "alias_records": len(self.alias_records),
+            "alias_terms": len(self.alias_lookup),
+            "alias_path": str(self.alias_path) if self.alias_path else "",
         }
 
 
@@ -1331,7 +1705,12 @@ def _load_gliner_model(model_name: str) -> Any:
     try:
         from gliner import GLiNER
     except ImportError as exc:  # pragma: no cover - optional dependency guard
-        raise ImportError("Install gliner first or set YUNESA_USE_GLINER=0.") from exc
+        raise ImportError(
+            "GLiNER could not be imported. If gliner is already installed, inspect the "
+            "underlying ImportError; on Windows this can happen when security policy blocks "
+            "pyarrow/transformers DLLs. Disable extraction with YUNESA_USE_GLINER=0, or run "
+            "the extraction step in Colab/server runtime where GLiNER imports cleanly."
+        ) from exc
     return GLiNER.from_pretrained(model_name)
 
 
@@ -1340,7 +1719,12 @@ def _load_glirel_model(model_name: str) -> Any:
     try:
         from glirel import GLiREL
     except ImportError as exc:  # pragma: no cover - optional dependency guard
-        raise ImportError("Install glirel first or set YUNESA_USE_GLIREL=0.") from exc
+        raise ImportError(
+            "GLiREL could not be imported. If glirel is already installed, inspect the "
+            "underlying ImportError; on Windows this can happen when security policy blocks "
+            "pyarrow/transformers DLLs. Disable extraction with YUNESA_USE_GLIREL=0, or run "
+            "the extraction step in Colab/server runtime where GLiREL imports cleanly."
+        ) from exc
     try:
         return GLiREL.from_pretrained(model_name)
     except TypeError as exc:
@@ -1600,10 +1984,12 @@ class AcademicKGBuilder:
     def __init__(
         self,
         ieee_index: IeeeSemanticIndex | None = None,
+        concept_resolver: AcademicConceptResolver | None = None,
         extracted_elements: dict[str, dict[str, list[dict[str, Any]]]] | None = None,
         graph_name: str = "yunesa_academic_kg",
     ) -> None:
         self.ieee_index = ieee_index or IeeeSemanticIndex()
+        self.concept_resolver = concept_resolver or AcademicConceptResolver()
         self.extracted_elements = extracted_elements or {}
         self.graph_name = graph_name
         self.graph = nx.MultiDiGraph()
@@ -1720,6 +2106,8 @@ class AcademicKGBuilder:
         node_id = self._paper_node_id(paper)
         paper_id = field_value(paper, "paper_id", "id")
         title = field_value(paper, "title", "Title")
+        venue_raw = field_value(paper, "journal", "Journal")
+        venue = canonical_venue_name(venue_raw)
         self.graph.add_node(
             node_id,
             node_type="Publication",
@@ -1730,7 +2118,8 @@ class AcademicKGBuilder:
             tldr=field_value(paper, "tldr", "TLDR"),
             keywords=field_value(paper, "keywords", "Keywords"),
             year=field_value(paper, "year", "Year"),
-            venue=field_value(paper, "journal", "Journal"),
+            venue=venue,
+            venue_raw=venue_raw,
             document_type=canonical_document_type(field_value(paper, "document_type", "Document Type")),
             doi=field_value(paper, "doi", "DOI"),
             link=field_value(paper, "link", "Link"),
@@ -1749,7 +2138,9 @@ class AcademicKGBuilder:
 
         venue = field_value(paper, "journal", "Journal")
         if venue:
-            venue_clean = re.sub(r"\s+", " ", venue).strip(" ,.-")
+            venue_clean = canonical_venue_name(venue)
+            if not venue_clean:
+                return
             venue_node = stable_id("venue", venue_clean)
             self.graph.add_node(venue_node, node_type="Venue", label=venue_clean, name=venue_clean)
             self.graph.add_edge(paper_node, venue_node, relation="PUBLISHED_IN_VENUE", source="paper_metadata")
@@ -1857,21 +2248,57 @@ class AcademicKGBuilder:
             self.graph.add_edge(paper_node, key_node, relation="HAS_KEYWORD", source="paper_metadata")
             self.stats["HAS_KEYWORD"] += 1
 
+    def _add_or_update_concept_node(self, resolved: dict[str, Any], *, source: Any = "", ieee_uri: Any = "") -> str:
+        canonical_key = safe_str(resolved.get("canonical_key"))
+        concept_type = canonical_concept_type(resolved.get("concept_type"), fallback_label=resolved.get("label"))
+        concept_node = stable_id("concept", f"{concept_type}:{canonical_key}")
+        raw_label = safe_str(resolved.get("raw_label") or resolved.get("label"))
+        label = safe_str(resolved.get("canonical_label") or resolved.get("label") or raw_label)
+
+        existing = self.graph.nodes[concept_node] if self.graph.has_node(concept_node) else {}
+        raw_labels = split_list_field(existing.get("raw_labels", ""))
+        if raw_label and raw_label not in raw_labels:
+            raw_labels.append(raw_label)
+        sources = split_list_field(existing.get("resolution_sources", ""))
+        resolution_source = safe_str(resolved.get("resolution_source") or source)
+        if resolution_source and resolution_source not in sources:
+            sources.append(resolution_source)
+        ieee_uris = split_list_field(existing.get("ieee_uris", ""))
+        current_ieee_uri = safe_str(ieee_uri)
+        if current_ieee_uri and current_ieee_uri not in ieee_uris:
+            ieee_uris.append(current_ieee_uri)
+
+        primary_ieee_uri = safe_str(existing.get("ieee_uri")) or current_ieee_uri
+
+        self.graph.add_node(
+            concept_node,
+            node_type="Concept",
+            concept_type=concept_type,
+            label=label,
+            name=label,
+            canonical_label=label,
+            canonical_key=canonical_key,
+            raw_labels=", ".join(raw_labels),
+            resolution_source=resolution_source,
+            resolution_sources=", ".join(sources),
+            ieee_uri=primary_ieee_uri,
+            ieee_uris=", ".join(ieee_uris),
+            source=safe_str(source) or safe_str(existing.get("source")),
+        )
+        return concept_node
+
     def _add_concept_edges(self, paper_node: str, paper: pd.Series, max_concepts: int) -> None:
         concepts = extract_concepts_for_paper(paper, self.ieee_index, max_concepts=max_concepts)
         for concept in concepts:
             label = concept["label"]
-            concept_type = canonical_concept_type(concept.get("concept_type"), fallback_label=label)
-            concept_node = stable_id("concept", f"{concept_type}:{normalize_text(label)}")
-            self.graph.add_node(
-                concept_node,
-                node_type="Concept",
-                concept_type=concept_type,
+            resolved = self.concept_resolver.resolve(
                 label=label,
-                name=label,
+                concept_type=concept.get("concept_type"),
                 ieee_uri=concept.get("uri", ""),
                 source=concept.get("source", ""),
             )
+            concept_type = canonical_concept_type(resolved.get("concept_type"), fallback_label=resolved.get("label"))
+            concept_node = self._add_or_update_concept_node(resolved, source=concept.get("source", ""), ieee_uri=concept.get("uri", ""))
             relation = CONCEPT_EDGE_BY_TYPE[concept_type]
             self.graph.add_edge(
                 paper_node,
@@ -1881,11 +2308,22 @@ class AcademicKGBuilder:
                 match_type=concept.get("match_type", ""),
                 matched_text=concept.get("match", ""),
                 score=float(concept.get("score", 0.0)),
+                canonical_label=resolved.get("canonical_label", ""),
+                canonical_key=resolved.get("canonical_key", ""),
+                metric_value=safe_str(resolved.get("metric_value", "")),
+                metric_unit=resolved.get("metric_unit", ""),
+                resolution_source=resolved.get("resolution_source", ""),
                 provenance=json.dumps(
                     {
                         "matched_label": concept.get("matched_label", ""),
                         "ieee_uri": concept.get("uri", ""),
                         "source": concept.get("source", ""),
+                        "raw_label": resolved.get("raw_label", ""),
+                        "canonical_label": resolved.get("canonical_label", ""),
+                        "canonical_key": resolved.get("canonical_key", ""),
+                        "metric_value": resolved.get("metric_value", ""),
+                        "metric_unit": resolved.get("metric_unit", ""),
+                        "resolution_source": resolved.get("resolution_source", ""),
                     },
                     ensure_ascii=False,
                 ),
@@ -1894,19 +2332,13 @@ class AcademicKGBuilder:
 
     def _concept_node_from_extracted_entity(self, entity: dict[str, Any]) -> str:
         label = safe_str(entity.get("text") or entity.get("label"))
-        concept_type = canonical_concept_type(entity.get("concept_type"), fallback_label=label)
-        node_id = stable_id("concept", f"{concept_type}:{normalize_text(label)}")
-        if not self.graph.has_node(node_id):
-            self.graph.add_node(
-                node_id,
-                node_type="Concept",
-                concept_type=concept_type,
-                label=label,
-                name=label,
-                ieee_uri="",
-                source=entity.get("source", "gliner"),
-            )
-        return node_id
+        resolved = self.concept_resolver.resolve(
+            label=label,
+            concept_type=entity.get("concept_type"),
+            source=entity.get("source", "gliner"),
+        )
+        entity["resolved"] = resolved
+        return self._add_or_update_concept_node(resolved, source=entity.get("source", "gliner"), ieee_uri="")
 
     def _add_extracted_element_edges(self, paper_node: str, paper: pd.Series) -> None:
         doc_id = academic_document_id(paper)
@@ -1922,8 +2354,10 @@ class AcademicKGBuilder:
             concept_type = canonical_concept_type(entity.get("concept_type"), fallback_label=label)
             entity["concept_type"] = concept_type
             concept_node = self._concept_node_from_extracted_entity(entity)
+            resolved = entity.get("resolved", {})
             entity_node_by_text[normalize_text(label)] = concept_node
-            relation = CONCEPT_EDGE_BY_TYPE.get(concept_type, "WORKS_ON")
+            resolved_type = canonical_concept_type(resolved.get("concept_type") or concept_type, fallback_label=label)
+            relation = CONCEPT_EDGE_BY_TYPE.get(resolved_type, "WORKS_ON")
             self.graph.add_edge(
                 paper_node,
                 concept_node,
@@ -1932,6 +2366,11 @@ class AcademicKGBuilder:
                 match_type="zero_shot_ner",
                 matched_text=label,
                 score=float(entity.get("score") or 0.0),
+                canonical_label=resolved.get("canonical_label", ""),
+                canonical_key=resolved.get("canonical_key", ""),
+                metric_value=safe_str(resolved.get("metric_value", "")),
+                metric_unit=resolved.get("metric_unit", ""),
+                resolution_source=resolved.get("resolution_source", ""),
                 provenance=json.dumps(
                     {
                         "extractor": entity.get("source", "gliner"),
@@ -1939,6 +2378,9 @@ class AcademicKGBuilder:
                         "paper_id": doc_id,
                         "start": entity.get("start"),
                         "end": entity.get("end"),
+                        "canonical_label": resolved.get("canonical_label", ""),
+                        "canonical_key": resolved.get("canonical_key", ""),
+                        "resolution_source": resolved.get("resolution_source", ""),
                     },
                     ensure_ascii=False,
                 ),
@@ -2000,18 +2442,13 @@ class AcademicKGBuilder:
         concept_type = infer_concept_type(label)
         if concept_type in {"Problem", "ResearchTopic"}:
             concept_type = "Domain"
-        concept_node = stable_id("concept", f"{concept_type}:{normalize_text(label)}")
-        if not self.graph.has_node(concept_node):
-            self.graph.add_node(
-                concept_node,
-                node_type="Concept",
-                concept_type=concept_type,
-                label=label,
-                name=label,
-                ieee_uri=uri,
-                source="ieee_skos_neighbor",
-            )
-        return concept_node
+        resolved = self.concept_resolver.resolve(
+            label=label,
+            concept_type=concept_type,
+            ieee_uri=uri,
+            source="ieee_skos_neighbor",
+        )
+        return self._add_or_update_concept_node(resolved, source="ieee_skos_neighbor", ieee_uri=uri)
 
     def validate(self) -> dict[str, Any]:
         node_type_counts = Counter(data.get("node_type", "Unknown") for _, data in self.graph.nodes(data=True))
@@ -2982,7 +3419,8 @@ def build_academic_kg_from_supabase(sample_size: int = 50) -> dict[str, Any]:
         max_terms=config.max_ieee_terms,
     )
 
-    builder = AcademicKGBuilder(ieee_index, graph_name="yunesa_academic_kg")
+    concept_resolver = AcademicConceptResolver.from_path(config.concept_aliases_path)
+    builder = AcademicKGBuilder(ieee_index, concept_resolver=concept_resolver, graph_name="yunesa_academic_kg")
     graph = builder.build(
         papers_df=papers_df,
         lecturers_df=lecturers_df,
@@ -2997,10 +3435,302 @@ def build_academic_kg_from_supabase(sample_size: int = 50) -> dict[str, Any]:
         "lecturers_df": lecturers_df,
         "links_df": links_df,
         "ieee_summary": ieee_index.summary(),
+        "entity_resolution": concept_resolver.summary(),
         "graph": graph,
         "validation": builder.validate(),
         "artifacts": artifacts,
     }
+
+
+def entity_resolution_report(graph: nx.MultiDiGraph) -> dict[str, Any]:
+    """Summarize concept canonicalization quality and remaining review targets."""
+    concept_nodes = [
+        (node_id, data)
+        for node_id, data in graph.nodes(data=True)
+        if data.get("node_type") == "Concept"
+    ]
+    merged_nodes: list[dict[str, Any]] = []
+    unresolved_local: list[dict[str, Any]] = []
+    acronym_like: list[dict[str, Any]] = []
+
+    for node_id, data in concept_nodes:
+        raw_labels = split_list_field(data.get("raw_labels", ""))
+        resolution_source = safe_str(data.get("resolution_source"))
+        label = _node_label(data, node_id)
+        concept_type = safe_str(data.get("concept_type"))
+        canonical_key = safe_str(data.get("canonical_key"))
+        if len({normalize_text(item) for item in raw_labels}) > 1:
+            merged_nodes.append(
+                {
+                    "id": node_id,
+                    "label": label,
+                    "concept_type": concept_type,
+                    "canonical_key": canonical_key,
+                    "raw_labels": raw_labels,
+                    "resolution_source": resolution_source,
+                }
+            )
+        if canonical_key.startswith("local:"):
+            unresolved_local.append(
+                {
+                    "id": node_id,
+                    "label": label,
+                    "concept_type": concept_type,
+                    "source": safe_str(data.get("source")),
+                    "canonical_key": canonical_key,
+                }
+            )
+        if re.fullmatch(r"[A-Z0-9]{2,8}", safe_str(label)):
+            acronym_like.append(
+                {
+                    "id": node_id,
+                    "label": label,
+                    "concept_type": concept_type,
+                    "canonical_key": canonical_key,
+                    "resolution_source": resolution_source,
+                }
+            )
+
+    duplicate_candidates: list[dict[str, Any]] = []
+    by_compact: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for node_id, data in concept_nodes:
+        label = _node_label(data, node_id)
+        compact = re.sub(r"[^a-z0-9]", "", normalize_text(label))
+        if len(compact) >= 3:
+            by_compact[compact].append(
+                {
+                    "id": node_id,
+                    "label": label,
+                    "concept_type": safe_str(data.get("concept_type")),
+                    "canonical_key": safe_str(data.get("canonical_key")),
+                }
+            )
+    for compact, items in by_compact.items():
+        keys = {item["canonical_key"] for item in items}
+        if len(items) > 1 and len(keys) > 1:
+            duplicate_candidates.append({"compact_label": compact, "items": items[:10]})
+
+    resolution_sources = Counter(
+        data.get("resolution_source", "unknown") or "unknown"
+        for _, data in concept_nodes
+    )
+    return {
+        "concept_nodes": len(concept_nodes),
+        "resolution_source_counts": dict(resolution_sources),
+        "merged_canonical_nodes": len(merged_nodes),
+        "merged_examples": merged_nodes[:20],
+        "unresolved_local_concepts": len(unresolved_local),
+        "unresolved_examples": unresolved_local[:30],
+        "acronym_like_concepts": len(acronym_like),
+        "acronym_like_examples": acronym_like[:20],
+        "duplicate_candidate_groups": len(duplicate_candidates),
+        "duplicate_candidate_examples": duplicate_candidates[:20],
+    }
+
+
+def _json_value_from_text(text: Any) -> Any:
+    content = safe_str(text)
+    if not content:
+        return None
+    fenced = re.search(r"```(?:json)?\s*(.*?)```", content, flags=re.IGNORECASE | re.DOTALL)
+    if fenced:
+        content = fenced.group(1)
+    for opener, closer in [("{", "}"), ("[", "]")]:
+        start = content.find(opener)
+        end = content.rfind(closer)
+        if start >= 0 and end > start:
+            try:
+                return json.loads(content[start : end + 1])
+            except Exception:
+                continue
+    try:
+        return json.loads(content)
+    except Exception:
+        return None
+
+
+def _candidate_terms_for_llm_review(report: dict[str, Any], *, max_candidates: int) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for item in report.get("duplicate_candidate_examples") or []:
+        for concept in item.get("items") or []:
+            label = safe_str(concept.get("label"))
+            key = normalize_text(label)
+            if label and key not in seen:
+                seen.add(key)
+                candidates.append(
+                    {
+                        "label": label,
+                        "concept_type": safe_str(concept.get("concept_type")),
+                        "source": "duplicate_candidate",
+                        "canonical_key": safe_str(concept.get("canonical_key")),
+                    }
+                )
+
+    for item in report.get("acronym_like_examples") or []:
+        label = safe_str(item.get("label"))
+        key = normalize_text(label)
+        if label and key not in seen:
+            seen.add(key)
+            candidates.append(
+                {
+                    "label": label,
+                    "concept_type": safe_str(item.get("concept_type")),
+                    "source": "acronym_like",
+                    "canonical_key": safe_str(item.get("canonical_key")),
+                }
+            )
+
+    for item in report.get("unresolved_examples") or []:
+        label = safe_str(item.get("label"))
+        key = normalize_text(label)
+        if label and key not in seen:
+            seen.add(key)
+            candidates.append(
+                {
+                    "label": label,
+                    "concept_type": safe_str(item.get("concept_type")),
+                    "source": "unresolved_local",
+                    "canonical_key": safe_str(item.get("canonical_key")),
+                }
+            )
+
+    return candidates[:max_candidates]
+
+
+def _groq_alias_suggestions(
+    candidates: list[dict[str, Any]],
+    *,
+    model: str,
+    min_confidence: float,
+) -> dict[str, Any]:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY is not set.")
+    try:
+        from groq import Groq
+    except ImportError as exc:  # pragma: no cover - notebook dependency guard
+        raise ImportError("Install groq first.") from exc
+
+    prompt = {
+        "task": "Review unresolved academic KG concepts and propose canonical alias mappings.",
+        "strict_rules": [
+            "Return JSON only.",
+            "Do not invent papers, results, authors, datasets, or metrics.",
+            "Only propose exact synonyms, acronym expansions, metric canonicalization, or obvious spelling variants.",
+            "Do not merge broader/narrower/related concepts. Mark those as related_only.",
+            "For metric values such as 'AUC of 0.9', use canonical_label 'AUC' and action 'metric_value'.",
+            "Confidence must be between 0 and 1.",
+            f"Only mark review_status='auto_candidate' when confidence >= {min_confidence}.",
+        ],
+        "allowed_actions": ["exact_synonym", "metric_value", "spelling_variant", "related_only", "keep_separate", "noise"],
+        "output_schema": {
+            "suggestions": [
+                {
+                    "raw_label": "input label",
+                    "suggested_canonical_label": "canonical label or empty",
+                    "suggested_canonical_key": "snake_case key or empty",
+                    "concept_type": "Model|Dataset|Metric|Method|Task|Domain|ResearchTopic|Result|Innovation|Problem",
+                    "action": "one allowed action",
+                    "confidence": 0.0,
+                    "aliases": ["optional exact aliases"],
+                    "review_status": "auto_candidate|needs_review|reject",
+                    "rationale": "short factual reason",
+                }
+            ]
+        },
+        "candidates": candidates,
+    }
+    client = Groq(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an entity-resolution reviewer for an academic knowledge graph. "
+                    "You are conservative: exact synonyms can merge, related concepts cannot."
+                ),
+            },
+            {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
+        ],
+        temperature=0.0,
+        max_tokens=1800,
+    )
+    parsed = _json_value_from_text(response.choices[0].message.content)
+    if isinstance(parsed, list):
+        parsed = {"suggestions": parsed}
+    if not isinstance(parsed, dict):
+        parsed = {"suggestions": [], "parse_error": safe_str(response.choices[0].message.content)}
+    parsed.setdefault("suggestions", [])
+    return parsed
+
+
+def generate_llm_alias_suggestions(
+    report: dict[str, Any],
+    *,
+    config: LLMAliasSuggestionConfig | None = None,
+) -> dict[str, Any]:
+    """Generate LLM-assisted alias suggestions from an entity resolution report."""
+    config = config or LLMAliasSuggestionConfig.from_env()
+    provider = normalize_text(config.provider)
+    candidates = _candidate_terms_for_llm_review(report, max_candidates=config.max_candidates)
+    suggestions: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for start in range(0, len(candidates), max(1, config.batch_size)):
+        batch = candidates[start : start + max(1, config.batch_size)]
+        if not batch:
+            continue
+        try:
+            if provider == "groq":
+                result = _groq_alias_suggestions(
+                    batch,
+                    model=config.model,
+                    min_confidence=config.min_confidence_for_auto_candidate,
+                )
+            else:
+                raise ValueError(f"Unsupported entity resolution LLM provider: {config.provider}")
+            for item in result.get("suggestions") or []:
+                if isinstance(item, dict):
+                    suggestions.append(item)
+        except Exception as exc:
+            errors.append(
+                {
+                    "batch_start": start,
+                    "batch_size": len(batch),
+                    "error_type": type(exc).__name__,
+                    "error": safe_str(exc),
+                }
+            )
+
+    return {
+        "provider": config.provider,
+        "model": config.model,
+        "candidate_count": len(candidates),
+        "suggestion_count": len(suggestions),
+        "suggestions": suggestions,
+        "errors": errors,
+        "policy": {
+            "auto_candidate_threshold": config.min_confidence_for_auto_candidate,
+            "auto_merge": False,
+            "requires_human_review": True,
+        },
+    }
+
+
+def write_llm_alias_suggestions(
+    report_path: Path,
+    output_path: Path,
+    *,
+    config: LLMAliasSuggestionConfig | None = None,
+) -> dict[str, Any]:
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    result = generate_llm_alias_suggestions(report, config=config)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    return result
 
 
 def graph_quality_report(graph: nx.MultiDiGraph) -> dict[str, Any]:
@@ -3053,6 +3783,7 @@ def graph_quality_report(graph: nx.MultiDiGraph) -> dict[str, Any]:
         "missing_counts": {key: len(value) for key, value in missing.items()},
         "missing_examples": {key: value[:10] for key, value in missing.items() if value},
         "non_ontology_edges": non_ontology_edges,
+        "entity_resolution": entity_resolution_report(graph),
         "milvus_prepared_rows": summarize_milvus_records(vector_records),
         "quality_gates": {
             "has_publications": node_type_counts.get("Publication", 0) > 0,
@@ -4331,6 +5062,8 @@ def run_local_kg_pipeline(
     clear_neo4j: bool = False,
     clear_milvus: bool = False,
     use_extraction: bool | None = None,
+    use_gliner: bool | None = None,
+    use_glirel: bool | None = None,
 ) -> dict[str, Any]:
     """Build and optionally write the KG locally for repeatable debugging."""
     config = KGConfig.default(sample_size=sample_size)
@@ -4347,18 +5080,31 @@ def run_local_kg_pipeline(
         data_source = "local_csv"
 
     extraction_config = AcademicExtractionConfig.from_env()
+    gliner_enabled = extraction_config.use_gliner
+    glirel_enabled = extraction_config.use_glirel
     if use_extraction is not None:
-        extraction_config = AcademicExtractionConfig(
-            use_gliner=use_extraction,
-            use_glirel=use_extraction,
-            gliner_model=extraction_config.gliner_model,
-            glirel_model=extraction_config.glirel_model,
-            entity_threshold=extraction_config.entity_threshold,
-            relation_threshold=extraction_config.relation_threshold,
-            max_text_chars=extraction_config.max_text_chars,
-            max_entities_per_paper=extraction_config.max_entities_per_paper,
-            max_relations_per_paper=extraction_config.max_relations_per_paper,
-        )
+        # In this KG schema, ontology edges are deterministic from NER concept
+        # types. GLiREL remains an explicit ablation path, not the default.
+        gliner_enabled = use_extraction
+        if not use_extraction:
+            glirel_enabled = False
+    if use_gliner is not None:
+        gliner_enabled = use_gliner
+    if use_glirel is not None:
+        glirel_enabled = use_glirel
+    if not gliner_enabled:
+        glirel_enabled = False
+    extraction_config = AcademicExtractionConfig(
+        use_gliner=gliner_enabled,
+        use_glirel=glirel_enabled,
+        gliner_model=extraction_config.gliner_model,
+        glirel_model=extraction_config.glirel_model,
+        entity_threshold=extraction_config.entity_threshold,
+        relation_threshold=extraction_config.relation_threshold,
+        max_text_chars=extraction_config.max_text_chars,
+        max_entities_per_paper=extraction_config.max_entities_per_paper,
+        max_relations_per_paper=extraction_config.max_relations_per_paper,
+    )
     extracted_elements = extract_academic_elements_with_gliner_glirel(papers_df, extraction_config)
 
     ieee_index = IeeeSemanticIndex.from_files(
@@ -4366,8 +5112,10 @@ def run_local_kg_pipeline(
         config.taxonomy_path,
         max_terms=config.max_ieee_terms,
     )
+    concept_resolver = AcademicConceptResolver.from_path(config.concept_aliases_path)
     builder = AcademicKGBuilder(
         ieee_index,
+        concept_resolver=concept_resolver,
         extracted_elements=extracted_elements,
         graph_name=graph_name,
     )
@@ -4389,6 +5137,7 @@ def run_local_kg_pipeline(
             "links": len(links_df),
         },
         "extraction": summarize_extracted_elements(extracted_elements),
+        "entity_resolution": concept_resolver.summary(),
     }
     if write_neo4j:
         storage_reports["neo4j_write"] = write_graph_to_neo4j(

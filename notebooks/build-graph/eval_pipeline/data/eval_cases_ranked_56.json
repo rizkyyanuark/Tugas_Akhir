@@ -1,0 +1,1099 @@
+[
+  {
+    "id": "A01",
+    "category": "A",
+    "intent": "method_metric",
+    "query": "Metode klasifikasi apa yang digunakan untuk mendeteksi gaya belajar visual, auditory, kinesthetic melalui aplikasi pesan instan?",
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection"
+    ],
+    "key_concepts": [
+      "rule-based",
+      "bayesian",
+      "chatbot",
+      "WhatsApp",
+      "VAK",
+      "akurasi 80.2%"
+    ],
+    "reference_answer": "Sistem menggunakan rule-based adaptive chatbot pada WhatsApp dengan Bayesian Inference untuk mendeteksi gaya belajar VAK. Akurasi 80.2%, AUC 0.902."
+  },
+  {
+    "id": "A02",
+    "category": "A",
+    "intent": "model_metric",
+    "query": "Algoritma hyperparameter tuning apa yang dikombinasikan dengan boosting untuk memprediksi risiko gagal bayar kredit?",
+    "relevant_titles": [
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction"
+    ],
+    "key_concepts": [
+      "Optuna",
+      "XGBoost",
+      "CatBoost",
+      "LightGBM",
+      "AUC 0.9933",
+      "ensemble"
+    ],
+    "reference_answer": "Optuna digunakan untuk tuning hyperparameter model XGBoost, CatBoost, dan LightGBM yang dikombinasikan dengan ensemble learning. AUC terbaik 0.9933."
+  },
+  {
+    "id": "A03",
+    "category": "A",
+    "intent": "dataset_accuracy",
+    "query": "Dataset benchmark apa yang dipakai untuk klasifikasi ras dan jenis kelamin dari foto wajah menggunakan dua arsitektur transformer sekaligus?",
+    "relevant_titles": [
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images"
+    ],
+    "key_concepts": [
+      "DemogPairs",
+      "ViT-Face",
+      "ViT-Emotion",
+      "0.92",
+      "ROC AUC 0.9948"
+    ],
+    "reference_answer": "Dataset DemogPairs digunakan. Model dual ViT: ViT-Face dan ViT-Emotion. Akurasi 0.92, ROC AUC 0.9948."
+  },
+  {
+    "id": "A04",
+    "category": "A",
+    "intent": "method_domain",
+    "query": "Pendekatan analisis sentimen berbahasa Indonesia apa yang dipakai untuk mengukur comprehension mahasiswa dari teks feedback mereka?",
+    "relevant_titles": [
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine"
+    ],
+    "key_concepts": [
+      "sentiment analysis",
+      "SVM",
+      "feedback",
+      "bahasa Indonesia",
+      "90% precision"
+    ],
+    "reference_answer": "SVM dengan analisis sentimen pada teks feedback mahasiswa berbahasa Indonesia. Precision, recall, f1-score, dan akurasi mencapai 90%."
+  },
+  {
+    "id": "A05",
+    "category": "A",
+    "intent": "method_metric",
+    "query": "Arsitektur deep learning berbasis mekanisme self-attention apa yang digunakan untuk klasifikasi citra tumor dan COVID-19?",
+    "relevant_titles": [
+      "Biomedical image classification using vision transformer"
+    ],
+    "key_concepts": [
+      "Vision Transformer",
+      "self-attention",
+      "95.1%",
+      "99.6%",
+      "biomedical"
+    ],
+    "reference_answer": "Vision Transformer (ViT) dengan self-attention. Akurasi puncak 95.1%–99.6% pada klasifikasi tumor dan COVID-19."
+  },
+  {
+    "id": "A06",
+    "category": "A",
+    "intent": "method_metric",
+    "query": "Model hybrid apa yang menggabungkan CNN dan SVM dengan word embedding untuk deteksi ujaran kebencian di Twitter?",
+    "relevant_titles": [
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification"
+    ],
+    "key_concepts": [
+      "CNN-SVM",
+      "FastText",
+      "cyberbullying",
+      "Twitter",
+      "91.16%"
+    ],
+    "reference_answer": "Hybrid CNN-SVM dengan FastText word embedding. Akurasi 91.16% pada data Twitter berbahasa Indonesia."
+  },
+  {
+    "id": "A07",
+    "category": "A",
+    "intent": "method_metric",
+    "query": "Teknik oversampling apa yang dipakai bersama ANN dan Adam optimizer untuk mengatasi ketidakseimbangan data stres mahasiswa?",
+    "relevant_titles": [
+      "Optimizing ANN Architecture for Classifying Student Stress Levels"
+    ],
+    "key_concepts": [
+      "SMOTE-N",
+      "ANN",
+      "Adam optimizer",
+      "stress level",
+      "two hidden layers"
+    ],
+    "reference_answer": "SMOTE-N (oversampling) dikombinasikan ANN + Adam optimizer, hasil optimal dengan dua hidden layer."
+  },
+  {
+    "id": "A08",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Algoritma decision tree apa yang digunakan untuk mendeteksi tingkat stres mahasiswa melalui bot Telegram dan berapa akurasinya?",
+    "relevant_titles": [
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels"
+    ],
+    "key_concepts": [
+      "ID3",
+      "bot Telegram",
+      "95%",
+      "stress detection"
+    ],
+    "reference_answer": "Algoritma ID3 digunakan dalam bot Telegram untuk deteksi stres mahasiswa. Akurasi 95%."
+  },
+  {
+    "id": "A09",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Model CNN dengan arsitektur apa yang digunakan untuk mengklasifikasikan gambar cuaca dan berapa akurasi testing-nya?",
+    "relevant_titles": [
+      "Penerapan metode deep learning menggunakan algoritma CNN dengan arsitektur VGG NET untuk pengenalan cuaca"
+    ],
+    "key_concepts": [
+      "VGG NET",
+      "CNN",
+      "94.16% training",
+      "65.00% testing",
+      "cuaca"
+    ],
+    "reference_answer": "CNN dengan arsitektur VGG NET. Training accuracy 94.16%, testing accuracy 65.00% pada dataset pengenalan cuaca."
+  },
+  {
+    "id": "A10",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Metode klasifikasi citra medis retinopati diabetik apa yang mencapai akurasi 89.12% menggunakan kombinasi konvolusi dan SVM?",
+    "relevant_titles": [
+      "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine"
+    ],
+    "key_concepts": [
+      "convolutional SVM",
+      "Messidor",
+      "89.12%",
+      "diabetic retinopathy",
+      "non-proliferative"
+    ],
+    "reference_answer": "Convolutional Support Vector Machine pada database Messidor. Akurasi 89.12% untuk klasifikasi keparahan non-proliferative diabetic retinopathy."
+  },
+  {
+    "id": "A11",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Algoritma klastering yang mana yang digunakan untuk mengelompokkan mahasiswa berdasarkan performa akademik dalam e-learning?",
+    "relevant_titles": [
+      "Clustering Students in the Online Learning Climate based on Internal and External Factors"
+    ],
+    "key_concepts": [
+      "K-means",
+      "unsupervised learning",
+      "k=4 clusters",
+      "internal",
+      "external factors"
+    ],
+    "reference_answer": "K-Means clustering dengan 22 variabel internal dan eksternal. Menghasilkan k=4 cluster mahasiswa dalam lingkungan e-learning."
+  },
+  {
+    "id": "A12",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Teknik regularisasi mana yang menurunkan error paling signifikan dalam prediksi performa mahasiswa menggunakan regresi linier?",
+    "relevant_titles": [
+      "Predicting the Students Performance using Regularization-based Linear Regression"
+    ],
+    "key_concepts": [
+      "ridge regularization",
+      "linear regression",
+      "MSE",
+      "RMSE",
+      "MAE",
+      "R2"
+    ],
+    "reference_answer": "Ridge regularization dengan linear regression menghasilkan error lebih rendah dibanding baseline pada MSE, RMSE, MAE, dan R2."
+  },
+  {
+    "id": "A13",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Algoritma optimasi metaheuristik berbasis perilaku karnivora laut apa yang digunakan untuk menyetel parameter Power System Stabilizer?",
+    "relevant_titles": [
+      "Novel hybrid prairie dog optimization algorithm-marine predator algorithm for tuning parameters power system stabilizer"
+    ],
+    "key_concepts": [
+      "PDOMPA",
+      "prairie dog",
+      "marine predator",
+      "PSS",
+      "42.2%",
+      "85.37%"
+    ],
+    "reference_answer": "PDOMPA — hybrid Prairie Dog Optimization + Marine Predator Algorithm — untuk tuning PSS. Reduksi undershoot 42.2% dan overshoot 85.37%."
+  },
+  {
+    "id": "A14",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Model VGG16 digunakan untuk mengklasifikasikan apa dan berapa akurasi yang dicapai dalam paper transfer learning uang kertas rupiah?",
+    "relevant_titles": [
+      "Implementasi deep transfer learning untuk klasifikasi nominal uang kertas rupiah"
+    ],
+    "key_concepts": [
+      "VGG16",
+      "deep transfer learning",
+      "92.86%",
+      "uang kertas rupiah"
+    ],
+    "reference_answer": "VGG16 dengan CNN digunakan untuk klasifikasi nominal uang kertas rupiah. Akurasi 92.86%."
+  },
+  {
+    "id": "A15",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Kernel SVM mana yang menghasilkan akurasi tertinggi untuk klasifikasi performa akademik mahasiswa?",
+    "relevant_titles": [
+      "Exploring the Kernel on SVM to Enhance the Classification Performance of Students' Academic Performance"
+    ],
+    "key_concepts": [
+      "SVM",
+      "kernel linear",
+      "88.8%",
+      "academic performance",
+      "student"
+    ],
+    "reference_answer": "SVM dengan kernel linear menghasilkan akurasi tertinggi 88.8% untuk klasifikasi performa akademik mahasiswa."
+  },
+  {
+    "id": "A16",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Metode stacking ensemble dengan base learner apa yang mencapai akurasi 91.1% dan 94.8% pada dua dataset klasifikasi mahasiswa?",
+    "relevant_titles": [
+      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm"
+    ],
+    "key_concepts": [
+      "stacking algorithm",
+      "classification via clustering",
+      "91.1%",
+      "94.8%"
+    ],
+    "reference_answer": "Stacking algorithm dengan classification via clustering pada Data1 (91.1%) dan Data2 (94.8%) untuk performa akademik mahasiswa."
+  },
+  {
+    "id": "A17",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Berapa Silhouette Coefficient yang dicapai dalam paper pemetaan kriminalitas Bangkalan menggunakan K-Means dan K-Means++?",
+    "relevant_titles": [
+      "Analisa pemetaan kriminalitas kabupaten bangkalan menggunakan metode k-means dan k-means++"
+    ],
+    "key_concepts": [
+      "K-Means",
+      "K-Means++",
+      "Silhouette 0.1683",
+      "0.4898",
+      "Bangkalan",
+      "crime mapping"
+    ],
+    "reference_answer": "Silhouette Coefficient 0.1683 hingga 0.4898 pada 492 dataset pemetaan kriminalitas Kabupaten Bangkalan."
+  },
+  {
+    "id": "A18",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Akurasi berapa yang dicapai klasifikasi usia wajah menggunakan pretrained VGG16 dan ANN pada dataset UTKFace?",
+    "relevant_titles": [
+      "Klasifikasi Citra Wajah Untuk Rentang Usia Menggunakan Metode Artificial Neural Network"
+    ],
+    "key_concepts": [
+      "UTKFace",
+      "VGG16",
+      "ANN",
+      "87%",
+      "age classification",
+      "facial image"
+    ],
+    "reference_answer": "VGG16 pretrained + ANN pada dataset UTKFace. Akurasi 87% untuk klasifikasi rentang usia dari citra wajah."
+  },
+  {
+    "id": "A19",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Sistem pakar menggunakan metode apa untuk mendiagnosa penyakit degeneratif dan apa outputnya?",
+    "relevant_titles": [
+      "Rancang bangun sistem pakar untuk mendiagnosa penyakit degeneratif"
+    ],
+    "key_concepts": [
+      "Dempster-Shafer",
+      "sistem pakar",
+      "density values",
+      "penyakit degeneratif"
+    ],
+    "reference_answer": "Sistem pakar berbasis metode Dempster-Shafer untuk mendiagnosa penyakit degeneratif, menghasilkan nilai densitas dan rekomendasi pengobatan."
+  },
+  {
+    "id": "A20",
+    "category": "A",
+    "intent": "method_accuracy",
+    "query": "Algoritma Gini Index digunakan untuk apa dalam paper tentang kualitas clustering performa mahasiswa?",
+    "relevant_titles": [
+      "Improving the quality of the clustering process on students' performance using feature selection"
+    ],
+    "key_concepts": [
+      "Gini Index",
+      "feature selection",
+      "K-means",
+      "Silhouette",
+      "ANOVA",
+      "t-test"
+    ],
+    "reference_answer": "Gini Index digunakan sebagai metode feature selection untuk meningkatkan kualitas K-means clustering performa mahasiswa, divalidasi dengan Silhouette, ANOVA, dan t-test."
+  },
+  {
+    "id": "B01",
+    "category": "B",
+    "intent": "author_publication_list",
+    "query": "Sebutkan semua publikasi yang ditulis oleh Ricky Eka Putra beserta tahunnya.",
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Penerapan metode deep learning menggunakan algoritma CNN dengan arsitektur VGG NET untuk pengenalan cuaca",
+      "Sistem Klasifikasi Limbah Menggunakan Metode Convolutional Neural Network (CNN) Pada Webservice Berbasis Framework Flask",
+      "Perkiraan Harga Beras Premium DKI Jakarta Menggunakan Regresi Linier",
+      "Pengenalan pentingnya cyber security awareness pada umkm",
+      "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine",
+      "Classification of non-proliferative diabetic retinopathy based on hard exudates using soft margin SVM"
+    ],
+    "key_concepts": [
+      "Ricky Eka Putra",
+      "author",
+      "AUTHORED_BY"
+    ],
+    "reference_answer": "Ricky Eka Putra memiliki 12 publikasi dalam knowledge graph (2013–2026), antara lain: Rule-Based Adaptive Chatbot (2026), Optuna Ensemble (2025), Dual ViT (2025), CNN-SVM Cyberbullying (2024), CNN VGG NET Weather (2023), CNN Waste Classification (2022), dll."
+  },
+  {
+    "id": "B02",
+    "category": "B",
+    "intent": "author_publication_list",
+    "query": "Apa saja paper yang ditulis oleh Naim Rochmawati dan di jurnal/venue apa saja dipublikasikan?",
+    "relevant_titles": [
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels",
+      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm",
+      "Predicting the Students Performance using Regularization-based Linear Regression",
+      "Clustering Students in the Online Learning Climate based on Internal and External Factors"
+    ],
+    "key_concepts": [
+      "Naim Rochmawati",
+      "AUTHORED_BY",
+      "venue",
+      "ICVEE",
+      "IJAICT"
+    ],
+    "reference_answer": "Naim Rochmawati memiliki 12 publikasi meliputi Lecture Notes in Networks and Systems, Indonesian Journal of EE&CS, ICVEE proceedings, Advances in Intelligent Systems and Computing, dll."
+  },
+  {
+    "id": "B03",
+    "category": "B",
+    "intent": "author_publication_list",
+    "query": "Berapa jumlah paper yang ditulis oleh Anita Qoiriah dan sebutkan 5 paper terbarunya.",
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels"
+    ],
+    "key_concepts": [
+      "Anita Qoiriah",
+      "15 publikasi",
+      "AUTHORED_BY"
+    ],
+    "reference_answer": "Anita Qoiriah memiliki 15 publikasi. 5 terbaru: Rule-Based Chatbot WhatsApp (2026), Students Comprehension SVM (2025), Optuna Ensemble (2025), CNN-SVM Cyberbullying (2024), Stress Level Tree (2024)."
+  },
+  {
+    "id": "B04",
+    "category": "B",
+    "intent": "author_publication_list",
+    "query": "Apa saja penelitian Wiyli Yustanti dan topik apa yang paling sering ia teliti?",
+    "relevant_titles": [
+      "A Text Mining Analysis of Social Media Criticisms on Tuition Fee Policies at State Universities in Indonesia",
+      "Clustering Students in the Online Learning Climate based on Internal and External Factors",
+      "Novel hybrid prairie dog optimization algorithm-marine predator algorithm for tuning parameters power system stabilizer"
+    ],
+    "key_concepts": [
+      "Wiyli Yustanti",
+      "text mining",
+      "clustering",
+      "power system"
+    ],
+    "reference_answer": "Wiyli Yustanti memiliki 6 publikasi mencakup text mining (IndoBERT, social media), clustering mahasiswa (K-Means), power system stabilizer (metaheuristik), dan Canva training."
+  },
+  {
+    "id": "B05",
+    "category": "B",
+    "intent": "author_publication_list",
+    "query": "Sebutkan semua publikasi Agus Prihanto dan bidang penelitian apa yang ia tekuni.",
+    "relevant_titles": [
+      "Optimizing ANN Architecture for Classifying Student Stress Levels",
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels",
+      "Educational Training on Business Management Using Web-Based Applications with Cryptocurrency Integration",
+      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm",
+      "Pengenalan pentingnya cyber security awareness pada umkm"
+    ],
+    "key_concepts": [
+      "Agus Prihanto",
+      "6 publikasi",
+      "stress",
+      "education",
+      "cyber security"
+    ],
+    "reference_answer": "Agus Prihanto memiliki 6 publikasi di bidang: machine learning untuk pendidikan (stres mahasiswa, performa akademik), web-based business training, dan cyber security awareness."
+  },
+  {
+    "id": "B06",
+    "category": "B",
+    "intent": "collaboration_network",
+    "query": "Siapa saja dosen yang pernah berkolaborasi (co-author) dengan Yuni Yamasari dalam penelitian?",
+    "relevant_titles": [],
+    "key_concepts": [
+      "Yuni Yamasari",
+      "co-author",
+      "Ricky Eka Putra",
+      "Anita Qoiriah",
+      "Naim Rochmawati",
+      "Agus Prihanto"
+    ],
+    "reference_answer": "Kolaborator utama Yuni Yamasari: Anita Qoiriah (15 paper), Naim Rochmawati (12 paper), Ricky Eka Putra (4+ paper), Agus Prihanto, I Made Suartana, Wiyli Yustanti, Lilik Anifah, dll."
+  },
+  {
+    "id": "B07",
+    "category": "B",
+    "intent": "collaboration_network",
+    "query": "Dosen mana yang pernah berkolaborasi dengan Lilik Anifah dalam publikasi ilmiah?",
+    "relevant_titles": [
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Enhancing photovoltaic parameters based on modified puma optimizer",
+      "Method Comparison of 3D Facial Reconstruction Coresponding to 2D Image"
+    ],
+    "key_concepts": [
+      "Lilik Anifah",
+      "Ricky Eka Putra",
+      "Yuni Yamasari",
+      "Widi Aribowo",
+      "Aditya Prapanca",
+      "Pradini"
+    ],
+    "reference_answer": "Lilik Anifah berkolaborasi dengan: Ricky Eka Putra & Yuni Yamasari (Dual ViT 2025), Widi Aribowo & Aditya Prapanca (Puma Optimizer 2025), Pradini & Yuni Yamasari (3D Facial 2018)."
+  },
+  {
+    "id": "B08",
+    "category": "B",
+    "intent": "collaboration_network",
+    "query": "Siapa kolaborator penelitian I Made Suartana dan di paper mana saja mereka bekerja sama?",
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Pengenalan pentingnya cyber security awareness pada umkm"
+    ],
+    "key_concepts": [
+      "I Made Suartana",
+      "Yuni Yamasari",
+      "Ricky Eka Putra",
+      "Anita Qoiriah",
+      "5 paper"
+    ],
+    "reference_answer": "I Made Suartana berkolaborasi terutama dengan Yuni Yamasari, Ricky Eka Putra, dan Anita Qoiriah di 5 paper: WhatsApp Chatbot (2026), Optuna Ensemble (2025), Stress Tree (2024), CNN-SVM (2024), Cyber Security (2022)."
+  },
+  {
+    "id": "B09",
+    "category": "B",
+    "intent": "collaboration_network",
+    "query": "Apakah Andi Iwan Nurhidayat dan Anita Qoiriah pernah menulis paper bersama? Sebutkan paper tersebut.",
+    "relevant_titles": [
+      "Optimizing ANN Architecture for Classifying Student Stress Levels",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Exploring Automatic Assessment-Based Features for Clustering of Students' Academic Performance"
+    ],
+    "key_concepts": [
+      "Andi Iwan Nurhidayat",
+      "Anita Qoiriah",
+      "co-author",
+      "3 paper"
+    ],
+    "reference_answer": "Ya. Mereka berkolaborasi di 3 paper: ANN Stress Level (ICOIACT 2024), CNN-SVM Cyberbullying (ICVEE 2024), dan Clustering Academic Performance (2021)."
+  },
+  {
+    "id": "B10",
+    "category": "B",
+    "intent": "topic_expertise",
+    "query": "Dosen mana saja yang memiliki penelitian di bidang klasterisasi atau clustering data mahasiswa?",
+    "relevant_titles": [
+      "Clustering Students in the Online Learning Climate based on Internal and External Factors",
+      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm",
+      "Identifying dominant characteristics of students' cognitive domain on clustering-based classification",
+      "Exploring Automatic Assessment-Based Features for Clustering of Students' Academic Performance",
+      "Improving the quality of the clustering process on students' performance using feature selection"
+    ],
+    "key_concepts": [
+      "clustering",
+      "K-Means",
+      "USES_METHOD",
+      "student performance",
+      "Yuni Yamasari",
+      "Anita Qoiriah"
+    ],
+    "reference_answer": "Dosen dengan penelitian clustering mahasiswa: Yuni Yamasari (5+ paper), Anita Qoiriah (4 paper), Naim Rochmawati, Asmunin, Wiyli Yustanti. Metode: K-Means, Fuzzy C-Means, clustering-based classification."
+  },
+  {
+    "id": "B11",
+    "category": "B",
+    "intent": "topic_expertise",
+    "query": "Dosen Infokom UNESA mana yang memiliki penelitian di bidang deep learning atau vision transformer?",
+    "relevant_titles": [
+      "Biomedical image classification using vision transformer",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
+      "Penerapan metode deep learning menggunakan algoritma CNN dengan arsitektur VGG NET untuk pengenalan cuaca"
+    ],
+    "key_concepts": [
+      "deep learning",
+      "vision transformer",
+      "ViT",
+      "Yuni Yamasari",
+      "Ricky Eka Putra",
+      "Lilik Anifah",
+      "Pradini"
+    ],
+    "reference_answer": "Dosen dengan riset deep learning/ViT: Yuni Yamasari (BeyondRPC, ViT biomedical), Ricky Eka Putra (ViT race/gender, CNN weather), Lilik Anifah (ViT race/gender), Pradini Puspitaningayu (biomedical ViT)."
+  },
+  {
+    "id": "B12",
+    "category": "B",
+    "intent": "topic_expertise",
+    "query": "Dosen mana yang memiliki publikasi di bidang power system atau energi terbarukan?",
+    "relevant_titles": [
+      "Enhancing photovoltaic parameters based on modified puma optimizer",
+      "Dingo optimization algorithm for designing power system stabilizer",
+      "Novel hybrid prairie dog optimization algorithm-marine predator algorithm for tuning parameters power system stabilizer"
+    ],
+    "key_concepts": [
+      "power system",
+      "photovoltaic",
+      "renewable energy",
+      "Widi Aribowo",
+      "Lilik Anifah",
+      "Aditya Prapanca"
+    ],
+    "reference_answer": "Widi Aribowo (3 paper: Dingo, PDOMPA, Puma optimizer), Lilik Anifah (1 paper: Puma optimizer), Aditya Prapanca (2 paper: Puma & Dingo) meneliti di bidang power system dan energi terbarukan."
+  },
+  {
+    "id": "B13",
+    "category": "B",
+    "intent": "topic_expertise",
+    "query": "Siapa dosen yang meneliti topik NLP atau text mining dalam publikasinya?",
+    "relevant_titles": [
+      "A Text Mining Analysis of Social Media Criticisms on Tuition Fee Policies at State Universities in Indonesia",
+      "Deteksi Validitas Berita pada Media Sosial Twitter dengan Algoritma Naive Bayes",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine"
+    ],
+    "key_concepts": [
+      "NLP",
+      "text mining",
+      "IndoBERT",
+      "Naive Bayes",
+      "sentiment",
+      "Wiyli Yustanti",
+      "Yuni Yamasari",
+      "Anita Qoiriah"
+    ],
+    "reference_answer": "Dosen dengan riset NLP/text mining: Wiyli Yustanti (IndoBERT, LDA, text mining SPP), Yuni Yamasari (Naive Bayes fake news, sentiment analysis SVM), Anita Qoiriah (CNN-SVM FastText cyberbullying)."
+  },
+  {
+    "id": "B14",
+    "category": "B",
+    "intent": "topic_expertise",
+    "query": "Dosen mana yang memiliki penelitian berkaitan dengan medical image classification atau diagnosis penyakit?",
+    "relevant_titles": [
+      "Biomedical image classification using vision transformer",
+      "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine",
+      "Classification of non-proliferative diabetic retinopathy based on hard exudates using soft margin SVM",
+      "Klasifikasi Penyakit Stroke dengan Metode Support Vector Machine (SVM)",
+      "Covid Symptom Severity Using Decision Tree",
+      "Analisa Learning Rate dan Batch Size pada Klasifikasi Covid Menggunakan Deep Learning dengan Optimizer Adam"
+    ],
+    "key_concepts": [
+      "medical image",
+      "diabetic retinopathy",
+      "stroke",
+      "COVID",
+      "Ricky Eka Putra",
+      "Yuni Yamasari",
+      "Pradini"
+    ],
+    "reference_answer": "Dosen dengan riset medical imaging: Ricky Eka Putra (diabetic retinopathy 2013, 2020), Yuni Yamasari (stroke SVM, COVID decision tree, COVID learning rate), Pradini Puspitaningayu (biomedical ViT 2025)."
+  },
+  {
+    "id": "B15",
+    "category": "B",
+    "intent": "multi_hop_concept",
+    "query": "Paper apa saja yang menggunakan ensemble learning dan domain apa yang dicakupnya?",
+    "relevant_titles": [
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm"
+    ],
+    "key_concepts": [
+      "ensemble learning",
+      "stacking",
+      "finance",
+      "education",
+      "USES_METHOD"
+    ],
+    "reference_answer": "Paper dengan ensemble learning: Optuna Ensemble (fintech/kredit), SVM Kernels E-Learning (pendidikan, 98.4%), Stacking Algorithm (performa akademik 91-94.8%)."
+  },
+  {
+    "id": "B16",
+    "category": "B",
+    "intent": "multi_hop_concept",
+    "query": "Paper apa yang menggunakan metode SVM dan domain apa saja yang dicakup?",
+    "relevant_titles": [
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Exploring the Kernel on SVM to Enhance the Classification Performance of Students' Academic Performance",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Klasifikasi Penyakit Stroke dengan Metode Support Vector Machine (SVM)",
+      "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification"
+    ],
+    "key_concepts": [
+      "SVM",
+      "multi-domain",
+      "education",
+      "medical",
+      "social media",
+      "USES_METHOD"
+    ],
+    "reference_answer": "SVM digunakan di: pendidikan (student comprehension, behavior, academic performance), medis (stroke, diabetic retinopathy), biometrik (race/gender), dan NLP (cyberbullying)."
+  },
+  {
+    "id": "B17",
+    "category": "B",
+    "intent": "venue_network",
+    "query": "Paper apa saja yang dipublikasikan di ICVEE dan siapa penulisnya?",
+    "relevant_titles": [
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Educational Training on Business Management Using Web-Based Applications with Cryptocurrency Integration"
+    ],
+    "key_concepts": [
+      "ICVEE",
+      "PUBLISHED_IN_VENUE",
+      "Yuni Yamasari",
+      "Ricky Eka Putra"
+    ],
+    "reference_answer": "ICVEE (edisi ke-7 dan ke-8): Optuna Ensemble (Yamasari et al., 2025), Dual ViT (Anifah et al., 2025), CNN-SVM Cyberbullying (Qoiriah et al., 2024), Web Business Training (Yohannes et al., 2024)."
+  },
+  {
+    "id": "B18",
+    "category": "B",
+    "intent": "venue_network",
+    "query": "Apa saja paper yang diterbitkan di jurnal JINACS (Journal of Informatics and Computer Science)?",
+    "relevant_titles": [
+      "Penerapan metode deep learning menggunakan algoritma CNN dengan arsitektur VGG NET untuk pengenalan cuaca",
+      "Sistem Klasifikasi Limbah Menggunakan Metode Convolutional Neural Network (CNN) Pada Webservice Berbasis Framework Flask",
+      "Perkiraan Harga Beras Premium DKI Jakarta Menggunakan Regresi Linier",
+      "Klasifikasi Penyakit Stroke dengan Metode Support Vector Machine (SVM)",
+      "Klasifikasi Citra Wajah Untuk Rentang Usia Menggunakan Metode Artificial Neural Network",
+      "Klasifikasi tingkat stres mahasiswa menggunakan metode berbasis tree"
+    ],
+    "key_concepts": [
+      "JINACS",
+      "Journal of Informatics and Computer Science",
+      "PUBLISHED_IN_VENUE"
+    ],
+    "reference_answer": "Paper di JINACS: CNN VGG NET Weather (2023), CNN Waste Classification (2022), Harga Beras Regresi (2022), Stroke SVM (2024), Klasifikasi Wajah ANN (2023), Stres Mahasiswa Tree (2023)."
+  },
+  {
+    "id": "B19",
+    "category": "B",
+    "intent": "venue_network",
+    "query": "Paper apa saja yang dipublikasikan di International Journal of Intelligent Engineering and Systems?",
+    "relevant_titles": [
+      "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
+      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine",
+      "Identifying dominant characteristics of students' cognitive domain on clustering-based classification"
+    ],
+    "key_concepts": [
+      "IJIES",
+      "International Journal of Intelligent Engineering",
+      "PUBLISHED_IN_VENUE"
+    ],
+    "reference_answer": "Paper di IJIES: BeyondRPC (2025), Detecting Students' Behavior SVM Ensemble (2023), Diabetic Retinopathy Convolutional SVM (2020), Students Cognitive Clustering (2020)."
+  },
+  {
+    "id": "B20",
+    "category": "B",
+    "intent": "temporal_trend",
+    "query": "Paper apa saja yang dipublikasikan pada tahun 2025 dan siapa penulisnya?",
+    "relevant_titles": [
+      "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
+      "Biomedical image classification using vision transformer",
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Enhancing photovoltaic parameters based on modified puma optimizer",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction"
+    ],
+    "key_concepts": [
+      "2025",
+      "PUBLISHED_IN_YEAR",
+      "Yuni Yamasari",
+      "Anita Qoiriah",
+      "Lilik Anifah"
+    ],
+    "reference_answer": "Paper 2025: BeyondRPC (Yamasari), Biomedical ViT (Pradini et al.), Students Comprehension SVM (Qoiriah et al.), Dual ViT (Anifah et al.), Photovoltaic Puma (Aribowo et al.), Optuna Ensemble (Yamasari et al.)."
+  },
+  {
+    "id": "B21",
+    "category": "B",
+    "intent": "temporal_trend",
+    "query": "Apa saja penelitian yang diterbitkan sebelum tahun 2020 di database ini?",
+    "relevant_titles": [
+      "Method Comparison of 3D Facial Reconstruction Coresponding to 2D Image",
+      "Improving the cluster validity on student's psychomotor domain using feature selection",
+      "Predicting student's psychomotor domain on the vocational senior high school using linear regression",
+      "Design and Implementation Serious Game 'Tic Tac Toe Math'",
+      "Mesin oven pengering cerdas berbasis Internet of Things (IoT)",
+      "Features extraction to improve performance of clustering process on student achievement",
+      "Rancang bangun sistem pakar untuk mendiagnosa penyakit degeneratif",
+      "Aplikasi Ensiklopedia Negara Digital untuk Memotivasi Pengguna dalam Mengenal Negara di Dunia",
+      "Sistem Informasi Manajemen Sumber Daya Manusia (Studi Kasus Bumida Syariah)",
+      "Classification of non-proliferative diabetic retinopathy based on hard exudates using soft margin SVM"
+    ],
+    "key_concepts": [
+      "sebelum 2020",
+      "PUBLISHED_IN_YEAR",
+      "2019",
+      "2018",
+      "2017",
+      "2014",
+      "2013",
+      "2012"
+    ],
+    "reference_answer": "Paper sebelum 2020: IoT oven (2019), 3D Facial (2018), Psychomotor (2018), Serious Game (2019), Feature Extraction Clustering (2017), Sistem Pakar (2014), Ensiklopedia (2013), SIMSDM (2012), Diabetic Retinopathy SVM (2013)."
+  },
+  {
+    "id": "B22",
+    "category": "B",
+    "intent": "temporal_trend",
+    "query": "Topik penelitian apa yang semakin banyak muncul di publikasi tahun 2023–2026?",
+    "relevant_titles": [],
+    "key_concepts": [
+      "trend",
+      "2023",
+      "2024",
+      "2025",
+      "2026",
+      "Vision Transformer",
+      "ensemble learning",
+      "deep learning"
+    ],
+    "reference_answer": "Tren 2023–2026: Vision Transformer (ViT) untuk klasifikasi citra, ensemble learning untuk prediksi risiko keuangan, chatbot adaptif berbasis rule-based, dan penggunaan metaheuristik untuk optimasi sistem tenaga listrik."
+  },
+  {
+    "id": "B23",
+    "category": "B",
+    "intent": "multi_hop_concept",
+    "query": "Metode optimasi metaheuristik apa saja yang digunakan lintas publikasi di knowledge graph ini?",
+    "relevant_titles": [
+      "Enhancing photovoltaic parameters based on modified puma optimizer",
+      "Dingo optimization algorithm for designing power system stabilizer",
+      "Novel hybrid prairie dog optimization algorithm-marine predator algorithm for tuning parameters power system stabilizer"
+    ],
+    "key_concepts": [
+      "metaheuristik",
+      "Puma",
+      "Dingo",
+      "prairie dog",
+      "marine predator",
+      "PSS",
+      "USES_METHOD"
+    ],
+    "reference_answer": "Metaheuristik yang digunakan: Puma Optimizer (Aribowo 2025), Dingo Optimization Algorithm (Aribowo 2023), dan PDOMPA/hybrid Prairie Dog + Marine Predator (Aribowo 2023)."
+  },
+  {
+    "id": "B24",
+    "category": "B",
+    "intent": "multi_hop_concept",
+    "query": "Apa saja paper yang menggunakan K-Means dan untuk aplikasi apa saja metode ini dipakai?",
+    "relevant_titles": [
+      "Analisa pemetaan kriminalitas kabupaten bangkalan menggunakan metode k-means dan k-means++",
+      "Clustering Students in the Online Learning Climate based on Internal and External Factors",
+      "Klastering wilayah kota/kabupaten berdasarkan data persebaran COVID-19 di Propinsi Jawa Timur dengan metode K-Means",
+      "Exploring Automatic Assessment-Based Features for Clustering of Students' Academic Performance",
+      "Improving the quality of the clustering process on students' performance using feature selection"
+    ],
+    "key_concepts": [
+      "K-Means",
+      "USES_METHOD",
+      "crime mapping",
+      "student clustering",
+      "COVID-19"
+    ],
+    "reference_answer": "K-Means digunakan untuk: pemetaan kriminalitas (Bangkalan), clustering mahasiswa e-learning, peta COVID-19 Jawa Timur, clustering performa akademik mahasiswa."
+  },
+  {
+    "id": "B25",
+    "category": "B",
+    "intent": "multi_hop_concept",
+    "query": "Paper yang mana yang menggunakan feature selection dan tujuan akhirnya apa?",
+    "relevant_titles": [
+      "Reducing the Error Mapping of the Students' Performance Using Feature Selection",
+      "Improving the quality of the clustering process on students' performance using feature selection",
+      "Identifying dominant characteristics of students' cognitive domain on clustering-based classification",
+      "Features extraction to improve performance of clustering process on student achievement"
+    ],
+    "key_concepts": [
+      "feature selection",
+      "USES_METHOD",
+      "error mapping",
+      "clustering quality",
+      "cognitive domain"
+    ],
+    "reference_answer": "Feature selection digunakan untuk: mengurangi error mapping performa mahasiswa (logistic regression), meningkatkan kualitas clustering (Gini Index + K-Means), identifikasi domain kognitif (clustering-based classification)."
+  },
+  {
+    "id": "B26",
+    "category": "B",
+    "intent": "cross_paper_concept",
+    "query": "Dalam paper mana saja Yuni Yamasari menjadi penulis TUNGGAL (sole author)?",
+    "relevant_titles": [
+      "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
+      "Klasifikasi tingkat stres mahasiswa menggunakan metode berbasis tree",
+      "Implementasi deep transfer learning untuk klasifikasi nominal uang kertas rupiah",
+      "Klasifikasi Penyakit Stroke dengan Metode Support Vector Machine (SVM)",
+      "Klasifikasi Citra Wajah Untuk Rentang Usia Menggunakan Metode Artificial Neural Network",
+      "Classifying Student Achievement Using K-NN Based on Feature Normalization Techniques",
+      "Mengenali Jenis Tanaman Obat Berbasis Pola Citra Daun dengan Algoritma K-Nearest Neighbors",
+      "Analisa pemetaan kriminalitas kabupaten bangkalan menggunakan metode k-means dan k-means++",
+      "Identifying dominant characteristics of students' cognitive domain on clustering-based classification",
+      "Improving the cluster validity on student's psychomotor domain using feature selection",
+      "Predicting student's psychomotor domain on the vocational senior high school using linear regression",
+      "Design and Implementation Serious Game 'Tic Tac Toe Math'",
+      "Features extraction to improve performance of clustering process on student achievement",
+      "Rancang bangun sistem pakar untuk mendiagnosa penyakit degeneratif",
+      "Aplikasi Ensiklopedia Negara Digital untuk Memotivasi Pengguna dalam Mengenal Negara di Dunia",
+      "Sistem Informasi Manajemen Sumber Daya Manusia (Studi Kasus Bumida Syariah)"
+    ],
+    "key_concepts": [
+      "sole author",
+      "single author",
+      "Yuni Yamasari",
+      "HAS_AUTHOR"
+    ],
+    "reference_answer": "Yuni Yamasari menulis sebagai penulis tunggal di 16 paper, antara lain: BeyondRPC (2025), Deep Transfer Learning Rupiah (2024), Stroke SVM (2024), Klasifikasi Wajah ANN (2023), Klastering Kriminalitas (2022), KNN Tanaman Obat (2021), dll."
+  },
+  {
+    "id": "B27",
+    "category": "B",
+    "intent": "cross_paper_concept",
+    "query": "Ricky Eka Putra memiliki paper di bidang computer vision apa saja?",
+    "relevant_titles": [
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Sistem Klasifikasi Limbah Menggunakan Metode Convolutional Neural Network (CNN) Pada Webservice Berbasis Framework Flask",
+      "Penerapan metode deep learning menggunakan algoritma CNN dengan arsitektur VGG NET untuk pengenalan cuaca",
+      "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine",
+      "Classification of non-proliferative diabetic retinopathy based on hard exudates using soft margin SVM"
+    ],
+    "key_concepts": [
+      "Ricky Eka Putra",
+      "computer vision",
+      "CNN",
+      "ViT",
+      "classification"
+    ],
+    "reference_answer": "Ricky Eka Putra di computer vision: Dual ViT race/gender (2025), CNN waste classification (2022), CNN VGG NET weather (2023), Convolutional SVM diabetic retinopathy (2020), Soft margin SVM diabetic retinopathy (2013)."
+  },
+  {
+    "id": "B28",
+    "category": "B",
+    "intent": "cross_paper_concept",
+    "query": "Paper apa yang ditulis bersama oleh Yuni Yamasari dan Ricky Eka Putra?",
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Improving the quality of the clustering process on students' performance using feature selection"
+    ],
+    "key_concepts": [
+      "Yuni Yamasari",
+      "Ricky Eka Putra",
+      "co-author",
+      "5 paper"
+    ],
+    "reference_answer": "Yuni Yamasari dan Ricky Eka Putra berkolaborasi di 5 paper: WhatsApp Chatbot (2026), Optuna Ensemble (2025), Dual ViT (2025), CNN-SVM Cyberbullying (2024), Clustering Quality (2020)."
+  },
+  {
+    "id": "B29",
+    "category": "B",
+    "intent": "cross_paper_concept",
+    "query": "Paper yang mana yang membahas prediksi atau klasifikasi risiko keuangan dan kredit?",
+    "relevant_titles": [
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Perkiraan Harga Beras Premium DKI Jakarta Menggunakan Regresi Linier"
+    ],
+    "key_concepts": [
+      "finance",
+      "credit default",
+      "harga beras",
+      "risiko keuangan",
+      "BELONGS_TO_DOMAIN"
+    ],
+    "reference_answer": "Paper domain keuangan: Optuna Ensemble Credit Default (AUC 0.9933, XGBoost/CatBoost/LightGBM), dan Prediksi Harga Beras Premium DKI Jakarta (regresi linier, MAE 275.55)."
+  },
+  {
+    "id": "B30",
+    "category": "B",
+    "intent": "cross_paper_concept",
+    "query": "Berapa paper dalam knowledge graph yang menggunakan Decision Tree atau ID3?",
+    "relevant_titles": [
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels",
+      "Covid Symptom Severity Using Decision Tree",
+      "Klasifikasi tingkat stres mahasiswa menggunakan metode berbasis tree"
+    ],
+    "key_concepts": [
+      "decision tree",
+      "ID3",
+      "J48",
+      "Hoeffding Tree",
+      "USES_METHOD",
+      "3 paper"
+    ],
+    "reference_answer": "3 paper menggunakan Decision Tree/ID3: Stress Detection ID3 (95%, 2024), COVID Symptom J48+Hoeffding Tree (2020), Klasifikasi Stres Mahasiswa ID3 (95%, 2023)."
+  },
+  {
+    "id": "C01",
+    "category": "C",
+    "intent": "multi_hop_author_topic",
+    "query": "Dosen mana dari prodi S2 Informatika yang memiliki penelitian di bidang machine learning untuk pendidikan?",
+    "relevant_titles": [
+      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Optimizing ANN Architecture for Classifying Student Stress Levels",
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection"
+    ],
+    "key_concepts": [
+      "S2 Informatika",
+      "machine learning",
+      "pendidikan",
+      "Yuni Yamasari",
+      "Ricky Eka Putra",
+      "Wiyli Yustanti"
+    ],
+    "reference_answer": "Dosen S2 Informatika dengan riset ML-pendidikan: Yuni Yamasari (banyak paper), Ricky Eka Putra (co-author), Wiyli Yustanti (text mining SPP). Hop: PRODI→DOSEN→PAPER→TOPIK."
+  },
+  {
+    "id": "C02",
+    "category": "C",
+    "intent": "multi_hop_coauthor_topic",
+    "query": "Siapa saja rekan penelitian dari Pradini Puspitaningayu dan topik apa yang mereka bahas bersama?",
+    "relevant_titles": [
+      "Biomedical image classification using vision transformer",
+      "Method Comparison of 3D Facial Reconstruction Coresponding to 2D Image"
+    ],
+    "key_concepts": [
+      "Pradini Puspitaningayu",
+      "Lusia Rakhmawati",
+      "Yuni Yamasari",
+      "Lilik Anifah",
+      "3D facial",
+      "biomedical"
+    ],
+    "reference_answer": "Pradini berkolaborasi dengan: Lusia Rakhmawati & Yuni Yamasari (biomedical ViT 2025), Yuni Yamasari & Lilik Anifah (3D Facial Reconstruction 2018). Topik: computer vision dan biomedical imaging."
+  },
+  {
+    "id": "C03",
+    "category": "C",
+    "intent": "multi_hop_venue_author",
+    "query": "Dosen dari prodi S1 Teknik Informatika apa saja yang pernah publish di ICVEE?",
+    "relevant_titles": [
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Educational Training on Business Management Using Web-Based Applications with Cryptocurrency Integration",
+      "Exploring the Kernel on SVM to Enhance the Classification Performance of Students' Academic Performance"
+    ],
+    "key_concepts": [
+      "S1 Teknik Informatika",
+      "ICVEE",
+      "Anita Qoiriah",
+      "Agus Prihanto",
+      "I Made Suartana"
+    ],
+    "reference_answer": "Dosen S1 Teknik Informatika yang publish di ICVEE: Anita Qoiriah (Optuna Ensemble 2025, CNN-SVM 2024), Agus Prihanto (Web Business 2024, Stress ANN 2024), I Made Suartana (Optuna 2025, CNN-SVM 2024), dan Naim Rochmawati. Hop: PRODI→DOSEN→PAPER→VENUE."
+  },
+  {
+    "id": "C04",
+    "category": "C",
+    "intent": "multi_hop_method_domain",
+    "query": "Paper yang menggunakan CNN dan domain aplikasinya berbeda-beda — sebutkan paper tersebut beserta domain masing-masing.",
+    "relevant_titles": [
+      "Biomedical image classification using vision transformer",
+      "Penerapan metode deep learning menggunakan algoritma CNN dengan arsitektur VGG NET untuk pengenalan cuaca",
+      "Sistem Klasifikasi Limbah Menggunakan Metode Convolutional Neural Network (CNN) Pada Webservice Berbasis Framework Flask",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Implementasi deep transfer learning untuk klasifikasi nominal uang kertas rupiah",
+      "Analisa Learning Rate dan Batch Size pada Klasifikasi Covid Menggunakan Deep Learning dengan Optimizer Adam"
+    ],
+    "key_concepts": [
+      "CNN",
+      "multi-domain",
+      "cuaca",
+      "limbah",
+      "COVID",
+      "rupiah",
+      "wajah",
+      "biomedical"
+    ],
+    "reference_answer": "CNN/ViT di berbagai domain: cuaca (VGG NET), limbah (CNN Flask), biomedical (ViT), COVID (Adam optimizer), uang kertas rupiah (VGG16 transfer learning), biometrik wajah (Dual ViT)."
+  },
+  {
+    "id": "C05",
+    "category": "C",
+    "intent": "multi_hop_author_year_topic",
+    "query": "Paper apa yang ditulis Yuni Yamasari di jurnal internasional terindeks Scopus setelah tahun 2022?",
+    "relevant_titles": [
+      "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
+      "Biomedical image classification using vision transformer",
+      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection"
+    ],
+    "key_concepts": [
+      "Yuni Yamasari",
+      "2023-2026",
+      "international",
+      "Scopus"
+    ],
+    "reference_answer": "Paper Yuni Yamasari di venue internasional 2023+: BeyondRPC (IJIES 2025), Biomedical ViT (E3S 2025), Students Comprehension SVM (Lecture Notes 2025), Optuna Ensemble (ICVEE 2025), Dual ViT (ICVEE 2025), WhatsApp Chatbot (JoE 2026)."
+  },
+  {
+    "id": "C06",
+    "category": "C",
+    "intent": "multi_hop_common_coauthor",
+    "query": "Dosen mana yang pernah menjadi co-author BERSAMA dengan Ricky Eka Putra DAN Anita Qoiriah sekaligus di satu paper?",
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification"
+    ],
+    "key_concepts": [
+      "Ricky Eka Putra",
+      "Anita Qoiriah",
+      "co-author",
+      "Yuni Yamasari",
+      "I Made Suartana"
+    ],
+    "reference_answer": "Dosen yang co-author Ricky Eka Putra DAN Anita Qoiriah sekaligus: Yuni Yamasari (WhatsApp Chatbot 2026, CNN-SVM 2024) dan I Made Suartana (WhatsApp 2026, CNN-SVM 2024). Ini membutuhkan 2-hop: AUTHOR-A → PAPER ← AUTHOR-B → PAPER ← AUTHOR-C."
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "G01",
+    "category": "G",
+    "intent": "out_of_scope_guardrail",
+    "query": "Apakah ada paper tentang large language model seperti GPT atau LLaMA di knowledge graph ini?",
+    "relevant_titles": [],
+    "key_concepts": [
+      "tidak",
+      "tidak ditemukan",
+      "LLM",
+      "GPT",
+      "LLaMA"
+    ],
+    "reference_answer": "Tidak ada paper tentang LLM, GPT, atau LLaMA dalam knowledge graph akademik UNESA Infokom ini."
+  },
+  {
+    "id": "G02",
+    "category": "G",
+    "intent": "out_of_scope_guardrail",
+    "query": "Siapa peneliti dari ITB atau UI yang bekerja di bidang computer vision?",
+    "relevant_titles": [],
+    "key_concepts": [
+      "tidak",
+      "tidak ditemukan",
+      "ITB",
+      "UI"
+    ],
+    "reference_answer": "Knowledge graph ini hanya memuat data dosen rumpun Infokom UNESA, bukan peneliti ITB atau UI."
+  },
+  {
+    "id": "G03",
+    "category": "G",
+    "intent": "out_of_scope_guardrail",
+    "query": "Berapa jumlah mahasiswa program studi Teknik Informatika UNESA?",
+    "relevant_titles": [],
+    "key_concepts": [
+      "tidak",
+      "tidak ada data mahasiswa",
+      "jumlah mahasiswa"
+    ],
+    "reference_answer": "Knowledge graph ini tidak menyimpan data jumlah mahasiswa, hanya data publikasi dan dosen."
+  },
+  {
+    "id": "G04",
+    "category": "G",
+    "intent": "out_of_scope_guardrail",
+    "query": "Apa jadwal seminar proposal tugas akhir mahasiswa semester ini?",
+    "relevant_titles": [],
+    "key_concepts": [
+      "tidak",
+      "tidak ada data jadwal"
+    ],
+    "reference_answer": "Knowledge graph tidak menyimpan data jadwal akademik atau seminar mahasiswa."
+  }
+]

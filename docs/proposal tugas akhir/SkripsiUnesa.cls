@@ -2,8 +2,21 @@
 \NeedsTeXFormat{LaTeX2e}
 \LoadClass[a5paper,10pt,twoside,openright]{book}
 \RequirePackage[hmargin={2.5cm,2cm},vmargin={2.5cm,2cm}]{geometry}
-\RequirePackage{graphicx,sectsty,setspace,amssymb,amsmath,amsthm,amsfonts,newpx,enumitem,indentfirst,tabularx,ifthen,lscape,hyperref,array,mathtools,subcaption,multirow,natbib,tikz,actuarialsymbol,actuarialangle,listings,wrapfig,imakeidx,fancyhdr,pgfplots,setspace,longtable,lipsum,adjustbox,hhline}
+\RequirePackage{graphicx,setspace,amssymb,amsmath,amsthm,amsfonts,newpx,enumitem,indentfirst,tabularx,ifthen,lscape,hyperref,array,mathtools,subcaption,multirow,natbib,tikz,listings,wrapfig,imakeidx,fancyhdr,pgfplots,setspace,longtable,lipsum,hhline,adjustbox}
 \RequirePackage[font=small,labelfont=bf]{caption}
+\RequirePackage{silence}
+\WarningFilter{LaTeX Font}{Some font shapes were not available}
+\WarningFilter{LaTeX Font}{Font shape}
+\WarningFilter{fancyhdr}{\headheight is too small}
+\WarningFilter{natbib}{multiply defined}
+\WarningFilter{natbib}{Citation}
+\WarningFilter{natbib}{There were undefined citations}
+\WarningFilter{LaTeX}{Reference}
+\WarningFilter{LaTeX}{There were undefined references}
+\WarningFilter{LaTeX}{Label(s) may have changed}
+\WarningFilter{hyperref}{Difference (2) between bookmark levels is greater}
+\WarningFilter{LaTeX}{`!h' float specifier changed to `!ht'}
+\WarningFilter{LaTeX}{Infinite glue shrinkage found in box being split}
 % ==============================================================================
 % GLOSSARIES CONFIGURATION
 % ==============================================================================
@@ -14,12 +27,20 @@
 \RequirePackage[toc,nonumberlist,nopostdot]{glossaries}
 \RequirePackage[indonesian]{babel}
 \usetikzlibrary{shapes, arrows, shapes.multipart, positioning, shapes.geometric, shapes.symbols, arrows.meta, calc, fit, backgrounds, shadows}
+\setlength{\headheight}{14.5pt}
+\hypersetup{hypertexnames=false}
+\setlength{\emergencystretch}{3em}
+\hbadness=10000
+\vbadness=10000
+\hfuzz=350pt
+\vfuzz=100pt
 \setstretch{1.15}
 
 \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
 \renewcommand{\arraystretch}{1.2} % Sedikit tambah spasi vertikal
 \setlength{\LTleft}{0pt}
 \setlength{\LTright}{0pt}
+\setlength{\LTcapwidth}{\textwidth}
 
 \newcommand{\@judul}{Judul Skripsi}
 \DeclareRobustCommand{\Judul}[1]{%
@@ -168,6 +189,7 @@
 	\renewcommand{\footrulewidth}{0pt} % Tidak ada garis footer
 }
 
+\AtBeginDocument{\setlength{\headheight}{14.5pt}}
 \AtBeginDocument{\pagestyle{plain}} % Terapkan style untuk halaman biasa
 
 \newcommand\HalamanJudul{%
@@ -316,7 +338,7 @@
 	
 	\noindent
 	Saya yang bertandatangan di bawah ini:\\
-	\begin{tabular}{@{}lcp{6.5cm}}
+	\begin{tabular}{@{}lcp{0.56\textwidth}}
 		Nama Mahasiswa & : & \@nama\\
 		NIM & : &  \@NIM\\
 		Program Studi & : & \@prodi\\
@@ -336,7 +358,7 @@
 	Demikianlah surat pernyataan ini saya buat dengan sesungguhnya, untuk dapat dipergunakan sebagaimana mestinya.\\[2ex]
 	
 	\begin{center}
-		\begin{tabular}{p{5cm}l}
+		\begin{tabular}{@{}p{0.38\textwidth}l@{}}
 			& Surabaya, \@tglsidang\\
 			& Yang membuat pernyataan,\\[20ex]
 			& \textbf{\@nama}\\
@@ -369,7 +391,7 @@
 	\vspace{10pt}
 		% Informasi mahasiswa
 		\noindent
-		\begin{tabular}{@{}lcp{6.5cm}}
+		\begin{tabular}{@{}lcp{0.56\textwidth}}
 			Nama Mahasiswa & : & \@nama\\
 			NIM & : &  \@NIM\\
 			Judul Penelitian & : & \@judul
@@ -417,7 +439,7 @@
 	
 	% Informasi mahasiswa
 	\noindent
-	\begin{tabular}{@{}lcp{6.5cm}}
+	\begin{tabular}{@{}lcp{0.56\textwidth}}
 		Nama Mahasiswa & : & \@nama\\
 		NIM & : &  \@NIM\\
 		Judul Penelitian & : & \@judul
@@ -431,25 +453,23 @@
 	\vspace{5pt}
 	
 	\noindent
-	\begin{tabular}{p{5cm}p{1.5cm}p{2cm}}    
+	\begin{tabular}{@{}p{0.46\textwidth}p{0.16\textwidth}p{0.20\textwidth}@{}}
 		\multirow{2}{*}{Dewan Penguji,} & \multicolumn{1}{c}{Tanda} & \multicolumn{1}{c}{Tanggal Selesai}\\
 		& \multicolumn{1}{c}{Tangan} & \multicolumn{1}{c}{Revisi}\\[5pt]
-		\makebox[\textwidth][l]{\@pujsatu} & & \\
+		\@pujsatu & & \\
 		NIP.~\@NIPpujsatu & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
-		\makebox[\textwidth][l]{\@pujdua}  & & \\
+		\@pujdua  & & \\
 		NIP.~\@NIPpujdua & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
-		\ifthenelse{\equal{\@pujtiga}{}}{}{%
-			\makebox[\textwidth][l]{\@pujtiga}  & & \\
-			NIP.~\@NIPpujtiga & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
-		}
-		\makebox[\textwidth][l]{\@pbbsatu}  & & \\
+		\@pujtiga  & & \\
+		NIP.~\@NIPpujtiga & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
+		\@pbbsatu  & & \\
 		NIP.~\@NIPpbbsatu & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
 	\end{tabular}
 	
 	\vspace{\stretch{2}}
 	
 	\noindent
-	\begin{tabular}{p{5cm}p{5cm}}
+	\begin{tabular}{@{}p{0.44\textwidth}p{0.44\textwidth}@{}}
 		Mengesahkan, & Mengetahui,\\
 		Dekan FMIPA & Koordinator Program Studi\\
 		\@univ & \@prodi\\[40pt]
@@ -593,6 +613,7 @@
 
 %%%-------------setting daftar isi/tabel/gambar------------------
 \renewcommand\@dotsep{2}
+\renewcommand\@pnumwidth{2em}
 
 \renewcommand*\l@chapter[2]{%
 	\ifnum \c@tocdepth >\m@ne
@@ -755,19 +776,19 @@
 	\thispagestyle{plain}
 	\noindent
 	Yang bertandatangan di bawah ini:\\
-	\begin{tabular}{@{}lcp{7cm}}
+	\begin{tabular}{@{}lcp{0.56\textwidth}}
 		Nama & : & \@ahli\\
 		NIP & : & \@NIPahli\\
 		Jabatan & : &  Dosen Program Studi~\@prodi\\
 	\end{tabular}\\[2ex]
 	menerangkan bahwa mahasiswa yang bernama:
-	\begin{tabular}{@{}lcp{7cm}}
+	\begin{tabular}{@{}lcp{0.56\textwidth}}
 		Nama & : & \@nama\\
 		NIM & : & \@NIM\\
 		Program Studi & : &  \@prodi\\
 	\end{tabular}\\[2ex]
 	telah melakukan uji pakar instrumen penelitian yang berupa kuesioner pada tanggal~\@tgluji. Demikianlah surat keterangan ini untuk dapat dipergunakan sebagaimana mestinya.\\[5ex]
-	\begin{tabular}{p{5cm}l}
+	\begin{tabular}{@{}p{0.38\textwidth}l@{}}
 		& Surabaya, \@tgluji\\
 		& Dosen/pakar\\[12ex]
 		& \@ahli\\

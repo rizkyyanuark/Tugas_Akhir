@@ -8,7 +8,7 @@ import pandas as pd
 from typing import Any, Dict, List, Optional
 from supabase import Client
 from .supabase_auth import create_etl_supabase_client
-from ..transform.enricher import normalize_document_type
+from ..transform.enricher import normalize_document_type, normalize_venue_name
 from ..utils.utils import clean_identifier, enforce_strict_ids
 
 logger = logging.getLogger(__name__)
@@ -185,7 +185,9 @@ class SupabaseClient:
                 "doi": doi,
                 "author_ids": self._clean_value(p.get('Author IDs') or p.get('author_ids')),
                 "authors": self._clean_value(p.get('Authors') or p.get('authors')),
-                "journal": self._clean_value(p.get('Journal') or p.get('journal') or p.get('Source title')),
+                "journal": self._clean_value(
+                    normalize_venue_name(p.get('Journal') or p.get('journal') or p.get('Source title'))
+                ),
                 "document_type": normalize_document_type(p.get('Document Type') or p.get('document_type')),
                 "keywords": self._clean_value(p.get('Keywords') or p.get('keywords')),
                 "link": self._clean_value(p.get('Link') or p.get('link')),

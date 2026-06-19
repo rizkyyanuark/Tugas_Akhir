@@ -126,6 +126,24 @@ def clean_abstract_text(text: Any) -> str:
     return clean_text(c)
 
 
+def clean_keyword_text(value: Any) -> str:
+    """Clean paper-level keyword text and reject page-level tag-cloud artifacts."""
+    text = clean_text(value)
+    if not text:
+        return ""
+
+    artifact_probe = text.lstrip("= ").lower()
+    if '"text"' in artifact_probe and '"size"' in artifact_probe:
+        return ""
+    if "'text'" in artifact_probe and "'size'" in artifact_probe:
+        return ""
+
+    text = text.replace("|", ",").replace(";", ",").lower().strip(", ")
+    text = re.sub(r"\s*,\s*", ",", text)
+    text = re.sub(r",+", ",", text)
+    return text.strip(", ")
+
+
 def clean_id_value(val: Any) -> str:
     """
     Clean a single ID value for consistency:
@@ -497,9 +515,7 @@ def clean_papers_batch(df: pd.DataFrame) -> pd.DataFrame:
 
     # 1. Keywords: lowercase, remove trailing commas
     if 'Keywords' in df.columns:
-        df['Keywords'] = df['Keywords'].str.lower().str.strip(',')
-        # Remove consecutive commas (e.g., "AI,, Machine Learning")
-        df['Keywords'] = df['Keywords'].apply(lambda x: re.sub(r',+', ',', str(x)).strip(','))
+        df['Keywords'] = df['Keywords'].apply(clean_keyword_text)
 
     # 2. ID-safe columns: strip .0, convert nan to empty
     id_columns = ['Author IDs', 'author_ids', 'DOI', 'doi', 'scopus_id', 'scholar_id', 'sinta_id']

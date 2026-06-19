@@ -81,6 +81,9 @@ yarn-error.log*
 # Data and pipeline-generated artifacts
 data/
 src/data/
+!notebooks/build-graph/eval_pipeline/data/
+!notebooks/build-graph/eval_pipeline/data/*.json
+!notebooks/build-graph/eval_pipeline/data/README.md
 saves/
 saves_dev/
 graphrag/

@@ -332,6 +332,37 @@ def _format_author_publication_answer_hint(
     return "\n".join([header, separator] + table_rows)
 
 
+def _format_academic_rows_table(
+    rows: list[dict[str, Any]],
+    columns: list[tuple[str, str]],
+    *,
+    limit: int = 12,
+) -> str:
+    """Format structured academic rows into a compact Markdown table."""
+    table_rows: list[str] = []
+
+    def cell_value(value: Any) -> str:
+        if isinstance(value, (list, tuple, set)):
+            text = ", ".join(str(item) for item in value if item)
+        else:
+            text = str(value or "")
+        text = text.strip() or "-"
+        return text.replace("|", "\\|")
+
+    for index, row in enumerate(rows[:limit], start=1):
+        cells = [str(index)]
+        for _, key in columns:
+            cells.append(cell_value(row.get(key)))
+        table_rows.append("| " + " | ".join(cells) + " |")
+
+    if not table_rows:
+        return ""
+
+    header = "| No | " + " | ".join(label for label, _ in columns) + " |"
+    separator = "|" + "---|" * (len(columns) + 1)
+    return "\n".join([header, separator] + table_rows)
+
+
 def _build_ui_graph(graph_context: dict[str, Any]) -> dict[str, Any]:
     """Create a readable graph payload without exposing internal database identifiers."""
     raw_nodes = list(graph_context.get("nodes", []) or [])[:32]
@@ -486,6 +517,74 @@ def _academic_tool_response(
             "'notable publications' unless the user explicitly asks for a summary."
         )
 
+    lecturer_topic_rows = academic.get("lecturer_topic_publications", [])[:20]
+    if lecturer_topic_rows:
+        answer_hints["lecturer_topic_publications_markdown"] = _format_academic_rows_table(
+            lecturer_topic_rows,
+            [
+                ("Dosen", "lecturer"),
+                ("Judul", "title"),
+                ("Tahun", "year"),
+                ("Kecocokan", "matched_terms"),
+            ],
+            limit=20,
+        )
+        answer_hints["lecturer_topic_publications_instruction"] = (
+            "For lecturer-topic questions, answer from this exact table. "
+            "Do not say author names are unavailable when lecturer rows are present."
+        )
+
+    publication_detail_rows = academic.get("publication_details", [])[:12]
+    if publication_detail_rows:
+        answer_hints["publication_details_markdown"] = _format_academic_rows_table(
+            publication_detail_rows,
+            [
+                ("Judul", "title"),
+                ("Tahun", "year"),
+                ("Authors", "authors"),
+                ("Venue", "venue"),
+                ("DOI", "doi"),
+            ],
+            limit=12,
+        )
+        answer_hints["publication_details_instruction"] = (
+            "For exact publication questions, treat this table as authoritative. "
+            "Use the authors and metadata exactly as retrieved."
+        )
+
+    collaboration_rows = academic.get("collaborations", [])[:20]
+    if collaboration_rows:
+        answer_hints["collaborations_markdown"] = _format_academic_rows_table(
+            collaboration_rows,
+            [
+                ("Dosen", "lecturer"),
+                ("Kolaborator", "collaborator"),
+                ("Jumlah Paper", "paper_count"),
+                ("Contoh Paper", "paper_titles"),
+            ],
+            limit=20,
+        )
+        answer_hints["collaborations_instruction"] = (
+            "For collaboration questions, answer from this exact table. "
+            "Do not infer collaborators from unrelated publications."
+        )
+
+    topic_frequency_rows = academic.get("topic_frequencies", [])[:15]
+    if topic_frequency_rows:
+        answer_hints["topic_frequencies_markdown"] = _format_academic_rows_table(
+            topic_frequency_rows,
+            [
+                ("Topik", "topic"),
+                ("Jenis", "concept_type"),
+                ("Jumlah Publikasi", "publication_count"),
+                ("Contoh Paper", "sample_titles"),
+            ],
+            limit=15,
+        )
+        answer_hints["topic_frequencies_instruction"] = (
+            "For most-frequent or top-topic questions, answer only from this frequency table."
+        )
+
     # Helper functions to prune publication items and remove verbose fields like abstract and tldr to save context tokens.
     def _prune_pub(pub):
         if not isinstance(pub, dict):
@@ -541,6 +640,7 @@ def _academic_tool_response(
         "mode": academic.get("mode"),
         "academicrag_mode": academic.get("academicrag_mode"),
         "kg_mode": academic.get("kg_mode"),
+        "route_decision": academic.get("route_decision"),
         "author_publications": [_prune_pub(p) for p in author_publication_rows],
         "publication_details": [_prune_pub_detail(p) for p in academic.get("publication_details", []) or []],
         "lecturer_topic_publications": [_prune_lecturer_topic(p) for p in academic.get("lecturer_topic_publications", []) or []],
@@ -572,6 +672,10 @@ def _academic_tool_response(
             "author/collaboration questions, prioritize publication_details over general collaborations. "
             "When answer_hints.author_publications_markdown is present, use that exact list and do "
             "not rename, paraphrase, or invent publication titles. "
+            "When answer_hints.lecturer_topic_publications_markdown, "
+            "answer_hints.publication_details_markdown, answer_hints.collaborations_markdown, "
+            "or answer_hints.topic_frequencies_markdown are present, use those exact tables as the "
+            "primary answer basis before summarising. "
             "FORMATTING: Always present publication lists as a numbered Markdown table with columns "
             "No | Judul | Tahun | Venue/DOI. Open with a brief one-sentence contextual summary before "
             "the table. Close with a concise paragraph noting the total count and any retrieval cap. "

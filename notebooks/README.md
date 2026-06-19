@@ -4,9 +4,18 @@ Notebook utama untuk eksperimen konstruksi Academic Knowledge Graph ada di:
 
 - `build-graph/yunesa_academic_kg_construction.ipynb`
 
+Runner utama untuk build yang repeatable dan write ke Neo4j/Zilliz adalah:
+
+- `build-graph/run_local_kg_pipeline.py`
+
 Entrypoint kode canonical adalah `build-graph/src/yunesa_academic_kg.py`. Modul lama
 seperti `graph_builder.py`, `embedding.py`, `graphrag.py`, `nlp_parser.py`, dan
 `data_loader.py` dipertahankan hanya untuk kompatibilitas notebook historis.
+
+Panduan folder KG, command build lokal, dan evaluasi ada di:
+
+- `build-graph/README.md`
+- `build-graph/eval_pipeline/README.md`
 
 Default embedding untuk Academic KG sekarang memakai SiliconFlow
 `Qwen/Qwen3-Embedding-0.6B` dengan dimensi 1024. Konfigurasi ini hidup sebagai

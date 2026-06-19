@@ -43,17 +43,24 @@ WORKDIR /app
 # ── LAYER 2: Application Code ───────────────────────────────
 COPY backend/package /app/package
 COPY README.md /app/package/README.md
+COPY notebooks/build-graph/src /app/kg-src
 RUN mkdir -p /app/package/knowledge/etl/resources
 COPY notebooks/build-graph/ieee-thesaurus.ttl /app/package/knowledge/etl/resources/ieee-thesaurus.ttl
+COPY notebooks/build-graph/ieee-taxonomy.ttl /app/package/knowledge/etl/resources/ieee-taxonomy.ttl
+COPY notebooks/build-graph/config/concept_aliases.yml /app/package/knowledge/etl/resources/concept_aliases.yml
 ARG ETL_INSTALL_TEST_DEPS=true
+ARG ETL_INSTALL_KG_DEPS=false
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --project /app/package --frozen --no-dev && \
     if [ "$ETL_INSTALL_TEST_DEPS" = "true" ]; then \
         uv sync --project /app/package --frozen --group test; \
+    fi && \
+    if [ "$ETL_INSTALL_KG_DEPS" = "true" ]; then \
+        uv sync --project /app/package --frozen --group kg; \
     fi
 
 ENV PATH="/app/package/.venv/bin:$PATH" \
-    PYTHONPATH="/app/package"
+    PYTHONPATH="/app/package:/app/kg-src"
 
 # ── LAYER 3: Data Directories ───────────────────────────────
 # These directories are the mount points for the shared Docker volume.

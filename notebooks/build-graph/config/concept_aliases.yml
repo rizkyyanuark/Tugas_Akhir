@@ -1,0 +1,78 @@
+aliases:
+  support_vector_machine:
+    canonical_label: Support Vector Machine
+    concept_type: Model
+    aliases:
+      - SVM
+      - support vector machine
+      - support-vector machine
+
+  artificial_neural_network:
+    canonical_label: Artificial Neural Network
+    concept_type: Model
+    aliases:
+      - ANN
+      - artificial neural network
+
+  convolutional_neural_network:
+    canonical_label: Convolutional Neural Network
+    concept_type: Model
+    aliases:
+      - CNN
+      - convolutional neural network
+
+  auc:
+    canonical_label: AUC
+    concept_type: Metric
+    aliases:
+      - AUC
+      - ROC AUC
+      - ROC-AUC
+      - area under curve
+      - area under the curve
+
+  f1_score:
+    canonical_label: F1-score
+    concept_type: Metric
+    aliases:
+      - F1
+      - F1 score
+      - F1-score
+
+  accuracy:
+    canonical_label: Accuracy
+    concept_type: Metric
+    aliases:
+      - accuracy
+      - akurasi
+
+  rmse:
+    canonical_label: RMSE
+    concept_type: Metric
+    aliases:
+      - RMSE
+      - root mean squared error
+      - root mean square error
+
+  mae:
+    canonical_label: MAE
+    concept_type: Metric
+    aliases:
+      - MAE
+      - mean absolute error
+
+  efficientnet:
+    canonical_label: EfficientNet
+    concept_type: Model
+    aliases:
+      - EfficientNet
+      - Efficient Net
+
+  aptos_2019:
+    canonical_label: APTOS 2019
+    concept_type: Dataset
+    aliases:
+      - APTOS
+      - APTOS 2019
+      - APTOS dataset
+      - APTOS 2019 Blindness Detection

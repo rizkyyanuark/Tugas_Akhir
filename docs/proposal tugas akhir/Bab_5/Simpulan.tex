@@ -1,2 +1,109 @@
-
 % !TEX root = ../Skripsi.tex
+
+\chapter{SIMPULAN DAN SARAN}
+\label{chap:simpulan}
+
+\section{Simpulan}
+\label{sec:simpulan-bab5}
+
+Penelitian ini berangkat dari pertanyaan apakah \textit{Knowledge Graph}
+bisa memperbaiki cara sistem RAG menjawab pertanyaan akademik. Setelah
+merancang, mengimplementasikan, dan menguji seluruh \textit{pipeline},
+jawabannya memang tidak hitam-putih, tapi ada beberapa hal yang cukup jelas.
+
+Dari sisi konstruksi graf, \textit{pipeline} yang dibangun berhasil mengubah
+data publikasi yang sebelumnya tersebar (metadata, profil dosen, kata kunci,
+abstrak, dan ringkasan) menjadi graf heterogen dengan 1.253 simpul dan 1.970
+relasi dari 51 publikasi, 128 dosen, dan 132 relasi kepengarangan. Graf ini
+bukan sekadar daftar publikasi; ia memuat hubungan kepengarangan, kolaborasi
+antar dosen, topik penelitian, metode, model, metrik evaluasi, dan
+keterhubungan konsep melalui kosakata IEEE SKOS. Pengayaan menggunakan
+\textit{controlled vocabulary} IEEE memang memperluas cakupan semantik karena
+simpul \texttt{Concept} mendominasi akibat ekspansi tetangga SKOS, tapi
+perluasan ini perlu dibaca hati-hati. Banyaknya konsep tidak otomatis berarti
+semuanya merepresentasikan pokok bahasan utama setiap publikasi.
+
+Mekanisme \textit{Hybrid Vector-Graph Retrieval} berhasil diwujudkan melalui
+arsitektur \textit{dual indexing} yang memisahkan penyimpanan antara
+\textit{graph database} untuk struktur relasional dan \textit{vector database}
+untuk representasi vektor. Integrasi keduanya melalui \texttt{entity\_id}
+yang sama memungkinkan sistem menggabungkan pencarian semantik dan pencarian
+struktural tanpa langkah resolusi entitas tambahan.
+
+Temuan yang paling menarik justru muncul dari hasil pengujian. Mode
+\texttt{subgraph} yang menavigasi graf secara langsung dari titik masuk
+vektor tampil sebagai mode paling konsisten. Pada evaluasi \textit{retrieval},
+mode ini dan \texttt{hybrid} unggul di \textit{Hit@5} dan \textit{Hit@10}
+(nyaris 84\%), menyalip \texttt{naive} yang hanya mengandalkan vektor. Namun
+yang mengejutkan, pada evaluasi kualitas jawaban dengan \textit{LLM-as-a-Judge},
+mode \texttt{hybrid} yang menyediakan konteks paling kaya justru tidak tampil
+terbaik. \textit{Win rate}-nya (45,5\%) lebih rendah dari \texttt{subgraph}
+(48,7\%), terutama karena metrik \textit{Traceability} yang turun ke 44,2\%.
+Penyebabnya cukup jelas, konteks yang terlalu banyak dan beragam membuat LLM
+kesulitan menyusun jawaban yang runut dan bisa dilacak ke sumber spesifik.
+
+Dari sisi keterlacakan, sistem sudah menyediakan dasar yang lebih baik
+dibanding penggunaan LLM tanpa sumber eksternal. Jawaban bisa dikaitkan
+dengan judul publikasi, relasi graf, potongan teks, dan \textit{provenance}
+dari proses konstruksi graf. Tapi penelitian ini belum bisa menyatakan bahwa
+integrasi graf sepenuhnya menghilangkan halusinasi. Beberapa pengujian masih
+menunjukkan risiko kontaminasi konteks dan jawaban yang terlalu umum ketika
+bukti yang diberikan ke LLM belum cukup terkurasi.
+
+Secara keseluruhan, kedua rumusan masalah terjawab. \textit{Pipeline}
+konstruksi graf berhasil dirancang dan diimplementasikan. Mekanisme
+\textit{hybrid retrieval} berjalan melalui integrasi \textit{graph database}
+dan \textit{vector database}. Sistem juga sudah menyediakan mekanisme
+keterlacakan sumber, meskipun efektivitas pengurangan halusinasi masih perlu
+diuji lebih lanjut dengan skenario yang lebih luas dan \textit{ground truth}
+yang lebih kuat.
+
+Jika ada satu pelajaran utama dari penelitian ini, ia terletak pada temuan
+bahwa lebih banyak konteks tidak selalu menghasilkan jawaban yang lebih baik.
+Untuk domain akademik yang menuntut kesetiaan pada sumber, menyuntikkan
+konteks graf yang terarah dan ringkas seperti yang dilakukan mode
+\texttt{subgraph} ternyata lebih efektif daripada membanjiri model dengan
+seluruh informasi yang tersedia.
+
+\section{Saran}
+\label{sec:saran-bab5}
+
+Ada beberapa hal yang bisa dikembangkan dari penelitian ini.
+
+Pertama, cakupan data perlu diperluas. Graf yang terbentuk sekarang baru
+merepresentasikan 51 publikasi, yang masih terlalu kecil untuk menggambarkan
+peta pengetahuan institusi secara menyeluruh. Penambahan data dari artikel
+lengkap, metadata sitasi, atau sumber akademik lain akan memperkaya relasi
+yang belum tersedia, terutama relasi \texttt{CITES} antar publikasi. Dengan
+data yang lebih besar, sistem bisa diuji pada pertanyaan yang lebih kompleks,
+seperti perkembangan topik penelitian atau hubungan antar kelompok riset.
+
+Kedua, pemetaan konsep perlu dievaluasi lebih dalam. IEEE SKOS membantu
+standardisasi istilah, tapi potensi \textit{semantic drift} belum diukur.
+Validasi manual oleh pakar atau anotator bisa membantu menilai apakah konsep
+yang terhubung ke publikasi memang relevan dengan isi penelitian. Jalur
+GLiNER dan GLiREL juga bisa diaktifkan dan dibandingkan dengan pendekatan
+berbasis aturan maupun LLM untuk mengukur kualitas ekstraksi secara lebih
+objektif.
+
+Ketiga, hasil pengujian menunjukkan bahwa konteks yang terlalu banyak tidak
+selalu membuat jawaban lebih baik. Mekanisme \textit{retrieval} perlu
+diperkuat dengan \textit{reranking}, deduplikasi bukti, dan pembatasan
+konteks per publikasi agar sistem bisa memilih bukti paling relevan sebelum
+menyerahkannya ke LLM.
+
+Keempat, evaluasi perlu dilakukan dengan rancangan yang lebih stabil.
+Penelitian berikutnya sebaiknya menggunakan kumpulan pertanyaan uji yang
+terstruktur berdasarkan kategori (pertanyaan tentang penulis, publikasi,
+metode, dataset, metrik, topik, dan kolaborasi dosen) dengan
+\textit{ground truth} yang disusun secara manual. Metrik seperti
+\textit{context precision}, \textit{context recall}, \textit{answer
+correctness}, \textit{faithfulness}, dan \textit{answer relevancy} bisa
+digunakan untuk membandingkan ketiga mode pencarian secara lebih adil.
+
+Kelima, sistem perlu dilengkapi dengan mekanisme observabilitas yang lebih
+matang. Pencatatan jejak \textit{retrieval}, konteks yang dikirim ke LLM,
+relasi graf yang digunakan, serta sumber yang dipakai dalam jawaban akan
+membantu proses audit dan perbaikan. Kesalahan seperti jawaban yang terlalu
+umum atau kontaminasi konteks bisa ditelusuri lebih cepat jika sistem memiliki
+pencatatan yang baik.

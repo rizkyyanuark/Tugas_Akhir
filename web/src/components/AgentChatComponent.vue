@@ -1513,11 +1513,16 @@ watch(
   { immediate: true }
 )
 
+let lastScrollTime = 0
 watch(
   conversations,
   () => {
     if (isProcessing.value) {
-      scrollController.scrollToBottom()
+      const now = Date.now()
+      if (now - lastScrollTime > 150) {
+        scrollController.scrollToBottom()
+        lastScrollTime = now
+      }
     }
   },
   { deep: true, flush: 'post' }
