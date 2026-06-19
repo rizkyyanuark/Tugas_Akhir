@@ -381,6 +381,24 @@ services:
       start_period: 30s
     command: api-server
 
+  airflow-dag-processor:
+    <<: *airflow-common
+    container_name: airflow-dag-processor
+    restart: unless-stopped
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./orchestration/dags:/opt/airflow/dags:ro
+      - airflow-logs:/opt/airflow/logs
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$${HOSTNAME}\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: dag-processor
+
   airflow-scheduler:
     <<: *airflow-common
     container_name: airflow-scheduler
@@ -388,6 +406,8 @@ services:
     depends_on:
       airflow-init:
         condition: service_completed_successfully
+      airflow-dag-processor:
+        condition: service_healthy
     volumes:
       - ./orchestration/dags:/opt/airflow/dags:ro
       - airflow-logs:/opt/airflow/logs

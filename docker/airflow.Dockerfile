@@ -35,10 +35,12 @@ RUN mkdir -p /opt/airflow/src /opt/airflow/data /opt/airflow/notebooks \
 ARG CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-3.1.7/constraints-3.12.txt"
 
 RUN uv pip install --system --no-cache \
+    "apache-airflow==3.1.7" \
     "apache-airflow-providers-docker" \
     "apache-airflow-providers-fab" \
     "apache-airflow-providers-ssh" \
     "apache-airflow-providers-standard" \
+    "asyncpg" \
     "requests" \
     "psycopg2-binary" \
     --constraint "${CONSTRAINT_URL}"

@@ -228,6 +228,33 @@ jobs:
               exit 1
             fi
 
+            dag_processor_status="unknown"
+            for i in $(seq 1 24); do
+              dag_processor_status=$(docker inspect -f '{{.State.Health.Status}}' airflow-dag-processor-prod 2>/dev/null || echo "unknown")
+              if [ "$dag_processor_status" = "healthy" ]; then break; fi
+              echo "dag_processor_status=$dag_processor_status"
+              sleep 5
+            done
+            if [ "$dag_processor_status" != "healthy" ]; then
+              docker logs --tail=200 airflow-dag-processor-prod || true
+              exit 1
+            fi
+
+            kg_dag_registered="false"
+            for i in $(seq 1 24); do
+              if docker exec airflow-dag-processor-prod airflow dags list 2>/dev/null | grep -q "unesa_kg_construction"; then
+                kg_dag_registered="true"
+                break
+              fi
+              echo "Waiting for unesa_kg_construction DAG registration"
+              sleep 5
+            done
+            if [ "$kg_dag_registered" != "true" ]; then
+              docker exec airflow-dag-processor-prod airflow dags list-import-errors || true
+              docker logs --tail=200 airflow-dag-processor-prod || true
+              exit 1
+            fi
+
             echo "[7/7] Removing old unused images"
             docker image prune -af --filter "until=168h"
 
