@@ -118,6 +118,7 @@ def _kg_environment() -> dict[str, str]:
             "YUNESA_KG_WRITE_MILVUS": WRITE_MILVUS_TEMPLATE,
             "YUNESA_KG_CLEAR_NEO4J": CLEAR_NEO4J_TEMPLATE,
             "YUNESA_KG_CLEAR_MILVUS": CLEAR_MILVUS_TEMPLATE,
+            "YUNESA_RUN_ID": "{{ run_id }}",
         }
     )
     return env

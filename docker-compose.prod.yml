@@ -32,6 +32,11 @@ x-api-worker-env: &api-worker-env
   MINIO_ROOT_PASSWORD: ${GLOBAL_PASSWORD:?GLOBAL_PASSWORD required}
   MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-/minio}
   SANDBOX_ENABLED: ${SANDBOX_ENABLED:-false}
+  # Entity Resolution
+  YUNESA_ALIAS_SUGGESTIONS_PATH: ${YUNESA_ALIAS_SUGGESTIONS_PATH:-/app/data/kg/entity_resolution/concept_alias_suggestions.json}
+  YUNESA_ALIAS_CURATION_STORE: ${YUNESA_ALIAS_CURATION_STORE:-/app/data/kg/entity_resolution/alias_curation_store.json}
+  YUNESA_APPROVED_CONCEPT_ALIASES_PATH: ${YUNESA_APPROVED_CONCEPT_ALIASES_PATH:-/app/data/kg/entity_resolution/concept_aliases.approved.yml}
+  YUNESA_ENFORCE_QUALITY_GATES: ${YUNESA_ENFORCE_QUALITY_GATES:-true}
   # --- Non-secret config (hardcoded defaults) ---
   OPIK_ENABLED: ${OPIK_ENABLED:-true}
   OPIK_API_KEY: ${OPIK_API_KEY:-}
@@ -116,6 +121,7 @@ services:
     memswap_limit: 3g
     volumes:
       - ./saves:/app/saves
+      - ./data:/app/data
       - ${MODEL_DIR:-./models}:/models
     networks:
       - app-network
@@ -147,6 +153,7 @@ services:
     memswap_limit: 3g
     volumes:
       - ./saves:/app/saves
+      - ./data:/app/data
       - ${MODEL_DIR:-./models}:/models
     networks:
       - app-network

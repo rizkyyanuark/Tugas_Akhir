@@ -145,6 +145,20 @@ def worker_env() -> dict[str, str]:
         "YUNESA_KG_CLEAR_MILVUS": _clean_env("YUNESA_KG_CLEAR_MILVUS"),
         "YUNESA_USE_GLINER": _clean_env("YUNESA_USE_GLINER", "0"),
         "YUNESA_USE_GLIREL": _clean_env("YUNESA_USE_GLIREL", "0"),
+        # Entity Resolution
+        "YUNESA_ALIAS_SUGGESTIONS_PATH": _clean_env(
+            "YUNESA_ALIAS_SUGGESTIONS_PATH",
+            "/app/data/kg/entity_resolution/concept_alias_suggestions.json",
+        ),
+        "YUNESA_ALIAS_CURATION_STORE": _clean_env(
+            "YUNESA_ALIAS_CURATION_STORE",
+            "/app/data/kg/entity_resolution/alias_curation_store.json",
+        ),
+        "YUNESA_APPROVED_CONCEPT_ALIASES_PATH": _clean_env(
+            "YUNESA_APPROVED_CONCEPT_ALIASES_PATH",
+            "/app/data/kg/entity_resolution/concept_aliases.approved.yml",
+        ),
+        "YUNESA_ENFORCE_QUALITY_GATES": _clean_env("YUNESA_ENFORCE_QUALITY_GATES", "true"),
         # Storage
         "ETL_STORAGE_TYPE": _clean_env("ETL_STORAGE_TYPE", "local"),
         "AWS_S3_BUCKET": _clean_env("AWS_S3_BUCKET"),

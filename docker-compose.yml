@@ -23,6 +23,11 @@ x-api-worker-env: &api-worker-env
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
   GROQ_API_KEY: ${GROQ_API_KEY}
+  # Entity Resolution
+  YUNESA_ALIAS_SUGGESTIONS_PATH: ${YUNESA_ALIAS_SUGGESTIONS_PATH:-/app/data/kg/entity_resolution/concept_alias_suggestions.json}
+  YUNESA_ALIAS_CURATION_STORE: ${YUNESA_ALIAS_CURATION_STORE:-/app/data/kg/entity_resolution/alias_curation_store.json}
+  YUNESA_APPROVED_CONCEPT_ALIASES_PATH: ${YUNESA_APPROVED_CONCEPT_ALIASES_PATH:-/app/data/kg/entity_resolution/concept_aliases.approved.yml}
+  YUNESA_ENFORCE_QUALITY_GATES: ${YUNESA_ENFORCE_QUALITY_GATES:-true}
   OPIK_ENABLED: ${OPIK_ENABLED:-true}
   OPIK_API_KEY: ${OPIK_API_KEY:-}
   OPIK_WORKSPACE: ${OPIK_WORKSPACE:-}
@@ -89,6 +94,7 @@ x-python-base: &python-base
     - ./backend/server:/app/server
     - ./backend/package:/app/package
     - ./saves:/app/saves
+    - ./data:/app/data
     - ./backend/test:/app/test
     - ./backend/scripts:/app/scripts
     - ./.env:/app/.env

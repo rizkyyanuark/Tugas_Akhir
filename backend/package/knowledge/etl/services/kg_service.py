@@ -6,7 +6,9 @@ import importlib
 import json
 import logging
 import os
+import shutil
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +118,47 @@ def _concept_aliases_path() -> Path:
     if approved.exists():
         return approved
     return _resource_path("concept_aliases.yml", "YUNESA_BASE_CONCEPT_ALIASES_PATH")
+
+
+def _archive_artifact(source: Path, history_dir: Path, run_id: str) -> Path | None:
+    """Copy an artifact into the history directory with a run-ID suffix."""
+    if not isinstance(source, Path) or not source.exists():
+        return None
+    safe_id = run_id.replace(":", "_").replace("/", "_").replace(" ", "_")[:120]
+    dest = history_dir / f"{source.stem}_{safe_id}{source.suffix}"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, dest)
+    logger.info("kg.archive | %s -> %s", source.name, dest)
+    return dest
+
+
+def _try_generate_llm_suggestions(
+    report_path: Path,
+    output_path: Path,
+    kg: Any,
+) -> dict[str, Any] | None:
+    """Attempt to generate LLM-assisted alias suggestions, returning None on skip."""
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not groq_key:
+        logger.info("kg.llm_suggestions.skipped | reason=no_GROQ_API_KEY")
+        return None
+    if not isinstance(report_path, Path) or not report_path.exists():
+        logger.warning("kg.llm_suggestions.skipped | reason=missing_report | path=%s", report_path)
+        return None
+    try:
+        config = kg.LLMAliasSuggestionConfig.from_env()
+        result = kg.write_llm_alias_suggestions(report_path, output_path, config=config)
+        logger.info(
+            "kg.llm_suggestions.done | candidates=%s | suggestions=%s | errors=%s | output=%s",
+            result.get("candidate_count", 0),
+            result.get("suggestion_count", 0),
+            len(result.get("errors", [])),
+            output_path,
+        )
+        return result
+    except Exception:
+        logger.exception("kg.llm_suggestions.failed")
+        return None
 
 
 def _fetch_supabase_rows(
@@ -359,6 +402,39 @@ def run_kg_build(*, mode: str = "incremental", sample_size: int = 50) -> dict[st
         },
     }
     write_json_artifact(summary, kg_paths.KG_SUMMARY_JSON)
+
+    # ── Auto-generate LLM alias suggestions ──────────────────────────
+    er_report_path = (
+        Path(kg_paths.KG_ENTITY_RESOLUTION_JSON)
+        if isinstance(kg_paths.KG_ENTITY_RESOLUTION_JSON, (str, Path))
+        else None
+    )
+    er_suggestions_dir = Path(os.getenv(
+        "YUNESA_ALIAS_SUGGESTIONS_PATH",
+        "/app/data/kg/entity_resolution/concept_alias_suggestions.json",
+    ))
+    llm_result = _try_generate_llm_suggestions(er_report_path, er_suggestions_dir, kg)
+    if llm_result is not None:
+        summary["llm_suggestions"] = {
+            "candidate_count": llm_result.get("candidate_count", 0),
+            "suggestion_count": llm_result.get("suggestion_count", 0),
+            "error_count": len(llm_result.get("errors", [])),
+            "output_path": str(er_suggestions_dir),
+        }
+        write_json_artifact(summary, kg_paths.KG_SUMMARY_JSON)
+
+    # ── Archive historical copies of reports ──────────────────────────
+    run_id = os.getenv("YUNESA_RUN_ID", "").strip()
+    if run_id:
+        history_dir = Path("/app/data/kg/output/history") if Path("/app/data").is_dir() else Path("data/kg/output/history")
+        _archive_artifact(er_report_path, history_dir, run_id)
+        summary_path = (
+            Path(kg_paths.KG_SUMMARY_JSON)
+            if isinstance(kg_paths.KG_SUMMARY_JSON, (str, Path))
+            else None
+        )
+        _archive_artifact(summary_path, history_dir, run_id)
+
     logger.info("kg.build.done | nodes=%s | edges=%s | graph_name=%s", graph.number_of_nodes(), graph.number_of_edges(), graph_name)
     return summary
 
@@ -371,6 +447,22 @@ def run_kg_write_stores(*, mode: str = "incremental", sample_size: int = 50) -> 
 
     if not path_exists(kg_paths.KG_GRAPH_JSON):
         run_kg_build(mode=mode, sample_size=sample_size)
+
+    # ── Quality gate enforcement ─────────────────────────────────────
+    enforce_gates = _env_bool("YUNESA_ENFORCE_QUALITY_GATES", mode != "sample")
+    if enforce_gates and path_exists(kg_paths.KG_SUMMARY_JSON):
+        build_summary = read_json_artifact(kg_paths.KG_SUMMARY_JSON)
+        gates = (build_summary.get("quality") or {}).get("quality_gates") or {}
+        failed_gates = [name for name, passed in gates.items() if not passed]
+        if failed_gates:
+            msg = (
+                f"Quality gate check FAILED — refusing to write stores. "
+                f"Failed gates: {', '.join(failed_gates)}. "
+                f"Set YUNESA_ENFORCE_QUALITY_GATES=false to override."
+            )
+            logger.error("kg.write_stores.quality_gate_blocked | %s", msg)
+            raise ValueError(msg)
+        logger.info("kg.write_stores.quality_gates_passed | gates=%s", list(gates.keys()))
 
     graph_payload = read_json_artifact(kg_paths.KG_GRAPH_JSON)
     graph = json_graph.node_link_graph(graph_payload, directed=True, multigraph=True)

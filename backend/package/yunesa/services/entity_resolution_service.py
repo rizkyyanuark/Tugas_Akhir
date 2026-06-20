@@ -15,6 +15,10 @@ def _utc_now() -> str:
 
 
 def _workspace_root() -> Path:
+    # Inside Docker, /app/data is the shared volume — use /app as root.
+    docker_data = Path("/app/data")
+    if docker_data.is_dir():
+        return Path("/app")
     current = Path(__file__).resolve()
     for parent in current.parents:
         if (parent / "notebooks" / "build-graph").exists() and (parent / "backend").exists():
@@ -24,18 +28,19 @@ def _workspace_root() -> Path:
 
 def _default_paths() -> dict[str, Path]:
     root = _workspace_root()
+    er_dir = root / "data" / "kg" / "entity_resolution"
     suggestion_candidates = [
         Path(os.getenv("YUNESA_ALIAS_SUGGESTIONS_PATH", "")) if os.getenv("YUNESA_ALIAS_SUGGESTIONS_PATH") else None,
-        root / "data" / "kg" / "entity_resolution" / "concept_alias_suggestions.json",
+        er_dir / "concept_alias_suggestions.json",
         root / "data" / "kg_pipeline_test" / "kg" / "output" / "concept_alias_suggestions.json",
         root / "notebooks" / "build-graph" / "outputs" / "entity_resolution" / "concept_alias_suggestions.json",
     ]
     suggestion_path = next((path for path in suggestion_candidates if path and path.exists()), suggestion_candidates[-1])
     return {
-        "store": Path(os.getenv("YUNESA_ALIAS_CURATION_STORE", root / "data" / "kg" / "entity_resolution" / "alias_curation_store.json")),
+        "store": Path(os.getenv("YUNESA_ALIAS_CURATION_STORE", er_dir / "alias_curation_store.json")),
         "suggestions": Path(suggestion_path),
         "base_aliases": Path(os.getenv("YUNESA_BASE_CONCEPT_ALIASES_PATH", root / "notebooks" / "build-graph" / "config" / "concept_aliases.yml")),
-        "approved_aliases": Path(os.getenv("YUNESA_APPROVED_CONCEPT_ALIASES_PATH", root / "notebooks" / "build-graph" / "config" / "concept_aliases.approved.yml")),
+        "approved_aliases": Path(os.getenv("YUNESA_APPROVED_CONCEPT_ALIASES_PATH", er_dir / "concept_aliases.approved.yml")),
     }
 
 
