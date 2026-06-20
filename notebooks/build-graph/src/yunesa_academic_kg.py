@@ -1706,10 +1706,9 @@ def _load_gliner_model(model_name: str) -> Any:
         from gliner import GLiNER
     except ImportError as exc:  # pragma: no cover - optional dependency guard
         raise ImportError(
-            "GLiNER could not be imported. If gliner is already installed, inspect the "
-            "underlying ImportError; on Windows this can happen when security policy blocks "
-            "pyarrow/transformers DLLs. Disable extraction with YUNESA_USE_GLINER=0, or run "
-            "the extraction step in Colab/server runtime where GLiNER imports cleanly."
+            "GLiNER could not be imported. Install the backend 'kg' dependency group or "
+            "disable extraction with YUNESA_USE_GLINER=0. "
+            f"Underlying error: {type(exc).__name__}: {exc}"
         ) from exc
     return GLiNER.from_pretrained(model_name)
 

@@ -316,6 +316,7 @@ services:
       dockerfile: docker/etl-worker.Dockerfile
       args:
         ETL_INSTALL_TEST_DEPS: "true"
+        ETL_INSTALL_KG_DEPS: "true"
     image: tugas-akhir-etl-worker:latest
     container_name: etl-worker
     profiles: ["etl"]

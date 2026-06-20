@@ -87,8 +87,9 @@ test = [
     "pytest-cov>=6.0.0",
 ]
 kg = [
-    "gliner>=0.2.26",
-    "torch>=2.0.0",
+    "gliner==0.2.26",
+    "torch==2.11.0+cpu",
+    "transformers==5.1.0",
 ]
 
 [tool.setuptools]
@@ -104,5 +105,11 @@ name = "tsinghua"
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
 
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.uv.sources]
 YUnesa = { path = ".", editable = true }
+torch = { index = "pytorch-cpu" }

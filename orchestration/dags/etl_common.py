@@ -136,6 +136,7 @@ def worker_env() -> dict[str, str]:
         "MILVUS_DB_NAME": _clean_env("MILVUS_DB_NAME"),
         "SILICONFLOW_API_KEY": _clean_env("SILICONFLOW_API_KEY"),
         "HF_TOKEN": _clean_env("HF_TOKEN"),
+        "HF_HOME": _clean_env("HF_HOME", "/app/data/huggingface"),
         "YUNESA_KG_GRAPH_NAME": _clean_env("YUNESA_KG_GRAPH_NAME"),
         "YUNESA_CONCEPT_ALIASES_PATH": _clean_env("YUNESA_CONCEPT_ALIASES_PATH"),
         "YUNESA_KG_WRITE_NEO4J": _clean_env("YUNESA_KG_WRITE_NEO4J"),
