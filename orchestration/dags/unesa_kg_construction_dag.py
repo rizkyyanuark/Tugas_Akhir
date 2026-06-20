@@ -24,8 +24,7 @@ from etl_common import (
 MODE_TEMPLATE = "{{ dag_run.conf.get('mode', params.default_mode) if dag_run else params.default_mode }}"
 SAMPLE_SIZE_TEMPLATE = "{{ dag_run.conf.get('sample_size', params.default_sample_size) if dag_run else params.default_sample_size }}"
 GRAPH_NAME_TEMPLATE = (
-    "{% set resolved_mode = dag_run.conf.get('mode', params.default_mode) if dag_run else params.default_mode %}"
-    "{{ dag_run.conf.get('graph_name', 'yunesa_academic_kg_sample' if resolved_mode == 'sample' else params.default_graph_name) if dag_run else params.default_graph_name }}"
+    "{{ dag_run.conf.get('graph_name', params.default_graph_name) if dag_run else params.default_graph_name }}"
 )
 USE_GLINER_TEMPLATE = "{{ '1' if (dag_run.conf.get('use_gliner', params.default_use_gliner) if dag_run else params.default_use_gliner) else '0' }}"
 WRITE_NEO4J_TEMPLATE = (

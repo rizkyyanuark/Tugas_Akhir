@@ -58,7 +58,7 @@ def _effective_graph_name(mode: str) -> str:
     configured = os.getenv("YUNESA_KG_GRAPH_NAME", "").strip()
     if configured:
         return configured
-    return SAMPLE_GRAPH_NAME if mode == "sample" else DEFAULT_GRAPH_NAME
+    return DEFAULT_GRAPH_NAME
 
 
 def _kg_source_candidates() -> list[Path]:
