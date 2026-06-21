@@ -42,7 +42,64 @@ def _kg_build_graph(config):
             mode=config.mode,
             sample_size=config.sample_size,
         )
-    log_event(logger, "kg.build_graph.result", **result_fields(result))
+    validation = result.get("validation") or {}
+    extraction = result.get("extraction") or {}
+    resolution = ((result.get("entity_resolution") or {}).get("report") or {})
+    suggestions = result.get("llm_suggestions") or {}
+    input_rows = result.get("input_rows") or {}
+    log_event(
+        logger,
+        "kg.build_graph.result",
+        mode=result.get("mode"),
+        graph_name=result.get("graph_name"),
+        papers=input_rows.get("papers"),
+        lecturers=input_rows.get("lecturers"),
+        links=input_rows.get("links"),
+        extracted_entities=extraction.get("entities"),
+        extracted_keywords=extraction.get("keywords"),
+        nodes=validation.get("total_nodes"),
+        edges=validation.get("total_edges"),
+        unresolved_concepts=resolution.get("unresolved_local_concepts"),
+        duplicate_groups=resolution.get("duplicate_candidate_groups"),
+        llm_suggestions=suggestions.get("suggestion_count"),
+    )
+
+
+def _kg_write_neo4j(config):
+    """Write only Neo4j so vector retries cannot repeat the graph write."""
+    from knowledge.etl.services.kg_storage_service import run_kg_write_neo4j
+
+    with timed_event(logger, "kg.write_neo4j", mode=config.mode):
+        result = run_kg_write_neo4j(mode=config.mode, sample_size=config.sample_size)
+    payload = result.get("result") or {}
+    log_event(
+        logger,
+        "kg.write_neo4j.result",
+        status=result.get("status"),
+        enabled=result.get("enabled"),
+        clear_existing=result.get("clear_existing"),
+        nodes_written=payload.get("nodes_written"),
+        edges_written=payload.get("edges_written"),
+    )
+
+
+def _kg_write_milvus(config):
+    """Write only Milvus with independent retry and persistent embedding cache."""
+    from knowledge.etl.services.kg_storage_service import run_kg_write_milvus
+
+    with timed_event(logger, "kg.write_milvus", mode=config.mode):
+        result = run_kg_write_milvus(mode=config.mode, sample_size=config.sample_size)
+    payload = result.get("result") or {}
+    collections = payload.get("collections") or {}
+    log_event(
+        logger,
+        "kg.write_milvus.result",
+        status=result.get("status"),
+        enabled=result.get("enabled"),
+        clear_existing=result.get("clear_existing"),
+        collections=len(collections),
+        inserted_rows=sum(item.get("inserted_rows", 0) for item in collections.values()),
+    )
 
 
 def _kg_write_stores(config):
@@ -61,6 +118,8 @@ KG_TASKS = {
     "kg_load_data": _kg_load_data,
     "kg_extract_entities": _kg_extract_entities,
     "kg_build_graph": _kg_build_graph,
+    "kg_write_neo4j": _kg_write_neo4j,
+    "kg_write_milvus": _kg_write_milvus,
     "kg_write_stores": _kg_write_stores,
 }
 

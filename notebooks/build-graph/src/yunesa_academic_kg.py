@@ -18,10 +18,14 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import logging
 import os
+import random
 import re
+import sqlite3
 import sys
 import time
+from array import array
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -31,6 +35,9 @@ from typing import Any, Iterable
 
 import networkx as nx
 import pandas as pd
+
+
+logger = logging.getLogger(__name__)
 
 
 try:
@@ -2615,12 +2622,156 @@ def academicrag_storage_plan() -> dict[str, Any]:
     }
 
 
+def _truncate_utf8(value: Any, max_bytes: int, *, suffix: str = "...") -> str:
+    """Return text that fits a byte-oriented VARCHAR limit.
+
+    Milvus validates VARCHAR lengths in UTF-8 bytes, not Python characters.
+    Slicing the Unicode string directly can therefore still exceed the schema
+    limit when the value contains curly quotes, dashes, or non-ASCII text.
+    """
+    text = safe_str(value)
+    encoded = text.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return text
+
+    suffix_bytes = suffix.encode("utf-8")
+    if len(suffix_bytes) >= max_bytes:
+        return encoded[:max_bytes].decode("utf-8", errors="ignore")
+
+    budget = max_bytes - len(suffix_bytes)
+    prefix = encoded[:budget].decode("utf-8", errors="ignore").rstrip()
+    while len((prefix + suffix).encode("utf-8")) > max_bytes:
+        prefix = prefix[:-1]
+    return prefix + suffix
+
+
 def _truncate_milvus(collection_name: str, field_name: str, value: Any) -> str:
     text = safe_str(value)
     limit = MILVUS_VARCHAR_LIMITS.get(collection_name, {}).get(field_name)
-    if limit and len(text) > limit:
-        return text[: max(0, limit - 3)].rstrip() + "..."
-    return text
+    return _truncate_utf8(text, limit) if limit else text
+
+
+def _validate_milvus_varchar_records(
+    records_by_collection: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Fail before embedding or destructive writes when a row violates schema."""
+    checked_fields = 0
+    maximum_bytes: dict[str, dict[str, int]] = {}
+    violations: list[dict[str, Any]] = []
+
+    for collection_name, rows in records_by_collection.items():
+        limits = MILVUS_VARCHAR_LIMITS.get(collection_name, {})
+        collection_maximum: dict[str, int] = {field: 0 for field in limits}
+        for row_index, row in enumerate(rows):
+            for field_name, limit in limits.items():
+                length = len(safe_str(row.get(field_name)).encode("utf-8"))
+                checked_fields += 1
+                collection_maximum[field_name] = max(collection_maximum[field_name], length)
+                if length > limit:
+                    violations.append(
+                        {
+                            "collection": collection_name,
+                            "row": row_index,
+                            "field": field_name,
+                            "bytes": length,
+                            "limit": limit,
+                        }
+                    )
+        maximum_bytes[collection_name] = collection_maximum
+
+    if violations:
+        preview = ", ".join(
+            f"{item['collection']}[{item['row']}].{item['field']}={item['bytes']}>{item['limit']}"
+            for item in violations[:10]
+        )
+        raise ValueError(f"Milvus VARCHAR preflight failed: {preview}")
+
+    return {
+        "collections": len(records_by_collection),
+        "rows": sum(len(rows) for rows in records_by_collection.values()),
+        "checked_fields": checked_fields,
+        "maximum_bytes": maximum_bytes,
+    }
+
+
+def _embedding_cache_path() -> Path | None:
+    configured = os.getenv("YUNESA_EMBEDDING_CACHE_PATH", "").strip()
+    if configured.lower() in {"0", "off", "false", "none", "disabled"}:
+        return None
+    if configured:
+        return Path(configured)
+    if Path("/app/data").is_dir():
+        return Path("/app/data/kg/cache/embeddings.sqlite3")
+    return None
+
+
+class _EmbeddingCache:
+    """Small persistent SQLite cache keyed by provider, model, and text hash."""
+
+    def __init__(self, path: Path | None) -> None:
+        self.path = path
+        self.connection: sqlite3.Connection | None = None
+        if path is None:
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.connection = sqlite3.connect(path, timeout=30)
+        self.connection.execute("PRAGMA journal_mode=WAL")
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS embeddings (
+                cache_key TEXT PRIMARY KEY,
+                dimension INTEGER NOT NULL,
+                vector BLOB NOT NULL,
+                created_at REAL NOT NULL
+            )
+            """
+        )
+        self.connection.commit()
+
+    @staticmethod
+    def key(provider: str, model_name: str, text: str) -> str:
+        payload = f"{provider}\0{model_name}\0{text}".encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+    def get_many(self, keys: list[str]) -> dict[str, list[float]]:
+        if self.connection is None or not keys:
+            return {}
+        result: dict[str, list[float]] = {}
+        for start in range(0, len(keys), 500):
+            batch = keys[start : start + 500]
+            placeholders = ",".join("?" for _ in batch)
+            query = f"SELECT cache_key, dimension, vector FROM embeddings WHERE cache_key IN ({placeholders})"
+            for cache_key, dimension, blob in self.connection.execute(query, batch):
+                values = array("f")
+                values.frombytes(blob)
+                if len(values) == int(dimension):
+                    result[str(cache_key)] = [float(value) for value in values]
+        return result
+
+    def put_many(self, values: dict[str, list[float]]) -> None:
+        if self.connection is None or not values:
+            return
+        rows = []
+        now = time.time()
+        for cache_key, vector in values.items():
+            packed = array("f", (float(value) for value in vector)).tobytes()
+            rows.append((cache_key, len(vector), packed, now))
+        self.connection.executemany(
+            "INSERT OR REPLACE INTO embeddings(cache_key, dimension, vector, created_at) VALUES (?, ?, ?, ?)",
+            rows,
+        )
+        self.connection.commit()
+
+    def close(self) -> None:
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+
+    def __enter__(self) -> "_EmbeddingCache":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        self.close()
 
 
 def _node_label(data: dict[str, Any], node_id: str) -> str:
@@ -2931,33 +3082,130 @@ def _load_sentence_transformer_model(model_name: str):
     return SentenceTransformer(model_name)
 
 
-def _siliconflow_embeddings(texts: list[str], *, model_name: str) -> list[list[float]]:
+def _positive_env_int(name: str, default: int) -> int:
+    try:
+        return max(1, int(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _positive_env_float(name: str, default: float) -> float:
+    try:
+        return max(0.0, float(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _siliconflow_embeddings(
+    texts: list[str],
+    *,
+    model_name: str,
+    split_depth: int = 0,
+) -> list[list[float]]:
     api_key = os.getenv("SILICONFLOW_API_KEY")
     if not api_key:
         raise ValueError("Set SILICONFLOW_API_KEY first for SiliconFlow embeddings.")
 
     import requests
 
-    response = requests.post(
-        os.getenv("SILICONFLOW_EMBEDDING_URL", "https://api.siliconflow.com/v1/embeddings"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": model_name,
-            "input": texts,
-        },
-        timeout=float(os.getenv("SILICONFLOW_EMBEDDING_TIMEOUT", "120")),
-    )
-    response.raise_for_status()
-    payload = response.json()
-    data = payload.get("data") or []
-    data = sorted(data, key=lambda item: int(item.get("index", 0)))
-    vectors = [item.get("embedding") for item in data]
-    if len(vectors) != len(texts):
-        raise RuntimeError(f"SiliconFlow returned {len(vectors)} embeddings for {len(texts)} texts.")
-    return vectors
+    url = os.getenv("SILICONFLOW_EMBEDDING_URL", "https://api.siliconflow.com/v1/embeddings")
+    timeout = _positive_env_float("SILICONFLOW_EMBEDDING_TIMEOUT", 120.0)
+    max_attempts = _positive_env_int("SILICONFLOW_EMBEDDING_MAX_ATTEMPTS", 5)
+    base_delay = _positive_env_float("SILICONFLOW_EMBEDDING_RETRY_BASE_SECONDS", 2.0)
+    max_delay = _positive_env_float("SILICONFLOW_EMBEDDING_RETRY_MAX_SECONDS", 30.0)
+    max_split_depth = _positive_env_int("SILICONFLOW_EMBEDDING_MAX_SPLIT_DEPTH", 2)
+    retry_statuses = {408, 409, 425, 429, 500, 502, 503, 504}
+    last_error: Exception | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        request_started = time.perf_counter()
+        try:
+            response = requests.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": model_name, "input": texts},
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            data = sorted(payload.get("data") or [], key=lambda item: int(item.get("index", 0)))
+            vectors = [item.get("embedding") for item in data]
+            if len(vectors) != len(texts) or any(not isinstance(vector, list) for vector in vectors):
+                raise RuntimeError(
+                    f"SiliconFlow returned {len(vectors)} valid embeddings for {len(texts)} texts."
+                )
+            return vectors
+        except requests.RequestException as exc:
+            last_error = exc
+            response = getattr(exc, "response", None)
+            status = getattr(response, "status_code", None)
+            retryable = status is None or status in retry_statuses
+            elapsed = time.perf_counter() - request_started
+            if retryable and attempt < max_attempts:
+                retry_after = 0.0
+                if response is not None:
+                    try:
+                        retry_after = float(response.headers.get("Retry-After", "0") or 0)
+                    except (TypeError, ValueError):
+                        retry_after = 0.0
+                exponential = min(max_delay, base_delay * (2 ** (attempt - 1)))
+                delay = max(retry_after, exponential * random.uniform(0.8, 1.2))
+                logger.warning(
+                    "embedding.provider.retry | provider=siliconflow | model=%s | status=%s | "
+                    "attempt=%s/%s | batch_size=%s | elapsed_seconds=%.3f | delay_seconds=%.3f",
+                    model_name,
+                    status or "network_error",
+                    attempt,
+                    max_attempts,
+                    len(texts),
+                    elapsed,
+                    delay,
+                )
+                time.sleep(delay)
+                continue
+
+            if (
+                status in {500, 502, 503, 504}
+                and len(texts) > 1
+                and split_depth < max_split_depth
+            ):
+                midpoint = len(texts) // 2
+                logger.warning(
+                    "embedding.provider.split | provider=siliconflow | model=%s | status=%s | "
+                    "batch_size=%s | split_depth=%s",
+                    model_name,
+                    status,
+                    len(texts),
+                    split_depth + 1,
+                )
+                return _siliconflow_embeddings(
+                    texts[:midpoint], model_name=model_name, split_depth=split_depth + 1
+                ) + _siliconflow_embeddings(
+                    texts[midpoint:], model_name=model_name, split_depth=split_depth + 1
+                )
+            raise
+        except (RuntimeError, ValueError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt < max_attempts:
+                delay = min(max_delay, base_delay * (2 ** (attempt - 1)))
+                logger.warning(
+                    "embedding.provider.invalid_response | provider=siliconflow | model=%s | "
+                    "attempt=%s/%s | batch_size=%s | error_type=%s | delay_seconds=%.3f",
+                    model_name,
+                    attempt,
+                    max_attempts,
+                    len(texts),
+                    type(exc).__name__,
+                    delay,
+                )
+                time.sleep(delay)
+                continue
+            raise
+
+    raise RuntimeError("SiliconFlow embedding request exhausted retries.") from last_error
 
 
 def _embed_texts(
@@ -2967,14 +3215,79 @@ def _embed_texts(
     model_name: str,
     batch_size: int,
     normalize_embeddings: bool = False,
+    progress_label: str = "",
 ) -> list[list[float]]:
     provider = normalize_text(provider).replace("-", "_") or DEFAULT_EMBEDDING_PROVIDER
     if provider in {"siliconflow", "silicon_flow"}:
-        vectors: list[list[float]] = []
-        for start in range(0, len(texts), batch_size):
-            batch = texts[start : start + batch_size]
-            vectors.extend(_siliconflow_embeddings(batch, model_name=model_name))
-        return vectors
+        started = time.perf_counter()
+        text_keys = [_EmbeddingCache.key(provider, model_name, text) for text in texts]
+        unique_text_by_key = dict(zip(text_keys, texts))
+        cache_path = _embedding_cache_path()
+        progress_every = _positive_env_int("YUNESA_EMBEDDING_PROGRESS_EVERY_BATCHES", 25)
+
+        with _EmbeddingCache(cache_path) as cache:
+            vectors_by_key = cache.get_many(list(unique_text_by_key))
+            missing_keys = [key for key in unique_text_by_key if key not in vectors_by_key]
+            total_batches = (len(missing_keys) + batch_size - 1) // batch_size
+            if progress_label:
+                logger.info(
+                    "embedding.collection.start | collection=%s | provider=%s | model=%s | "
+                    "rows=%s | unique_texts=%s | cache_hits=%s | cache_misses=%s | "
+                    "batch_size=%s | api_batches=%s | cache_path=%s",
+                    progress_label,
+                    provider,
+                    model_name,
+                    len(texts),
+                    len(unique_text_by_key),
+                    len(vectors_by_key),
+                    len(missing_keys),
+                    batch_size,
+                    total_batches,
+                    cache_path or "disabled",
+                )
+
+            for batch_index, start in enumerate(range(0, len(missing_keys), batch_size), start=1):
+                batch_keys = missing_keys[start : start + batch_size]
+                batch_texts = [unique_text_by_key[key] for key in batch_keys]
+                batch_started = time.perf_counter()
+                batch_vectors = _siliconflow_embeddings(batch_texts, model_name=model_name)
+                new_values = dict(zip(batch_keys, batch_vectors))
+                vectors_by_key.update(new_values)
+                cache.put_many(new_values)
+
+                if progress_label and (
+                    batch_index == 1
+                    or batch_index == total_batches
+                    or batch_index % progress_every == 0
+                ):
+                    logger.info(
+                        "embedding.collection.progress | collection=%s | batch=%s/%s | "
+                        "embedded=%s/%s | batch_seconds=%.3f | elapsed_seconds=%.3f",
+                        progress_label,
+                        batch_index,
+                        total_batches,
+                        min(start + len(batch_keys), len(missing_keys)),
+                        len(missing_keys),
+                        time.perf_counter() - batch_started,
+                        time.perf_counter() - started,
+                    )
+
+            missing_after = [key for key in text_keys if key not in vectors_by_key]
+            if missing_after:
+                raise RuntimeError(f"Embedding cache/result missing {len(missing_after)} vectors.")
+            result = [vectors_by_key[key] for key in text_keys]
+
+        if progress_label:
+            logger.info(
+                "embedding.collection.done | collection=%s | rows=%s | cache_hits=%s | "
+                "api_embeddings=%s | duration_seconds=%.3f",
+                progress_label,
+                len(texts),
+                len(unique_text_by_key) - len(missing_keys),
+                len(missing_keys),
+                time.perf_counter() - started,
+            )
+        return result
 
     if provider in {"sentence_transformers", "sentence_transformer", "local"}:
         model = _load_sentence_transformer_model(model_name)
@@ -3010,6 +3323,7 @@ def _embed_milvus_records(
             model_name=model_name,
             batch_size=batch_size,
             normalize_embeddings=normalize_embeddings,
+            progress_label=collection_name,
         )
         embedded_rows = []
         for row, vector in zip(rows, vectors):
@@ -3178,6 +3492,24 @@ def write_vector_index_to_milvus(
     """
     config = config or milvus_config_from_env()
     records = build_milvus_index_records(graph, graph_name=graph_name)
+    preflight = _validate_milvus_varchar_records(records)
+    logger.info(
+        "milvus.preflight.passed | graph_name=%s | collections=%s | rows=%s | checked_fields=%s",
+        graph_name,
+        preflight["collections"],
+        preflight["rows"],
+        preflight["checked_fields"],
+    )
+    logger.info(
+        "milvus.embedding.plan | graph_name=%s | provider=%s | model=%s | dimension=%s | "
+        "batch_size=%s | rows=%s",
+        graph_name,
+        config.embedding_provider,
+        config.embedding_model,
+        config.embedding_dim,
+        config.batch_size,
+        {name: len(rows) for name, rows in records.items()},
+    )
     embedded_records = _embed_milvus_records(
         records,
         provider=config.embedding_provider,
@@ -3195,11 +3527,19 @@ def write_vector_index_to_milvus(
         "embedding_dim": config.embedding_dim,
         "metric_type": config.metric_type,
         "graph_name": graph_name,
+        "varchar_preflight": preflight,
         "collections": {},
     }
 
     try:
         for collection_name, rows in embedded_records.items():
+            collection_started = time.perf_counter()
+            logger.info(
+                "milvus.collection.start | collection=%s | rows=%s | clear_existing=%s",
+                collection_name,
+                len(rows),
+                clear_existing,
+            )
             _ensure_milvus_collection(
                 client,
                 collection_name=collection_name,
@@ -3211,12 +3551,25 @@ def write_vector_index_to_milvus(
             if clear_existing:
                 deleted_report = _delete_milvus_graph_records(client, collection_name, graph_name)
             inserted = 0
-            for start in range(0, len(rows), config.batch_size):
+            total_batches = (len(rows) + config.batch_size - 1) // config.batch_size
+            progress_every = _positive_env_int("YUNESA_MILVUS_PROGRESS_EVERY_BATCHES", 25)
+            for batch_index, start in enumerate(range(0, len(rows), config.batch_size), start=1):
                 batch = rows[start : start + config.batch_size]
                 if not batch:
                     continue
                 client.insert(collection_name=collection_name, data=batch)
                 inserted += len(batch)
+                if batch_index == 1 or batch_index == total_batches or batch_index % progress_every == 0:
+                    logger.info(
+                        "milvus.collection.progress | collection=%s | batch=%s/%s | inserted=%s/%s | "
+                        "elapsed_seconds=%.3f",
+                        collection_name,
+                        batch_index,
+                        total_batches,
+                        inserted,
+                        len(rows),
+                        time.perf_counter() - collection_started,
+                    )
             try:
                 client.flush(collection_name)
             except Exception:
@@ -3237,6 +3590,20 @@ def write_vector_index_to_milvus(
                 "graph_row_count": graph_row_count,
                 "stats": stats,
             }
+            logger.info(
+                "milvus.collection.done | collection=%s | inserted=%s | graph_row_count=%s | "
+                "duration_seconds=%.3f",
+                collection_name,
+                inserted,
+                graph_row_count.get("count", "unknown"),
+                time.perf_counter() - collection_started,
+            )
+        logger.info(
+            "milvus.write.done | graph_name=%s | collections=%s | inserted_rows=%s",
+            graph_name,
+            len(report["collections"]),
+            sum(item.get("inserted_rows", 0) for item in report["collections"].values()),
+        )
         return report
     finally:
         close = getattr(client, "close", None)
@@ -3363,13 +3730,26 @@ def write_graph_to_neo4j(
             yield rows[start : start + batch_size]
 
     driver = GraphDatabase.driver(uri, auth=(username, password))
+    logger.info(
+        "neo4j.write.plan | graph_name=%s | nodes=%s | edges=%s | labels=%s | relation_types=%s | "
+        "batch_size=%s | clear_existing=%s",
+        graph_name,
+        serialisable.number_of_nodes(),
+        serialisable.number_of_edges(),
+        len(node_rows_by_label),
+        len(edge_rows_by_relation),
+        batch_size,
+        clear_existing,
+    )
     try:
         with driver.session(database=database) as session:
             if clear_existing:
+                logger.info("neo4j.clear.start | graph_name=%s", graph_name)
                 session.run(
                     "MATCH (n:KGNode {graph_name: $graph_name}) DETACH DELETE n",
                     graph_name=graph_name,
                 )
+                logger.info("neo4j.clear.done | graph_name=%s", graph_name)
 
             session.run("CREATE CONSTRAINT kg_node_id IF NOT EXISTS FOR (n:KGNode) REQUIRE n.id IS UNIQUE")
             session.run(
@@ -3383,6 +3763,7 @@ def write_graph_to_neo4j(
 
             nodes_written = 0
             for label, rows in node_rows_by_label.items():
+                label_started = time.perf_counter()
                 query = (
                     f"UNWIND $rows AS row "
                     f"MERGE (n:KGNode:{label} {{id: row.id}}) "
@@ -3391,9 +3772,17 @@ def write_graph_to_neo4j(
                 for batch in chunks(rows):
                     session.run(query, rows=batch)
                     nodes_written += len(batch)
+                logger.info(
+                    "neo4j.nodes.done | label=%s | rows=%s | total_written=%s | duration_seconds=%.3f",
+                    label,
+                    len(rows),
+                    nodes_written,
+                    time.perf_counter() - label_started,
+                )
 
             edges_written = 0
             for relation, rows in edge_rows_by_relation.items():
+                relation_started = time.perf_counter()
                 query = (
                     f"UNWIND $rows AS row "
                     f"MATCH (s:KGNode {{id: row.source, graph_name: row.graph_name}}) "
@@ -3404,7 +3793,20 @@ def write_graph_to_neo4j(
                 for batch in chunks(rows):
                     session.run(query, rows=batch)
                     edges_written += len(batch)
+                logger.info(
+                    "neo4j.edges.done | relation=%s | rows=%s | total_written=%s | duration_seconds=%.3f",
+                    relation,
+                    len(rows),
+                    edges_written,
+                    time.perf_counter() - relation_started,
+                )
 
+        logger.info(
+            "neo4j.write.done | graph_name=%s | nodes_written=%s | edges_written=%s",
+            graph_name,
+            nodes_written,
+            edges_written,
+        )
         return {"nodes_written": nodes_written, "edges_written": edges_written}
     finally:
         driver.close()

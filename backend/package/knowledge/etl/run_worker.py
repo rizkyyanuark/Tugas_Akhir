@@ -18,7 +18,7 @@ import os
 import sys
 
 from knowledge.etl.config import ETL_RUN_MODE, ETL_SAMPLE_SIZE
-from knowledge.etl.utils.logging import configure_etl_logging, log_event, timed_event
+from knowledge.etl.utils.logging import configure_etl_logging, log_error, log_event, timed_event
 from knowledge.etl.worker import RunConfig, TASK_CHOICES, TASK_REGISTRY, dispatch_task
 
 configure_etl_logging()
@@ -132,8 +132,8 @@ def main() -> None:
     try:
         with timed_event(logger, "task.run", task=args.task):
             _run_with_optional_reload(args.task, config)
-    except Exception:
-        logger.error("task.failed | task=%s", args.task)
+    except Exception as exc:
+        log_error(logger, "task.failed", exc=exc, task=args.task)
         sys.exit(1)
 
     log_event(logger, "task.success", task=args.task)

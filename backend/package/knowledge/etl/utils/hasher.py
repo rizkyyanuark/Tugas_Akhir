@@ -23,8 +23,14 @@ def generate_paper_id(doi: Optional[str], title: str, year: Optional[int]) -> st
     Returns:
         A 32-character hexadecimal MD5 hash string.
     """
+    is_valid_doi = False
     if doi and str(doi).strip().lower() not in ('nan', 'none', '', 'null'):
-        # Normalize DOI to lowercase and strip whitespace
+        normalized_doi = str(doi).strip().lower()
+        # Filter out placeholder/template DOIs (e.g., containing %p)
+        if '%p' not in normalized_doi:
+            is_valid_doi = True
+
+    if is_valid_doi:
         normalized_doi = str(doi).strip().lower()
         unique_string = f"doi:{normalized_doi}"
     else:

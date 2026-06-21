@@ -125,7 +125,7 @@ class SupabaseLoader:
         from knowledge.etl.utils.hasher import generate_paper_id
         from knowledge.etl.transform.enricher import normalize_document_type, normalize_venue_name
 
-        records: List[Dict[str, Any]] = []
+        records_dict: Dict[str, Dict[str, Any]] = {}
         skipped = 0
 
         for _, row in df.iterrows():
@@ -147,7 +147,7 @@ class SupabaseLoader:
             # Generate Deterministic ID
             paper_id = generate_paper_id(doi, title, year)
 
-            records.append({
+            record = {
                 "paper_id": paper_id,
                 "doi": doi,
                 "title": title,
@@ -160,7 +160,18 @@ class SupabaseLoader:
                 "keywords": self._clean_value(row.get('Keywords') or row.get('keywords')),
                 "link": self._clean_value(row.get('Link') or row.get('link')),
                 "tldr": self._clean_value(row.get('TLDR') or row.get('tldr')),
-            })
+            }
+
+            if paper_id in records_dict:
+                # Merge existing record with new one (keeping/enriching fields)
+                existing = records_dict[paper_id]
+                for k, v in record.items():
+                    if not existing.get(k) and v:
+                        existing[k] = v
+            else:
+                records_dict[paper_id] = record
+
+        records = list(records_dict.values())
 
         log_event(logger, "supabase.papers.upsert_start", rows=len(records), skipped_no_title=skipped, chunk_size=chunk_size)
 

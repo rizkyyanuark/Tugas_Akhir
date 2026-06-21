@@ -439,8 +439,8 @@ def run_kg_build(*, mode: str = "incremental", sample_size: int = 50) -> dict[st
     return summary
 
 
-def run_kg_write_stores(*, mode: str = "incremental", sample_size: int = 50) -> dict[str, Any]:
-    """Write the built graph to Neo4j and/or Milvus according to env flags."""
+def _run_kg_write_stores_legacy(*, mode: str = "incremental", sample_size: int = 50) -> dict[str, Any]:
+    """Legacy combined implementation retained for compatibility audits."""
     kg = _kg_module()
     mode = _normal_mode(mode)
     graph_name = _effective_graph_name(mode)
@@ -504,3 +504,10 @@ def run_kg_write_stores(*, mode: str = "incremental", sample_size: int = 50) -> 
     write_json_artifact(summary, kg_paths.KG_SUMMARY_JSON)
     logger.info("kg.write_stores.done | %s", json.dumps({k: v for k, v in report.items() if k not in {"neo4j", "milvus"}}, sort_keys=True))
     return report
+
+
+def run_kg_write_stores(*, mode: str = "incremental", sample_size: int = 50) -> dict[str, Any]:
+    """Compatibility wrapper around independently retryable storage stages."""
+    from knowledge.etl.services.kg_storage_service import run_kg_write_stores as run_split_stores
+
+    return run_split_stores(mode=mode, sample_size=sample_size)

@@ -96,7 +96,6 @@ def test_kg_service_functions_importable():
     assert callable(run_kg_build)
     assert callable(run_kg_write_stores)
 
-
 def test_scholar_scraping_requires_brightdata_proxy(monkeypatch):
     import knowledge.etl.services.unesa_papers as service
 
@@ -194,6 +193,77 @@ def test_supabase_loader_normalizes_document_type_before_upsert():
     assert captured["on_conflict"] == "paper_id"
     assert captured["rows"][0]["document_type"] == "article"
     assert captured["rows"][0]["journal"] == "Journal of Informatics and Computer Science (JINACS)"
+
+
+def test_generate_paper_id_ignores_placeholder_dois():
+    from knowledge.etl.utils.hasher import generate_paper_id
+
+    # Valid DOI
+    id1 = generate_paper_id("10.1234/something", "A Great Paper", 2026)
+
+    # Placeholder DOI - should ignore it and use title+year
+    id2 = generate_paper_id("10.26740/jte.v9n1.p%p", "A Great Paper", 2026)
+
+    # Paper with no DOI - should use title+year
+    id3 = generate_paper_id(None, "A Great Paper", 2026)
+
+    # id2 and id3 must be identical because they both fall back to title+year
+    assert id2 == id3
+    # id1 must be different because it uses the valid DOI
+    assert id1 != id2
+
+
+def test_supabase_loader_deduplicates_by_paper_id():
+    import pandas as pd
+    from knowledge.etl.load.supabase_loader import SupabaseLoader
+
+    captured = {}
+
+    class FakeTable:
+        def upsert(self, rows, on_conflict=None):
+            captured["rows"] = rows
+            captured["on_conflict"] = on_conflict
+            return self
+
+        def execute(self):
+            return None
+
+    class FakeClient:
+        def table(self, name):
+            captured["table"] = name
+            return FakeTable()
+
+    loader = object.__new__(SupabaseLoader)
+    loader.client = FakeClient()
+    loader.key_role = "service_role"
+
+    df = pd.DataFrame(
+        [
+            {
+                "Title": "Paper A",
+                "Year": "2026",
+                "DOI": "10.1234/dup-doi",
+                "Journal": "Journal A",
+                "Document Type": "article",
+            },
+            {
+                "Title": "Paper B",
+                "Year": "2026",
+                "DOI": "10.1234/dup-doi",
+                "Journal": "Journal B",
+                "Document Type": "article",
+                "Abstract": "Abstract of B",
+            },
+        ]
+    )
+
+    count = loader.upsert_papers(df)
+
+    # It should have deduplicated the rows by paper_id (using the DOI) in memory,
+    # so only 1 record is sent to Supabase.
+    assert count == 1
+    assert len(captured["rows"]) == 1
+    assert captured["rows"][0]["abstract"] == "Abstract of B"  # merged B's abstract into A
 
 
 def test_scopus_processing_helper_cleans_and_deduplicates(monkeypatch):

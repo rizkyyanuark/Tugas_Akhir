@@ -143,6 +143,28 @@ def worker_env() -> dict[str, str]:
         "YUNESA_KG_WRITE_MILVUS": _clean_env("YUNESA_KG_WRITE_MILVUS"),
         "YUNESA_KG_CLEAR_NEO4J": _clean_env("YUNESA_KG_CLEAR_NEO4J"),
         "YUNESA_KG_CLEAR_MILVUS": _clean_env("YUNESA_KG_CLEAR_MILVUS"),
+        "YUNESA_EMBEDDING_CACHE_PATH": _clean_env(
+            "YUNESA_EMBEDDING_CACHE_PATH",
+            "/app/data/kg/cache/embeddings.sqlite3",
+        ),
+        "SILICONFLOW_EMBEDDING_MAX_ATTEMPTS": _clean_env(
+            "SILICONFLOW_EMBEDDING_MAX_ATTEMPTS", "5"
+        ),
+        "SILICONFLOW_EMBEDDING_RETRY_BASE_SECONDS": _clean_env(
+            "SILICONFLOW_EMBEDDING_RETRY_BASE_SECONDS", "2"
+        ),
+        "SILICONFLOW_EMBEDDING_RETRY_MAX_SECONDS": _clean_env(
+            "SILICONFLOW_EMBEDDING_RETRY_MAX_SECONDS", "30"
+        ),
+        "SILICONFLOW_EMBEDDING_MAX_SPLIT_DEPTH": _clean_env(
+            "SILICONFLOW_EMBEDDING_MAX_SPLIT_DEPTH", "2"
+        ),
+        "YUNESA_EMBEDDING_PROGRESS_EVERY_BATCHES": _clean_env(
+            "YUNESA_EMBEDDING_PROGRESS_EVERY_BATCHES", "25"
+        ),
+        "YUNESA_MILVUS_PROGRESS_EVERY_BATCHES": _clean_env(
+            "YUNESA_MILVUS_PROGRESS_EVERY_BATCHES", "25"
+        ),
         "YUNESA_USE_GLINER": _clean_env("YUNESA_USE_GLINER", "0"),
         "YUNESA_USE_GLIREL": _clean_env("YUNESA_USE_GLIREL", "0"),
         # Entity Resolution

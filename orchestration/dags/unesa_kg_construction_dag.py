@@ -58,7 +58,7 @@ default_args = {
 dag = DAG(
     dag_id="unesa_kg_construction",
     default_args=default_args,
-    description="Build UNESA Academic Knowledge Graph and optional dual index storage",
+    description="Build UNESA Academic Knowledge Graph with independently retryable dual-index writes",
     schedule=None,
     start_date=datetime(2026, 3, 1),
     catchup=False,
@@ -103,6 +103,9 @@ Production rebuild:
 
 GLiNER remains optional and GLiREL is disabled by default because ontology
 relations are built deterministically from the academic KG schema.
+
+Neo4j and Milvus use separate tasks. A transient embedding-provider or Milvus
+failure can therefore be retried without clearing and rewriting AuraDB.
 """
 
 
@@ -150,6 +153,7 @@ def create_operator(task_id: str, worker_task: str) -> DockerOperator:
 load_data = create_operator("load_data", "kg_load_data")
 extract_entities = create_operator("extract_entities", "kg_extract_entities")
 build_graph = create_operator("build_graph", "kg_build_graph")
-write_stores = create_operator("write_stores", "kg_write_stores")
+write_neo4j = create_operator("write_neo4j", "kg_write_neo4j")
+write_milvus = create_operator("write_milvus", "kg_write_milvus")
 
-load_data >> extract_entities >> build_graph >> write_stores
+load_data >> extract_entities >> build_graph >> write_neo4j >> write_milvus
