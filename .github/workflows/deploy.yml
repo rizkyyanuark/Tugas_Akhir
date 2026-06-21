@@ -69,6 +69,7 @@ jobs:
           S_BD_PASS_SERP: ${{ secrets.BD_PASS_SERP }}
           S_BD_USER_UNLOCKER: ${{ secrets.BD_USER_UNLOCKER }}
           S_BD_PASS_UNLOCKER: ${{ secrets.BD_PASS_UNLOCKER }}
+          S_BD_SCRAPING_BROWSER_URL: ${{ secrets.BD_SCRAPING_BROWSER_URL }}
           S_GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           S_SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           S_OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -96,6 +97,7 @@ jobs:
             S_MILVUS_URI,S_MILVUS_TOKEN,S_MILVUS_DB_NAME,
             S_SCIVAL_EMAIL,S_SCIVAL_PASS,S_SEMANTIC_SCHOLAR_API_KEY,
             S_BD_USER_SERP,S_BD_PASS_SERP,S_BD_USER_UNLOCKER,S_BD_PASS_UNLOCKER,
+            S_BD_SCRAPING_BROWSER_URL,
             S_GROQ_API_KEY,S_SILICONFLOW_API_KEY,S_OPENROUTER_API_KEY,
             S_HF_TOKEN,S_TAVILY_API_KEY,
             S_OPIK_API_KEY,S_OPIK_WORKSPACE,S_OPIK_PROJECT_NAME,S_OPIK_ENVIRONMENT,
@@ -161,6 +163,7 @@ jobs:
             BD_PASS_SERP=${S_BD_PASS_SERP}
             BD_USER_UNLOCKER=${S_BD_USER_UNLOCKER}
             BD_PASS_UNLOCKER=${S_BD_PASS_UNLOCKER}
+            BD_SCRAPING_BROWSER_URL=${S_BD_SCRAPING_BROWSER_URL}
             GROQ_API_KEY=${S_GROQ_API_KEY}
             SILICONFLOW_API_KEY=${S_SILICONFLOW_API_KEY}
             OPENROUTER_API_KEY=${S_OPENROUTER_API_KEY}
@@ -195,8 +198,8 @@ jobs:
             df -h /
 
             echo "[5/7] Removing old Docker build artifacts"
-            docker system prune -af --filter "until=168h" || true
-            docker builder prune -af --filter "until=168h" || true
+            docker system prune -af --volumes || true
+            docker builder prune -af || true
             sudo apt-get clean || true
 
             echo "[6/7] Building and starting services"
