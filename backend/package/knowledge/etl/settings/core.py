@@ -89,6 +89,7 @@ BD_USER_SERP: Final[str] = os.environ.get("BD_USER_SERP", "")
 BD_PASS_SERP: Final[str] = os.environ.get("BD_PASS_SERP", "")
 BD_USER_UNLOCKER: Final[str] = os.environ.get("BD_USER_UNLOCKER", "")
 BD_PASS_UNLOCKER: Final[str] = os.environ.get("BD_PASS_UNLOCKER", "")
+BD_SCRAPING_BROWSER_URL: Final[str] = os.environ.get("BD_SCRAPING_BROWSER_URL", "")
 BRIGHT_DATA_HOST: Final[str] = os.environ.get("BRIGHT_DATA_HOST", "brd.superproxy.io:33335")
 
 # AI / LLM.

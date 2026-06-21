@@ -14,7 +14,7 @@ import requests
 import urllib3
 from bs4 import BeautifulSoup
 
-from ..config import HEADERS, PROXY_URL
+from ..config import HEADERS, PROXY_URL, BD_SCRAPING_BROWSER_URL
 from .utils import clean_name_expert
 
 # Disable SSL warnings for proxy usage
@@ -281,8 +281,62 @@ class ScholarClient:
     # --- Paper Extraction Methods ---
 
     def get_papers(self, scholar_id: str, limit: int = 100) -> List[Dict[str, Any]]:
-        """Fetch papers from a Scholar profile page using pagination."""
+        """Fetch papers from a Scholar profile page. Uses BrightData Scraping Browser if available, fallback to HTTP pagination."""
+        if BD_SCRAPING_BROWSER_URL:
+            logger.info("Using BrightData Scraping Browser for Google Scholar scraping.")
+            try:
+                from selenium import webdriver
+                from selenium.webdriver.chrome.options import Options
+                from selenium.webdriver.common.by import By
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                
+                chrome_options = Options()
+                driver = webdriver.Remote(
+                    command_executor=BD_SCRAPING_BROWSER_URL,
+                    options=chrome_options
+                )
+                
+                all_papers: List[Dict[str, Any]] = []
+                try:
+                    url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en"
+                    logger.debug(f"Scraping Browser: Navigating to {url}")
+                    driver.get(url)
+                    
+                    click_count = 0
+                    while True:
+                        soup = BeautifulSoup(driver.page_source, "html.parser")
+                        papers = self._parse_profile_papers(soup, scholar_id)
+                        
+                        if len(papers) >= limit:
+                            all_papers = papers[:limit]
+                            break
+                        
+                        try:
+                            button = WebDriverWait(driver, 5).until(
+                                EC.presence_of_element_located((By.ID, "gsc_bpf_more"))
+                            )
+                            if button.get_attribute("disabled"):
+                                all_papers = papers
+                                break
+                            
+                            click_count += 1
+                            logger.debug(f"Scraping Browser: Clicking 'Show more' (click {click_count})...")
+                            driver.execute_script("arguments[0].click();", button)
+                            time.sleep(2.0)
+                        except Exception:
+                            all_papers = papers
+                            break
+                finally:
+                    driver.quit()
+                    
+                return all_papers
+            except Exception as e:
+                logger.error(f"BrightData Scraping Browser failed: {e}. Falling back to HTTP pagination.")
+                # fall through to legacy logic below
+
         all_papers: List[Dict[str, Any]] = []
+        seen_links = set()
         cstart = 0
         pagesize = 100
         
@@ -300,13 +354,19 @@ class ScholarClient:
             if not new_papers:
                 break
                 
-            all_papers.extend(new_papers)
+            has_new = False
+            for p in new_papers:
+                link = p.get("link")
+                if link and link not in seen_links:
+                    seen_links.add(link)
+                    all_papers.append(p)
+                    has_new = True
             
-            # If we got fewer papers than requested pagesize, we've reached the end
-            if len(new_papers) < pagesize:
+            # If no new papers were found, we have reached the end of the profile
+            if not has_new:
                 break
                 
-            cstart += pagesize
+            cstart += len(new_papers)
             time.sleep(random.uniform(2.0, 4.0))
             
         return all_papers[:limit]
