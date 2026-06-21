@@ -8,7 +8,6 @@ import logging
 import os
 import shutil
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -426,7 +425,11 @@ def run_kg_build(*, mode: str = "incremental", sample_size: int = 50) -> dict[st
     # ── Archive historical copies of reports ──────────────────────────
     run_id = os.getenv("YUNESA_RUN_ID", "").strip()
     if run_id:
-        history_dir = Path("/app/data/kg/output/history") if Path("/app/data").is_dir() else Path("data/kg/output/history")
+        history_dir = (
+            Path("/app/data/kg/output/history")
+            if Path("/app/data").is_dir()
+            else Path("data/kg/output/history")
+        )
         _archive_artifact(er_report_path, history_dir, run_id)
         summary_path = (
             Path(kg_paths.KG_SUMMARY_JSON)
@@ -435,7 +438,12 @@ def run_kg_build(*, mode: str = "incremental", sample_size: int = 50) -> dict[st
         )
         _archive_artifact(summary_path, history_dir, run_id)
 
-    logger.info("kg.build.done | nodes=%s | edges=%s | graph_name=%s", graph.number_of_nodes(), graph.number_of_edges(), graph_name)
+    logger.info(
+        "kg.build.done | nodes=%s | edges=%s | graph_name=%s",
+        graph.number_of_nodes(),
+        graph.number_of_edges(),
+        graph_name,
+    )
     return summary
 
 
@@ -502,7 +510,13 @@ def _run_kg_write_stores_legacy(*, mode: str = "incremental", sample_size: int =
         summary = read_json_artifact(kg_paths.KG_SUMMARY_JSON)
     summary["storage"] = report
     write_json_artifact(summary, kg_paths.KG_SUMMARY_JSON)
-    logger.info("kg.write_stores.done | %s", json.dumps({k: v for k, v in report.items() if k not in {"neo4j", "milvus"}}, sort_keys=True))
+    logger.info(
+        "kg.write_stores.done | %s",
+        json.dumps(
+            {key: value for key, value in report.items() if key not in {"neo4j", "milvus"}},
+            sort_keys=True,
+        ),
+    )
     return report
 
 

@@ -744,7 +744,7 @@ def milvus_config_from_env(
 ) -> MilvusVectorIndexConfig:
     """Build Milvus/Zilliz config from secret env plus code-level embedding defaults."""
     uri = os.getenv("MILVUS_URI") or os.getenv("ZILLIZ_URI")
-    if uri and uri.startswith("https://") and not ":" in uri.replace("https://", ""):
+    if uri and uri.startswith("https://") and ":" not in uri.replace("https://", ""):
         uri = uri + ":443"
     token = os.getenv("MILVUS_TOKEN") or os.getenv("ZILLIZ_TOKEN")
     db_name = os.getenv("MILVUS_DB_NAME") or os.getenv("ZILLIZ_DB_NAME")

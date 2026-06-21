@@ -106,6 +106,8 @@ relations are built deterministically from the academic KG schema.
 
 Neo4j and Milvus use separate tasks. A transient embedding-provider or Milvus
 failure can therefore be retried without clearing and rewriting AuraDB.
+Milvus embeddings are cached under `/app/data/kg/cache`, and retry progress is
+reported per collection so long-running production writes remain observable.
 """
 
 

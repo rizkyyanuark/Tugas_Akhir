@@ -19,7 +19,7 @@ import sys
 
 from knowledge.etl.config import ETL_RUN_MODE, ETL_SAMPLE_SIZE
 from knowledge.etl.utils.logging import configure_etl_logging, log_error, log_event, timed_event
-from knowledge.etl.worker import RunConfig, TASK_CHOICES, TASK_REGISTRY, dispatch_task
+from knowledge.etl.worker import RunConfig, TASK_CHOICES, TASK_REGISTRY as TASK_REGISTRY, dispatch_task
 
 configure_etl_logging()
 logger = logging.getLogger("etl-worker")
