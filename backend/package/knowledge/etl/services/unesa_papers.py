@@ -10,6 +10,9 @@ import pandas as pd
 from knowledge.etl.clients.scholar_client import ScholarClient
 from knowledge.etl.clients.supabase_client import SupabaseClient
 from knowledge.etl.config import (
+    BD_PASS_UNLOCKER,
+    BD_USER_UNLOCKER,
+    BRIGHT_DATA_HOST,
     ETL_ENRICH_MAX_PAPERS_PER_RUN,
     PROXY_URL,
     SCIVAL_EMAIL,
@@ -46,6 +49,17 @@ from knowledge.etl.transform.enricher import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _truthy(value) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _scholar_profile_proxy_url() -> str:
+    """Prefer Web Unlocker for Google Scholar profile pages."""
+    if BD_USER_UNLOCKER and BD_PASS_UNLOCKER and BRIGHT_DATA_HOST:
+        return f"http://{BD_USER_UNLOCKER}:{BD_PASS_UNLOCKER}@{BRIGHT_DATA_HOST}"
+    return PROXY_URL
 
 
 def _legacy_csv_for_artifact(path: Path | str) -> Path | str | None:
@@ -523,13 +537,13 @@ def run_scholar_scraping(
         incremental -> Skip lecturers already present in scholar CSV.
         sample      -> Process only `sample_size` lecturers.
     """
-    scholar_proxy_url = proxy_url or PROXY_URL
+    scholar_proxy_url = proxy_url or _scholar_profile_proxy_url()
     if not scholar_proxy_url:
         log_error(
             logger,
             "scholar.extract.missing_proxy",
             message="BrightData Scholar proxy is required",
-            required="BD_USER_SERP,BD_PASS_SERP",
+            required="BD_USER_UNLOCKER,BD_PASS_UNLOCKER or BD_USER_SERP,BD_PASS_SERP",
         )
         return None
 
@@ -559,14 +573,31 @@ def run_scholar_scraping(
     already_scraped_ids = set()
     if run_mode == "incremental" and _artifact_exists(SCHOLAR_CSV):
         try:
-            df_existing = _read_artifact_or_empty(
-                SCHOLAR_CSV, usecols=['scholar_id'])
-            already_scraped_ids = set(
-                df_existing['scholar_id'].unique().astype(str))
+            df_existing = _read_artifact_or_empty(SCHOLAR_CSV, dtype=str).fillna("")
+            if "scrape_complete" in df_existing.columns:
+                complete_mask = df_existing["scrape_complete"].apply(_truthy)
+                already_scraped_ids = set(
+                    df_existing.loc[complete_mask, "scholar_id"].unique().astype(str)
+                )
+                partial_authors = int(df_existing.loc[~complete_mask, "scholar_id"].nunique())
+            else:
+                partial_authors = (
+                    int(df_existing["scholar_id"].nunique())
+                    if "scholar_id" in df_existing.columns
+                    else 0
+                )
+                log_warning(
+                    logger,
+                    "scholar.extract.incremental_state_legacy",
+                    message="Existing Scholar artifact has no scrape_complete column; authors will be rechecked.",
+                    path=path_name(SCHOLAR_CSV),
+                    legacy_authors=partial_authors,
+                )
             log_event(
                 logger,
                 "scholar.extract.incremental_state",
-                scraped_authors=len(already_scraped_ids),
+                complete_authors=len(already_scraped_ids),
+                partial_authors=partial_authors,
                 path=path_name(SCHOLAR_CSV),
             )
         except Exception as e:
@@ -603,9 +634,13 @@ def run_scholar_scraping(
             df_temp = _read_artifact_or_empty(
                 SCHOLAR_TEMP_CSV, dtype=str).fillna("")
             all_raw_papers = df_temp.to_dict('records')
-            scraped_ids = set(df_temp['scholar_id'].unique())
+            if "scrape_complete" in df_temp.columns:
+                complete_mask = df_temp["scrape_complete"].apply(_truthy)
+                scraped_ids = set(df_temp.loc[complete_mask, 'scholar_id'].unique())
+            else:
+                scraped_ids = set()
             log_event(logger, "scholar.extract.resume", rows=len(
-                all_raw_papers), path=SCHOLAR_TEMP_CSV)
+                all_raw_papers), complete_authors=len(scraped_ids), path=SCHOLAR_TEMP_CSV)
         except Exception:
             pass
 
@@ -647,7 +682,32 @@ def run_scholar_scraping(
         )
 
         articles = client.get_papers(target["id"], limit=limit_per_author)
+        fetch_status = dict(client.last_fetch_status or {})
         total_api_calls += max(1, len(articles) // 100)
+        scrape_complete = bool(fetch_status.get("complete"))
+        scrape_method = str(fetch_status.get("method", "unknown"))
+        scrape_reason = str(fetch_status.get("reason", "unknown"))
+
+        if articles and not scrape_complete:
+            log_warning(
+                logger,
+                "scholar.extract.author_partial",
+                scholar_id=target["id"],
+                rows=len(articles),
+                limit_per_author=limit_per_author,
+                method=scrape_method,
+                reason=scrape_reason,
+                action="will_retry_in_next_incremental_run",
+            )
+        elif not articles:
+            log_warning(
+                logger,
+                "scholar.extract.author_empty",
+                scholar_id=target["id"],
+                method=scrape_method,
+                reason=scrape_reason,
+                action="will_retry_in_next_incremental_run",
+            )
 
         for art in articles:
             if paper_limit and len(all_raw_papers) >= paper_limit:
@@ -671,10 +731,15 @@ def run_scholar_scraping(
                 "scholar_id": target["id"],
                 "lecturer_name": target["name"],
                 "source": "scholar",
+                "scrape_complete": str(scrape_complete).lower(),
+                "scrape_method": scrape_method,
+                "scrape_reason": scrape_reason,
+                "scrape_rows": len(articles),
             })
 
         log_event(logger, "scholar.extract.author_done",
-                  scholar_id=target["id"], rows=len(articles))
+                  scholar_id=target["id"], rows=len(articles), complete=scrape_complete,
+                  method=scrape_method, reason=scrape_reason)
         newly_scraped += 1
 
         if not test_target_id and newly_scraped % 5 == 0:
@@ -762,7 +827,8 @@ def run_scholar_scraping(
     ordered_cols = [
         "Authors", "Author IDs", "Title", "Year", "Journal", "Link",
         "Abstract", "Keywords", "Document Type", "DOI", "TLDR",
-        "citation_id", "scholar_id", "lecturer_name", "source"
+        "citation_id", "scholar_id", "lecturer_name", "source",
+        "scrape_complete", "scrape_method", "scrape_reason", "scrape_rows",
     ]
     df_final = df_final[[c for c in ordered_cols if c in df_final.columns]]
     if paper_limit:
@@ -783,6 +849,15 @@ def run_scholar_scraping(
         try:
             df_existing = _read_artifact_or_empty(output_file)
             df_combined = pd.concat([df_existing, df_final], ignore_index=True)
+            if "scrape_complete" in df_combined.columns:
+                df_combined["_scrape_complete_sort"] = df_combined["scrape_complete"].apply(
+                    _truthy
+                )
+                df_combined = df_combined.sort_values(
+                    by=["_scrape_complete_sort"],
+                    ascending=False,
+                    kind="stable",
+                ).drop(columns=["_scrape_complete_sort"])
             df_combined = df_combined.drop_duplicates(
                 subset='Title', keep='first')  # Basic dedup on merge
             write_dataframe_artifact(df_combined, output_file, index=False)
