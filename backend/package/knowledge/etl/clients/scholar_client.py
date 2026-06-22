@@ -346,11 +346,34 @@ class ScholarClient:
                         env_proxies[key] = os.environ[key]
                         del os.environ[key]
 
+                driver = None
                 try:
-                    driver = webdriver.Remote(
-                        command_executor=BD_SCRAPING_BROWSER_URL,
-                        options=chrome_options
-                    )
+                    max_connect_attempts = 3
+                    for attempt in range(max_connect_attempts):
+                        try:
+                            logger.info(
+                                "scholar.browser.connect | attempt=%s/%s | scholar_id=%s",
+                                attempt + 1,
+                                max_connect_attempts,
+                                scholar_id,
+                            )
+                            driver = webdriver.Remote(
+                                command_executor=BD_SCRAPING_BROWSER_URL,
+                                options=chrome_options
+                            )
+                            break
+                        except Exception as e:
+                            if attempt == max_connect_attempts - 1:
+                                raise e
+                            sleep_time = random.uniform(3.0, 7.0)
+                            logger.warning(
+                                "scholar.browser.connect_failed | attempt=%s/%s | error=%s | retry_in=%.1fs",
+                                attempt + 1,
+                                max_connect_attempts,
+                                str(e),
+                                sleep_time,
+                            )
+                            time.sleep(sleep_time)
                 finally:
                     # Restore environment proxies
                     for key, val in env_proxies.items():
