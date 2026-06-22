@@ -34,13 +34,8 @@ class ScholarClient:
     """
 
     def __init__(self, proxy_url: Optional[str] = None) -> None:
-        # Use Web Unlocker if available, or fallback to the provided proxy/PROXY_URL
-        selected_proxy = proxy_url
-        if not selected_proxy or selected_proxy == PROXY_URL:
-            if BD_USER_UNLOCKER and BD_PASS_UNLOCKER and BRIGHT_DATA_HOST:
-                selected_proxy = f"http://{BD_USER_UNLOCKER}:{BD_PASS_UNLOCKER}@{BRIGHT_DATA_HOST}"
-            else:
-                selected_proxy = PROXY_URL or proxy_url
+        # Default to PROXY_URL (which uses SERP API)
+        selected_proxy = proxy_url or PROXY_URL
 
         self.proxies = None
         if selected_proxy:
@@ -49,16 +44,16 @@ class ScholarClient:
                 "https": selected_proxy
             }
         
-        # Omit User-Agent if using Web Unlocker proxy to prevent fingerprint conflicts
-        is_unlocker = False
-        if selected_proxy and "unlocker" in selected_proxy.lower():
-            is_unlocker = True
+        # Omit User-Agent if using any BrightData proxy to prevent fingerprint conflicts
+        is_brightdata = False
+        if selected_proxy and "superproxy.io" in selected_proxy.lower():
+            is_brightdata = True
 
         self.headers = {
             "Accept-Language": "en-US,en;q=0.9",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
-        if not is_unlocker:
+        if not is_brightdata:
             self.headers["User-Agent"] = HEADERS.get("User-Agent", "Mozilla/5.0")
         
         self.session = requests.Session()
