@@ -14,7 +14,7 @@ import requests
 import urllib3
 from bs4 import BeautifulSoup
 
-from ..config import HEADERS, PROXY_URL, BD_SCRAPING_BROWSER_URL
+from ..config import HEADERS, PROXY_URL, BD_SCRAPING_BROWSER_URL, BD_USER_UNLOCKER, BD_PASS_UNLOCKER, BRIGHT_DATA_HOST
 from .utils import clean_name_expert
 
 # Disable SSL warnings for proxy usage
@@ -33,12 +33,20 @@ class ScholarClient:
     Uses Bright Data proxy to avoid IP blocks and rate limits.
     """
 
-    def __init__(self, proxy_url: Optional[str] = PROXY_URL) -> None:
+    def __init__(self, proxy_url: Optional[str] = None) -> None:
+        # Use Web Unlocker if available, or fallback to the provided proxy/PROXY_URL
+        selected_proxy = proxy_url
+        if not selected_proxy or selected_proxy == PROXY_URL:
+            if BD_USER_UNLOCKER and BD_PASS_UNLOCKER and BRIGHT_DATA_HOST:
+                selected_proxy = f"http://{BD_USER_UNLOCKER}:{BD_PASS_UNLOCKER}@{BRIGHT_DATA_HOST}"
+            else:
+                selected_proxy = PROXY_URL or proxy_url
+
         self.proxies = None
-        if proxy_url:
+        if selected_proxy:
             self.proxies = {
-                "http": proxy_url,
-                "https": proxy_url
+                "http": selected_proxy,
+                "https": selected_proxy
             }
         
         self.headers = {
@@ -292,10 +300,23 @@ class ScholarClient:
                 from selenium.webdriver.support import expected_conditions as EC
                 
                 chrome_options = Options()
-                driver = webdriver.Remote(
-                    command_executor=BD_SCRAPING_BROWSER_URL,
-                    options=chrome_options
-                )
+                # Bypass environment proxies for Selenium remote connection
+                import os
+                env_proxies = {}
+                for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'all_proxy', 'ALL_PROXY']:
+                    if key in os.environ:
+                        env_proxies[key] = os.environ[key]
+                        del os.environ[key]
+
+                try:
+                    driver = webdriver.Remote(
+                        command_executor=BD_SCRAPING_BROWSER_URL,
+                        options=chrome_options
+                    )
+                finally:
+                    # Restore environment proxies
+                    for key, val in env_proxies.items():
+                        os.environ[key] = val
                 
                 all_papers: List[Dict[str, Any]] = []
                 try:
@@ -330,7 +351,11 @@ class ScholarClient:
                 finally:
                     driver.quit()
                     
-                return all_papers
+                if all_papers:
+                    logger.info(f"Successfully fetched {len(all_papers)} papers using Scraping Browser.")
+                    return all_papers
+                else:
+                    logger.warning("Scraping Browser returned 0 papers. Falling back to HTTP pagination.")
             except Exception as e:
                 logger.error(f"BrightData Scraping Browser failed: {e}. Falling back to HTTP pagination.")
                 # fall through to legacy logic below
