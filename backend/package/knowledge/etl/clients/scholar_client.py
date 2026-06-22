@@ -347,49 +347,57 @@ class ScholarClient:
                         del os.environ[key]
 
                 driver = None
-                try:
-                    max_connect_attempts = 3
-                    for attempt in range(max_connect_attempts):
-                        try:
-                            logger.info(
-                                "scholar.browser.connect | attempt=%s/%s | scholar_id=%s",
-                                attempt + 1,
-                                max_connect_attempts,
-                                scholar_id,
-                            )
-                            driver = webdriver.Remote(
-                                command_executor=BD_SCRAPING_BROWSER_URL,
-                                options=chrome_options
-                            )
-                            break
-                        except Exception as e:
-                            if attempt == max_connect_attempts - 1:
-                                raise e
-                            sleep_time = random.uniform(3.0, 7.0)
-                            logger.warning(
-                                "scholar.browser.connect_failed | attempt=%s/%s | error=%s | retry_in=%.1fs",
-                                attempt + 1,
-                                max_connect_attempts,
-                                str(e),
-                                sleep_time,
-                            )
-                            time.sleep(sleep_time)
-                finally:
-                    # Restore environment proxies
-                    for key, val in env_proxies.items():
-                        os.environ[key] = val
-
                 all_papers: List[Dict[str, Any]] = []
                 max_clicks = 50  # Safety guard against infinite loops
                 try:
-                    url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart=0&pagesize=100"
-                    logger.debug(f"Scraping Browser: Navigating to {url}")
-                    driver.get(url)
+                    try:
+                        max_attempts = 3
+                        for attempt in range(1, max_attempts + 1):
+                            try:
+                                logger.info(
+                                    "scholar.browser.attempt | attempt=%s/%s | scholar_id=%s",
+                                    attempt,
+                                    max_attempts,
+                                    scholar_id,
+                                )
+                                driver = webdriver.Remote(
+                                    command_executor=BD_SCRAPING_BROWSER_URL,
+                                    options=chrome_options
+                                )
+                                
+                                url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart=0&pagesize=100"
+                                logger.debug(f"Scraping Browser: Navigating to {url}")
+                                driver.get(url)
 
-                    # Wait for initial page to fully load
-                    WebDriverWait(driver, 15).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "tr.gsc_a_tr, #gsc_bpf_more"))
-                    )
+                                # Wait for initial page to fully load (increased timeout to 35s)
+                                WebDriverWait(driver, 35).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, "tr.gsc_a_tr, #gsc_bpf_more"))
+                                )
+                                break
+                            except Exception as e:
+                                if driver:
+                                    try:
+                                        driver.quit()
+                                    except Exception:
+                                        pass
+                                    driver = None
+                                    
+                                if attempt == max_attempts:
+                                    raise e
+                                    
+                                sleep_time = random.uniform(3.0, 7.0)
+                                logger.warning(
+                                    "scholar.browser.attempt_failed | attempt=%s/%s | error=%s | retry_in=%.1fs",
+                                    attempt,
+                                    max_attempts,
+                                    str(e),
+                                    sleep_time,
+                                )
+                                time.sleep(sleep_time)
+                    finally:
+                        # Restore environment proxies
+                        for key, val in env_proxies.items():
+                            os.environ[key] = val
 
                     click_count = 0
                     stale_clicks = 0  # Track consecutive clicks with no new rows
