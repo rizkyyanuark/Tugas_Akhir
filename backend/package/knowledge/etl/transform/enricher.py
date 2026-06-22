@@ -676,6 +676,11 @@ def enrich_paper_batch(
         
         # Track author IDs collected throughout different phases for final resolution
         collected_author_ids = []
+        if author_ids and author_ids.lower() not in ('nan', 'none', 'null', ''):
+            for aid in author_ids.replace(',', ';').split(';'):
+                aid = aid.strip()
+                if aid and aid not in collected_author_ids:
+                    collected_author_ids.append(aid)
 
         time.sleep(0.5)  # Rate limiting
 
