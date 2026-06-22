@@ -100,6 +100,9 @@ SEMANTIC_SCHOLAR_API_KEY: Final[str] = (
     or ""
 )
 
+# SerpAPI (Google Scholar structured data).
+SERPAPI_KEY: Final[str] = os.environ.get("SERPAPI_KEY", "")
+
 # Non-secret TLDR behavior is intentionally code-owned so .env/GitHub Secrets
 # only need to carry provider keys.
 GROQ_TLDR_MODEL: Final[str] = "llama-3.3-70b-versatile"

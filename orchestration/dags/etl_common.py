@@ -120,6 +120,7 @@ def worker_env() -> dict[str, str]:
         "SCIVAL_EMAIL": _clean_env("SCIVAL_EMAIL"),
         "SCIVAL_PASS": _clean_env("SCIVAL_PASS"),
         "SEMANTIC_SCHOLAR_API_KEY": _clean_env("SEMANTIC_SCHOLAR_API_KEY", _clean_env("S2_API_KEY")),
+        "SERPAPI_KEY": _clean_env("SERPAPI_KEY"),
         "BRIGHT_DATA_HOST": _clean_env("BRIGHT_DATA_HOST", "brd.superproxy.io:33335"),
         "BD_USER_UNLOCKER": _clean_env("BD_USER_UNLOCKER"),
         "BD_PASS_UNLOCKER": _clean_env("BD_PASS_UNLOCKER"),

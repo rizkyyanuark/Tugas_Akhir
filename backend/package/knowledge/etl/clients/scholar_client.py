@@ -21,6 +21,7 @@ from ..config import (
     BRIGHT_DATA_HOST,
     HEADERS,
     PROXY_URL,
+    SERPAPI_KEY,
 )
 from .utils import clean_name_expert
 
@@ -317,8 +318,8 @@ class ScholarClient:
     def _set_fetch_status(self, **status: Any) -> None:
         self.last_fetch_status = status
 
-    def get_papers(self, scholar_id: str, limit: int = 100) -> List[Dict[str, Any]]:
-        """Fetch papers from a Scholar profile page. Uses BrightData Scraping Browser if available, fallback to HTTP pagination."""
+    def get_papers(self, scholar_id: str, limit: int = 500) -> List[Dict[str, Any]]:
+        """Fetch papers from a Scholar profile using SerpAPI exclusively."""
         self._set_fetch_status(
             scholar_id=scholar_id,
             method="not_started",
@@ -327,343 +328,147 @@ class ScholarClient:
             reason="not_started",
             limit=limit,
         )
-        if BD_SCRAPING_BROWSER_URL:
-            logger.info("Using BrightData Scraping Browser for Google Scholar scraping.")
-            try:
-                from selenium import webdriver
-                from selenium.webdriver.chrome.options import Options
-                from selenium.webdriver.common.by import By
-                from selenium.webdriver.support.ui import WebDriverWait
-                from selenium.webdriver.support import expected_conditions as EC
-                from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-                chrome_options = Options()
-                # Bypass environment proxies for Selenium remote connection
-                import os
-                env_proxies = {}
-                for key in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'all_proxy', 'ALL_PROXY']:
-                    if key in os.environ:
-                        env_proxies[key] = os.environ[key]
-                        del os.environ[key]
+        if not SERPAPI_KEY:
+            logger.error("scholar.serpapi.missing_key | scholar_id=%s", scholar_id)
+            self._set_fetch_status(
+                scholar_id=scholar_id,
+                method="serpapi",
+                rows=0,
+                complete=False,
+                reason="missing_api_key",
+                limit=limit,
+            )
+            return []
 
-                driver = None
-                all_papers: List[Dict[str, Any]] = []
-                max_clicks = 50  # Safety guard against infinite loops
-                try:
-                    try:
-                        max_attempts = 3
-                        for attempt in range(1, max_attempts + 1):
-                            try:
-                                logger.info(
-                                    "scholar.browser.attempt | attempt=%s/%s | scholar_id=%s",
-                                    attempt,
-                                    max_attempts,
-                                    scholar_id,
-                                )
-                                driver = webdriver.Remote(
-                                    command_executor=BD_SCRAPING_BROWSER_URL,
-                                    options=chrome_options
-                                )
-                                
-                                url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart=0&pagesize=100"
-                                logger.debug(f"Scraping Browser: Navigating to {url}")
-                                driver.get(url)
-
-                                # Wait for initial page to fully load (increased timeout to 35s)
-                                WebDriverWait(driver, 35).until(
-                                    EC.presence_of_element_located((By.CSS_SELECTOR, "tr.gsc_a_tr, #gsc_bpf_more"))
-                                )
-                                break
-                            except Exception as e:
-                                if driver:
-                                    try:
-                                        driver.quit()
-                                    except Exception:
-                                        pass
-                                    driver = None
-                                    
-                                if attempt == max_attempts:
-                                    raise e
-                                    
-                                sleep_time = random.uniform(3.0, 7.0)
-                                logger.warning(
-                                    "scholar.browser.attempt_failed | attempt=%s/%s | error=%s | retry_in=%.1fs",
-                                    attempt,
-                                    max_attempts,
-                                    str(e),
-                                    sleep_time,
-                                )
-                                time.sleep(sleep_time)
-                    finally:
-                        # Restore environment proxies
-                        for key, val in env_proxies.items():
-                            os.environ[key] = val
-
-                    click_count = 0
-                    stale_clicks = 0  # Track consecutive clicks with no new rows
-                    while True:
-                        soup = BeautifulSoup(driver.page_source, "html.parser")
-                        papers = self._parse_profile_papers(soup, scholar_id)
-                        current_count = len(papers)
-
-                        if current_count >= limit:
-                            all_papers = papers[:limit]
-                            self._set_fetch_status(
-                                scholar_id=scholar_id,
-                                method="scraping_browser",
-                                rows=len(all_papers),
-                                complete=True,
-                                reason="limit_reached",
-                                limit=limit,
-                                click_count=click_count,
-                            )
-                            break
-
-                        # --- Locate the "Show more" button ---
-                        try:
-                            button = WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.ID, "gsc_bpf_more"))
-                            )
-                        except (TimeoutException, NoSuchElementException):
-                            # Button doesn't exist — profile has ≤20 papers
-                            all_papers = papers
-                            self._set_fetch_status(
-                                scholar_id=scholar_id,
-                                method="scraping_browser",
-                                rows=len(all_papers),
-                                complete=True,
-                                reason="show_more_not_found",
-                                limit=limit,
-                                click_count=click_count,
-                            )
-                            break
-
-                        # --- Check if button is disabled (all papers already loaded) ---
-                        if button.get_attribute("disabled"):
-                            all_papers = papers
-                            self._set_fetch_status(
-                                scholar_id=scholar_id,
-                                method="scraping_browser",
-                                rows=len(all_papers),
-                                complete=True,
-                                reason="show_more_disabled",
-                                limit=limit,
-                                click_count=click_count,
-                            )
-                            break
-
-                        # --- Safety guard: max clicks ---
-                        if click_count >= max_clicks:
-                            all_papers = papers
-                            self._set_fetch_status(
-                                scholar_id=scholar_id,
-                                method="scraping_browser",
-                                rows=len(all_papers),
-                                complete=False,
-                                reason="max_clicks_reached",
-                                limit=limit,
-                                click_count=click_count,
-                            )
-                            break
-
-                        # --- Click "Show more" ---
-                        click_count += 1
-                        logger.info(
-                            "scholar.browser.show_more | scholar_id=%s | click=%s | rows=%s",
-                            scholar_id,
-                            click_count,
-                            current_count,
-                        )
-                        driver.execute_script("arguments[0].click();", button)
-
-                        # --- Smart wait: wait until row count increases OR button disabled ---
-                        try:
-                            WebDriverWait(driver, 15).until(
-                                lambda d: (
-                                    len(d.find_elements(By.CSS_SELECTOR, "tr.gsc_a_tr")) > current_count
-                                    or d.find_element(By.ID, "gsc_bpf_more").get_attribute("disabled")
-                                )
-                            )
-                            stale_clicks = 0  # Reset stale counter on success
-                        except TimeoutException:
-                            # New rows didn't appear within 15s — might be last page
-                            stale_clicks += 1
-                            logger.warning(
-                                "scholar.browser.wait_timeout | scholar_id=%s | click=%s | "
-                                "rows_before=%s | stale_clicks=%s",
-                                scholar_id,
-                                click_count,
-                                current_count,
-                                stale_clicks,
-                            )
-                            if stale_clicks >= 2:
-                                # Two consecutive stale clicks — accept current results
-                                all_papers = papers
-                                self._set_fetch_status(
-                                    scholar_id=scholar_id,
-                                    method="scraping_browser",
-                                    rows=len(all_papers),
-                                    complete=True,
-                                    reason="stale_clicks_limit",
-                                    limit=limit,
-                                    click_count=click_count,
-                                )
-                                break
-
-                        # Small extra delay to let DOM stabilize
-                        time.sleep(0.5)
-
-                finally:
-                    driver.quit()
-
-                if all_papers:
-                    logger.info(
-                        "scholar.browser.done | scholar_id=%s | rows=%s | complete=%s | reason=%s",
-                        scholar_id,
-                        len(all_papers),
-                        self.last_fetch_status.get("complete"),
-                        self.last_fetch_status.get("reason"),
-                    )
-                    return all_papers
-                else:
-                    logger.warning("Scraping Browser returned 0 papers. Falling back to HTTP pagination.")
-            except Exception as e:
-                logger.error(f"BrightData Scraping Browser failed: {e}. Falling back to HTTP pagination.")
-                # fall through to legacy logic below
-
-        all_papers: List[Dict[str, Any]] = []
-        seen_links = set()
-        cstart = 0
-        pagesize = 100
-        
-        while len(all_papers) < limit:
-            url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart={cstart}&pagesize={pagesize}"
-            logger.info(
-                "scholar.http.page.start | scholar_id=%s | cstart=%s | pagesize=%s | rows_so_far=%s",
+        try:
+            return self._get_papers_serpapi(scholar_id, limit)
+        except Exception as e:
+            logger.error(
+                "scholar.serpapi.error | scholar_id=%s | error=%s",
                 scholar_id,
-                cstart,
-                pagesize,
+                e,
+            )
+            self._set_fetch_status(
+                scholar_id=scholar_id,
+                method="serpapi",
+                rows=0,
+                complete=False,
+                reason=f"error: {str(e)}",
+                limit=limit,
+            )
+            return []
+
+    # ------------------------------------------------------------------
+    # SerpAPI implementation
+    # ------------------------------------------------------------------
+
+    def _get_papers_serpapi(
+        self, scholar_id: str, limit: int
+    ) -> List[Dict[str, Any]]:
+        """Fetch papers via SerpAPI Google Scholar Author endpoint.
+
+        Uses ``start`` / ``num`` pagination. Each request costs 1 API credit.
+        """
+        SERPAPI_URL = "https://serpapi.com/search.json"
+        PAGE_SIZE = 100
+        all_papers: List[Dict[str, Any]] = []
+        start = 0
+
+        while len(all_papers) < limit:
+            params = {
+                "engine": "google_scholar_author",
+                "author_id": scholar_id,
+                "api_key": SERPAPI_KEY,
+                "start": str(start),
+                "num": str(PAGE_SIZE),
+                "hl": "en",
+            }
+            logger.info(
+                "scholar.serpapi.page | scholar_id=%s | start=%s | rows_so_far=%s",
+                scholar_id,
+                start,
                 len(all_papers),
             )
-            
-            resp = self._get(url)
-            if not resp:
+            resp = requests.get(SERPAPI_URL, params=params, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+
+            articles = data.get("articles", [])
+            if not articles:
                 self._set_fetch_status(
                     scholar_id=scholar_id,
-                    method="http_pagination",
-                    rows=len(all_papers),
-                    complete=False,
-                    reason="http_blocked_or_failed",
-                    limit=limit,
-                    cstart=cstart,
-                    pagesize=pagesize,
-                )
-                break
-                
-            soup = BeautifulSoup(resp.text, "html.parser")
-            new_papers = self._parse_profile_papers(soup, scholar_id)
-            logger.info(
-                "scholar.http.page.done | scholar_id=%s | cstart=%s | parsed_rows=%s",
-                scholar_id,
-                cstart,
-                len(new_papers),
-            )
-            
-            if not new_papers:
-                self._set_fetch_status(
-                    scholar_id=scholar_id,
-                    method="http_pagination",
+                    method="serpapi",
                     rows=len(all_papers),
                     complete=True,
-                    reason="no_more_rows",
+                    reason="no_more_articles",
                     limit=limit,
-                    cstart=cstart,
-                    pagesize=pagesize,
+                    start=start,
                 )
                 break
-                
-            has_new = False
-            for p in new_papers:
-                link = p.get("link")
-                if link and link not in seen_links:
-                    seen_links.add(link)
-                    all_papers.append(p)
-                    has_new = True
-            
-            # If no new papers were found, we have reached the end of the profile
-            if not has_new:
+
+            for art in articles:
+                if len(all_papers) >= limit:
+                    break
+                all_papers.append(self._map_serpapi_article(art, scholar_id))
+
+            # Check pagination
+            pagination = data.get("serpapi_pagination", {})
+            if not pagination.get("next"):
+                # No next page – all articles fetched
                 self._set_fetch_status(
                     scholar_id=scholar_id,
-                    method="http_pagination",
+                    method="serpapi",
                     rows=len(all_papers),
-                    complete=False,
-                    reason="duplicate_page",
+                    complete=True,
+                    reason="last_page",
                     limit=limit,
-                    cstart=cstart,
-                    pagesize=pagesize,
+                    start=start,
                 )
                 break
-                
-            cstart += len(new_papers)
-            time.sleep(random.uniform(2.0, 4.0))
 
+            start += len(articles)
+
+            # Small polite delay between SerpAPI pages
+            time.sleep(random.uniform(0.3, 0.8))
+
+        # If we exhausted the loop via limit
         if not self.last_fetch_status or self.last_fetch_status.get("method") == "not_started":
             self._set_fetch_status(
                 scholar_id=scholar_id,
-                method="http_pagination",
+                method="serpapi",
                 rows=len(all_papers),
                 complete=len(all_papers) < limit,
-                reason="loop_finished",
+                reason="limit_reached" if len(all_papers) >= limit else "loop_finished",
                 limit=limit,
-                cstart=cstart,
-                pagesize=pagesize,
+                start=start,
             )
 
-        return all_papers[:limit]
+        logger.info(
+            "scholar.serpapi.done | scholar_id=%s | rows=%s | complete=%s | reason=%s",
+            scholar_id,
+            len(all_papers),
+            self.last_fetch_status.get("complete"),
+            self.last_fetch_status.get("reason"),
+        )
+        return all_papers
 
-    def _parse_profile_papers(self, soup: BeautifulSoup, scholar_id: str) -> List[Dict[str, Any]]:
-        """Parse the table of papers from a Scholar profile page."""
-        papers = []
-        rows = soup.find_all("tr", class_="gsc_a_tr")
-        
-        for row in rows:
-            try:
-                title_link = row.find("a", class_="gsc_a_at")
-                if not title_link:
-                    continue
-                    
-                title = title_link.get_text().strip()
-                link = "https://scholar.google.com" + title_link["href"]
-                
-                divs = row.find_all("div", class_="gs_gray")
-                authors = divs[0].get_text().strip() if len(divs) > 0 else ""
-                journal = divs[1].get_text().strip() if len(divs) > 1 else ""
-                
-                year_cell = row.find("td", class_="gsc_a_y")
-                year = year_cell.get_text().strip() if year_cell else ""
-                
-                cited_cell = row.find("td", class_="gsc_a_c")
-                citations_text = cited_cell.find("a").get_text().strip() if cited_cell and cited_cell.find("a") else "0"
-                
-                # Handle cases like "12*" or non-digit chars
-                citations_match = re.search(r"(\d+)", citations_text)
-                citations = int(citations_match.group(1)) if citations_match else 0
+    @staticmethod
+    def _map_serpapi_article(art: Dict[str, Any], scholar_id: str) -> Dict[str, Any]:
+        """Convert a SerpAPI article dict to the canonical paper format."""
+        cited_by = art.get("cited_by", {})
+        citation_count = cited_by.get("value", 0) if isinstance(cited_by, dict) else 0
 
-                papers.append({
-                    "scholar_id": scholar_id,
-                    "title": title,
-                    "authors": authors,
-                    "journal": journal,
-                    "year": year,
-                    "citations": citations,
-                    "link": link,
-                    "source": "scholar"
-                })
-            except Exception as e:
-                logger.debug(f"Error parsing paper row: {e}")
-                continue
-                
-        return papers
+        return {
+            "scholar_id": scholar_id,
+            "title": art.get("title", "").strip(),
+            "authors": art.get("authors", "").strip(),
+            "journal": art.get("publication", "").strip(),
+            "year": str(art.get("year", "")).strip(),
+            "citations": citation_count,
+            "link": art.get("link", ""),
+            "source": "scholar",
+        }
 
     def scrape_papers_for_scholars(self, scholars_list: List[Dict[str, Any]], limit_per_author: int = 100) -> List[Dict[str, Any]]:
         """
