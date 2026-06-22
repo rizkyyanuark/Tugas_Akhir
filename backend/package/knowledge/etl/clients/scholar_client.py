@@ -49,11 +49,17 @@ class ScholarClient:
                 "https": selected_proxy
             }
         
+        # Omit User-Agent if using Web Unlocker proxy to prevent fingerprint conflicts
+        is_unlocker = False
+        if selected_proxy and "unlocker" in selected_proxy.lower():
+            is_unlocker = True
+
         self.headers = {
-            "User-Agent": HEADERS.get("User-Agent", "Mozilla/5.0"),
             "Accept-Language": "en-US,en;q=0.9",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
+        if not is_unlocker:
+            self.headers["User-Agent"] = HEADERS.get("User-Agent", "Mozilla/5.0")
         
         self.session = requests.Session()
         self.session.headers.update(self.headers)
@@ -91,8 +97,16 @@ class ScholarClient:
                 if resp.status_code != 200:
                     logger.debug(f"Non-200 status {resp.status_code} for {url[:60]}")
                     
-                # Check for captchas in the response text
-                if "sorry" in resp.url or "robot" in resp.text.lower()[:1000]:
+                # Check for captchas in the response text (using precise indicators to avoid false positives with 'robotics' interests)
+                is_captcha = False
+                if "sorry" in resp.url:
+                    is_captcha = True
+                else:
+                    text_lower = resp.text.lower()[:2000]
+                    if "unusual traffic" in text_lower or "g-recaptcha" in text_lower or "google.com/sorry/" in text_lower:
+                        is_captcha = True
+
+                if is_captcha:
                     logger.warning(f"Captcha/Block detected for {url[:60]}. Retrying after sleep...")
                     time.sleep(10 * attempt)
                     continue
