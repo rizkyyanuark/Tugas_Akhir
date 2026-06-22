@@ -125,6 +125,7 @@ def worker_env() -> dict[str, str]:
         "BD_PASS_UNLOCKER": _clean_env("BD_PASS_UNLOCKER"),
         "BD_USER_SERP": _clean_env("BD_USER_SERP"),
         "BD_PASS_SERP": _clean_env("BD_PASS_SERP"),
+        "BD_SCRAPING_BROWSER_URL": _clean_env("BD_SCRAPING_BROWSER_URL"),
         "GROQ_API_KEY": _clean_env("GROQ_API_KEY"),
         # Knowledge Graph storage and optional extraction.
         "NEO4J_URI": _clean_env("NEO4J_URI"),
