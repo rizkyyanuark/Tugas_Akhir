@@ -734,7 +734,7 @@ def run_scholar_scraping(
                 "scrape_complete": str(scrape_complete).lower(),
                 "scrape_method": scrape_method,
                 "scrape_reason": scrape_reason,
-                "scrape_rows": len(articles),
+                "scrape_rows": str(len(articles)),
             })
 
         log_event(logger, "scholar.extract.author_done",
@@ -743,8 +743,12 @@ def run_scholar_scraping(
         newly_scraped += 1
 
         if not test_target_id and newly_scraped % 5 == 0:
+            df_temp = pd.DataFrame(all_raw_papers)
+            for col in ["scrape_complete", "scrape_method", "scrape_reason", "scrape_rows"]:
+                if col in df_temp.columns:
+                    df_temp[col] = df_temp[col].fillna("").astype(str)
             write_dataframe_artifact(
-                pd.DataFrame(all_raw_papers),
+                df_temp,
                 SCHOLAR_TEMP_CSV,
                 index=False,
             )
@@ -834,6 +838,10 @@ def run_scholar_scraping(
     if paper_limit:
         df_final = df_final.head(paper_limit).copy()
 
+    for col in ["scrape_complete", "scrape_method", "scrape_reason", "scrape_rows"]:
+        if col in df_final.columns:
+            df_final[col] = df_final[col].fillna("").astype(str)
+
     # ------------------------------------------------------------------
     # SAVE & OUTPUT
     # ------------------------------------------------------------------
@@ -849,6 +857,9 @@ def run_scholar_scraping(
         try:
             df_existing = _read_artifact_or_empty(output_file)
             df_combined = pd.concat([df_existing, df_final], ignore_index=True)
+            for col in ["scrape_complete", "scrape_method", "scrape_reason", "scrape_rows"]:
+                if col in df_combined.columns:
+                    df_combined[col] = df_combined[col].fillna("").astype(str)
             if "scrape_complete" in df_combined.columns:
                 df_combined["_scrape_complete_sort"] = df_combined["scrape_complete"].apply(
                     _truthy
