@@ -382,7 +382,7 @@ class ScholarClient:
                 all_papers: List[Dict[str, Any]] = []
                 max_clicks = 50  # Safety guard against infinite loops
                 try:
-                    url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en"
+                    url = f"https://scholar.google.com/citations?user={scholar_id}&hl=en&cstart=0&pagesize=100"
                     logger.debug(f"Scraping Browser: Navigating to {url}")
                     driver.get(url)
 

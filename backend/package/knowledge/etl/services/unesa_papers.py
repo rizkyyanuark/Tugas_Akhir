@@ -556,6 +556,11 @@ def run_scholar_scraping(
         paper_limit=paper_limit,
     )
 
+    # Clear temp checkpoint file on full run mode to start fresh
+    if run_mode == "full" and _artifact_exists(SCHOLAR_TEMP_CSV):
+        log_event(logger, "scholar.extract.clear_temp_on_full_mode", path=path_name(SCHOLAR_TEMP_CSV))
+        _unlink_artifact(SCHOLAR_TEMP_CSV)
+
     # --- Load Lecturer Data from Supabase ---
     df_lecturers = _load_lecturers_from_supabase()
     if df_lecturers.empty:
