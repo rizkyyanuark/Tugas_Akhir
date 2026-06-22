@@ -467,6 +467,7 @@ class ScholarClient:
             "year": str(art.get("year", "")).strip(),
             "citations": citation_count,
             "link": art.get("link", ""),
+            "citation_id": art.get("citation_id", ""),
             "source": "scholar",
         }
 

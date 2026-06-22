@@ -720,8 +720,8 @@ def run_scholar_scraping(
 
             # Reconstruct citation ID (if available in link) or use link hash
             link = art.get("link", "")
-            cid = ""
-            if link:
+            cid = art.get("citation_id", "")
+            if not cid and link:
                 qs = parse_qs(urlparse(link).query)
                 if 'citation_for_view' in qs:
                     cid = qs['citation_for_view'][0]
