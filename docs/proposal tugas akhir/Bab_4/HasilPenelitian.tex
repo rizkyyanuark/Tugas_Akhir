@@ -2,32 +2,28 @@
 \chapter{HASIL PENELITIAN DAN PEMBAHASAN}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Data Paper Akademik}
-\label{sec:deskripsi-data}
-% ─────────────────────────────────────────────────────────────────────────────
+\section{Hasil Penelitian}
+\subsection{Hasil Akuisisi Data Publikasi Akademik Infokom UNESA}
 
-Sebelum membahas konstruksi graf, bagian ini terlebih dahulu menjelaskan data
-yang digunakan dalam penelitian. Penjelasan ini penting karena kualitas graf yang
-terbentuk sangat bergantung pada kelengkapan dan konsistensi data masukan. Data
-yang digunakan berupa rekam jejak akademik dosen rumpun Infokom UNESA, mencakup
-publikasi, afiliasi institusi, serta jaringan kepengarangan yang kemudian menjadi
-bahan dasar pembentukan \textit{knowledge graph}.
+Data hasil akuisisi dari data publikasi akademik yang diperoleh
+melalui proses \textit{crawling} dan \textit{scraping} pada repositori
+\textit{Google Scholar} dan \textit{Scopus}. Data profil dosen dari PDDIKTI
+digunakan sebagai rujukan identitas akademik, sedangkan metadata publikasi dari
+\textit{Google Scholar} dan \textit{Scopus} digunakan untuk melengkapi riwayat
+publikasi, venue, tahun terbit, serta jejaring kepengarangan dosen rumpun Infokom UNESA.
 
-Data tersebut dihimpun dari tiga sumber utama yaitu profil akademik di PDDIKTI,
-riwayat publikasi di \textit{Google Scholar}, dan metadata artikel dari
-\textit{Scopus}. Cakupannya meliputi dosen dari S1 Sains Data, S1 Kecerdasan
-Artifisial, S1 Teknik Informatika, S1 Sistem Informasi, S2 Informatika, dan S1
-Teknik Elektro. Setelah melewati tahap \textit{data preparation}, yaitu
-pembersihan, deduplikasi, dan pengayaan metadata melalui CrossRef serta Semantic
-Scholar, data disimpan di Supabase sebagai \textit{single source of truth} yang
-terverifikasi.
-
-Ringkasan data masukan sebelum proses konstruksi graf disajikan pada \ref{tab:ringkasan-data}.
+Setelah melalui proses seleksi dan validasi kualitas data, diperoleh
+\textbf{51 publikasi} yang dapat digunakan yang memilki metadata
+lengkap. Publikasi tersebut terhubung dengan \textbf{128 dosen},
+\textbf{41 venue}, \textbf{13 tahun publikasi unik}, dan \textbf{23 institusi
+    atau afiliasi}. Selain itu, proses integrasi data menghasilkan \textbf{132
+    relasi dosen--publikasi} yang merepresentasikan hubungan kepengarangan awal
+sebelum dikonversi menjadi struktur graf, sebagaimana ditampilkan pada \ref{tab:ringkasan-data}.
 
 \begin{table}[htbp]
     \centering
     \small
-    \caption{Ringkasan data masukan sebelum konstruksi graf}
+    \caption{Ringkasan hasil akuisisi data}
     \label{tab:ringkasan-data}
     \begin{tabular}{@{}P{0.42\textwidth}rP{0.32\textwidth}@{}}
         \noalign{\hrule height 0.8pt}
@@ -43,587 +39,845 @@ Ringkasan data masukan sebelum proses konstruksi graf disajikan pada \ref{tab:ri
     \end{tabular}
 \end{table}
 
+Temuan awal dari hasil akuisisi data menunjukkan bahwa cakupan publikasi tidak
+hanya berupa daftar artikel, tetapi juga memuat konteks akademik yang lebih kaya,
+seperti informasi penulis, venue, tahun terbit, afiliasi, dan hubungan
+kepengarangan. Informasi tersebut menjadi dasar pembentukan simpul dan relasi
+pada tahap konstruksi graf. Dengan demikian, data yang diproses memiliki
+representasi yang sesuai dengan konteks penelitian, yaitu penelusuran publikasi
+akademik Infokom UNESA berbasis \textit{knowledge graph}.
+
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Hasil Konstruksi \textit{Knowledge Graph}}
-\label{sec:hasil-konstruksi-kg}
+
+\subsection{Hasil Konstruksi \textit{Knowledge Graph}}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\subsection{Distribusi Simpul}
-\label{subsec:distribusi-simpul}
+Pada Tahap konstruksi graf ada 2 pendekatan yang dilakukan dalam penelitian ini yaitu konstruksi untuk\textit{UnStructured Data} dan \textit{Structured Data} tetapi sama sama mentransformasikan data publikasi menjadi struktur topologi graf yang saling terhubung. Hasil konstruksi
+menunjukkan bahwa data publikasi tidak lagi berdiri sebagai tabel metadata
+terpisah, tetapi telah berubah menjadi jaringan entitas akademik yang
+menghubungkan publikasi, dosen, venue, tahun, afiliasi, kata kunci, dan konsep
+penelitian. Jaringan ini bersifat \textit{heterogeneous graph} karena memuat
+berbagai tipe entitas dalam satu struktur graf yang terintegrasi.
 
-Graf yang berhasil dibangun terdiri atas \textbf{1.253 simpul} yang terbagi
-ke dalam tujuh tipe. Sebarannya dirangkum pada \ref{tab:distribusi-simpul}
-dan divisualisasikan pada \ref{fig:node-distribution} agar perbedaan
-proporsi antartipe simpul dapat terlihat lebih jelas.
+\begin{enumerate}[label=\textbf{(\alph*)}, leftmargin=*, itemsep=10pt]
+    \item \textbf{Komposisi Simpul Graf}
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \caption{Distribusi simpul \textit{Knowledge Graph} Akademik UNESA}
-    \label{tab:distribusi-simpul}
-    \begin{tabular}{@{}lrr@{}}
-        \noalign{\hrule height 0.8pt}
-        \textbf{Label Simpul} & \textbf{Jumlah} & \textbf{Persentase} \\
-        \noalign{\hrule height 0.6pt}
-        \texttt{Concept}      & 831             & 66,32\%             \\
-        \texttt{Keyword}      & 166             & 13,25\%             \\
-        \texttt{Lecturer}     & 128             & 10,22\%             \\
-        \texttt{Publication}  & 51              & 4,07\%              \\
-        \texttt{Venue}        & 41              & 3,27\%              \\
-        \texttt{Institution}  & 23              & 1,84\%              \\
-        \texttt{Year}         & 13              & 1,04\%              \\
-        \textbf{Total}        & \textbf{1.253}  & \textbf{100,00\%}   \\
-        \noalign{\hrule height 0.4pt}
-    \end{tabular}
-\end{table}
+          \hspace*{0.75cm} Komposisi simpul hasil konstruksi dirangkum pada \ref{tab:distribusi-simpul}. Kedua penyajian
+          tersebut memperlihatkan jenis entitas yang berhasil dibentuk dari data metadata publikasi, sekaligus menunjukkan bagaimana metadata publikasi berkembang
+          menjadi representasi graf yang lebih kaya.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.88\textwidth]{Gambar/bab4_node_distribution.png}
-    \caption{Distribusi tujuh tipe simpul pada \textit{Knowledge Graph} Akademik UNESA}
-    \label{fig:node-distribution}
-\end{figure}
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Distribusi simpul \textit{Knowledge Graph} Akademik UNESA}
+              \label{tab:distribusi-simpul}
+              \begin{tabular}{@{}lrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Label Simpul} & \textbf{Jumlah} & \textbf{Persentase} \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{Concept}      & 831             & 66,32\%             \\
+                  \texttt{Keyword}      & 166             & 13,25\%             \\
+                  \texttt{Lecturer}     & 128             & 10,22\%             \\
+                  \texttt{Publication}  & 51              & 4,07\%              \\
+                  \texttt{Venue}        & 41              & 3,27\%              \\
+                  \texttt{Institution}  & 23              & 1,84\%              \\
+                  \texttt{Year}         & 13              & 1,04\%              \\
+                  \textbf{Total}        & \textbf{1.253}  & \textbf{100,00\%}   \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
 
-Hal yang paling menonjol dari distribusi ini adalah dominasi simpul
-\texttt{Concept}, yaitu 831 simpul atau sekitar dua pertiga dari keseluruhan
-graf. Jumlah tersebut terjadi karena strategi
-pengayaan konsep menggunakan tesaurus dan taksonomi IEEE, termasuk perluasan
-tetangga SKOS satu lompatan kedepan. Dalam proses ini, satu kata kunci penulis dapat
-mengarah pada sejumlah konsep tetangga dari kosakata IEEE yang lebih luas, lalu
-konsep-konsep tersebut ikut dimasukkan ke dalam graf. Pengayaan ini memang
-memperluas cakupan semantik, tetapi tidak semua konsep tambahan selalu
-merepresentasikan topik yang dibahas secara langsung dalam publikasi terkait.
-Karena itu, potensi \textit{semantic drift} tetap perlu diperhatikan pada
-evaluasi berikutnya.
+          \hspace*{0.75cm} berdasarkan hasil tersebut menunjukkan bahwa pengayaan pada tahap konstruksi graf tidak hanya menghasilkan entitas bibliografis, tetapi juga
+          memperluas data publikasi menjadi representasi semantik yang memuat topik,
+          domain, metode, model, metrik, tugas, hasil, dan inovasi penelitian sesuai
+          skema ontologi yang telah disusun pada Bab 3.
 
-Selain \texttt{Concept}, entitas akademik utama lainnya juga sudah terwakili di
-dalam graf. Setiap publikasi dimodelkan sebagai satu simpul
-\texttt{Publication}, sedangkan hubungan banyak-ke-banyak antara publikasi dan
-dosen direpresentasikan melalui relasi \texttt{HAS\_AUTHOR} dan
-\texttt{PUBLISHES}. Identitas setiap simpul dibentuk secara deterministik dari
-atribut kuncinya. Dengan cara ini, proses pembangunan ulang graf dapat
-menggunakan operasi \textit{upsert} tanpa menimbulkan duplikasi.
+    \item \textbf{Komposisi Relasi Graf}
 
-Jika dilihat lebih rinci, simpul \texttt{Concept} terbagi ke dalam delapan
-subtipe yang merepresentasikan peran semantiknya, yaitu \texttt{Domain} (545),
-\texttt{ResearchTopic} (165), \texttt{Method} (38), \texttt{Metric} (33),
-\texttt{Task} (32), \texttt{Model} (13), \texttt{Result} (4), dan
-\texttt{Innovation} (1). Dominasi \texttt{Domain} menunjukkan bahwa banyak konsep
-yang masuk ke dalam graf berasal dari level hierarki yang lebih tinggi dalam
-kosakata IEEE.
+          \hspace*{0.75cm} Konstruksi graf menghasilkan total \textbf{1.970 relasi} yang membentuk
+          jaringan semantik antara seluruh simpul. Relasi ini dikelompokkan ke dalam tiga
+          lapisan fungsional sebagaimana divisualisasikan pada \ref{fig:relation-layers}.
 
-% ──────────────────────────────────────────────
-\subsection{Distribusi Relasi dan Tiga Lapisan Fungsional}
-\label{subsec:distribusi-relasi}
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.90\textwidth]{Gambar/bab4_relation_layers.png}
+              \caption{Distribusi 1.970 relasi dalam tiga lapisan fungsional}
+              \label{fig:relation-layers}
+          \end{figure}
 
-Graf yang dibangun memuat \textbf{1.970 relasi} dengan 17 tipe aktif. Secara
-fungsional, relasi-relasi tersebut dapat dibaca sebagai tiga lapisan utama.
-Pembagian ini bukan hanya klasifikasi administratif, melainkan menunjukkan peran
-yang berbeda dari tiap lapisan dalam proses \textit{retrieval}.
+          \hspace*{0.75cm} Berdasarkan \ref{fig:relation-layers}, komposisi relasi
+          dibagi menjadi tiga lapisan. Pertama, \textit{lapisan metadata akademik}
+          memuat \textbf{820 relasi} (41,62\%) yang merepresentasikan hubungan
+          bibliografis seperti \texttt{HAS\_AUTHOR}, \texttt{PUBLISHES}, dan
+          \texttt{COLLABORATES\_WITH}. Kedua, \textit{lapisan semantik publikasi--konsep}
+          memuat \textbf{436 relasi} (22,13\%) yang menghubungkan publikasi dengan
+          entitas konseptual melalui tipe relasi seperti \texttt{USES\_MODEL},
+          \texttt{USES\_METHOD}, dan \texttt{HAS\_TOPIC}. Ketiga, \textit{lapisan
+              struktur SKOS} memuat \textbf{714 relasi} (36,24\%) yang membangun
+          hierarki taksonomi konsep menggunakan relasi \texttt{SKOS\_BROADER},
+          \texttt{SKOS\_RELATED}, dan \texttt{EXACT\_MATCH}.
 
-\begin{enumerate}
-    \item \textbf{Lapisan Metadata Akademik} (820 relasi, 41,62\%):
-          Menghubungkan dosen, publikasi, tahun, venue, institusi, dan
-          jaringan kolaborasi antarpeneliti. Lapisan ini menjadi fondasi
-          struktural graf karena memuat informasi dasar seperti ``siapa menulis
-          apa'' dan ``di mana karya tersebut dipublikasikan''.
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Komposisi relasi berdasarkan lapisan fungsional}
+              \label{tab:komposisi-relasi}
+              \begin{tabular}{@{}P{0.30\textwidth}rrl@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Lapisan}           & \textbf{Jumlah} & \textbf{Persen} & \textbf{Contoh Relasi}                        \\
+                  \noalign{\hrule height 0.6pt}
+                  Metadata Akademik          & 820             & 41,62\%         & \texttt{HAS\_AUTHOR}, \texttt{PUBLISHES}      \\
+                  Semantik Publikasi--Konsep & 436             & 22,13\%         & \texttt{USES\_MODEL}, \texttt{HAS\_TOPIC}     \\
+                  Struktur SKOS              & 714             & 36,24\%         & \texttt{SKOS\_BROADER}, \texttt{EXACT\_MATCH} \\
+                  \noalign{\hrule height 0.4pt}
+                  \textbf{Total}             & \textbf{1.970}  & \textbf{100\%}  &                                               \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
 
-    \item \textbf{Lapisan Semantik Publikasi--Konsep} (436 relasi, 22,13\%):
-          Menghubungkan setiap publikasi ke konsep-konsep yang
-          diekstrak, termasuk model yang digunakan (\texttt{USES\_MODEL}),
-          metode penelitian (\texttt{USES\_METHOD}), metrik evaluasi
-          (\texttt{EVALUATED\_WITH}), dan domain keilmuan
-          (\texttt{BELONGS\_TO\_DOMAIN}). Melalui lapisan ini, graf tidak hanya
-          menyimpan metadata, tetapi juga dapat digunakan untuk menjawab
-          pertanyaan yang berkaitan dengan isi penelitian.
+          \hspace*{0.75cm} Temuan menarik dari lapisan metadata adalah relasi
+          \texttt{COLLABORATES\_WITH} yang secara otomatis merekam \textbf{441 hubungan
+              kolaborasi} antarpeneliti berdasarkan kepengarangan bersama. Pasangan kolaborasi
+          terkuat terdeteksi antara Anita Qoiriah dan Yuni Yamasari dengan 19
+          \textit{paper} bersama, sementara Yuni Yamasari memiliki 27 kolaborator
+          unik, menjadikannya simpul dosen paling terhubung dalam graf. Dosen paling
+          produktif dalam hal jumlah publikasi adalah Widi Aribowo dengan 77 publikasi.
 
-    \item \textbf{Lapisan Struktur SKOS} (714 relasi, 36,24\%):
-          Menghubungkan konsep satu sama lain mengikuti hierarki IEEE
-          (\textit{broader}, \textit{narrower}, \textit{related}, dan
-          \textit{exact match}). Lapisan ini membantu sistem menavigasi dari
-          istilah yang spesifik ke domain yang lebih luas, atau sebaliknya.
-          Kemampuan tersebut penting karena pertanyaan pengguna tidak selalu
-          memakai terminologi yang sama persis dengan istilah yang tersimpan di
-          dalam graf.
+    \item \textbf{Pemetaan Konsep Publikasi terhadap Ontologi IEEE}
+
+          \hspace*{0.75cm} Proses pengayaan konsep menghasilkan total \textbf{831 simpul konsep}
+          yang merepresentasikan topik, metode, model, metrik, dan domain penelitian.
+          Dari jumlah tersebut, sebanyak \textbf{675 konsep} (81,23\%) berhasil dipetakan
+          ke URI IEEE yang terverifikasi melalui ontologi \textit{IEEE Thesaurus},
+          sementara 156 konsep sisanya merupakan istilah domain spesifik yang belum
+          memiliki padanan dalam taksonomi IEEE. Distribusi sumber konsep divisualisasikan
+          pada \ref{fig:concept-composition}.
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/bab4_concept_composition.png}
+              \caption{Komposisi sumber 831 konsep dalam \textit{Knowledge Graph}}
+              \label{fig:concept-composition}
+          \end{figure}
+
+          \hspace*{0.75cm} Berdasarkan \ref{fig:concept-composition}, sumber konsep
+          terdistribusi sebagai berikut: ekspansi SKOS menyumbang \textbf{574 konsep}
+          (69,07\%) yang dihasilkan melalui penelusuran hierarki taksonomi
+          (\texttt{SKOS\_BROADER} dan \texttt{SKOS\_RELATED}); kata kunci penulis
+          menyumbang \textbf{119 konsep} (14,32\%) yang diekstrak langsung dari
+          metadata publikasi; tesaurus IEEE menyumbang \textbf{100 konsep} (12,03\%)
+          melalui pencocokan langsung dengan entri resmi IEEE; dan ekstraksi
+          berbasis \textit{regex} menyumbang \textbf{37 konsep} (4,45\%) dari
+          judul serta abstrak publikasi.
+
+          \hspace*{0.75cm} Tingginya proporsi ekspansi SKOS menunjukkan bahwa
+          strategi \textit{knowledge expansion} melalui hierarki taksonomi berperan
+          penting dalam memperkaya representasi domain, sehingga graf tidak hanya
+          berisi istilah yang disebut eksplisit oleh penulis tetapi juga
+          konsep-konsep induk dan konsep terkait yang memperluas cakupan
+          pencarian semantik.
+
+    \item \textbf{Validasi Kelengkapan Data}
+
+          \hspace*{0.75cm} Sebelum graf dimuat ke basis data, seluruh simpul melewati
+          proses \textit{quality gate} untuk memastikan kelengkapan atribut wajib.
+          \ref{tab:quality-gate} merangkum hasil validasi terhadap tujuh atribut
+          wajib yang diperiksa pada setiap simpul.
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Hasil validasi \textit{quality gate} atribut wajib simpul}
+              \label{tab:quality-gate}
+              \begin{tabular}{@{}P{0.35\textwidth}P{0.20\textwidth}P{0.20\textwidth}@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Atribut Wajib}   & \textbf{Terisi} & \textbf{Kosong} \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{entity\_id}      & 1.253 (100\%)   & 0               \\
+                  \texttt{label}           & 1.253 (100\%)   & 0               \\
+                  \texttt{node\_type}      & 1.253 (100\%)   & 0               \\
+                  \texttt{source}          & 1.253 (100\%)   & 0               \\
+                  \texttt{created\_at}     & 1.253 (100\%)   & 0               \\
+                  \texttt{description}     & 1.253 (100\%)   & 0               \\
+                  \texttt{embedding\_text} & 1.253 (100\%)   & 0               \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \hspace*{0.75cm} Hasil validasi menunjukkan bahwa seluruh 1.253 simpul memiliki
+          ketujuh atribut wajib terisi lengkap tanpa ada nilai kosong. Atribut
+          \texttt{source} berfungsi sebagai \textit{provenance} yang merekam asal
+          data setiap simpul, sehingga setiap entitas dalam graf dapat dilacak
+          kembali ke publikasi atau sumber data asalnya. Atribut \texttt{embedding\_text}
+          memastikan setiap simpul siap divektorisasi pada tahap pembangunan indeks ganda.
+
+    \item \textbf{Representasi Subgraf Publikasi}
+
+          \hspace*{0.75cm} Untuk mengilustrasikan struktur graf secara konkret,
+          \ref{fig:sample-subgraph} menampilkan subgraf dari satu publikasi
+          terpilih, yaitu paper berjudul \textit{``Implementing Optuna and Ensemble
+              Learning on Boosting Models for Credit Default Risk Prediction''} yang
+          dipresentasikan pada konferensi ICVEE 2025.
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.95\textwidth]{Gambar/bab4_sample_subgraph.png}
+              \caption{Subgraf publikasi ICVEE 2025 dengan 6 penulis dan relasi konseptual}
+              \label{fig:sample-subgraph}
+          \end{figure}
+
+          \hspace*{0.75cm} Subgraf ini memperlihatkan bahwa satu publikasi terhubung ke
+          enam penulis (\textit{Yuni Yamasari, Ricky Eka Putra, Anita Qoiriah,
+              I Made Suartana, Ramadhan Cakra Wibawa,} dan \textit{Achmad Kautsar}),
+          satu venue (\textit{ICVEE 2025}), satu tahun (\textit{2025}), serta
+          sejumlah konsep penelitian seperti \textit{Ensemble Learning},
+          \textit{Credit Default Risk}, dan \textit{Optuna}. Visualisasi ini
+          mengonfirmasi bahwa konstruksi graf berhasil merepresentasikan tidak
+          hanya metadata bibliografis, tetapi juga relasi semantik yang
+          menghubungkan entitas penelitian secara multidimensional.
+
 \end{enumerate}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.75\textwidth]{Gambar/bab4_relation_layers.png}
-    \caption{Distribusi 1.970 relasi dalam tiga lapisan fungsional}
-    \label{fig:relation-layers}
-\end{figure}
-
-\ref{fig:relation-layers} memperlihatkan bahwa \texttt{SKOS\_BROADER}
-(376) dan \texttt{HAS\_TOPIC} (250) merupakan dua tipe relasi dengan jumlah
-terbesar. Banyaknya relasi \texttt{SKOS\_BROADER} menunjukkan bahwa ekspansi
-konsep ke tingkat hierarki IEEE yang lebih luas terjadi cukup besar. Sementara
-itu, jumlah relasi \texttt{HAS\_TOPIC} menunjukkan bahwa rata-rata setiap
-publikasi terhubung ke hampir lima konsep topik. Jumlah ini memberikan konteks
-semantik yang cukup untuk mendukung penelusuran, tanpa membuat representasi
-publikasi menjadi terlalu rinci.
-
-Relasi \texttt{COLLABORATES\_WITH} juga penting karena mencerminkan jaringan
-kolaborasi antarpeneliti. Relasi ini diturunkan secara otomatis dari
-kepengarangan bersama. Artinya, setiap pasangan dosen yang menulis artikel yang
-sama akan membentuk satu relasi kolaborasi yang menyimpan jumlah karya bersama
-dan daftar publikasi terkait. Dengan demikian, graf tidak hanya merekam isi
-publikasi, tetapi juga memetakan jaringan akademik di lingkungan Infokom UNESA.
-
-Satu relasi yang tidak diaktifkan, meskipun sudah direncanakan dalam skema
-ontologi, adalah \texttt{CITES}. Dataset yang digunakan belum memuat daftar
-referensi antarpublikasi yang terverifikasi, sehingga relasi sitasi belum dapat
-dibentuk secara andal. Jika relasi sitasi dibentuk hanya berdasarkan kemiripan
-topik, informasi yang dihasilkan berisiko tidak dapat dipertanggungjawabkan.
-
-% ──────────────────────────────────────────────
-\subsection{Pemetaan Konsep dan Ontologi IEEE}
-\label{subsec:pemetaan-konsep}
-
-Dari total 831 simpul \texttt{Concept} yang terbentuk, sebagian besar berasal
-dari ekspansi tetangga SKOS IEEE, yaitu 574 konsep atau 69,07\%. Sisanya berasal
-dari kata kunci penulis (119 konsep, 14,32\%), tesaurus IEEE langsung (100
-konsep, 12,03\%), aturan ekstraksi berbasis pola (37 konsep, 4,45\%), dan
-taksonomi IEEE (1 konsep, 0,12\%).
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{Gambar/bab4_concept_composition.png}
-    \caption{Komposisi 831 simpul \texttt{Concept} berdasarkan (a) subtipe semantik
-        dan (b) sumber pembentukannya}
-    \label{fig:concept-composition}
-\end{figure}
-
-Secara keseluruhan, 675 dari 831 konsep memiliki URI IEEE yang terverifikasi
-(81,23\%). Sementara itu, 156 konsep lainnya tetap dipertahankan tanpa URI
-karena umumnya berasal dari istilah teknis spesifik pada publikasi tertentu yang
-belum tercakup dalam kosakata IEEE standar.
-
-\ref{fig:concept-composition} memperlihatkan bahwa pola ini konsisten:
-subtipe \texttt{Domain} yang mendominasi pada panel (a) adalah hasil langsung
-dari ekspansi SKOS yang juga mendominasi pada panel (b). Ini menunjukkan
-bahwa sebagian besar simpul domain ditarik dari hierarki IEEE yang lebih
-tinggi, bukan dari ekstraksi langsung teks publikasi.
-
-Perlu juga dicatat bahwa jalur GLiNER dan GLiREL, yang dirancang untuk
-ekstraksi entitas dan relasi secara \textit{zero-shot} dari teks abstrak, tidak
-aktif pada pembangunan ini. Manifest mencatat nol dokumen yang diproses lewat
-jalur tersebut. Artinya, seluruh hasil di atas adalah \textit{baseline} dari
-metadata terstruktur, kata kunci penulis, aturan regex, dan kosakata IEEE.
-Evaluasi performa GLiNER/GLiREL memerlukan pembangunan ulang dengan konfigurasi
-yang berbeda dan anotasi acuan tersendiri.
-
-% ──────────────────────────────────────────────
-\subsection{Validasi Kelengkapan dan Provenance Artefak}
-\label{subsec:validasi-provenance}
-
-Sebelum data ditulis ke \textit{graph database}, setiap dokumen melewati pemeriksaan
-kualitas (\textit{quality gate}) terhadap enam atribut wajib. Hasilnya
-ditunjukkan pada \ref{tab:kualitas-publikasi}: tidak ada satu pun
-publikasi yang lolos dengan atribut kosong.
-
-\begin{table}[htbp]
-    \centering
-    \small
-    \caption{Hasil pemeriksaan \textit{quality gate} terhadap 51 publikasi}
-    \label{tab:kualitas-publikasi}
-    \begin{tabular}{@{}lcc@{}}
-        \noalign{\hrule height 0.8pt}
-        \textbf{Atribut yang Diperiksa} & \textbf{Tidak Lengkap}    & \textbf{Status} \\
-        \noalign{\hrule height 0.6pt}
-        Judul                           & 0                         & \checkmark      \\
-        Abstrak                         & 0                         & \checkmark      \\
-        TLDR (ringkasan satu kalimat)   & 0                         & \checkmark      \\
-        Kata kunci penulis              & 0                         & \checkmark      \\
-        Penulis / dosen                 & 0                         & \checkmark      \\
-        Konsep terekstrak               & 0                         & \checkmark      \\
-        Tipe relasi sesuai ontologi     & 0 relasi di luar ontologi & \checkmark      \\
-        \noalign{\hrule height 0.4pt}
-    \end{tabular}
-\end{table}
-
-Tentu, angka nol di sini hanya memastikan kelengkapan struktural, bukan
-kebenaran semantik. Nama konsep yang terekstrak dan relevansinya terhadap isi
-publikasi masih memerlukan penilaian kualitatif tersendiri.
-
-Selain tersimpan di \textit{graph database} dan \textit{vector database}, proses pembangunan juga
-menghasilkan empat artefak lokal yang dapat direplikasi secara independen pada folder lokal
-Setiap simpul dan relasi menyimpan atribut \textit{provenance} yang mencatat
-tipe pencocokan, teks yang dicocokkan, skor kepercayaan, dan identitas
-publikasi asal sehingga jika suatu simpul dipertanyakan, bisa dilacak
-kembali ke sumbernya.
-
-% ──────────────────────────────────────────────
-\subsection{Contoh Subgraf dari Satu Publikasi}
-\label{subsec:contoh-subgraf}
-
-Untuk memperjelas bagaimana ketiga lapisan relasi bekerja pada satu entitas
-konkret, \ref{fig:sample-subgraph} menampilkan subgraf dari satu
-publikasi nyata yang tersimpan di dalam graf, yaitu \textit{``Implementing Optuna
-    and Ensemble Learning on Boosting Models for Credit Default Risk Prediction''}
-(2025)\footnote{Data Graph (2025)}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{Gambar/bab4_sample_subgraph.png}
-    \caption{Subgraf heterogen dari satu publikasi (ICVEE 2025) dengan
-        warna simpul sesuai tiga lapisan fungsional}
-    \label{fig:sample-subgraph}
-\end{figure}
-
-Dari satu simpul publikasi saja, graf menghasilkan 18 koneksi langsung ke 18
-simpul berbeda yang melibatkan enam tipe simpul dan delapan tipe relasi. Hal ini
-menunjukkan bahwa dari satu titik masuk pun, sistem \textit{retrieval} sudah
-dapat mengumpulkan konteks yang cukup kaya, mulai dari nama penulis, kata kunci,
-model yang digunakan (XGBoost, CatBoost, LightGBM), metrik evaluasi (AUC 0.9933,
-\textit{accuracy}), metode (\textit{Ensemble Learning}, \textit{Boosting}), tahun,
-hingga venue konferensi.
-
-Satu hal yang perlu dicatat, publikasi ini memiliki enam penulis dalam data
-\textit{graph database}\footnote{Data Authorship (2025)}, yaitu Yuni Yamasari,
-Ricky Eka Putra, Anita Qoiriah, I Made Suartana, Ramadhan Cakra Wibawa, dan
-Achmad Kautsar. Namun, pada gambar hanya tiga penulis yang ditampilkan agar
-visualisasi tetap mudah dibaca. Dalam sistem \textit{retrieval} yang sebenarnya,
-keenam penulis tersebut tetap terhubung dan dapat diakses melalui traversal.
-
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Hasil Pembangunan Indeks Ganda (\textit{Dual Indexing})}
-\label{sec:dual-indexing}
+\subsection{Hasil Pembangunan Indeks Ganda}
 % ─────────────────────────────────────────────────────────────────────────────
+\begin{enumerate}[label=\textbf{(\alph*)}, leftmargin=*, itemsep=10pt]
+    \item \textbf{Integrasi Penyimpanan Graf dan Vektor}
 
-\subsection{Arsitektur Penyimpanan Paralel}
+          \hspace*{0.75cm} Arsitektur \textit{dual indexing} yang diterapkan dalam
+          penelitian ini mengintegrasikan dua paradigma penyimpanan: basis data graf
+          Neo4j untuk merepresentasikan struktur relasional, dan basis data vektor
+          untuk menyimpan representasi embedding semantik. Kedua sistem dihubungkan
+          melalui atribut \texttt{entity\_id} bersama yang memungkinkan resolusi
+          entitas lintas paradigma tanpa memerlukan langkah pencocokan tambahan.
+          Arsitektur ini divisualisasikan pada \ref{fig:dual-indexing}.
 
-Setelah seluruh simpul dan relasi berhasil ditulis ke \textit{graph database},
-langkah berikutnya adalah membangun lapisan indeks vektor yang berjalan secara
-paralel. Sistem ini menerapkan \textit{dual indexing}: \textit{graph database}
-mengelola struktur relasional dan traversal graf, sementara \textit{vector
-    database} menyimpan representasi semantik berbasis vektor.
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.90\textwidth]{Gambar/bab4_dual_indexing_arch.png}
+              \caption{Arsitektur \textit{dual indexing}: integrasi graf dan vektor melalui \texttt{entity\_id}}
+              \label{fig:dual-indexing}
+          \end{figure}
 
-Pilihan arsitektur ganda ini bukan sekadar penambahan komponen teknis. Keduanya
-mewakili dua paradigma pencarian yang berbeda, yaitu pencarian berdasarkan
-kemiripan semantik (\textit{vector search}) dan pencarian berdasarkan
-keterhubungan struktural (\textit{graph traversal}). Dua pendekatan ini saling
-melengkapi. Kemiripan semantik membantu menemukan konten yang relevan secara
-konseptual, sedangkan traversal graf lebih kuat untuk menjawab pertanyaan yang
-bergantung pada hubungan eksplisit antarentitas.
+          \hspace*{0.75cm} Melalui arsitektur ini, hasil pencarian semantik dari basis data
+          vektor dapat langsung menjadi titik masuk (\textit{entry point}) untuk
+          traversal graf di Neo4j. Sebagai contoh, ketika kueri pengguna dicocokkan
+          secara semantik dengan sebuah entitas dalam basis data vektor, sistem
+          menggunakan \texttt{entity\_id} entitas tersebut untuk melakukan traversal
+          pada graf dan mengambil relasi-relasi yang terhubung, sehingga konteks
+          yang disajikan kepada model bahasa tidak hanya berupa potongan teks
+          tetapi juga hubungan struktural antara entitas~\citep{sanmartin2024kgragbridginggapknowledge}.
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.95\textwidth]{Gambar/bab4_dual_indexing_arch.png}
-    \caption{Arsitektur \textit{dual indexing} antara \textit{graph database}
-        dan \textit{vector database} melalui \texttt{entity\_id} bersama}
-    \label{fig:dual-indexing-arch}
-\end{figure}
+    \item \textbf{Komposisi Koleksi Vektor}
 
-\subsection{Koleksi Vektor di \textit{Vector Database}}
+          \hspace*{0.75cm} Proses vektorisasi menghasilkan total \textbf{3.341 entri vektor}
+          yang tersebar dalam empat koleksi, sebagaimana dirangkum pada
+          \ref{tab:koleksi-vektor}. Seluruh vektor dihasilkan menggunakan model
+          embedding \textit{Qwen/Qwen3-Embedding-0.6B} dengan dimensi 1.024.
 
-Proses vektorisasi dilakukan terhadap empat jenis koleksi menggunakan model
-\textit{embedding} \texttt{Qwen/Qwen3-Embedding-0.6B} dengan dimensi 1.024.
-Jumlah vektor pada setiap koleksi dirangkum pada \ref{tab:vektor-index}.
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Komposisi koleksi vektor dalam basis data vektor}
+              \label{tab:koleksi-vektor}
+              \begin{tabular}{@{}P{0.35\textwidth}rP{0.35\textwidth}@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Koleksi Vektor}        & \textbf{Jumlah} & \textbf{Sumber Data}                     \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{RelationshipEmbedding} & 1.970           & Deskripsi tekstual relasi graf           \\
+                  \texttt{EntityEmbedding}       & 1.240           & Label dan deskripsi atribut entitas      \\
+                  \texttt{PaperChunk}            & 80              & Potongan teks abstrak dan TLDR publikasi \\
+                  \texttt{ContentKeyword}        & 51              & Kata kunci utama dokumen publikasi       \\
+                  \noalign{\hrule height 0.4pt}
+                  \textbf{Total}                 & \textbf{3.341}  &                                          \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \caption{Koleksi vektor pada \textit{vector database}}
-    \label{tab:vektor-index}
-    \begin{tabular}{@{}lrl@{}}
-        \noalign{\hrule height 0.8pt}
-        \textbf{Koleksi}               & \textbf{Jumlah Entri} & \textbf{Sumber Teks yang Divektorisasi} \\
-        \noalign{\hrule height 0.6pt}
-        \texttt{RelationshipEmbedding} & 1.970                 & Deskripsi teks relasi graf              \\
-        \texttt{EntityEmbedding}       & 1.240                 & Label dan atribut entitas               \\
-        \texttt{PaperChunk}            & 80                    & Potongan teks abstrak dan TLDR          \\
-        \texttt{ContentKeyword}        & 51                    & Kata kunci per publikasi                \\
-        \textbf{Total}                 & \textbf{3.341}        &                                         \\
-        \noalign{\hrule height 0.4pt}
-    \end{tabular}
-\end{table}
+    \item \textbf{Keterhubungan Graf dan Konteks Tekstual}
 
-Hal yang perlu dicatat dari tabel ini adalah total entri vektor pada
-\textit{vector database} (3.341) lebih besar daripada total simpul pada
-\textit{graph database} (1.253). Perbedaan ini terjadi karena
-\texttt{RelationshipEmbedding} tidak hanya memvektorisasi simpul, tetapi juga
-relasi. Dengan demikian, setiap relasi memiliki representasi semantiknya sendiri
-di ruang vektor. Pendekatan ini memungkinkan \textit{query} menarget relasi
-secara semantik, bukan hanya entitas.
+          \hspace*{0.75cm} Total entri vektor (\textbf{3.341}) lebih besar daripada total
+          simpul graf (\textbf{1.253}). Hal ini dikarenakan proses vektorisasi tidak
+          hanya mencakup entitas simpul, tetapi juga \textbf{1.970 relasi semantik}
+          yang ada dalam graf. Setiap relasi dikonversi menjadi representasi tekstual
+          (misalnya \textit{``Yuni Yamasari COLLABORATES\_WITH Anita Qoiriah''})
+          dan kemudian divektorisasi ke dalam koleksi \texttt{RelationshipEmbedding}.
 
-Integrasi antara kedua penyimpanan tersebut dijaga melalui atribut
-\texttt{entity\_id} yang sama pada \textit{graph database} dan \textit{vector
-    database}. Dengan atribut ini, hasil \textit{vector search} dari
-\textit{vector database} dapat langsung digunakan sebagai titik masuk traversal
-graf di \textit{graph database}, tanpa memerlukan langkah resolusi entitas
-tambahan.
+          \hspace*{0.75cm} Strategi ini memungkinkan pencarian semantik menarget
+          bukan hanya entitas, tetapi juga \textit{tipe hubungan relasional}
+          antara entitas. Ketika pengguna mengajukan kueri yang mengandung
+          makna relasional (misalnya \textit{``siapa yang berkolaborasi dengan''}),
+          sistem dapat mencocokkan kueri tersebut langsung dengan vektor relasi yang
+          relevan, meningkatkan kemampuan pencarian pada pertanyaan Kategori B
+          (relasional) dan Kategori C (multi-hop).
 
-% ─────────────────────────────────────────────────────────────────────────────
-\section{Hasil \textit{Hybrid Retrieval} dengan \textit{Vector Search} dan Graph Traversal}
-\label{sec:hybrid-retrieval}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\subsection{Strategi \textit{Retrieval} yang Digunakan dalam Evaluasi}
-
-Sistem \textit{hybrid retrieval} yang dibangun mendukung tiga mode operasi utama.
-Ketiga mode ini digunakan dalam pengujian untuk membandingkan performa RAG
-konvensional dengan GraphRAG:
-
-\begin{enumerate}
-    \item \textbf{Naive}: Menggunakan \textit{vector search} sederhana dari \texttt{PaperChunk} pada basis data vektor. Mode ini setara dengan RAG konvensional dan digunakan sebagai \textit{baseline}.
-    \item \textbf{Subgraph}: Menggunakan representasi graf lokal melalui traversal 2-hop dari entitas awal yang cocok. Tujuannya adalah mengumpulkan konteks relasional terdekat.
-    \item \textbf{Hybrid}: Menggabungkan pendekatan lokal (\textit{subgraph}) dan global (\textit{global relationship network}) dari basis data graf untuk merepresentasikan arsitektur penuh \textit{AcademicRAG}.
 \end{enumerate}
 
-Mode \textit{subgraph} dan \textit{hybrid} menjadi yang paling relevan dengan
-rumusan masalah penelitian ini. Alur pencariannya berjalan dalam beberapa tahap:
-(1) kueri pengguna didekomposisi menjadi kata kunci tingkat tinggi dan rendah,
-(2) kecocokan entitas dicari melalui basis data vektor, dan (3) ID entitas yang
-ditemukan digunakan sebagai titik awal traversal relasi pada basis data graf
-Neo4j.
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Hasil Penerapan \textit{Hybrid Retrieval} berbasis GraphRAG}
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{enumerate}[label=\textbf{(\alph*)}, leftmargin=*, itemsep=10pt]
+    \item \textbf{Mode \textit{Retrieval} yang Diuji}
 
-\subsection{Justifikasi Pilihan 2-Hop Traversal}
+          \hspace*{0.75cm} Evaluasi dilakukan terhadap tiga mode \textit{retrieval}
+          utama yang merepresentasikan tingkat pemanfaatan struktur graf yang berbeda:
 
-Traversal dibatasi pada dua loncatan karena alasan yang bersifat praktis
-sekaligus konseptual.
+          \begin{enumerate}[label=(\arabic*)]
+              \item \textbf{\textit{Naive} (Vector-only):} Pencarian dilakukan secara
+                    murni melalui kesamaan semantik vektor. Kueri pengguna dikonversi
+                    menjadi embedding dan dicocokkan dengan koleksi vektor tanpa
+                    memanfaatkan struktur relasional graf.
+              \item \textbf{\textit{Subgraph} (Graph-enhanced):} Hasil pencarian vektor
+                    digunakan sebagai titik masuk untuk traversal graf. Sistem menelusuri
+                    simpul-simpul terhubung hingga kedalaman dua loncatan (2-hop) di
+                    Neo4j, menghasilkan konteks yang diperkaya oleh relasi struktural.
+              \item \textbf{\textit{Hybrid} (Graph + SKOS):} Memperluas mode
+                    \textit{Subgraph} dengan menambahkan traversal pada hierarki konsep
+                    SKOS, sehingga konteks mencakup pula konsep-konsep induk dan
+                    konsep terkait dari taksonomi IEEE.
+          \end{enumerate}
 
-Dari sisi praktis, traversal lebih dari dua hop pada graf yang memiliki 714
-relasi SKOS dapat menghasilkan ledakan konteks. Satu simpul konsep dapat
-terhubung ke ratusan konsep lain melalui \texttt{SKOS\_BROADER} dan
-\texttt{SKOS\_RELATED}. Jika traversal dilanjutkan hingga tiga hop, ukuran konteks
-berisiko melampaui batas token LLM yang digunakan.
+          \hspace*{0.75cm} Selain ketiga mode tersebut, mode \textit{mix} juga diuji
+          pada Layer 1 evaluasi. Namun, mode ini tidak dimasukkan ke dalam evaluasi
+          akhir karena MRR-nya (0,6268) lebih rendah dari semua mode utama dan
+          performanya tidak konsisten lintas kategori pertanyaan.
 
-Dari sisi konseptual, dua hop sudah cukup untuk menangkap informasi yang paling
-langsung relevan. Dari satu simpul \texttt{Publication}, hop pertama memberikan
-informasi tentang dosen, kata kunci, konsep, tahun, dan venue. Hop kedua dari
-simpul dosen kemudian membawa publikasi lain yang pernah ditulis oleh peneliti
-yang sama. Konteks ini sudah memadai untuk menjawab pertanyaan tentang rekam
-jejak penelitian seseorang.
+    \item \textbf{Hasil \textit{Retrieval} pada Kueri Akademik}
 
-\subsection{Contoh Alur Retrieval pada Pertanyaan Aktual}
+          \hspace*{0.75cm} Untuk mengilustrasikan proses \textit{retrieval}, berikut
+          adalah contoh alur pencarian menggunakan kueri: \textit{``Siapa dosen
+              Infokom UNESA yang meneliti credit default risk menggunakan ensemble
+              learning?''}
 
-Untuk mengilustrasikan cara kerja mode \textit{subgraph} secara lebih konkret,
-bagian ini menggunakan contoh kueri aktual berikut:
+          \hspace*{0.75cm} Pada mode \textit{Naive}, sistem mencocokkan kueri secara
+          semantik dan mengambil potongan teks yang memuat istilah terkait.
+          Pada mode \textit{Subgraph}, sistem menambahkan langkah traversal graf:
+          setelah menemukan simpul publikasi yang relevan, sistem menelusuri
+          relasi \texttt{HAS\_AUTHOR} untuk menemukan penulis, relasi
+          \texttt{USES\_MODEL} untuk mengidentifikasi metode yang digunakan,
+          serta relasi \texttt{COLLABORATES\_WITH} untuk memetakan jaringan
+          kolaborasi. Seluruh konteks relasional ini disusun menjadi \textit{prompt}
+          yang dikirimkan ke model generator \textbf{DeepSeek R1} untuk menghasilkan
+          jawaban naratif yang terstruktur.
 
-\textbf{Kueri:} \textit{``Siapa dosen Infokom UNESA yang meneliti credit
-    default risk menggunakan ensemble learning?''}
+          \hspace*{0.75cm} Hasilnya, mode \textit{Subgraph} mampu menjawab dengan
+          menyebutkan nama-nama dosen yang terlibat (Yuni Yamasari, Ricky Eka Putra,
+          Anita Qoiriah, I Made Suartana, Ramadhan Cakra Wibawa, dan Achmad Kautsar)
+          beserta konteks metode penelitian yang digunakan, sedangkan mode
+          \textit{Naive} hanya mengidentifikasi dokumen yang relevan tanpa
+          kemampuan menelusuri jaringan kepengarangan.
 
-\begin{enumerate}
-    \item \textbf{Vektorisasi kueri}: Teks kueri diubah menjadi vektor berdimensi
-          1.024 menggunakan \texttt{Qwen3-Embedding-0.6B}.
-    \item \textbf{Vector search}: Vektor kueri dicocokkan dengan koleksi pada
-          \textit{vector database}. Simpul \texttt{Publication} dengan skor
-          kemiripan tertinggi adalah
-          \textit{``Implementing Optuna and Ensemble Learning on Boosting
-              Models for Credit Default Risk Prediction''} (2025), sesuai
-          dengan TLDR-nya yang menyebut AUC 0.9933.
-    \item \textbf{1-hop traversal}: Dari simpul publikasi tersebut, relasi
-          \texttt{HAS\_AUTHOR} mengarah ke enam simpul \texttt{Lecturer}: Yuni
-          Yamasari, Ricky Eka Putra, Anita Qoiriah, I Made Suartana,
-          Ramadhan Cakra Wibawa, dan Achmad Kautsar.
-    \item \textbf{2-hop traversal}: Dari masing-masing simpul dosen,
-          relasi \texttt{PUBLISHES} menelusuri publikasi lain yang pernah mereka
-          tulis. Langkah ini memperkaya konteks dengan rekam jejak penelitian
-          yang lebih luas.
-    \item \textbf{Sintesis LLM}: Seluruh konteks ini (nama penulis, daftar
-          publikasi, konsep, dan metrik) diberikan ke
-          \texttt{google/gemini-2.0-flash}, lalu disusun menjadi jawaban
-          berbahasa alami.
+    \item \textbf{Temuan Traversal Subgraf Dua Loncatan}
+
+          \hspace*{0.75cm} Kedalaman traversal dua loncatan (2-hop) dipilih
+          berdasarkan pertimbangan keseimbangan antara kelengkapan konteks
+          dan risiko kebocoran informasi. Pada loncatan pertama (1-hop), sistem
+          mengambil entitas yang terhubung langsung dengan simpul awal, seperti
+          penulis dari sebuah publikasi. Pada loncatan kedua (2-hop), sistem
+          menelusuri entitas yang terhubung dengan entitas 1-hop, misalnya
+          publikasi lain dari penulis yang sama atau kolaborator penulis tersebut.
+
+          \hspace*{0.75cm} Data evaluasi menunjukkan kontribusi nyata dari traversal
+          2-hop pada pertanyaan yang memerlukan navigasi antarentitas. Pada Kategori
+          B (relasional), mode \textit{Subgraph} mencapai Hit@5 sebesar
+          \textbf{76,67\%} dibandingkan \textit{Naive} yang hanya \textbf{56,67\%}
+          --- kenaikan sebesar \textbf{20 poin persentase}. Pada Kategori C
+          (multi-hop), mode \textit{Hybrid} mencapai Hit@10 sebesar
+          \textbf{66,67\%} dibandingkan \textit{Naive} sebesar \textbf{50\%}.
+          Temuan ini mengonfirmasi bahwa traversal subgraf memberikan nilai tambah
+          yang signifikan untuk kueri yang memerlukan pemahaman relasi antara
+          beberapa entitas~\citep{han2025ragvsgraphragsystematic}.
+
 \end{enumerate}
 
-Subgraf yang ditelusuri pada skenario ini dapat dilihat kembali pada \ref{fig:sample-subgraph}. Dari satu titik masuk, sistem sudah dapat
-menghasilkan konteks yang melibatkan delapan tipe relasi berbeda dalam satu kali
-traversal.
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Hasil Evaluasi Kinerja AcademicRAG}
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{enumerate}[label=\textbf{(\alph*)}, leftmargin=*, itemsep=10pt]
+    \item \textbf{Akurasi \textit{Retrieval}}
+
+          \hspace*{0.75cm} Evaluasi akurasi \textit{retrieval} dilakukan terhadap
+          \textbf{56 pertanyaan evaluasi} yang terbagi ke dalam tiga kategori:
+          Kategori A (faktual, $n=20$), Kategori B (relasional, $n=30$), dan
+          Kategori C (multi-hop, $n=6$). Metrik yang digunakan meliputi
+          \textit{Mean Reciprocal Rank} (MRR), \textit{Hit@K} (K = 1, 5, 10),
+          dan latensi rata-rata per kueri. Hasil keseluruhan disajikan pada
+          \ref{tab:retrieval-overall}.
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Hasil evaluasi \textit{retrieval} keseluruhan ($n = 56$)}
+              \label{tab:retrieval-overall}
+              \begin{tabular}{@{}lrrrrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Mode}     & \textbf{MRR}    & \textbf{Hit@1}  & \textbf{Hit@5}  & \textbf{Hit@10} & \textbf{Latensi (s)} \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{Naive}    & 0,6369          & \textbf{0,5893} & 0,6786          & 0,7857          & \textbf{2,68}        \\
+                  \texttt{Subgraph} & 0,6409          & 0,5714          & \textbf{0,7500} & 0,8036          & 7,71                 \\
+                  \texttt{Hybrid}   & \textbf{0,6447} & 0,5714          & \textbf{0,7500} & \textbf{0,8393} & 10,19                \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \hspace*{0.75cm} Berdasarkan \ref{tab:retrieval-overall}, mode
+          \textit{Hybrid} memperoleh MRR tertinggi (0,6447) dan Hit@10 terbaik
+          (0,8393), namun dengan latensi rata-rata paling tinggi (10,19 detik).
+          Mode \textit{Subgraph} memberikan MRR yang kompetitif (0,6409) dengan
+          latensi moderat (7,71 detik). Mode \textit{Naive} unggul pada Hit@1
+          (0,5893) dan latensi terendah (2,68 detik).
+
+          \hspace*{0.75cm} Analisis per kategori menunjukkan pola yang lebih informatif,
+          sebagaimana disajikan pada \ref{tab:retrieval-kategori}.
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Hasil \textit{retrieval} per kategori pertanyaan}
+              \label{tab:retrieval-kategori}
+              \begin{tabular}{@{}lrrrrrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Mode}     & \textbf{A-MRR}  & \textbf{A-Hit@5} & \textbf{B-MRR}  & \textbf{B-Hit@5} & \textbf{C-MRR}  & \textbf{C-Hit@5} \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{Naive}    & \textbf{0,9250} & 0,9500           & 0,5014          & 0,5667           & 0,3542          & 0,3333           \\
+                  \texttt{Subgraph} & 0,8333          & 0,8500           & \textbf{0,5700} & \textbf{0,7667}  & 0,3542          & 0,3333           \\
+                  \texttt{Hybrid}   & 0,8833          & 0,9000           & 0,5400          & 0,7333           & \textbf{0,3727} & 0,3333           \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \hspace*{0.75cm} \ref{tab:retrieval-kategori} memperlihatkan bahwa pada
+          Kategori A (faktual), mode \textit{Naive} unggul dengan MRR 0,9250
+          karena pencarian vektor langsung mampu mencocokkan kueri sederhana. Namun
+          pada Kategori B (relasional), pola berbalik: \textit{Subgraph}
+          meningkatkan MRR menjadi 0,5700 dan Hit@5 menjadi 76,67\%,
+          mengonfirmasi bahwa traversal graf berkontribusi signifikan pada kueri
+          yang memerlukan pemahaman hubungan antarentitas.
+
+          \hspace*{0.75cm} Visualisasi perbandingan metrik \textit{retrieval}
+          ditampilkan pada \ref{fig:eval-hit-rate} dan \ref{fig:eval-mrr}.
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/eval_layer1_hit_rate.png}
+              \caption{Perbandingan \textit{Hit Rate} antarmode \textit{retrieval}}
+              \label{fig:eval-hit-rate}
+          \end{figure}
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/eval_layer1_mrr.png}
+              \caption{Perbandingan MRR antarmode \textit{retrieval} per kategori}
+              \label{fig:eval-mrr}
+          \end{figure}
+
+    \item \textbf{Analisis \textit{Trade-off} Akurasi dan Latensi}
+
+          \hspace*{0.75cm} Selain akurasi, pertimbangan latensi menjadi faktor penting
+          dalam pemilihan mode \textit{retrieval}. \ref{fig:latency-quality}
+          memvisualisasikan \textit{trade-off} antara kualitas dan kecepatan.
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/eval_layer3_latency_quality.png}
+              \caption{\textit{Trade-off} latensi vs.\ kualitas \textit{retrieval}}
+              \label{fig:latency-quality}
+          \end{figure}
+
+          \hspace*{0.75cm} Mode \textit{Naive} menghasilkan latensi terendah
+          (\textbf{2,68 detik}) namun tanpa konteks relasional. Mode
+          \textit{Subgraph} memerlukan \textbf{7,71 detik} dengan MRR yang
+          kompetitif (0,6409), sedangkan mode \textit{Hybrid} memerlukan
+          \textbf{10,19 detik} --- 32\% lebih lambat dari \textit{Subgraph}
+          --- untuk peningkatan MRR marginal dari 0,6409 menjadi 0,6447.
+
+          \hspace*{0.75cm} Berdasarkan analisis ini, mode \textit{Subgraph}
+          diidentifikasi sebagai \textit{sweet spot}: memberikan peningkatan
+          akurasi yang signifikan pada kueri relasional (Hit@5 Kategori B naik
+          20 poin persentase) dengan tambahan latensi yang masih wajar untuk
+          konteks sistem repositori akademik. Latensi 7,71 detik mencerminkan
+          proses \textit{reasoning} dan kueri ke basis data graf yang kompleks,
+          bukan respons waktu-nyata seperti pada \textit{chatbot} umum.
+
+    \item \textbf{Evaluasi Kualitas Jawaban dengan \textit{LLM-as-a-Judge}}
+
+          \hspace*{0.75cm} Evaluasi kualitas jawaban dilakukan melalui dua lapis:
+          (1)~\textit{RAGAS Quality} pada Layer 2, dan (2)~\textit{Pairwise
+              LLM Judge} pada Layer 4 menggunakan model \textbf{Llama 3.3 70B}
+          melalui penyedia Groq sebagai hakim~\citep{es-etal-2024-ragas}.
+
+          \hspace*{0.75cm} \textbf{Layer 2 --- RAGAS Quality.} Evaluasi RAGAS
+          dilakukan pada 15 kasus (7 Kategori A, 8 Kategori B) untuk dua mode,
+          sebagaimana ditampilkan pada \ref{tab:ragas-quality}. Metrik
+          \textit{Context Precision} dan \textit{Context Recall} tidak tersedia
+          pada eksperimen ini.
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Hasil evaluasi RAGAS Quality ($n = 15$)}
+              \label{tab:ragas-quality}
+              \begin{tabular}{@{}lrrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Mode}     & \textbf{$n$} & \textbf{Faithfulness} & \textbf{Answer Relevancy} \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{Subgraph} & 15           & 0,8211                & 0,7410                    \\
+                  \texttt{Mix}      & 15           & 0,8206                & 0,7511                    \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \hspace*{0.75cm} Kedua mode menunjukkan \textit{Faithfulness} yang tinggi
+          (>0,82), mengindikasikan bahwa jawaban yang dihasilkan oleh DeepSeek R1
+          umumnya setia pada konteks yang diberikan.
+
+          \hspace*{0.75cm} \textbf{Layer 4 --- Pairwise LLM Judge Win Rate.}
+          Evaluasi pairwise membandingkan jawaban mode \textit{Subgraph} dan
+          \textit{Hybrid} terhadap \textit{baseline} \textit{Naive} pada empat
+          dimensi: \textit{Faithfulness}, \textit{Traceability},
+          \textit{Comprehensiveness}, dan \textit{Overall}. Hasil keseluruhan
+          disajikan pada \ref{tab:pairwise-overall}.
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{Hasil evaluasi pairwise \textit{LLM Judge} vs.\ \textit{Naive} ($n = 56$)}
+              \label{tab:pairwise-overall}
+              \begin{tabular}{@{}lrrrrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Mode vs.\ Naive} & \textbf{$n$} & \textbf{Faithfulness} & \textbf{Traceability} & \textbf{Comprehensiveness} & \textbf{Overall} \\
+                  \noalign{\hrule height 0.6pt}
+                  \texttt{Subgraph}        & 56           & 49,1\%                & 46,9\%                & 49,1\%                     & \textbf{51,3\%}  \\
+                  \texttt{Hybrid}          & 56           & 46,4\%                & 42,9\%                & 48,2\%                     & 45,5\%           \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \hspace*{0.75cm} Mode \textit{Subgraph} memperoleh \textit{win rate}
+          keseluruhan \textbf{51,3\%} --- sedikit mengungguli \textit{Naive}.
+          Sebaliknya, mode \textit{Hybrid} hanya mencapai 45,5\%, mengindikasikan
+          bahwa penyuntikan konteks SKOS yang berlebihan justru menurunkan kualitas
+          jawaban.
+
+          \hspace*{0.75cm} Ketika hasil dipecah berdasarkan kategori pertanyaan,
+          keunggulan graf semakin terlihat jelas. \ref{tab:pairwise-subgraph}
+          dan \ref{tab:pairwise-hybrid} menyajikan hasil per kategori.
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{\textit{Win rate} Subgraph vs.\ Naive per kategori}
+              \label{tab:pairwise-subgraph}
+              \begin{tabular}{@{}lrrrrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Kategori} & \textbf{$n$} & \textbf{Faithfulness} & \textbf{Traceability} & \textbf{Comprehensiveness} & \textbf{Overall} \\
+                  \noalign{\hrule height 0.6pt}
+                  Faktual           & 20           & 47,5\%                & 42,5\%                & 45,0\%                     & 45,0\%           \\
+                  Relasional        & 30           & 48,3\%                & 44,2\%                & 48,3\%                     & 50,8\%           \\
+                  Multi-hop         & 6            & \textbf{58,3\%}       & \textbf{75,0\%}       & \textbf{66,7\%}            & \textbf{75,0\%}  \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \begin{table}[htbp]
+              \centering
+              \small
+              \caption{\textit{Win rate} Hybrid vs.\ Naive per kategori}
+              \label{tab:pairwise-hybrid}
+              \begin{tabular}{@{}lrrrrr@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{Kategori} & \textbf{$n$} & \textbf{Faithfulness} & \textbf{Traceability} & \textbf{Comprehensiveness} & \textbf{Overall} \\
+                  \noalign{\hrule height 0.6pt}
+                  Faktual           & 20           & 50,0\%                & 40,0\%                & 48,8\%                     & 42,5\%           \\
+                  Relasional        & 30           & 43,3\%                & 44,2\%                & 45,0\%                     & 42,5\%           \\
+                  Multi-hop         & 6            & 50,0\%                & 45,8\%                & 62,5\%                     & 70,8\%           \\
+                  \noalign{\hrule height 0.4pt}
+              \end{tabular}
+          \end{table}
+
+          \hspace*{0.75cm} Pada pertanyaan multi-hop (Kategori C), mode
+          \textit{Subgraph} mendominasi dengan \textit{win rate} keseluruhan
+          sebesar \textbf{75\%} dan \textit{Traceability} mencapai \textbf{75\%}.
+          Angka ini kontras dengan kinerja pada pertanyaan faktual sederhana
+          (Kategori A) yang hanya 45\%. Meskipun jumlah sampel Kategori C
+          relatif kecil ($n=6$), temuan ini mengindikasikan bahwa nilai utama
+          \textit{Knowledge Graph} terletak pada kemampuan menelusuri jalur
+          relasional yang menghubungkan beberapa entitas sekaligus --- kemampuan
+          yang tidak dimiliki oleh pencarian vektor semata.
+
+          \hspace*{0.75cm} Visualisasi perbandingan \textit{win rate} dan analisis
+          per dimensi ditampilkan pada \ref{fig:eval-winrate} dan \ref{fig:eval-radar}.
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/eval_layer4_winrate.png}
+              \caption{Perbandingan \textit{win rate} keseluruhan antarmode}
+              \label{fig:eval-winrate}
+          \end{figure}
+
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/eval_layer4_radar.png}
+              \caption{Diagram radar \textit{win rate} per dimensi evaluasi}
+              \label{fig:eval-radar}
+          \end{figure}
+
+    \item \textbf{Keterlacakan Sumber dan Indikasi Halusinasi}
+
+          \hspace*{0.75cm}Meskipun mode \textit{Subgraph} menunjukkan kinerja positif
+          secara agregat, analisis kasus individual memperlihatkan bahwa kesalahan
+          masih muncul ketika konteks hasil traversal graf terlalu luas atau tidak
+          cukup terfilter. Tiga pola utama yang ditemukan adalah kontaminasi metode,
+          kebocoran konteks, dan pengambilan dokumen yang kurang relevan. Ringkasan
+          temuan tersebut disajikan pada \ref{tab:kasus-kegagalan}.
+
+          \begin{table}[htbp]
+              \centering
+              \scriptsize
+              \caption{Ringkasan kasus kegagalan dan dampaknya terhadap jawaban}
+              \label{tab:kasus-kegagalan}
+              \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+                  \noalign{\hrule height 0.8pt}
+                  \textbf{ID} & \textbf{Fokus Pertanyaan}                                         & \textbf{Indikasi Kegagalan}                                                                                                  & \textbf{Dampak Evaluasi}                                                                                             \\
+                  \noalign{\hrule height 0.6pt}
+                  A01         & Metode klasifikasi gaya belajar VAK melalui aplikasi pesan instan & Konsep \textit{classification} menarik konteks metode dari publikasi lain sehingga metode pada jawaban tidak tepat.          & \textit{Comprehensiveness} bernilai 0\% karena jawaban tidak menjelaskan metode yang sesuai dengan publikasi target. \\
+                  \noalign{\hrule height 0.4pt}
+                  B08         & Kolaborator penelitian I Made Suartana dan publikasi terkait      & Traversal 2-hop membawa publikasi kolaborator yang tidak terhubung langsung dengan pertanyaan.                               & \textit{Win rate} bernilai 0\% pada seluruh dimensi karena jawaban kehilangan keterlacakan terhadap konteks utama.   \\
+                  \noalign{\hrule height 0.4pt}
+                  B27         & Publikasi Ricky Eka Putra pada bidang \textit{computer vision}    & Sistem mengambil publikasi bertopik pengenalan cuaca dan klasifikasi limbah yang tidak sepenuhnya sesuai dengan fokus kueri. & \textit{Win rate} bernilai 0\% pada seluruh dimensi karena relevansi topik dan kelengkapan jawaban rendah.           \\
+                  \noalign{\hrule height 0.8pt}
+              \end{tabularx}
+          \end{table}
+
+          \hspace*{0.75cm}\textbf{Kasus [A01] --- Kontaminasi Metode.} Pada
+          pertanyaan tentang metode klasifikasi gaya belajar VAK, sistem menarik
+          konteks dari simpul konsep \textit{classification} yang terhubung dengan
+          beberapa publikasi. Akibatnya, metode dari publikasi lain tercampur
+          dengan publikasi target. Temuan ini menunjukkan bahwa keterhubungan
+          konsep yang luas perlu diimbangi dengan penyaringan konteks berbasis
+          relevansi dokumen.
+
+          \hspace*{0.75cm}\textbf{Kasus [B08] --- Kebocoran Konteks.} Pada
+          pertanyaan tentang kolaborator I Made Suartana, traversal graf hingga
+          kedalaman 2-hop menarik informasi dari simpul kolaborator yang tidak
+          menjadi fokus pertanyaan. Kondisi ini menyebabkan jawaban kehilangan
+          keterlacakan terhadap entitas utama dan menghasilkan \textit{win rate}
+          0\% pada seluruh dimensi evaluasi.
+
+          \hspace*{0.75cm}\textbf{Kasus [B27] --- \textit{Retrieval} Tidak Relevan.}
+          Pada pertanyaan tentang publikasi Ricky Eka Putra di bidang
+          \textit{computer vision}, konteks yang diambil masih memuat publikasi
+          yang topiknya terlalu luas atau tidak langsung menjawab kueri. Hal ini
+          menunjukkan bahwa pencarian berbasis graf tetap membutuhkan tahap
+          penyaringan ulang (\textit{re-ranking}) agar dokumen yang diberikan ke
+          model generator benar-benar sesuai dengan fokus pertanyaan.
+
+          \hspace*{0.75cm}Secara umum, ketiga kasus tersebut menunjukkan bahwa
+          indikasi halusinasi tidak hanya berasal dari model generator, tetapi juga
+          dari kualitas konteks yang diberikan oleh mekanisme \textit{retrieval}.
+          Oleh karena itu, traversal graf perlu dilengkapi dengan pembobotan relasi,
+          pembatasan jumlah simpul hasil traversal, dan \textit{re-ranking} konteks
+          untuk mengurangi risiko \textit{context leakage}~\citep{nagori2025opensourceagentichybridrag}.
+
+\end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Evaluasi Kinerja Sistem (\textit{Quantitative Evaluation})}
-\label{sec:evaluasi-kuantitatif}
+\subsection{Implementasi Antarmuka Pengguna (\textit{GUI})}
+\label{subsec:gui-implementation}
 % ─────────────────────────────────────────────────────────────────────────────
 
-Sampai titik ini, pembahasan masih berfokus pada komponen yang berhasil dibangun,
-belum pada seberapa baik sistem bekerja ketika diuji. Bagian ini menyajikan
-hasil pengujian yang lebih terukur, dimulai dari kemampuan sistem menemukan
-dokumen yang tepat, dilanjutkan dengan pertimbangan kecepatan, lalu diakhiri
-dengan penilaian kualitas jawaban akhir oleh LLM. Seluruh pengujian dilakukan
-pada 56 skenario pertanyaan, mulai dari pencarian faktual sederhana hingga
-pertanyaan yang membutuhkan penalaran lintas dokumen.
+Setelah seluruh komponen pencarian dievaluasi, tahap selanjutnya adalah
+mengimplementasikan antarmuka pengguna sebagai lapisan interaksi antara
+pengguna dan sistem \textit{Hybrid GraphRAG}. Sebagaimana telah dirancang
+pada Bab~3, antarmuka ini berbentuk aplikasi web percakapan yang
+mengadaptasi \textit{backbone} Yuxi.
 
-\subsection{Kualitas Pencarian Konteks (\textit{Retrieval})}
-\label{subsec:evaluasi-retrieval}
+\begin{enumerate}[label=\textbf{(\alph*)}, leftmargin=*, itemsep=10pt]
+    \item \textbf{Arsitektur Antarmuka Percakapan}
 
-Pertanyaan utama pada tahap ini adalah apakah penelusuran graf benar-benar mampu
-memberikan konteks yang lebih baik dibandingkan pencarian vektor saja.
-Perbandingan tiga mode pencarian yang diuji dirangkum pada
-\ref{tab:layer1-metrics}.
+          \hspace*{0.75cm} Antarmuka pengguna disajikan sebagai aplikasi web percakapan
+          interaktif. Sebelum melakukan pencarian, pengguna dapat melihat panel
+          konfigurasi awal untuk memastikan model generator dan alat pencarian
+          terhubung secara benar, sebagaimana ditampilkan pada \ref{fig:gui-mode}.
 
-\begin{table}[htbp]
-    \centering
-    \small
-    \caption{Perbandingan metrik kualitas \textit{retrieval} pada 56 skenario uji}
-    \label{tab:layer1-metrics}
-    \begin{tabular}{@{}lccccc@{}}
-        \noalign{\hrule height 0.8pt}
-        \textbf{Mode Operasi}     & \textbf{MRR}    & \textbf{Hit@1}  & \textbf{Hit@5}  & \textbf{Hit@10} & \textbf{Latensi (s)} \\
-        \noalign{\hrule height 0.6pt}
-        \texttt{Naive} (Baseline) & 0.6369          & \textbf{0.5893} & 0.6786          & 0.7857          & \textbf{2.68}        \\
-        \texttt{Subgraph}         & 0.6409          & 0.5714          & \textbf{0.7500} & 0.8036          & 7.70                 \\
-        \texttt{Hybrid}           & \textbf{0.6447} & 0.5714          & \textbf{0.7500} & \textbf{0.8393} & 10.19                \\
-        \noalign{\hrule height 0.4pt}
-    \end{tabular}
-\end{table}
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/bab4_gui_mode.png}
+              \caption{Halaman konfigurasi awal model LLM dan penargetan \textit{Knowledge Graph}}
+              \label{fig:gui-mode}
+          \end{figure}
 
-Jika hanya dilihat dari \textit{Hit@1}, mode \texttt{Naive} justru sedikit lebih
-unggul dengan nilai 58,93\%. Hasil ini masih dapat dipahami karena pada
-pertanyaan yang lugas dan menargetkan satu entitas spesifik, pencarian vektor
-dapat langsung menemukan kandidat terdekat tanpa perlu menelusuri graf. Namun,
-pola tersebut berubah ketika jendela pencarian diperlebar.
+          \hspace*{0.75cm} \ref{fig:gui-chat} menampilkan halaman utama dari
+          antarmuka percakapan sistem \textit{Academic GraphRAG}. Pengguna dapat
+          mengajukan pertanyaan akademik menggunakan bahasa alami (\textit{natural
+              language}). Pertanyaan tersebut diteruskan secara otomatis ke
+          \textit{agentic search pipeline} yang bertugas mengeksekusi kueri
+          terstruktur pada basis data vektor dan basis data graf Neo4j.
 
-Pada \textit{Hit@5} dan \textit{Hit@10}, mode \texttt{Hybrid} dan
-\texttt{Subgraph} mulai melampaui \texttt{Naive}. Capaian tertingginya mendekati
-84\%, terutama pada \textit{Hit@10}. Pola ini terlihat lebih jelas pada kurva
-pertumbuhan \textit{Hit Rate} di \ref{fig:hit-curves}.
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/bab4_gui_chat.png}
+              \caption{Antarmuka percakapan utama sistem \textit{Academic GraphRAG}}
+              \label{fig:gui-chat}
+          \end{figure}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.7\textwidth]{Gambar/eval_layer3_hit_curves.png}
-    \caption{Pertumbuhan \textit{Hit Rate} pada tiga mode \textit{retrieval} seiring bertambahnya \textit{K}}
-    \label{fig:hit-curves}
-\end{figure}
+          \hspace*{0.75cm} Melalui antarmuka ini, hasil pencarian disajikan kembali
+          kepada pengguna berupa jawaban naratif yang terstruktur, lengkap dengan
+          penanda sumber pustaka akademik rumpun Infokom UNESA yang dirujuk.
 
-Dari kurva tersebut terlihat bahwa peran graf bukan semata-mata menempatkan satu
-jawaban eksak pada posisi pertama, melainkan membantu menarik kembali dokumen
-relevan yang sebelumnya tidak terambil oleh pencarian vektor. Ekspansi ke simpul
-tetangga membuat konteks yang semula tidak muncul dapat masuk ke dalam
-\textit{Top-5} dan \textit{Top-10}.
+    \item \textbf{Panel Bukti Akademik dan Sumber Jawaban}
 
-\subsection{Titik Imbang antara Akurasi dan Kecepatan}
-\label{subsec:evaluasi-tradeoff}
+          \hspace*{0.75cm} Fitur unggulan dari antarmuka ini adalah penyediaan panel
+          bukti akademik (\textit{evidence panel}) yang transparan guna mendukung
+          akuntabilitas jawaban dan menekan risiko halusinasi informasi. Detail
+          dari panel bukti akademik ini ditampilkan pada \ref{fig:gui-evidence}.
 
-Akurasi yang tinggi tidak banyak berarti apabila sistem terlalu lambat saat
-digunakan. Berdasarkan \ref{tab:layer1-metrics}, waktu pemrosesan meningkat
-cukup tajam, dari 2,68 detik pada mode \texttt{Naive} menjadi 10,19 detik pada
-mode \texttt{Hybrid}. Pertanyaan berikutnya adalah apakah tambahan waktu tersebut
-sebanding dengan peningkatan akurasi yang diperoleh.
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.85\textwidth]{Gambar/bab4_gui_evidence.png}
+              \caption{Panel bukti akademik: visualisasi \textit{graph triples} dan daftar hubungan entitas}
+              \label{fig:gui-evidence}
+          \end{figure}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{Gambar/eval_layer3_latency_quality.png}
-    \caption{Hubungan antara latensi dan kualitas pencarian (MRR) per mode \textit{retrieval}}
-    \label{fig:tradeoff}
-\end{figure}
-
-\ref{fig:tradeoff} memperlihatkan posisi masing-masing mode.
-\texttt{Hybrid} memang memiliki MRR tertinggi, tetapi latensinya mencapai lebih
-dari 10 detik per kueri, sehingga kurang ideal untuk penggunaan interaktif.
-Sebaliknya, \texttt{Naive} dapat berjalan di bawah 3 detik, tetapi lebih berisiko
-kehilangan konteks penting pada pertanyaan \textit{multi-hop}.
-
-Di antara keduanya, \texttt{Subgraph} muncul sebagai pilihan yang paling seimbang.
-MRR-nya bersaing ketat dengan \texttt{Hybrid}, tetapi waktu prosesnya sekitar 25\%
-lebih cepat, yaitu 7,7 detik. Dengan kata lain, menavigasi graf secara langsung
-tanpa menggabungkan dua sumber konteks sekaligus terbukti lebih efisien, sekaligus
-tetap memberikan hasil yang memadai.
-
-\subsection{Menekan Halusinasi dengan \textit{LLM-as-a-Judge}}
-\label{subsec:evaluasi-llm-judge}
-
-Metrik \textit{retrieval} dan latensi baru menjelaskan satu sisi dari kinerja
-sistem. Aspek lain yang tidak kalah penting adalah kualitas jawaban yang
-dihasilkan LLM: apakah jawaban tersebut setia pada konteks (\textit{faithfulness}),
-dapat dilacak ke sumbernya (\textit{traceability}), dan cukup lengkap
-(\textit{comprehensiveness})?
-
-Untuk mengukur aspek tersebut, digunakan paradigma \textit{LLM-as-a-Judge} secara
-berpasangan. Model penilai (\textit{Llama 3.3 70B}) diberi dua jawaban: satu dari
-mode \textit{baseline} (\texttt{Naive}) dan satu dari mode penantang
-(\texttt{Subgraph} atau \texttt{Hybrid}). Model kemudian diminta memilih jawaban
-yang lebih baik tanpa mengetahui identitas mode masing-masing.
-
-Hasil agregat \textit{win rate} dari 336 skenario perbandingan dirangkum pada
-\ref{tab:layer4-winrate}.
-
-\begin{table}[htbp]
-    \centering
-    \small
-    \caption{\textit{Win Rate} mode penantang terhadap \textit{baseline} pada empat dimensi penilaian}
-    \label{tab:layer4-winrate}
-    \begin{tabular}{@{}lcccc@{}}
-        \noalign{\hrule height 0.8pt}
-        \textbf{Mode}     & \textbf{Faithfulness} & \textbf{Traceability} & \textbf{Comprehensiveness} & \textbf{Overall} \\
-        \noalign{\hrule height 0.6pt}
-        \texttt{Subgraph} & 46,0\%                & 46,9\%                & 48,2\%                     & 48,7\%           \\
-        \texttt{Hybrid}   & 46,0\%                & 44,2\%                & 46,9\%                     & 45,5\%           \\
-        \noalign{\hrule height 0.4pt}
-    \end{tabular}
-\end{table}
-
-Sekilas, angka pada kisaran 44--48\% ini dapat terlihat kurang memuaskan. Jika
-graf memang membantu, \textit{win rate} seharusnya tampak lebih tinggi dari 50\%.
-Namun, hasilnya tidak sesederhana itu.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Gambar/eval_layer4_winrate.png}
-    \caption{Komparasi \textit{win rate} keseluruhan antar mode \textit{retrieval}}
-    \label{fig:layer4-winrate}
-\end{figure}
-
-Salah satu penyebabnya adalah kelebihan informasi. Pada mode \texttt{Hybrid}, LLM
-menerima konteks dari dua representasi graf sekaligus, yaitu subgraf lokal
-(entitas dan tetangga terdekat) serta jaringan relasi global (hubungan konseptual
-makro). Ketika informasi relasional yang masuk terlalu banyak dan tumpang tindih,
-LLM justru lebih sulit menyusun jawaban yang runut. Jawaban yang dihasilkan
-memang tampak lengkap, tetapi lebih sulit dilacak ke sumber spesifik sehingga
-\textit{Traceability} turun ke 44,2\%.
-
-Pola ini terlihat pada visualisasi radar di \ref{fig:layer4-radar}. Area
-\texttt{Subgraph} tampak lebih lebar dan merata dibanding \texttt{Hybrid}, yang
-menunjukkan bahwa mode ini lebih konsisten pada keempat dimensi penilaian.
-\texttt{Subgraph} menavigasi graf secara langsung dan memberikan konteks
-relasional yang cukup untuk menjawab pertanyaan, tanpa membanjiri \textit{prompt}
-hingga LLM kehilangan fokus.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.55\textwidth]{Gambar/eval_layer4_radar.png}
-    \caption{Perbandingan multi-dimensi \texttt{Subgraph} dan \texttt{Hybrid} pada empat kriteria penilaian}
-    \label{fig:layer4-radar}
-\end{figure}
-
-Temuan utama dari lapis pengujian ini cukup jelas: lebih banyak konteks tidak
-selalu menghasilkan jawaban yang lebih baik. Untuk domain akademik yang menuntut
-kesetiaan pada sumber, penyuntikan konteks graf yang terarah seperti pada mode
-\texttt{Subgraph} lebih efektif daripada menggabungkan semua informasi yang
-tersedia tanpa penyaringan yang memadai.
+          \hspace*{0.75cm} Setiap jawaban yang dihasilkan dilengkapi dengan panel bukti
+          akademik yang menampilkan hubungan relasional terstruktur berupa
+          \textit{graph triples} (misalnya relasi kepengarangan
+          \texttt{COLLABORATES\_WITH} atau penggunaan metode \texttt{USES\_METHOD})
+          serta potongan teks dokumen (\textit{document chunks}) yang menjadi dasar
+          pembentukan jawaban LLM. Informasi terstruktur ini diambil langsung dari
+          basis data graf Neo4j dan basis data vektor melalui atribut
+          \texttt{entity\_id} yang terintegrasi.
+\end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Pembahasan}
-\label{sec:pembahasan-rumusan}
 % ─────────────────────────────────────────────────────────────────────────────
 
-Dari seluruh hasil yang telah dipaparkan, bagian ini merangkum bagaimana temuan
-penelitian menjawab dua rumusan masalah yang diajukan pada awal penelitian.
+\subsection{Kemampuan Konstruksi \textit{Knowledge Graph} Akademik}
 
-Rumusan masalah pertama berkaitan dengan perancangan \textit{pipeline} konstruksi
-\textit{Knowledge Graph} dari metadata dan ontologi akademik. Secara empiris,
-jawaban atas rumusan ini terlihat dari graf yang berhasil terbentuk. Dari data
-mentah, \textit{pipeline} otomatis mampu membangun 1.253 simpul dan 1.970 relasi.
-Seluruh \textit{quality gate} juga terpenuhi tanpa ada atribut wajib yang kosong.
-Selain itu, setiap simpul dan relasi menyimpan \textit{provenance} yang dapat
-dilacak kembali ke publikasi asalnya. Artefak graf pun tersedia dalam empat
-format lokal sehingga proses replikasi tetap memungkinkan meskipun dilakukan di
-luar lingkungan \textit{cloud}.
+\textit{Pipeline} otomatis yang dirancang berhasil mentransformasikan data mentah
+metadata akademik menjadi \textit{Knowledge Graph} heterogen dengan \textbf{1.253
+    simpul} dan \textbf{1.970 relasi} aktif. Seluruh \textit{quality gate} terpenuhi
+tanpa atribut wajib yang kosong, dan setiap simpul menyimpan \textit{provenance}
+yang dapat dilacak ke publikasi asal.
 
-Rumusan masalah kedua berfokus pada perancangan mekanisme \textit{hybrid
-    retrieval} yang menggabungkan pencarian vektor dan traversal graf.
-Implementasi arsitektur \textit{dual indexing} menjawab kebutuhan tersebut.
-Pencarian vektor dan traversal graf dapat berjalan bersama karena kedua sistem
-penyimpanan menggunakan \texttt{entity\_id} yang sama. Dengan demikian, hasil dari
-\textit{vector database} dapat langsung digunakan sebagai titik masuk traversal di
-\textit{graph database}, tanpa memerlukan langkah resolusi entitas tambahan.
-Sistem yang dihasilkan mampu menangani pertanyaan yang membutuhkan pemahaman
-semantik sekaligus navigasi struktural, sesuatu yang sulit dipenuhi oleh RAG
-berbasis vektor saja.
+Relasi \texttt{COLLABORATES\_WITH} secara otomatis merekam 441 hubungan kolaborasi
+antarpeneliti berdasarkan kepengarangan bersama. Pasangan kolaborasi terkuat
+terdeteksi antara Anita Qoiriah dan Yuni Yamasari dengan 19 \textit{paper} bersama,
+sementara Yuni Yamasari sendiri memiliki 27 kolaborator unik --- menjadikannya
+simpul dosen paling terhubung dalam graf. Di sisi produktivitas, Widi Aribowo
+mencatat jumlah publikasi tertinggi (77 paper). Pola ini menunjukkan bahwa graf
+tidak hanya merepresentasikan isi publikasi, tetapi juga berhasil memetakan
+ekosistem kolaborasi akademik lintas program studi di rumpun Infokom UNESA.
 
-Meski demikian, beberapa keterbatasan tetap perlu dicatat. Akurasi semantik
-konsep yang terekstrak, yaitu sejauh mana simpul \texttt{Concept} benar-benar
-merepresentasikan isi setiap publikasi, belum diukur secara kuantitatif. Risiko
-\textit{semantic drift} akibat ekspansi SKOS juga belum dikuantifikasi. Kedua hal
-ini menjadi agenda evaluasi lanjutan yang penting untuk memperkuat klaim tentang
-kualitas graf yang dihasilkan.
+Lebih lanjut, pengayaan konseptual melalui ekspansi SKOS menghasilkan 831 simpul
+konsep, 81,23\% di antaranya berhasil dipetakan ke URI IEEE terverifikasi.
+Hasil ini menunjukkan bahwa strategi konstruksi KG yang diusulkan mampu
+menghasilkan graf yang kaya secara semantik sekaligus terstruktur secara
+ontologis.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Kontribusi Indeks Ganda dalam Integrasi Graf dan Vektor}
+
+Arsitektur \textit{dual indexing} memungkinkan dua paradigma pencarian berjalan
+secara paralel melalui atribut \texttt{entity\_id} yang sama. Hasil pencarian
+semantik dari basis data vektor langsung menjadi titik masuk traversal graf di
+Neo4j tanpa langkah resolusi entitas tambahan. Total 3.341 entri vektor --- lebih
+besar dari 1.253 simpul graf --- mencerminkan bahwa bukan hanya entitas, tetapi
+juga relasi yang divektorisasi, memungkinkan kueri menarget hubungan relasional
+secara semantik~\citep{sanmartin2024kgragbridginggapknowledge}.
+
+Keunggulan utama arsitektur ini terletak pada kemampuan
+\textit{seamless bridging}: ketika pencarian vektor mengembalikan entitas yang
+relevan, \texttt{entity\_id} digunakan untuk langsung menelusuri lingkungan
+graf entitas tersebut hingga kedalaman 2-hop, menghasilkan konteks yang
+menggabungkan informasi tekstual dan struktural dalam satu \textit{prompt}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Peran \textit{Hybrid Retrieval} terhadap Pencarian Akademik}
+
+Berdasarkan \ref{tab:retrieval-kategori}, pada pertanyaan faktual sederhana
+(Kategori A), mode \textit{Naive} justru unggul dengan MRR 0,9250 karena
+pencarian vektor langsung mencocokkan kueri ke potongan teks tanpa memerlukan
+traversal graf. Namun, pada pertanyaan relasional (Kategori B), pola berbalik:
+mode \textit{Subgraph} meningkatkan MRR dari 0,5014 menjadi 0,5700 dan
+Hit@5 dari 56,67\% menjadi 76,67\%. Temuan ini sejalan dengan
+\cite{han2025ragvsgraphragsystematic} yang menyatakan bahwa representasi
+terstruktur berbasis graf krusial untuk kueri relasional antardokumen.
+
+Pada Kategori C (multi-hop), peningkatan MRR lebih terbatas (0,3542 menjadi
+0,3727 untuk \textit{Hybrid}), namun Hit@10 meningkat signifikan dari 50\%
+menjadi 66,67\%. Ini menunjukkan bahwa traversal graf membantu menemukan
+dokumen relevan meskipun tidak selalu menempatkannya di peringkat teratas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Perbandingan AcademicRAG dengan RAG Konvensional}
+
+Mode \textit{Hybrid} menyuntikkan terlalu banyak relasi konseptual IEEE SKOS ke
+dalam \textit{prompt}, menyebabkan ukuran konteks membengkak dan model bahasa
+mengalami efek \textit{lost in the middle}. Akibatnya, \textit{win rate}
+\textit{Traceability} turun ke 42,9\%. Sebaliknya, mode \textit{Subgraph}
+memberikan konteks relasional yang cukup tanpa membanjiri \textit{prompt},
+menghasilkan \textit{win rate} keseluruhan \textbf{51,3\%}. Pendekatan
+penyaringan konteks yang ringkas terbukti lebih efektif dalam domain
+akademik~\citep{chen2025acadrag}.
+
+Perbandingan ini menunjukkan bahwa penambahan informasi grafis ke dalam RAG
+tidak bersifat monoton: terdapat titik optimal di mana konteks relasional
+cukup memberikan nilai tambah, namun penambahan berlebih justru kontraproduktif.
+Mode \textit{Subgraph} dengan traversal 2-hop tanpa ekspansi SKOS berada
+pada titik optimal tersebut untuk dataset yang digunakan.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Keterlacakan Jawaban dan Risiko Halusinasi}
+
+Fenomena kontaminasi metode dan kebocoran konteks yang teridentifikasi pada kasus
+    [A01], [B08], dan [B27] menunjukkan kerentanan inheren dari traversal graf
+tanpa mekanisme pembobotan relasi. Pada kasus [B08], traversal 2-hop dari
+simpul I Made Suartana menarik publikasi kolaborator yang tidak relevan dengan
+pertanyaan awal, menghasilkan \textit{win rate} 0\% di seluruh dimensi.
+
+Fenomena ini terjadi akibat sifat traversal yang \textit{breadth-first}: setiap
+relasi yang ditemukan pada kedalaman kedua diperlakukan setara tanpa
+memperhitungkan relevansi kontekstual terhadap kueri awal. Ketika simpul
+kolaborator memiliki banyak publikasi di luar domain pertanyaan, konteks
+yang dihasilkan justru mendistorsi fokus jawaban. Solusi potensial mencakup
+penambahan bobot relevansi pada relasi, pembatasan jumlah simpul per
+loncatan, atau implementasi mekanisme \textit{re-ranking} sebelum konteks
+dikirimkan ke model generator~\citep{nagori2025opensourceagentichybridrag}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Implikasi Temuan terhadap Rumusan Masalah}
+
+Berdasarkan keseluruhan hasil evaluasi, temuan penelitian ini dapat dikaitkan
+dengan dua rumusan masalah utama.
+
+\textbf{RM-1: Bagaimana membangun \textit{Knowledge Graph} dari data publikasi
+    akademik?} \textit{Pipeline} konstruksi KG yang diusulkan berhasil menghasilkan
+1.253 simpul dan 1.970 relasi dari 51 publikasi akademik rumpun Infokom UNESA.
+Seluruh \textit{quality gate} terpenuhi tanpa atribut wajib yang kosong, dan
+81,23\% konsep berhasil dipetakan ke ontologi IEEE, menunjukkan bahwa pendekatan
+yang dikembangkan mampu menghasilkan graf yang terstruktur dan kaya secara
+semantik.
+
+\textbf{RM-2: Bagaimana menerapkan \textit{Hybrid Retrieval} berbasis GraphRAG
+    untuk pencarian literatur akademik?} Evaluasi tiga mode \textit{retrieval}
+menunjukkan bahwa mode \textit{Subgraph} merupakan konfigurasi yang paling
+seimbang: MRR kompetitif (0,6409), Hit@5 terbaik pada kueri relasional (76,67\%),
+dan \textit{win rate} keseluruhan 51,3\% terhadap \textit{baseline} pencarian
+vektor. Mode ini 24,3\% lebih cepat daripada \textit{Hybrid} sambil tetap
+memberikan konteks relasional yang memadai.
+
+Penelitian ini juga mengidentifikasi beberapa keterbatasan yang perlu
+dipertimbangkan. Pertama, skala dataset masih terbatas pada 51 publikasi dan
+belum teruji pada ribuan paper. Kedua, meskipun 675 dari 831 konsep memiliki
+URI IEEE terverifikasi, relevansi semantik pemetaan belum diukur secara
+kuantitatif. Ketiga, modul ekstraksi informasi berbasis GLiNER dan GLiREL
+belum diaktifkan karena belum ada dokumen yang diproses melalui jalur tersebut.
+Keempat, relasi \texttt{CITES} tidak diaktifkan karena data sitasi belum
+terverifikasi. Kelima, evaluator pairwise menggunakan model tunggal
+(Llama 3.3 70B) tanpa \textit{inter-rater agreement}. Keenam, meskipun
+latensi 7,71 detik masih wajar untuk sistem repositori akademik yang memerlukan
+proses \textit{reasoning} dan kueri graf, optimasi lebih lanjut diperlukan untuk
+penggunaan berskala besar.
+% ──────────────────────────────────────────────

@@ -2,59 +2,49 @@
 
 \section{Dataset}
 
-Penelitian ini menggunakan dataset mandiri yang dikumpulkan khusus untuk merepresentasikan aktivitas akademik domain Infokom di Universitas Negeri Surabaya (UNESA), karena ketiadaan dataset publik yang terintegrasi. Data dipilih berdasarkan relevansi dengan aktivitas dosen untuk mendukung \textit{knowledge base}, dengan setiap atribut dirancang spesifik untuk mekanisme \textit{Question-Answering}.
+Penelitian ini menggunakan dataset primer yang disusun secara mandiri untuk merepresentasikan entitas dan aktivitas akademik pada domain Infokom di Universitas Negeri Surabaya (UNESA). Pengembangan dataset ini dilakukan untuk mengatasi keterbatasan ketersediaan basis data publik yang terintegrasi secara komprehensif. Perancangan atribut data difokuskan untuk mengoptimalisasi mekanisme \textit{Question-Answering} berbasis graf (\textit{GraphRAG}), yang mensyaratkan pelacakan asal-usul informasi (\textit{provenance tracking}) hingga ke dokumen asli guna memitigasi halusinasi \textit{LLM} \cite{zheng2024medsumgraph}.
 
 Dataset dihimpun melalui integrasi data dari tiga sumber utama: (1) profil akademik dosen pada pangkalan data PDDIKTI \citep{pddikti_db}, (2) riwayat publikasi \textit{Google Scholar} \citep{google_scholar}, dan (3) metadata artikel ilmiah dari \textit{Scopus} \citep{scopus_db}. Data yang terkumpul mencakup informasi dari dosen di berbagai program studi di bawah rumpun Infokom UNESA, di antaranya: S1 Sains Data (13 dosen), S1 Kecerdasan Artifisial (5), S1 Teknik Informatika (9), S1 Sistem Informasi (10), S2 Informatika (6), dan S1 Teknik Elektro (24). Selain itu, dataset ini juga mencakup data dari program studi terkait seperti S1 Bisnis Digital dan kependidikan teknik lainnya untuk memperkaya cakupan \textit{knowledge base}. Rincian struktur atribut disajikan pada Tabel \ref{tab:deskripsi-dataset}.
 
-\begin{longtable}{|P{0.15\linewidth}|P{0.22\linewidth}|P{0.13\linewidth}|P{0.4\linewidth}|}
-    \caption{Struktur Atribut Dataset Penelitian} \label{tab:deskripsi-dataset}                                                      \\
-
-    \hline
-    \textbf{Dataset} & \textbf{Nama Atribut} & \textbf{Tipe Data} & \textbf{Deskripsi}                                               \\
-    \hline
-    \endfirsthead
-
-    \multicolumn{4}{c}{{\textit{\ref{tab:deskripsi-dataset} (lanjutan).}}}                                                           \\
-    \hline
-    \textbf{Dataset} & \textbf{Nama Atribut} & \textbf{Tipe Data} & \textbf{Deskripsi}                                               \\
-    \hline
-    \endhead
-
-    \hline
-    \multicolumn{4}{r}{\textit{Bersambung ke halaman berikutnya}}                                                                    \\
-    \endfoot
-    \hline
-    \endlastfoot
-
-    \multirow{9}{2.2cm}{\centering \textbf{Data Profil Dosen}}
-                     & nama\_dosen           & String             & Nama lengkap dosen beserta gelar terverifikasi.                  \\* \hhline{|~|---|}
-                     & nama\_norm            & String             & Nama dosen yang dinormalisasi tanpa gelar.                       \\* \hhline{|~|---|}
-                     & nip                   & String             & Nomor Induk Pegawai.                                             \\* \hhline{|~|---|}
-                     & nidn                  & String             & Nomor Induk Dosen Nasional.                                      \\* \hhline{|~|---|}
-                     & prodi                 & String             & Program studi penempatan.                                        \\* \hhline{|~|---|}
-                     & scholar\_id           & String             & ID unik profil Google Scholar dosen.                             \\* \hhline{|~|---|}
-                     & scopus\_id            & String             & ID unik profil Scopus dosen.                                     \\* \hhline{|~|---|}
-                     & sinta\_id             & String             & ID unik profil SINTA dosen.                                      \\* \hhline{|~|---|}
-                     & source                & String             & Sumber akuisisi data (mis.\ \textit{WEB+PDDIKTI}, \textit{WEB}). \\
-    \hline \pagebreak \hline
-
-    \multirow{11}{2.2cm}{\centering \textbf{Data}                                                                                    \\ \textbf{Publikasi} \\ \textbf{Ilmiah} \\ \footnotesize \textit{(Scopus \& Scholar)}}
-                     & Authors               & String             & Daftar nama penulis artikel ilmiah.                              \\* \hhline{|~|---|}
-                     & Author IDs            & String             & Kumpulan ID profil penulis dari paper.                           \\* \hhline{|~|---|}
-                     & Title                 & String             & Judul artikel ilmiah publikasi.                                  \\* \hhline{|~|---|}
-                     & Year                  & Integer            & Tahun publikasi untuk kebutuhan pencarian temporal.              \\* \hhline{|~|---|}
-                     & Journal               & String             & Nama jurnal, konferensi, atau prosiding publikasi.               \\* \hhline{|~|---|}
-                     & Link                  & String             & Tautan langsung menuju halaman \textit{publisher} atau PDF.      \\* \hhline{|~|---|}
-                     & Abstract              & Text               & Ringkasan isi artikel untuk rujukan utama RAG.                   \\* \hhline{|~|---|}
-                     & Keywords              & String             & Kata kunci asli dari penulis untuk perkuatan \textit{graph}.     \\* \hhline{|~|---|}
-                     & Document Type         & String             & Jenis publikasi (mis.\ \textit{Article}, \textit{Conference}).   \\* \hhline{|~|---|}
-                     & DOI                   & String             & \textit{Digital Object Identifier} sebagai resolusi identitas.   \\* \hhline{|~|---|}
-                     & TLDR                  & Text               & \textit{Too Long; Didn't Read}, intisari singkat oleh AI.        \\
-\end{longtable}
+\begin{table}[htbp]
+    \centering
+    \caption{Deskripsi Dataset}
+    \label{tab:deskripsi-dataset}
+    \begingroup
+    \setlength{\tabcolsep}{2pt}
+    \scriptsize
+    \begin{tabular}{|P{0.14\textwidth}|>{\raggedright\arraybackslash}p{0.20\textwidth}|P{0.12\textwidth}|>{\raggedright\arraybackslash}p{0.40\textwidth}|}
+        \hline
+        \textbf{Dataset} & \textbf{Nama Atribut} & \textbf{Tipe Data} & \textbf{Deskripsi}                                                              \\ \hline
+        \multirow{9}{=}{\centering \textbf{Data Profil Dosen}}
+                         & nama\_dosen           & String             & Nama lengkap dosen beserta gelar akademik yang telah diverifikasi               \\* \hhline{|~|---|}
+                         & nama\_norm            & String             & Nama dosen hasil normalisasi tanpa gelar untuk pencocokan entitas               \\* \hhline{|~|---|}
+                         & nip                   & String             & Nomor Induk Pegawai sebagai identitas administratif dosen                       \\* \hhline{|~|---|}
+                         & nidn                  & String             & Nomor Induk Dosen Nasional sebagai identitas dosen pada pangkalan data nasional \\* \hhline{|~|---|}
+                         & prodi                 & String             & Program studi tempat dosen berafiliasi                                          \\* \hhline{|~|---|}
+                         & scholar\_id           & String             & ID profil Google Scholar untuk menghubungkan dosen dengan publikasi ilmiah      \\* \hhline{|~|---|}
+                         & scopus\_id            & String             & ID profil Scopus untuk menelusuri rekam publikasi terindeks                     \\* \hhline{|~|---|}
+                         & sinta\_id             & String             & ID profil SINTA untuk pelacakan kinerja akademik dosen                          \\* \hhline{|~|---|}
+                         & source                & String             & Sumber akuisisi data seperti \textit{WEB+PDDIKTI} atau \textit{WEB}             \\ \hline
+        \multirow{11}{=}{\centering \textbf{Data} \\ \textbf{Publikasi} \\ \textbf{Ilmiah} \\ \footnotesize \textit{(Scopus \& Scholar)}}
+                         & Authors               & String             & Daftar penulis yang berkontribusi dalam artikel ilmiah                          \\* \hhline{|~|---|}
+                         & Author IDs            & String             & Daftar ID penulis untuk menghubungkan publikasi dengan profil akademik          \\* \hhline{|~|---|}
+                         & Title                 & String             & Judul publikasi ilmiah sebagai representasi utama dokumen                       \\* \hhline{|~|---|}
+                         & Year                  & Integer            & Tahun publikasi untuk mendukung pencarian dan analisis temporal                 \\* \hhline{|~|---|}
+                         & Journal               & String             & Nama jurnal, konferensi, atau prosiding tempat publikasi diterbitkan            \\* \hhline{|~|---|}
+                         & Link                  & String             & Tautan menuju halaman penerbit, repositori, atau dokumen PDF                    \\* \hhline{|~|---|}
+                         & Abstract              & Text               & Abstrak artikel sebagai sumber konteks utama untuk proses RAG                   \\* \hhline{|~|---|}
+                         & Keywords              & String             & Kata kunci publikasi untuk memperkuat relasi tematik dalam graf                 \\* \hhline{|~|---|}
+                         & Document Type         & String             & Jenis publikasi seperti \textit{Article} atau \textit{Conference Paper}         \\* \hhline{|~|---|}
+                         & DOI                   & String             & \textit{Digital Object Identifier} sebagai identitas digital unik publikasi     \\* \hhline{|~|---|}
+                         & TLDR                  & Text               & Intisari singkat artikel yang dihasilkan dengan bantuan \textit{LLM}            \\ \hline
+    \end{tabular}
+    \endgroup
+\end{table}
 
 \section{Alur Penelitian}
 
-Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \textit{Knowledge Graph} dan mengimplementasikan \textit{Hybrid Vector-Graph Retrieval} dalam pencarian literatur domain Informatika dan Komputer di UNESA. Gambaran umum alur ini ditunjukkan pada \ref{fig:flowchart-utama}.
+Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \textit{Knowledge Graph} dan mengimplementasikan \textit{Hybrid Vector-Graph Retrieval} dalam pencarian literatur domain Infokom di UNESA. Gambaran umum alur ini ditunjukkan pada \ref{fig:flowchart-utama}.
 
 % ============================================
 % FLOWCHART METODOLOGI TUGAS AKHIR
@@ -69,78 +59,79 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
 % - Off-page    : Pentagon (rujukan ke diagram detail)
 % - Arrow       : Solid = alur utama, Dashed = rujukan detail
 \tikzset{
-    startstop/.style={rectangle, rounded corners=5pt, minimum width=2.8cm, minimum height=0.8cm, text centered, draw=black, line width=0.6pt, fill=green!20, font=\scriptsize\bfseries},
-    process/.style={rectangle, minimum width=2.8cm, minimum height=0.8cm, text centered, draw=black, line width=0.6pt, fill=blue!12, font=\scriptsize},
-    predefined/.style={rectangle, minimum width=2.8cm, minimum height=0.8cm, text centered, draw=black, line width=0.6pt, fill=orange!20, font=\scriptsize,
+    startstop/.style={rectangle, rounded corners=5pt, minimum width=2.55cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=green!20, font=\scriptsize\bfseries, inner sep=2pt},
+    process/.style={rectangle, minimum width=2.55cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=blue!12, font=\scriptsize, inner sep=2pt},
+    predefined/.style={rectangle, minimum width=2.55cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=orange!20, font=\scriptsize, inner sep=2pt,
             path picture={\draw[line width=0.5pt] ([xshift=3pt]path picture bounding box.north west) -- ([xshift=3pt]path picture bounding box.south west);
                     \draw[line width=0.5pt] ([xshift=-3pt]path picture bounding box.north east) -- ([xshift=-3pt]path picture bounding box.south east);}},
-    data/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=1.8cm, minimum height=0.6cm, text centered, draw=black, line width=0.6pt, fill=yellow!20, font=\scriptsize},
-    database/.style={cylinder, shape border rotate=90, draw=black, line width=0.6pt, minimum height=0.8cm, minimum width=1.2cm, fill=purple!15, font=\scriptsize, aspect=0.35},
-    decision/.style={diamond, minimum width=1.8cm, minimum height=1.2cm, text centered, draw=black, line width=0.6pt, fill=red!12, font=\scriptsize, inner sep=1pt, aspect=2},
+    data/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=1.75cm, minimum height=0.58cm, text centered, draw=black, line width=0.55pt, fill=yellow!20, font=\scriptsize, inner sep=2pt},
+    database/.style={cylinder, shape border rotate=90, draw=black, line width=0.55pt, minimum height=0.76cm, minimum width=1.15cm, fill=purple!15, font=\scriptsize, aspect=0.35, inner sep=2pt},
+    decision/.style={diamond, minimum width=1.7cm, minimum height=1.05cm, text centered, draw=black, line width=0.55pt, fill=red!12, font=\scriptsize, inner sep=1pt, aspect=2},
     onpage/.style={circle, minimum size=0.5cm, draw=black, line width=0.6pt, fill=white, font=\scriptsize\bfseries},
-    offpage/.style={shape=signal, signal to=south, draw, fill=white, drop shadow, text=black, font=\bfseries\scriptsize, inner sep=3pt, minimum width=0.5cm, minimum height=0.5cm},
-    arrow/.style={thick, -Stealth, line width=0.5pt},
-    subbox/.style={draw=orange!70!black, line width=0.8pt, rounded corners=3pt, fill=orange!5, inner sep=8pt}
+    offpage/.style={shape=signal, signal to=south, draw, fill=white, drop shadow, text=black, font=\bfseries\scriptsize, inner sep=2.5pt, minimum width=0.48cm, minimum height=0.48cm},
+    arrow/.style={thick, -Stealth, line width=0.5pt}
 }
 
 % FLOWCHART UTAMA — Vertikal Top-to-Bottom (ANSI Standard)
 \begin{figure}[htbp]
     \centering
-    \begin{tikzpicture}[node distance=0.7cm, scale=1, transform shape]
+    \begin{adjustbox}{max width=0.72\textwidth, max totalheight=0.68\textheight, center}
+        \begin{tikzpicture}[node distance=0.7cm, scale=1, transform shape]
 
-        % === ALUR UTAMA (Vertikal) ===
-        \node (start) [startstop] {Mulai};
+            % === ALUR UTAMA (Vertikal) ===
+            \node (start) [startstop] {Mulai};
 
-        \node (datacoll) [predefined, below=of start, text width=2.4cm] {Pengumpulan Data};
+            \node (datacoll) [predefined, below=of start, text width=2.4cm] {Pengumpulan Data};
 
-        \node (dec1) [decision, below=of datacoll, text width=1.5cm] {Data\\Lengkap?};
+            \node (dec1) [decision, below=of datacoll, text width=1.5cm] {Data\\Lengkap?};
 
-        \node (dataprep) [predefined, below=of dec1, text width=2.4cm] {Persiapan Data};
+            \node (dataprep) [predefined, below=of dec1, text width=2.4cm] {Persiapan Data};
 
-        \node (kgconst) [predefined, below=of dataprep, text width=2.4cm] {Konstruksi KG};
+            \node (kgconst) [predefined, below=of dataprep, text width=2.4cm] {Konstruksi KG};
 
-        \node (ragsys) [predefined, below=of kgconst, text width=2.4cm] {Hybrid\\GraphRAG};
+            \node (ragsys) [predefined, below=of kgconst, text width=2.4cm] {Hybrid\\GraphRAG};
 
-        \node (eval) [process, below=of ragsys, text width=2.4cm] {Evaluasi Sistem};
+            \node (eval) [process, below=of ragsys, text width=2.4cm] {Evaluasi Sistem};
 
-        \node (dec2) [decision, below=of eval, text width=1.5cm] {Memenuhi\\Threshold?};
+            \node (dec2) [decision, below=of eval, text width=1.5cm] {Memenuhi\\Threshold?};
 
-        \node (gui) [process, below=of dec2, text width=2.4cm] {Implementasi GUI};
+            \node (gui) [process, below=of dec2, text width=2.4cm] {Implementasi GUI};
 
-        \node (endnode) [startstop, below=of gui] {Selesai};
+            \node (endnode) [startstop, below=of gui] {Selesai};
 
-        % === OFF-PAGE CONNECTORS (konsisten di kanan) ===
-        \node (refA) [offpage, right=1.0cm of datacoll] {A};
-        \node (refB) [offpage, right=1.0cm of dataprep] {B};
-        \node (refC) [offpage, right=1.0cm of kgconst] {C};
-        \node (refD) [offpage, right=1.0cm of ragsys] {D};
+            % === OFF-PAGE CONNECTORS (konsisten di kanan) ===
+            \node (refA) [offpage, right=1.0cm of datacoll] {A};
+            \node (refB) [offpage, right=1.0cm of dataprep] {B};
+            \node (refC) [offpage, right=1.0cm of kgconst] {C};
+            \node (refD) [offpage, right=1.0cm of ragsys] {D};
 
-        % Garis putus-putus: proses → connector (rujukan ke diagram detail)
-        \draw [densely dashed, ->] (datacoll) -- (refA);
-        \draw [densely dashed, ->] (dataprep) -- (refB);
-        \draw [densely dashed, ->] (kgconst) -- (refC);
-        \draw [densely dashed, ->] (ragsys) -- (refD);
+            % Garis putus-putus: proses → connector (rujukan ke diagram detail)
+            \draw [densely dashed, ->] (datacoll) -- (refA);
+            \draw [densely dashed, ->] (dataprep) -- (refB);
+            \draw [densely dashed, ->] (kgconst) -- (refC);
+            \draw [densely dashed, ->] (ragsys) -- (refD);
 
-        % === ALUR UTAMA (Panah solid ke bawah) ===
-        \draw [arrow] (start) -- (datacoll);
-        \draw [arrow] (datacoll) -- (dec1);
-        \draw [arrow] (dec1) -- node[right, font=\scriptsize] {Ya} (dataprep);
-        \draw [arrow] (dataprep) -- (kgconst);
-        \draw [arrow] (kgconst) -- (ragsys);
-        \draw [arrow] (ragsys) -- (eval);
-        \draw [arrow] (eval) -- (dec2);
-        \draw [arrow] (dec2) -- node[right, font=\scriptsize] {Ya} (gui);
-        \draw [arrow] (gui) -- (endnode);
+            % === ALUR UTAMA (Panah solid ke bawah) ===
+            \draw [arrow] (start) -- (datacoll);
+            \draw [arrow] (datacoll) -- (dec1);
+            \draw [arrow] (dec1) -- node[right, font=\scriptsize] {Ya} (dataprep);
+            \draw [arrow] (dataprep) -- (kgconst);
+            \draw [arrow] (kgconst) -- (ragsys);
+            \draw [arrow] (ragsys) -- (eval);
+            \draw [arrow] (eval) -- (dec2);
+            \draw [arrow] (dec2) -- node[right, font=\scriptsize] {Ya} (gui);
+            \draw [arrow] (gui) -- (endnode);
 
-        % === LOOP 1: Data tidak lengkap → kembali ke Pengumpulan Data ===
-        \draw [arrow] (dec1.west) -- node[above, font=\scriptsize] {Tidak} ++(-1.5,0)
-        |- (datacoll.west);
+            % === LOOP 1: Data tidak lengkap → kembali ke Pengumpulan Data ===
+            \draw [arrow] (dec1.west) -- node[above, font=\scriptsize] {Tidak} ++(-1.5,0)
+            |- (datacoll.west);
 
-        % === LOOP 2: Evaluasi tidak memenuhi → kembali ke Hybrid GraphRAG ===
-        \draw [arrow] (dec2.west) -- node[above, font=\scriptsize] {Tidak} ++(-1.5,0)
-        |- (ragsys.west);
+            % === LOOP 2: Evaluasi tidak memenuhi → kembali ke Hybrid GraphRAG ===
+            \draw [arrow] (dec2.west) -- node[above, font=\scriptsize] {Tidak} ++(-1.5,0)
+            |- (ragsys.west);
 
-    \end{tikzpicture}
+        \end{tikzpicture}
+    \end{adjustbox}
     \caption{Alur metodologi penelitian}
     \label{fig:flowchart-utama}
 \end{figure}
@@ -148,80 +139,59 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=10pt]
 
     % 1. Data Collection
-    \item \textbf{Pengumpulan Data (\textit{Data Collection})}
+    \item \textbf{Pengumpulan Data}
 
-          Tahap ini menghimpun dua kategori data utama: (1) data profil dosen beserta identitas indeksasinya, dan (2) data publikasi ilmiah beserta metadata pendukung. Kedua kategori ini menjadi fondasi untuk membangun \textit{Scholarly Knowledge Graph} (\textit{SKG}) yang merepresentasikan ekosistem publikasi Infokom UNESA. Proses akuisisi data dilakukan secara bertahap melalui \textit{pipeline} modular yang mengintegrasikan enam sumber data, sebagaimana ditunjukkan pada \ref{fig:detail-data-collection}.
-
-          \begin{figure}[htbp]
-              \centering
-              \begin{tikzpicture}[scale=1, transform shape]
-                  \node [subbox, fit={(-0.2,0.2) (4.8,-6.3)}, label={[font=\scriptsize\bfseries]above:Detail Data Collection}] {};
-
-                  \node (subA) [offpage] at (2.3, -0.1) {A};
-                  % Baris 1: Sumber Data Profil
-                  \node (db1) [database, font=\tiny] at (0.6, -1.3) {Web Prodi};
-                  \node (db2) [database, font=\tiny] at (2.3, -1.3) {PDDikti};
-                  \node (db3) [database, font=\tiny] at (4.0, -1.3) {SimCV};
-                  % Baris 2: Sumber ID \& Publikasi
-                  \node (db4) [database, font=\tiny] at (0.6, -2.5) {SINTA};
-                  \node (db5) [database, font=\tiny] at (2.3, -2.5) {Scholar};
-                  \node (db6) [database, font=\tiny] at (4.0, -2.5) {Scopus};
-                  % Pipeline
-                  \node (pipe) [process, text width=2.2cm] at (2.3, -3.7) {Pipeline\\Modular};
-                  \node (rawdata) [data] at (2.3, -4.9) {Raw Dataset};
-                  \node (subB) [offpage] at (2.3, -6.0) {B};
-
-                  \draw [arrow] (subA) -- (db2);
-                  \draw [arrow] (db1) -- (pipe);
-                  \draw [arrow] (db2) -- (pipe);
-                  \draw [arrow] (db3) -- (pipe);
-                  \draw [arrow] (db4) -- (pipe);
-                  \draw [arrow] (db5) -- (pipe);
-                  \draw [arrow] (db6) -- (pipe);
-                  \draw [arrow] (pipe) -- (rawdata);
-                  \draw [arrow] (rawdata) -- (subB);
-              \end{tikzpicture}
-              \caption{Detail proses \textit{Data Collection}}
-              \label{fig:detail-data-collection}
-          \end{figure}
+          Tahap pengumpulan data dilakukan melalui dua jalur utama, yaitu (1) pengumpulan profil dosen beserta identitas indeksasi akademiknya dan (2) pengumpulan publikasi ilmiah dosen beserta metadata pendukungnya. Data profil dosen diperoleh dari laman resmi program studi, PDDIKTI, SIAKADU, SimCV UNESA, SINTA, SciVal, dan Google Scholar untuk memvalidasi nama, NIP, NIDN, program studi, serta ID indeksasi dosen. Berdasarkan identitas yang telah tervalidasi tersebut, data publikasi kemudian diakuisisi dari \textit{SciVal} dan \textit{Google Scholar}, lalu diperkaya dengan metadata tambahan seperti abstrak, DOI, kata kunci, tautan dokumen, dan ringkasan TLDR. Seluruh data hasil akuisisi menjadi fondasi untuk membangun \textit{Knowledge Graph} yang merepresentasikan ekosistem publikasi Infokom UNESA.
 
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
               \item \textbf{Data Profil Dosen}
 
-                    Profil dosen dikumpulkan melalui \textit{pipeline} bertahap yang menggabungkan beberapa sumber. Laman web resmi setiap program studi UNESA dijadikan sebagai sumber utama (\textit{source of truth}) karena memuat nama lengkap beserta gelar, tautan profil akademik (\textit{Google Scholar}, \textit{Scopus}, \textit{SINTA}), serta NIP dosen. Data ini kemudian diperkaya secara bertahap: API PDDikti \citep{pddikti_db} menyediakan NIDN dan NIP yang otoritatif, dilanjutkan dengan verifikasi identitas melalui \textit{SimCV UNESA} (\textit{cv.unesa.ac.id}) untuk memastikan keakuratan nama dan afiliasi program studi.
+                    Profil dosen dikumpulkan melalui \textit{pipeline} modular bertahap untuk menjamin otoritas identitas akademik. Langkah awal dilakukan dengan melakukan \textit{scraping} pada laman web resmi program studi di lingkungan UNESA untuk memperoleh nama dosen, NIP, nama program studi, dan \textit{Scholar ID} awal. Data ini kemudian diintegrasikan dengan data profil resmi dari \textit{API PDDikti} \citep{pddikti_db}. Penggabungan kedua sumber data ini dilakukan menggunakan \textit{smart merge} dengan algoritma pencocokan nama bertingkat, yang memprioritaskan pencocokan nama persis (\textit{exact name matching}), kesamaan NIDN, kecocokan \textit{substring}, dan pencocokan berbasis kedekatan string (\textit{fuzzy matching} menggunakan algoritma \textit{SequenceMatcher} dengan ambang batas kecocokan $\ge 0,85$).
 
-                    Selanjutnya, ID indeksasi dosen yang belum tersedia dari sumber sebelumnya dilengkapi melalui halaman departemen SINTA \citep{sinta_database} untuk memperoleh \textit{SINTA ID}, \textit{SciVal} \citep{scopus_db} untuk \textit{Scopus ID}, serta verifikasi profil \textit{Google Scholar} \citep{google_scholar} untuk \textit{Scholar ID}. Setiap tahap melakukan pencocokan nama (\textit{fuzzy matching}) untuk mengasosiasikan data dari sumber berbeda ke entitas dosen yang sama, sehingga menghindari duplikasi.
+                    Setelah basis data profil dosen terbentuk, proses pengayaan (\textit{enrichment}) dilakukan untuk melengkapi nomor identitas dan tautan profil indeksasi global. Nomor identitas dosen (NIP dan NIDN) divalidasi dan diperkaya menggunakan basis data SIAKADU dan \textit{SimCV UNESA} (\textit{cv.unesa.ac.id}) yang menyediakan identitas resmi beserta gelar akademik lengkap. Selanjutnya, pencarian dan verifikasi \textit{SINTA ID} dilakukan secara otomatis dengan merayapi (\textit{crawling}) laman departemen SINTA \citep{sinta_database}. Untuk \textit{Scopus ID}, pengayaan dilakukan menggunakan otomasi pencarian profil pada portal \textit{SciVal} \citep{scopus_db}. Terakhir, verifikasi dan pencarian \textit{Scholar ID} dilakukan menggunakan \textit{Scholar Verification Client} berbasis pencarian Google dan Scholar, yang dikonfigurasikan dengan proksi \textit{Bright Data} (seperti \textit{Web Unlocker}) guna menghindari pemblokiran IP (\textit{IP blocking}) dan \textit{CAPTCHA} dari Google Scholar \citep{google_scholar}. Setelah data lengkap, dilakukan penghapusan duplikasi (\textit{deduplication}) sebelum disimpan ke dalam \textit{database} Supabase.
 
               \item \textbf{Data Publikasi Ilmiah}
 
-                    Data publikasi dihimpun dari dua sumber utama. Pertama, metadata publikasi terindeks \textit{Scopus} diekspor secara otomatis melalui antarmuka \textit{SciVal} \citep{scopus_db} untuk setiap dosen yang telah memiliki \textit{Scopus ID}. Data yang diperoleh meliputi judul, penulis, tahun, jurnal, DOI, dan tipe dokumen.
+                    Data publikasi dikumpulkan dari dua saluran utama berdasarkan daftar ID indeksasi dosen yang telah divalidasi. Pertama, metadata publikasi terindeks \textit{Scopus} diekspor secara otomatis melalui antarmuka \textit{SciVal} \citep{scopus_db} untuk seluruh dosen yang memiliki \textit{Scopus ID}.
 
-                    Kedua, publikasi dari \textit{Google Scholar} \citep{google_scholar} diakuisisi menggunakan \textit{SerpAPI} berdasarkan \textit{Scholar ID} masing-masing dosen. Sebelum disimpan, dilakukan deduplikasi silang terhadap data \textit{Scopus} untuk mencegah data ganda. Seluruh publikasi kemudian diperkaya metadatanya: \textit{CrossRef API} digunakan untuk memverifikasi DOI dan memperoleh kata kunci, \textit{scraping} halaman \textit{publisher} untuk mengekstrak abstrak, serta \textit{Semantic Scholar API} untuk menghasilkan ringkasan singkat (\textit{TLDR}). Strategi pengayaan bertingkat ini memaksimalkan kelengkapan data meskipun tidak semua sumber memberikan informasi yang sama.
+                    Kedua, publikasi dari \textit{Google Scholar} \citep{google_scholar} diakuisisi menggunakan \textit{ScholarClient} yang terintegrasi dengan \textit{SerpAPI}. Penggunaan \textit{SerpAPI} (menggunakan mesin pencarian \textit{google\_scholar\_author} dengan penomoran halaman otomatis via parameter \textit{start} dan \textit{num}) dilakukan untuk menjamin kestabilan akuisisi data dan mengatasi pembatasan penomoran halaman (\textit{pagination}) yang biasa terjadi pada pemanggilan HTTP GET biasa. Setelah kedua dataset terkumpul, dilakukan penggabungan (\textit{merge}) dan deduplikasi lintas sumber (\textit{cross-source deduplication}) berbasis judul dan DOI.
+
+                    Kumpulan publikasi hasil penggabungan kemudian masuk ke dalam \textit{pipeline} pengayaan metadata bertingkat untuk melengkapi atribut wajib \textit{Knowledge Graph}:
+                    \begin{enumerate}[label=(\arabic*), leftmargin=0.5cm, itemsep=3pt]
+                        \item \textbf{\textit{Semantic Scholar API} \& \textit{OpenAlex API}:} Digunakan untuk mencari \textit{abstract}, DOI, tahun terbit, nama \textit{venue}, tipe dokumen, dan tautan PDF/landing page berdasarkan kecocokan judul atau DOI.
+                        \item \textbf{\textit{Publisher Web Scraping} \& \textit{Groq LLM Extraction}:} Jika data \textit{abstract} atau kata kunci masih kosong atau terpotong (seperti abstrak \textit{Scholar} yang terpotong tanda \textit{ellipsis}), sistem melakukan \textit{scraping} proksi langsung ke situs \textit{publisher}. Apabila struktur HTML \textit{publisher} sulit diurai secara langsung, konten tekstual mentah dikirimkan ke model \textit{LLM} via \textit{Groq API} sebagai \textit{agentic fallback} untuk mengekstrak \textit{abstract}, \textit{keywords}, dan DOI secara otomatis.
+                        \item \textbf{\textit{Groq TLDR Generation}:} Setiap abstrak lengkap yang berhasil dikumpulkan diproses menggunakan model bahasa besar via \textit{Groq API} untuk menghasilkan ringkasan \textit{TLDR} satu kalimat (maksimal 55 kata) yang terfokus pada entitas ontologi (seperti \textit{Problem}, \textit{Method}, \textit{Model}, \textit{Dataset}, dan \textit{Metric}).
+                        \item \textbf{Ekstraksi Kata Kunci IEEE:} Jika publikasi tidak memiliki kata kunci, dilakukan pembuatan kata kunci berbasis tesaurus kosakata terkontrol \textit{IEEE Thesaurus} secara otomatis dari teks abstrak.
+                        \item \textbf{\textit{Author Resolution}:} Nama-nama penulis pada publikasi dipetakan kembali ke basis data dosen internal menggunakan metode penyelarasan nama untuk menghasilkan daftar \textit{Author IDs} yang terhubung dengan \textit{Knowledge Graph}.
+                    \end{enumerate}
           \end{enumerate}
+
 
           % 2. Data preparation
     \item \textbf{Persiapan Data (\textit{Data Preparation})}
 
-          \hspace*{0.75cm}Data mentah dari tahap sebelumnya selanjutnya diproses untuk menjamin kualitas \textit{retrieval} (\ref{fig:detail-data-preparation}), melalui tahapan berikut:
+          \hspace*{0.75cm}Data mentah dari tahap sebelumnya selanjutnya diproses untuk menjamin kualitas \textit{retrieval}, sebagaimana ditunjukkan pada Gambar \ref{fig:detail-data-preparation}.
 
           \begin{figure}[htbp]
               \centering
-              \begin{tikzpicture}[scale=1, transform shape]
-                  \node [subbox, fit={(0,0.2) (3.8,-6.3)}, label={[font=\scriptsize\bfseries]above:Detail Data Preparation}] {};
+              \begin{adjustbox}{max width=0.88\textwidth, max totalheight=0.58\textheight, center}
+                  \begin{tikzpicture}[
+                          scale=1,
+                          transform shape,
+                          process/.style={rectangle, rounded corners=2pt, minimum width=3.1cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=gray!8, font=\scriptsize, inner sep=2pt},
+                          data/.style={rectangle, rounded corners=2pt, minimum width=2.8cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=white, font=\scriptsize, inner sep=2pt},
+                          arrow/.style={-Stealth, line width=0.55pt, draw=black}
+                      ]
+                      \node (std1) [process, text width=2.6cm] at (1.9, -0.1) {Data Cleaning\\\& Normalization};
+                      \node (std2) [process, text width=2.6cm] at (1.9, -1.3) {Text\\Chunking};
+                      \node (std3) [process, text width=2.6cm] at (1.9, -2.5) {Embedding\\Generation};
+                      \node (cleandata) [data, text width=2.2cm] at (1.9, -3.7) {Clean Data};
 
-                  \node (subB2) [offpage] at (1.9, -0.1) {B};
-                  \node (std1) [process, text width=2.2cm] at (1.9, -1.3) {Data Cleaning\\\& Normalization};
-                  \node (std2) [process, text width=2.2cm] at (1.9, -2.5) {Text\\Chunking};
-                  \node (std3) [process, text width=2.2cm] at (1.9, -3.7) {Embedding\\Generation};
-                  \node (cleandata) [data, text width=1.8cm] at (1.9, -4.9) {Clean Data};
-                  \node (subOff) [offpage] at (1.9, -6.0) {C};
-
-                  \draw [arrow] (subB2) -- (std1);
-                  \draw [arrow] (std1) -- (std2);
-                  \draw [arrow] (std2) -- (std3);
-                  \draw [arrow] (std3) -- (cleandata);
-                  \draw [arrow] (cleandata) -- (subOff);
-              \end{tikzpicture}
+                      \draw [arrow] (std1) -- (std2);
+                      \draw [arrow] (std2) -- (std3);
+                      \draw [arrow] (std3) -- (cleandata);
+                  \end{tikzpicture}
+              \end{adjustbox}
               \caption{Detail proses \textit{Data Preparation}}
               \label{fig:detail-data-preparation}
           \end{figure}
@@ -229,237 +199,278 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=4pt]
               \item \textbf{\textit{Data Cleaning} \& \textit{Normalization}:} Menangani \textit{missing values} dan menstandarisasi variasi penulisan nama institusi serta singkatan gelar untuk mencegah duplikasi entitas dalam graf.
 
-              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Judul, abstrak, TLDR, dan kata kunci publikasi disusun menjadi unit teks akademik yang siap diindeks. Pada implementasi, potongan teks dibatasi sekitar 2.024 karakter dengan \textit{overlap} 50 karakter agar bukti tekstual tetap cukup utuh ketika digunakan sebagai konteks jawaban.
+              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Judul, TLDR, abstrak, dan kata kunci digabungkan sebagai representasi tekstual publikasi, kemudian dipotong secara sadar kalimat dengan batas maksimum 2.024 karakter dan \textit{overlap} 50 karakter. Strategi ini menjaga keutuhan unit informasi sekaligus membatasi \textit{noise} dan penggunaan token.
 
-              \item \textbf{\textit{Embedding Generation}:} Setiap \textit{chunk} dikonversi menjadi vektor berdimensi 1.024 menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B}. Vektor ini digunakan untuk pencarian semantik pada vector database sehingga sistem tidak hanya bergantung pada pencocokan kata kunci leksikal.
+              \item \textbf{\textit{Embedding Generation}:} Setiap \textit{chunk}, entitas, relasi, dan himpunan kata kunci dikonversi menjadi vektor 1.024 dimensi menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B}. Representasi tersebut memungkinkan pencarian berbasis makna (\textit{semantic search}) daripada pencocokan kata kunci leksikal.
           \end{enumerate}
 
 
           % 3. Construction of the Knowledge Graph
     \item \textbf{Konstruksi \textit{Knowledge Graph}}
 
-          \hspace*{0.75cm}Tahap ini mentransformasi data yang telah dibersihkan menjadi basis pengetahuan terstruktur untuk penalaran relasional. Seperti ditunjukkan pada \ref{fig:detail-kg-construction}, data terstruktur (metadata dosen/publikasi) dan tidak terstruktur (abstrak) diproses melalui dua jalur paralel yang disatukan melalui \textit{Entity Linking}.
+          \hspace*{0.75cm}Tahap konstruksi \textit{Knowledge Graph} mentransformasikan data hasil persiapan menjadi basis pengetahuan terstruktur yang mendukung penalaran relasional. Alur konstruksi ditunjukkan pada \ref{fig:detail-kg-construction}, dimulai dari pemodelan ontologi, pemrosesan data terstruktur dan tidak terstruktur, \textit{entity linking}, hingga penyimpanan hasil pada indeks graf dan indeks vektor.
 
-          \begin{figure}[htbp]
-              \centering
-              \begin{tikzpicture}[scale=1, transform shape]
-                  % Outer box — widened to fit all 2.8cm-wide process nodes with margin
-                  \node [subbox, fit={(-1.0,0.3) (8.0,-12.9)}, label={[font=\scriptsize\bfseries]above:Detail KG Construction}] {};
+          \begin{center}
+              \begin{adjustbox}{max width=0.94\textwidth, max totalheight=0.70\textheight, center}
+                  \begin{tikzpicture}[
+                          x=0.9cm,
+                          y=0.74cm,
+                          process/.style={rectangle, rounded corners=2pt, minimum width=2.35cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=gray!8, font=\scriptsize, inner sep=2pt},
+                          data/.style={rectangle, rounded corners=2pt, minimum width=1.9cm, minimum height=0.68cm, text centered, draw=black, line width=0.55pt, fill=white, font=\scriptsize, inner sep=2pt},
+                          database/.style={cylinder, shape border rotate=90, draw=black, line width=0.55pt, minimum height=0.76cm, minimum width=1.2cm, fill=gray!10, font=\scriptsize, aspect=0.35, inner sep=2pt},
+                          arrow/.style={-Stealth, line width=0.55pt, draw=black}
+                      ]
+                      % Kanvas dikompakkan dengan satuan koordinat agar font tetap konsisten pada format A5.
+                      \node (ontmod) [process, text width=2.2cm] at (3.0, -0.4) {Ontology\\Modeling};
+                      \node (input) [process, text width=2.2cm] at (3.0, -1.7) {Parallel\\Processing};
 
-                  \node (subC2) [offpage] at (3.0, -0.1) {C};
+                      % === TWO INPUT SOURCES ===
+                      \node (structured) [data, fill=gray!12, text width=1.4cm] at (1.0, -3.0) {Structured\\Data};
+                      \node (unstructured) [data, fill=gray!12, text width=1.55cm, minimum width=1.9cm] at (5.5, -3.0) {Unstructured\\Data};
 
-                  % 1. Ontology Modeling
-                  \node (ontmod) [process, text width=2.2cm] at (3.0, -1.3) {Ontology\\Modeling};
+                      % === STRUCTURED PATH (Left) ===
+                      \node (entres_struct) [process, text width=1.8cm] at (1.0, -4.4) {Entity\\Resolution};
 
-                  \node (input) [process, text width=2.2cm] at (3.0, -2.6) {Parallel\\Processing};
+                      % === UNSTRUCTURED PATH (Right) ===
+                      \node (textproc) [process, text width=1.8cm] at (5.5, -4.4) {Text\\Processing};
+                      \node (coref) [process, text width=1.8cm] at (5.5, -5.8) {Coreference\\Resolution};
 
-                  % === TWO INPUT SOURCES ===
-                  \node (structured) [data, fill=gray!30, text width=1.4cm] at (1.0, -3.9) {Structured\\Data};
-                  \node (unstructured) [data, fill=gray!30, text width=1.4cm] at (5.5, -3.9) {Unstructured\\Data};
+                      % NER dan pemetaan relasi berbasis ontologi
+                      \node (ner) [process, minimum width=1.9cm, minimum height=0.7cm, text width=1.1cm] at (4.5, -7.2) {NER\\(GLiNER)};
+                      \node (re) [process, minimum width=2.1cm, minimum height=0.7cm, text width=1.5cm] at (6.5, -7.2) {Relation\\Mapping};
+                      \node (lexgraph) [data, text width=1.6cm] at (5.5, -8.5) {Lexical\\Graph};
 
-                  % === STRUCTURED PATH (Left) ===
-                  \node (entres_struct) [process, text width=1.8cm] at (1.0, -5.3) {Entity\\Resolution};
+                      % Entity Linking — moved left for clear separation from Lexical Graph
+                      \node (entlink) [process, text width=2.2cm] at (2.0, -8.5) {Entity Linking};
 
-                  % === UNSTRUCTURED PATH (Right) ===
-                  \node (textproc) [process, text width=1.8cm] at (5.5, -5.3) {Text\\Processing};
-                  \node (coref) [process, text width=1.8cm] at (5.5, -6.7) {Coreference\\Resolution};
+                      % Indexing
+                      \node (indexing) [process, text width=2.2cm] at (3.0, -9.8) {Dual Indexing};
 
-                  % NER & RE — shifted outward, explicit min-width to avoid 2.8cm default
-                  \node (ner) [process, minimum width=1.9cm, minimum height=0.7cm, text width=1.1cm] at (4.5, -8.1) {NER\\(GLiNER)};
-                  \node (re) [process, minimum width=1.9cm, minimum height=0.7cm, text width=1.1cm] at (6.5, -8.1) {Ontology\\Mapping};
-                  \node (lexgraph) [data, text width=1.6cm] at (5.5, -9.4) {Lexical\\Graph};
+                      % === OUTPUT DATABASES ===
+                      \node (graphdb) [database] at (1.5, -11.6) {Graph DB};
+                      \node (vectordb) [database] at (4.5, -11.6) {Vector DB};
 
-                  % Entity Linking — moved left for clear separation from Lexical Graph
-                  \node (entlink) [process, text width=2.2cm] at (2.0, -9.4) {Entity Linking};
+                      % === ARROWS - Input Split ===
+                      \draw [arrow] (ontmod) -- (input);
+                      \draw [arrow] (input) -| (structured);
+                      \draw [arrow] (input) -| (unstructured);
 
-                  % Indexing
-                  \node (indexing) [process, text width=2.2cm] at (3.0, -10.7) {Dual Indexing};
+                      % === ARROWS - Structured Path (Left) ===
+                      \draw [arrow] (structured) -- (entres_struct);
+                      \draw [arrow] (entres_struct.south) -- (1.0, -6.6) -| (entlink.north);
 
-                  % === OUTPUT DATABASES ===
-                  \node (graphdb) [database] at (1.5, -11.9) {Graph DB};
-                  \node (vectordb) [database] at (4.5, -11.9) {Vector DB};
-                  \node (subD2) [offpage] at (3.0, -12.6) {D};
-
-                  % === ARROWS - Input Split ===
-                  \draw [arrow] (subC2) -- (ontmod);
-                  \draw [arrow] (ontmod) -- (input);
-                  \draw [arrow] (input) -| (structured);
-                  \draw [arrow] (input) -| (unstructured);
-
-                  % === ARROWS - Structured Path (Left) ===
-                  \draw [arrow] (structured) -- (entres_struct);
-                  \draw [arrow] (entres_struct.south) -- (1.0, -7.5) -| (entlink.north);
-
-                  % === ARROWS - Unstructured Path (Right) ===
-                  \draw [arrow] (unstructured) -- (textproc);
-                  \draw [arrow] (textproc) -- (coref);
-                  \draw [arrow] (coref) -- (ner);
-                  \draw [arrow] (coref) -- (re);
-                  \draw [arrow] (ner) -- (lexgraph);
-                  \draw [arrow] (re) -- (lexgraph);
-                  \draw [arrow] (lexgraph) -- (entlink);
-                  \draw [arrow] (entlink.south) -- (2.0, -10.1) -| (indexing.north);
-                  \draw [arrow] (indexing) -- (graphdb);
-                  \draw [arrow] (indexing) -- (vectordb);
-                  \draw [arrow] (graphdb) |- (subD2);
-                  \draw [arrow] (vectordb) |- (subD2);
-              \end{tikzpicture}
-              \caption{Detail tahapan konstruksi \textit{Knowledge Graph}}
+                      % === ARROWS - Unstructured Path (Right) ===
+                      \draw [arrow] (unstructured) -- (textproc);
+                      \draw [arrow] (textproc) -- (coref);
+                      \draw [arrow] (coref) -- (ner);
+                      \draw [arrow] (coref) -- (re);
+                      \draw [arrow] (ner) -- (lexgraph);
+                      \draw [arrow] (re) -- (lexgraph);
+                      \draw [arrow] (lexgraph) -- (entlink);
+                      \draw [arrow] (entlink.south) -- (2.0, -9.2) -| (indexing.north);
+                      \draw [arrow] (indexing) -- (graphdb);
+                      \draw [arrow] (indexing) -- (vectordb);
+                  \end{tikzpicture}
+              \end{adjustbox}
+              \captionof{figure}{Detail tahapan konstruksi \textit{Knowledge Graph}}
               \label{fig:detail-kg-construction}
-          \end{figure}
+          \end{center}
 
           \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=0.75cm, itemsep=5pt]
-              \item \textbf{\textit{Ontology Modeling (Pemodelan Skema)}}
+              \item \textbf{Pemodelan Ontologi (\textit{Ontology Modeling})}
 
                     \begin{figure}[htbp]
                         \centering
-                        \begin{tikzpicture}[
-                                >=Stealth,
-                                scale=1, transform shape,
-                                % Node Styles with precise colors and shapes
-                                base/.style={draw=gray!50, line width=0.8pt, align=center, inner sep=2pt, font=\large\sffamily},
-                                % Metadata Nodes (Rectangles) - Consistent Size (2.2cm x 1.2cm)
-                                titlenode/.style={base, rectangle, rounded corners=6pt, fill=teal!35, draw=teal!60!black, minimum width=2.2cm, minimum height=1.2cm, font=\large\bfseries},
-                                authornode/.style={base, rectangle, rounded corners=6pt, fill=violet!15, draw=violet!50!black, minimum width=2.2cm, minimum height=1.2cm},
-                                instnode/.style={base, rectangle, rounded corners=6pt, fill=blue!15, draw=blue!50!black, minimum width=2.2cm, minimum height=1.2cm},
-                                datenode/.style={base, rectangle, rounded corners=6pt, fill=cyan!30, draw=cyan!60!black, minimum width=2.2cm, minimum height=1.2cm},
-                                confnode/.style={base, rectangle, rounded corners=6pt, fill=lime!30, draw=lime!60!black, minimum width=2.2cm, minimum height=1.2cm},
-                                keynode/.style={base, rectangle, rounded corners=5pt, fill=green!10, draw=green!50!black, minimum width=2.2cm, minimum height=1.2cm},
-                                fieldnode/.style={base, rectangle, rounded corners=6pt, fill=cyan!20, draw=cyan!50!black, minimum width=2.2cm, minimum height=1.2cm},
-                                % Scientific Concepts (Circles) - Consistent Size (1.8cm)
-                                problemnode/.style={base, circle, fill=orange!30, draw=orange!60!black, minimum size=1.8cm},
-                                methodnode/.style={base, circle, fill=yellow!40, draw=yellow!60!black, minimum size=1.8cm},
-                                metricnode/.style={base, circle, fill=magenta!20, draw=magenta!60!black, minimum size=1.8cm},
-                                datasetnode/.style={base, circle, fill=violet!20, draw=violet!60!black, minimum size=1.8cm},
-                                tasknode/.style={base, circle, fill=red!30, draw=red!60!black, minimum size=1.8cm},
-                                modelnode/.style={base, circle, fill=red!15, draw=red!50!black, minimum size=1.8cm},
-                                resultsnode/.style={base, circle, fill=blue!10, draw=blue!50!black, minimum size=1.8cm},
-                                innovnode/.style={base, circle, fill=blue!25, draw=blue!60!black, minimum size=1.8cm},
-                                % Connection Styles
-                                arrow/.style={->, line width=0.7pt, gray!60!black},
-                                labelstyle/.style={font=\footnotesize\sffamily, fill=white, text=gray!40!black, align=center, inner sep=1pt, fill opacity=0.9, text opacity=1, rounded corners=1pt}
-                            ]
+                        \begin{adjustbox}{max width=0.94\textwidth, max totalheight=0.70\textheight, center}
+                            \begin{tikzpicture}[
+                                    >=Stealth,
+                                    scale=1, transform shape,
+                                    % Node Styles with precise colors and shapes
+                                    base/.style={draw=gray!50, line width=0.8pt, align=center, inner sep=2pt, font=\large\sffamily},
+                                    % Metadata Nodes (Rectangles) - Consistent Size (2.2cm x 1.2cm)
+                                    titlenode/.style={base, rectangle, rounded corners=6pt, fill=teal!35, draw=teal!60!black, minimum width=2.2cm, minimum height=1.2cm, font=\large\bfseries},
+                                    authornode/.style={base, rectangle, rounded corners=6pt, fill=violet!15, draw=violet!50!black, minimum width=2.2cm, minimum height=1.2cm},
+                                    instnode/.style={base, rectangle, rounded corners=6pt, fill=blue!15, draw=blue!50!black, minimum width=2.2cm, minimum height=1.2cm},
+                                    datenode/.style={base, rectangle, rounded corners=6pt, fill=cyan!30, draw=cyan!60!black, minimum width=2.2cm, minimum height=1.2cm},
+                                    confnode/.style={base, rectangle, rounded corners=6pt, fill=lime!30, draw=lime!60!black, minimum width=2.2cm, minimum height=1.2cm},
+                                    keynode/.style={base, rectangle, rounded corners=5pt, fill=green!10, draw=green!50!black, minimum width=2.2cm, minimum height=1.2cm},
+                                    fieldnode/.style={base, rectangle, rounded corners=6pt, fill=cyan!20, draw=cyan!50!black, minimum width=2.2cm, minimum height=1.2cm},
+                                    % Scientific Concepts (Circles) - Consistent Size (1.8cm)
+                                    problemnode/.style={base, circle, fill=orange!30, draw=orange!60!black, minimum size=1.8cm},
+                                    methodnode/.style={base, circle, fill=yellow!40, draw=yellow!60!black, minimum size=1.8cm},
+                                    metricnode/.style={base, circle, fill=magenta!20, draw=magenta!60!black, minimum size=1.8cm},
+                                    datasetnode/.style={base, circle, fill=violet!20, draw=violet!60!black, minimum size=1.8cm},
+                                    tasknode/.style={base, circle, fill=red!30, draw=red!60!black, minimum size=1.8cm},
+                                    modelnode/.style={base, circle, fill=red!15, draw=red!50!black, minimum size=1.8cm},
+                                    resultsnode/.style={base, circle, fill=blue!10, draw=blue!50!black, minimum size=1.8cm},
+                                    innovnode/.style={base, circle, fill=blue!25, draw=blue!60!black, minimum size=1.8cm},
+                                    % Connection Styles
+                                    arrow/.style={->, line width=0.7pt, gray!60!black},
+                                    labelstyle/.style={font=\footnotesize\sffamily, fill=white, text=gray!40!black, align=center, inner sep=1pt, fill opacity=0.9, text opacity=1, rounded corners=1pt}
+                                ]
 
-                            % ==========================================================
-                            % NODE PLACEMENT (Compact & Consistent)
-                            % ==========================================================
+                                % ==========================================================
+                                % NODE PLACEMENT (Compact & Consistent)
+                                % ==========================================================
 
-                            % Center
-                            \node[titlenode] (Title) at (0, 0) {Title};
+                                % Center
+                                \node[titlenode] (Title) at (0, 0) {Title};
 
-                            % Top Arc (Metadata)
-                            \node[datenode] (Date) at (-5.0, 0.0) {Date};
-                            \node[authornode] (Author) at (-3.9, 1.5) {Author};
-                            \node[instnode] (Inst) at (-1, 2.8) {Institution};
-                            \node[confnode] (Conf) at (1.7, 2.8) {Conference};
-                            \node[keynode] (Key) at (4, 1.5) {Keywords};
-                            \node[fieldnode] (Field) at (5, 0.0) {Field};
+                                % Top Arc (Metadata)
+                                \node[datenode] (Date) at (-5.0, 0.0) {Date};
+                                \node[authornode] (Author) at (-3.9, 1.5) {Author};
+                                \node[instnode] (Inst) at (-1, 2.8) {Institution};
+                                \node[confnode] (Conf) at (1.7, 2.8) {Conference};
+                                \node[keynode] (Key) at (4, 1.5) {Keywords};
+                                \node[fieldnode] (Field) at (5, 0.0) {Field};
 
-                            % Middle Row (Concepts) - Compacted Layout
-                            \node[problemnode] (Prob) at (-6.0, -2.5) {Problem};
-                            \node[methodnode] (Method) at (-2.5, -2.5) {Method};
-                            \node[metricnode] (Metric) at (3.0, -2.5) {Metric};
-                            \node[datasetnode] (Dataset) at (6.0, -2.5) {Dataset};
+                                % Middle Row (Concepts) - Compacted Layout
+                                \node[problemnode] (Prob) at (-6.0, -2.5) {Problem};
+                                \node[methodnode] (Method) at (-2.5, -2.5) {Method};
+                                \node[metricnode] (Metric) at (3.0, -2.5) {Metric};
+                                \node[datasetnode] (Dataset) at (6.0, -2.5) {Dataset};
 
-                            % Bottom Row (Outputs) - Compacted & Aligned for Straight Lines
-                            \node[tasknode] (Task) at (-4.5, -6.0) {Task};
-                            \node[modelnode] (Model) at (-1.5, -6.0) {Model};
-                            \node[resultsnode] (Results) at (1.5, -6.0) {Results};
-                            \node[innovnode] (Innov) at (4.5, -6.0) {Innovation};
+                                % Bottom Row (Outputs) - Compacted & Aligned for Straight Lines
+                                \node[tasknode] (Task) at (-4.5, -6.0) {Task};
+                                \node[modelnode] (Model) at (-1.5, -6.0) {Model};
+                                \node[resultsnode] (Results) at (1.5, -6.0) {Results};
+                                \node[innovnode] (Innov) at (4.5, -6.0) {Innovation};
 
-                            % ==========================================================
-                            % CONNECTIONS (Straight Lines)
-                            % ==========================================================
+                                % ==========================================================
+                                % CONNECTIONS (Straight Lines)
+                                % ==========================================================
 
-                            % --- Connections that need to be behind nodes ---
-                            \begin{scope}[on background layer]
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, near end] {works on} (Task);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {innovates} (Innov);
-                            \end{scope}
+                                % --- Connections that need to be behind nodes ---
+                                \begin{scope}[on background layer]
+                                    \draw[arrow] (Title) -- node[labelstyle, sloped, near end] {works on} (Task);
+                                    \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {innovates} (Innov);
+                                \end{scope}
 
-                            % --- Metadata Connections ---
-                            \draw[arrow] (Author.north) -- node[labelstyle, sloped, pos=0.5] {works for} (Inst.west);
-                            \draw[arrow] (Author) -- node[labelstyle, sloped] {writes} (Title);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped] {writes on} (Date);
-                            \draw[arrow] (Conf) -- node[labelstyle, sloped] {publishes} (Title);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped] {keywords} (Key);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped] {belongs to} (Field);
+                                % --- Metadata Connections ---
+                                \draw[arrow] (Author.north) -- node[labelstyle, sloped, pos=0.5] {works for} (Inst.west);
+                                \draw[arrow] (Author) -- node[labelstyle, sloped] {writes} (Title);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped] {writes on} (Date);
+                                \draw[arrow] (Conf) -- node[labelstyle, sloped] {publishes} (Title);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped] {keywords} (Key);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped] {belongs to} (Field);
 
-                            % --- Title to Concepts ---
-                            \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {solves} (Prob);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {adopts} (Method);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {uses} (Metric);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {experiments on} (Dataset);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.3] {proposes} (Model);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.4] {has} (Results);
+                                % --- Title to Concepts ---
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {solves} (Prob);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {adopts} (Method);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {uses} (Metric);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {experiments on} (Dataset);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.3] {proposes} (Model);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.4] {has} (Results);
 
-                            % --- Inter-concept Connections ---
+                                % --- Inter-concept Connections ---
 
-                            % Method relations
-                            \draw[arrow] (Method) -- node[labelstyle, pos=0.5] {solves} (Prob);
-                            \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.5] {works on} (Task);
-                            \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.6] {proposes} (Model);
-                            \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.25] {innovates} (Innov);
-                            \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.25] {has} (Results);
+                                % Method relations
+                                \draw[arrow] (Method) -- node[labelstyle, pos=0.5] {solves} (Prob);
+                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.5] {works on} (Task);
+                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.6] {proposes} (Model);
+                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.25] {innovates} (Innov);
+                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.25] {has} (Results);
 
-                            % Task relations
-                            \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.25] {faces} (Prob);
-                            \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.55] {uses} (Metric);
-                            \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.5] {works\\for} (Model);
-                            \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.5] {experiments on} (Dataset);
+                                % Task relations
+                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.25] {faces} (Prob);
+                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.55] {uses} (Metric);
+                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.5] {works\\for} (Model);
+                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.5] {experiments on} (Dataset);
 
-                            % Model relations
-                            \draw[arrow] (Model) -- node[labelstyle, pos=0.50] {has} (Results);
-                            \draw[arrow] (Model) -- node[labelstyle, sloped, pos=0.7] {solves} (Prob);
-                            \draw[arrow] (Model) -- node[labelstyle, sloped, pos=0.25] {uses} (Dataset);
+                                % Model relations
+                                \draw[arrow] (Model) -- node[labelstyle, pos=0.50] {has} (Results);
+                                \draw[arrow] (Model) -- node[labelstyle, sloped, pos=0.7] {solves} (Prob);
+                                \draw[arrow] (Model) -- node[labelstyle, sloped, pos=0.25] {uses} (Dataset);
 
-                            % Results relations
-                            \draw[arrow] (Results) -- node[labelstyle, sloped, pos=0.25] {uses} (Metric);
+                                % Results relations
+                                \draw[arrow] (Results) -- node[labelstyle, sloped, pos=0.25] {uses} (Metric);
 
-                            % Innovation relations
-                            \draw[arrow] (Innov) -- node[labelstyle, sloped, pos=0.5] {uses} (Dataset);
+                                % Innovation relations
+                                \draw[arrow] (Innov) -- node[labelstyle, sloped, pos=0.5] {uses} (Dataset);
 
-                        \end{tikzpicture}
+                            \end{tikzpicture}
+                        \end{adjustbox}
                         \caption{Skema ontologi (\textit{Ontology Design}) \textit{Knowledge Graph} untuk domain riset akademik}
                         \label{fig:ontology-design}
                     \end{figure}
 
-                    \hspace*{0.75cm}Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi dimulai (\ref{fig:ontology-design}). Implementasi difokuskan pada delapan relasi utama: \textit{publishes}, \textit{cites}, \textit{has\_author}, \textit{has\_topic}, \textit{uses\_method}, \textit{has\_affiliation}, \textit{belongs\_to\_domain}, dan \textit{collaborates\_with}. Konsistensi skema ini membatasi ruang pencarian model ekstraksi agar tetap relevan dengan domain Infokom UNESA.
+                    \hspace*{0.75cm}Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi dimulai (\ref{fig:ontology-design}). Relasi pada graf direpresentasikan sebagai pola \textit{Head--Relation--Tail} sehingga pembentukan \textit{edge} dilakukan secara deterministik berdasarkan pasangan kelas entitas yang telah ditentukan. Pola yang digunakan pada penelitian ini dideskripsikan pada \ref{tab:relasi-hrt-ontology}.
 
-              \item \textbf{\textit{Parallel Processing Pipeline}}
+                    \begin{table}[htbp]
+                        \centering
+                        \caption{Deskripsi relasi pada skema ontologi}
+                        \label{tab:relasi-hrt-ontology}
+                        \begingroup
+                        \scriptsize
+                        \setlength{\tabcolsep}{2pt}
+                        \renewcommand{\arraystretch}{1.04}
+                        \begin{adjustbox}{max width=\linewidth, max totalheight=0.82\textheight, center}
+                            \begin{tabular}{|>{\raggedright\arraybackslash}p{0.13\linewidth}|>{\raggedright\arraybackslash}p{0.22\linewidth}|>{\raggedright\arraybackslash}p{0.13\linewidth}|>{\raggedright\arraybackslash}p{0.43\linewidth}|}
+                                \hline
+                                \textbf{Head (H)}   & \textbf{Relation (R)}    & \textbf{Tail (T)}    & \textbf{Deskripsi}                                                                \\ \hline
+                                \textit{Author}     & \texttt{works\_for}      & \textit{Institution} & Menghubungkan penulis dengan institusi atau afiliasi akademiknya                  \\ \hline
+                                \textit{Author}     & \texttt{writes}          & \textit{Title}       & Menunjukkan kontribusi penulis terhadap publikasi ilmiah                          \\ \hline
+                                \textit{Conference} & \texttt{publishes}       & \textit{Title}       & Mengaitkan publikasi dengan jurnal, konferensi, atau prosiding penerbit           \\ \hline
+                                \textit{Title}      & \texttt{has\_date}       & \textit{Date}        & Menyimpan informasi waktu atau tahun terbit publikasi                             \\ \hline
+                                \textit{Title}      & \texttt{has\_keyword}    & \textit{Keywords}    & Menghubungkan publikasi dengan kata kunci penulis atau kata kunci hasil ekstraksi \\ \hline
+                                \textit{Title}      & \texttt{belongs\_to}     & \textit{Field}       & Memetakan publikasi ke bidang atau domain riset yang relevan                      \\ \hline
+                                \textit{Title}      & \texttt{solves}          & \textit{Problem}     & Menjelaskan permasalahan utama yang ditangani oleh publikasi                      \\ \hline
+                                \textit{Title}      & \texttt{adopts}          & \textit{Method}      & Menunjukkan metode atau pendekatan yang digunakan dalam publikasi                 \\ \hline
+                                \textit{Title}      & \texttt{uses\_metric}    & \textit{Metric}      & Mengaitkan publikasi dengan metrik evaluasi yang digunakan                        \\ \hline
+                                \textit{Title}      & \texttt{experiments\_on} & \textit{Dataset}     & Menunjukkan dataset atau data eksperimen yang digunakan                           \\ \hline
+                                \textit{Title}      & \texttt{proposes}        & \textit{Model}       & Menandai model, sistem, atau arsitektur yang diusulkan                            \\ \hline
+                                \textit{Title}      & \texttt{has\_result}     & \textit{Results}     & Menghubungkan publikasi dengan hasil utama penelitian                             \\ \hline
+                                \textit{Title}      & \texttt{has\_innovation} & \textit{Innovation}  & Menjelaskan kontribusi baru atau kebaruan yang ditawarkan                         \\ \hline
+                                \textit{Method}     & \texttt{solves}          & \textit{Problem}     & Menunjukkan permasalahan yang diselesaikan oleh metode tertentu                   \\ \hline
+                                \textit{Method}     & \texttt{works\_on}       & \textit{Task}        & Mengaitkan metode dengan tugas komputasional atau analitis                        \\ \hline
+                                \textit{Method}     & \texttt{proposes}        & \textit{Model}       & Menunjukkan model yang dibangun atau diturunkan dari metode tertentu              \\ \hline
+                                \textit{Task}       & \texttt{faces}           & \textit{Problem}     & Menjelaskan tantangan yang muncul pada suatu tugas penelitian                     \\ \hline
+                                \textit{Task}       & \texttt{evaluated\_by}   & \textit{Metric}      & Menghubungkan tugas dengan metrik yang digunakan untuk evaluasi                   \\ \hline
+                                \textit{Task}       & \texttt{experiments\_on} & \textit{Dataset}     & Mengaitkan tugas dengan dataset yang menjadi objek eksperimen                     \\ \hline
+                                \textit{Model}      & \texttt{solves}          & \textit{Problem}     & Menunjukkan permasalahan yang ditangani oleh model                                \\ \hline
+                                \textit{Model}      & \texttt{uses}            & \textit{Dataset}     & Menunjukkan dataset yang digunakan untuk melatih atau menguji model               \\ \hline
+                                \textit{Model}      & \texttt{has\_result}     & \textit{Results}     & Menghubungkan model dengan capaian atau luaran eksperimen                         \\ \hline
+                                \textit{Results}    & \texttt{measured\_by}    & \textit{Metric}      & Menjelaskan metrik yang digunakan untuk mengukur hasil penelitian                 \\ \hline
+                                \textit{Innovation} & \texttt{uses}            & \textit{Dataset}     & Menunjukkan data atau sumber eksperimen yang mendukung kebaruan penelitian        \\ \hline
+                            \end{tabular}
+                        \end{adjustbox}
+                        \endgroup
+                    \end{table}
 
-                    \hspace*{0.75cm}Data akademik diproses melalui dua jalur paralel yang dioptimalkan untuk karakteristik data berbeda. Kedua jalur berjalan independen namun menghasilkan keluaran yang saling melengkapi (\ref{fig:detail-kg-construction}).
+              \item \textbf{Pipeline Pemrosesan Paralel (\textit{Parallel Processing Pipeline})}
+
+                    \hspace*{0.75cm}Data akademik diproses melalui dua jalur paralel sesuai karakteristik sumbernya. Jalur pertama menangani data terstruktur, sedangkan jalur kedua menangani data tekstual tidak terstruktur. Kedua jalur ini menghasilkan keluaran yang saling melengkapi sebelum digabungkan pada tahap \textit{entity linking}\ref{fig:detail-kg-construction}.
 
                     \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
 
                         \item \textbf{Jalur Data Terstruktur: \textit{Entity Resolution}}
 
-                              \hspace*{0.75cm}Data terstruktur (profil dosen dan afiliasi) diproses melalui \textit{Entity Resolution} untuk menyatukan referensi duplikat. Variasi penulisan nama (misalnya ``Aditya Prapanca'' vs. ``A. Prapanca'') diselesaikan untuk menghasilkan satu \textit{canonical node} per dosen, menjamin akumulasi publikasi yang akurat pada satu entitas.
+                              \hspace*{0.75cm}Data terstruktur, seperti profil dosen, afiliasi, identitas indeksasi, dan metadata publikasi, diproses melalui \textit{entity resolution} untuk menyatukan referensi yang merujuk pada entitas yang sama. Variasi penulisan nama, misalnya ``Aditya Prapanca'' dan ``A. Prapanca'', diselaraskan menjadi satu \textit{canonical node} sehingga akumulasi publikasi dan relasi akademik tetap konsisten.
 
                         \item \textbf{Jalur Data Tidak Terstruktur: \textit{NLP-Based Extraction}}
 
-                              \hspace*{0.75cm}Tahap awal \textbf{\textit{Text Processing}} membersihkan abstrak, TLDR, dan kata kunci dari karakter yang tidak relevan, lalu menyatukannya sebagai teks akademik untuk proses ekstraksi konsep.
+                              \hspace*{0.75cm}Pada jalur tidak terstruktur, abstrak dan ringkasan publikasi terlebih dahulu melalui \textit{text processing} untuk menghilangkan \textit{noise}, menyelaraskan format teks, dan mempertahankan unit informasi penting. Selanjutnya, \textit{coreference resolution} digunakan untuk menghubungkan frasa rujukan, seperti ``metode ini'' atau ``model tersebut'', dengan entitas yang dimaksud agar konteks tetap utuh.
 
-                              \hspace*{0.75cm}Ekstraksi entitas tidak terstruktur diarahkan menggunakan \textit{GLiNER} \cite{zaratiana2023gliner} dengan keunggulan teknik \textit{zero-shot Named Entity Recognition}. Entitas yang ditemukan dipetakan ke skema ontologi penelitian, seperti \textit{Method}, \textit{Model}, \textit{Dataset}, \textit{Metric}, \textit{Domain}, atau \textit{ResearchTopic}. Setelah tipe entitas jelas, relasi dibentuk secara deterministik mengikuti ontologi, misalnya \texttt{USES\_MODEL}, \texttt{EVALUATED\_WITH}, \texttt{USES\_METHOD}, \texttt{HAS\_TOPIC}, dan \texttt{BELONGS\_TO\_DOMAIN}.
+                              \hspace*{0.75cm}Ekstraksi entitas dan pemetaan relasi dilakukan dalam dua tahap. Pertama, \textit{GLiNER} \cite{zaratiana2023gliner} digunakan untuk \textit{Named Entity Recognition} secara \textit{zero-shot}. Kedua, relasi dipetakan secara deterministik berdasarkan pola triplet pada  \ref{tab:relasi-hrt-ontology}. Dengan demikian, keluaran tahap ini berupa \textit{Lexical Graph} berisi triplet kandidat yang konsisten dengan skema ontologi.
 
                     \end{enumerate}
 
               \item \textbf{\textit{Entity Linking}}
 
-                    \hspace*{0.75cm}Tahap ini menjembatani kedua jalur dengan memetakan entitas hasil ekstraksi teks (nama dosen, topik riset) ke entitas kanonikal dari jalur terstruktur. Misalnya, penyebutan ``Deep Learning'' dalam abstrak dihubungkan ke node topik yang sudah ada, bukan membentuk node duplikat. Hasilnya adalah \textit{Scholarly Knowledge Graph} utuh yang mengintegrasikan entitas terverifikasi dengan relasi dari teks tanpa duplikasi.
+                    \hspace*{0.75cm}Tahap ini menghubungkan keluaran dari jalur terstruktur dan tidak terstruktur dengan memetakan entitas hasil ekstraksi teks ke entitas kanonikal yang telah tersedia. Sebagai contoh, penyebutan ``Deep Learning'' dalam abstrak dihubungkan ke simpul topik yang sudah ada, bukan membentuk simpul baru yang duplikatif. Hasil akhirnya adalah \textit{Scholarly Knowledge Graph} yang mengintegrasikan entitas terverifikasi dan relasi hasil pemetaan ontologi secara konsisten.
 
               \item \textbf{\textit{Dual Indexing}}
 
-                    \hspace*{0.75cm}Untuk mendukung \textit{Hybrid Retrieval}, hasil konstruksi \textit{KG} disimpan dalam dua format berikut:
+                    \hspace*{0.75cm}Tahap terakhir adalah penyimpanan hasil konstruksi \textit{Knowledge Graph} ke dalam dua indeks yang saling melengkapi untuk mendukung mekanisme \textit{Hybrid Retrieval}.
 
                     \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt]
                         \item \textbf{\textit{Vector Indexing}}
 
-                              \hspace*{0.75cm}Teks publikasi dipotong menjadi segmen 2.024 karakter dengan \textit{overlap} 50 karakter, dikonversi ke vektor \textit{embedding} menggunakan \texttt{Qwen/Qwen3-Embedding-0.6B} (1.024 dimensi), dan disimpan di Zilliz/Milvus untuk pencarian kemiripan semantik. Indeks vektor dipisahkan menjadi empat koleksi: \texttt{PaperChunk}, \texttt{EntityEmbedding}, \texttt{RelationshipEmbedding}, dan \texttt{ContentKeyword}.
+                              \hspace*{0.75cm}Segmen teks, terutama abstrak dan unit teks publikasi, dikonversi menjadi vektor \textit{embedding} menggunakan \texttt{all-MiniLM-L6-v2} berdimensi 384. Representasi vektor tersebut disimpan di \textit{Weaviate} untuk mendukung pencarian berbasis kemiripan semantik.
 
                         \item \textbf{\textit{Graph Indexing}}
 
-                              \hspace*{0.75cm}Triplet entitas dan relasi dimuat ke basis data graf \textit{Neo4j} melalui \textit{Cypher queries}, memfasilitasi pencarian berbasis struktur relasional dan \textit{graph traversal}.
+                              \hspace*{0.75cm}Triplet yang telah tervalidasi dimuat ke basis data graf \textit{Neo4j} melalui \textit{Cypher queries}. Penyimpanan ini memungkinkan pencarian berbasis struktur relasional, penelusuran jalur (\textit{graph traversal}), dan eksplorasi keterhubungan antar entitas akademik.
                     \end{enumerate}
 
           \end{enumerate}
@@ -470,31 +481,33 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
 
           \begin{figure}[htbp]
               \centering
-              \begin{tikzpicture}[scale=1, transform shape]
-                  % Outer box — widened so Local/Global nodes (2.0cm) fit with margin
-                  \node [subbox, fit={(-0.5,0.3) (5.3,-9.3)}, label={[font=\scriptsize\bfseries]above:Detail Hybrid Graph-RAG}] {};
+              \begin{adjustbox}{max width=0.88\textwidth, max totalheight=0.60\textheight, center}
+                  \begin{tikzpicture}[
+                          scale=1,
+                          transform shape,
+                          process/.style={rectangle, rounded corners=2pt, minimum width=2.55cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=gray!8, font=\scriptsize, inner sep=2pt},
+                          data/.style={rectangle, rounded corners=2pt, minimum width=2.25cm, minimum height=0.72cm, text centered, draw=black, line width=0.55pt, fill=white, font=\scriptsize, inner sep=2pt},
+                          arrow/.style={-Stealth, line width=0.55pt, draw=black}
+                      ]
+                      \node (qin) [data] at (2.4, -0.1) {User Query};
+                      \node (clue) [process, text width=2.2cm] at (2.4, -1.3) {Semantic Clue\\Extraction};
+                      \node (kwd) [process, text width=2.2cm] at (2.4, -2.6) {Keyword\\Decomposition};
+                      \node (local) [process, text width=1.6cm, minimum width=2.0cm] at (1.0, -4.0) {Local\\Retrieval};
+                      \node (globalret) [process, text width=1.6cm, minimum width=2.0cm] at (3.8, -4.0) {Global\\Retrieval};
+                      \node (integrate) [process, text width=2.2cm] at (2.4, -5.3) {Context\\Fusion};
+                      \node (llm) [process, text width=2.4cm] at (2.4, -6.5) {LLM Generation};
+                      \node (response) [data] at (2.4, -7.7) {Response};
 
-                  \node (subD3) [offpage] at (2.4, -0.1) {D};
-                  \node (qin) [data] at (2.4, -1.3) {User Query};
-                  \node (clue) [process, text width=2.2cm] at (2.4, -2.5) {Semantic Clue\\Extraction};
-                  \node (kwd) [process, text width=2.2cm] at (2.4, -3.8) {Keyword\\Decomposition};
-                  % Local/Global — override minimum width to 2.0cm (default 2.8cm overflows box)
-                  \node (local) [process, text width=1.6cm, minimum width=2.0cm] at (1.0, -5.2) {Local\\Retrieval};
-                  \node (globalret) [process, text width=1.6cm, minimum width=2.0cm] at (3.8, -5.2) {Global\\Retrieval};
-                  \node (integrate) [process, text width=2.2cm] at (2.4, -6.5) {Context\\Fusion};
-                  \node (llm) [process, text width=2.4cm] at (2.4, -7.7) {LLM Generation};
-                  \node (response) [data] at (2.4, -8.9) {Response};
-
-                  \draw [arrow] (subD3) -- (qin);
-                  \draw [arrow] (qin) -- (clue);
-                  \draw [arrow] (clue) -- (kwd);
-                  \draw [arrow] (kwd) -- (local);
-                  \draw [arrow] (kwd) -- (globalret);
-                  \draw [arrow] (local) -- (integrate);
-                  \draw [arrow] (globalret) -- (integrate);
-                  \draw [arrow] (integrate) -- (llm);
-                  \draw [arrow] (llm) -- (response);
-              \end{tikzpicture}
+                      \draw [arrow] (qin) -- (clue);
+                      \draw [arrow] (clue) -- (kwd);
+                      \draw [arrow] (kwd) -- (local);
+                      \draw [arrow] (kwd) -- (globalret);
+                      \draw [arrow] (local) -- (integrate);
+                      \draw [arrow] (globalret) -- (integrate);
+                      \draw [arrow] (integrate) -- (llm);
+                      \draw [arrow] (llm) -- (response);
+                  \end{tikzpicture}
+              \end{adjustbox}
               \caption{Detail proses \textit{Hybrid Retrieval}}
               \label{fig:detail-hybrid-rag}
           \end{figure}
@@ -505,227 +518,233 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
 
                     \hspace*{0.75cm}Tahap ini mengidentifikasi entitas kunci dari pertanyaan pengguna via pencarian vektor, lalu memetakannya ke terminologi ontologi graf (misalnya ``AI'' dipetakan ke ``Kecerdasan Buatan'').
 
-                    \hspace*{0.75cm}Pertanyaan pengguna $Q$ dipetakan ke ruang vektor menggunakan fungsi \textit{embedding}, kemudian diukur kedekatannya dengan \textit{keyword} korpus via \textit{cosine similarity}. Seleksi kandidat \textit{clues} didefinisikan sebagai:
-
+                    \hspace*{0.75cm}Pertanyaan pengguna $Q$ dipetakan ke ruang vektor menggunakan fungsi \textit{embedding}, kemudian diukur kedekatannya dengan \textit{keyword} korpus via \textit{cosine similarity}. Kandidat \textit{clues} $K^{\text{clues}}$ diperoleh sebagai himpunan kata kunci yang skor kemiripannya melampaui ambang batas $\tau$, yaitu
                     \begin{equation}
-                        K^{\text{clues}} = \{k \in K^{\text{content}} \mid \text{sim}(f_{\text{embed}}(Q), f_{\text{embed}}(k)) \geq \tau\}
+                        K^{\text{clues}} = \{k \in K^{\text{content}} \mid \text{sim}(f_{\text{embed}}(Q), f_{\text{embed}}(k)) \geq \tau\},
                     \end{equation}
+                    \noindent
+                    dengan $K^{\text{content}}$ menyatakan himpunan kata kunci korpus dan $f_{\text{embed}}(\cdot)$ menyatakan fungsi pemetaan teks ke vektor.
 
-                    \hspace*{0.75cm}Setelah \textit{clues} diekstraksi, model bahasa besar (\textit{LLM}) mengubahnya menjadi dua tingkat kata kunci yang saling melengkapi:
-
+                    \hspace*{0.75cm}Setelah \textit{clues} diekstraksi, model bahasa besar (\textit{LLM}) mengubah kata kunci menjadi pasangan hierarkis yang saling melengkapi melalui persamaan
                     \begin{equation}
-                        (\mathcal{K}_h, \mathcal{K}_l) = \text{LLM}_{keyword}(Q, K^{\text{clues}})
+                        (\mathcal{K}_h, \mathcal{K}_l) = \text{LLM}_{keyword}(Q, K^{\text{clues}}),
                     \end{equation}
+                    \noindent
+                    dengan $\mathcal{K}_h$ menyatakan kata kunci tingkat tinggi dan $\mathcal{K}_l$ menyatakan kata kunci tingkat rendah.
 
-                    Kata kunci \textit{High-level} $\mathcal{K}_h$ menangkap konsep abstrak (misalnya ``Deep Learning'', ``Sequence Processing''), sementara \textit{Low-level} $\mathcal{K}_l$ menangkap detail teknis spesifik (misalnya ``Attention Mechanism'', ``Encoder-Decoder Models''). Strategi dua tingkat ini memungkinkan sistem menjawab pertanyaan holistik ($\mathcal{K}_h$) maupun presisi tinggi ($\mathcal{K}_l$).
+                    \hspace*{0.75cm}Kata kunci tingkat tinggi (\textit{high-level}) menangkap konsep abstrak, seperti ``Deep Learning'' dan ``Sequence Processing''. Sementara itu, kata kunci tingkat rendah (\textit{low-level}) menangkap detail teknis yang lebih spesifik, seperti ``Attention Mechanism'' dan ``Encoder-Decoder Models''. Strategi dua tingkat ini memungkinkan sistem menangani pertanyaan yang bersifat holistik melalui $\mathcal{K}_h$ sekaligus pertanyaan yang memerlukan presisi teknis melalui $\mathcal{K}_l$.
                     \begin{figure}[htbp]
                         \centering
-                        \begin{tikzpicture}[
-                                >=Stealth,
-                                scale=1, transform shape,
-                                % Vivid color scheme matching reference image
-                                userbox/.style={rectangle, draw=blue!80!black, fill=blue!70!black, text=white, minimum width=2.4cm, minimum height=1.4cm, align=center, font=\small\bfseries, rounded corners=6pt, line width=0.7pt},
-                                cluesbox/.style={rectangle, draw=orange!80!black, fill=orange!30, minimum width=2.4cm, minimum height=1.5cm, align=center, font=\small, rounded corners=6pt, line width=0.7pt},
-                                lowlevelbox/.style={rectangle, draw=green!60!black, fill=green!30, minimum width=2.4cm, minimum height=1.5cm, align=center, font=\small, rounded corners=6pt, line width=0.7pt},
-                                highlevelbox/.style={rectangle, draw=red!60!black, fill=red!20, minimum width=2.4cm, minimum height=1.5cm, align=center, font=\small, rounded corners=6pt, line width=0.7pt},
-                                arrow/.style={->, >=Stealth, line width=0.8pt, blue!70!cyan},
-                                label/.style={font=\scriptsize, align=left}
-                            ]
+                        \begin{adjustbox}{max width=0.94\textwidth, max totalheight=0.70\textheight, center}
+                            \begin{tikzpicture}[
+                                    >=Stealth,
+                                    scale=1, transform shape,
+                                    % Vivid color scheme matching reference image
+                                    userbox/.style={rectangle, draw=blue!80!black, fill=blue!70!black, text=white, minimum width=2.4cm, minimum height=1.4cm, align=center, font=\small\bfseries, rounded corners=6pt, line width=0.7pt},
+                                    cluesbox/.style={rectangle, draw=orange!80!black, fill=orange!30, minimum width=2.4cm, minimum height=1.5cm, align=center, font=\small, rounded corners=6pt, line width=0.7pt},
+                                    lowlevelbox/.style={rectangle, draw=green!60!black, fill=green!30, minimum width=2.4cm, minimum height=1.5cm, align=center, font=\small, rounded corners=6pt, line width=0.7pt},
+                                    highlevelbox/.style={rectangle, draw=red!60!black, fill=red!20, minimum width=2.4cm, minimum height=1.5cm, align=center, font=\small, rounded corners=6pt, line width=0.7pt},
+                                    arrow/.style={->, >=Stealth, line width=0.8pt, blue!70!cyan},
+                                    label/.style={font=\scriptsize, align=left}
+                                ]
 
-                            % === LEFT SIDE (Input) ===
-                            % User Query Box (soft blue) -> shifted in to -3.8
-                            \node[userbox] (user) at (-3.8, 1.5) {\textbf{User:} How does\\transformer\\architecture work?};
+                                % === LEFT SIDE (Input) ===
+                                % User Query Box (soft blue) -> shifted in to -3.8
+                                \node[userbox] (user) at (-3.8, 1.5) {\textbf{User:} How does\\transformer\\architecture work?};
 
-                            % Clues Box (soft orange/peach) -> shifted in to -3.8
-                            \node[cluesbox] (clues) at (-3.8, -1.5) {Model architecture,\\Transformer,\\Transformer\\architecture...};
+                                % Clues Box (soft orange/peach) -> shifted in to -3.8
+                                \node[cluesbox] (clues) at (-3.8, -1.5) {Model architecture,\\Transformer,\\Transformer\\architecture...};
 
-                            % === CENTER: LLM Robot (at x=0) ===
-                            % Robot head (main rectangle)
-                            \draw[fill=black!80, draw=black, line width=0.6pt, rounded corners=3pt] (-0.4, -0.1) rectangle (0.4, 0.7);
-                            % Antenna
-                            \draw[black!80, line width=1.2pt] (0, 0.7) -- (0, 0.95);
-                            \fill[black!80] (0, 0.95) circle (0.1);
-                            % Eyes
-                            \draw[fill=white, draw=black, line width=0.4pt] (-0.22, 0.38) circle (0.14);
-                            \draw[fill=white, draw=black, line width=0.4pt] (0.12, 0.38) circle (0.14);
-                            \fill[black] (-0.22, 0.38) circle (0.06);
-                            \fill[black] (0.12, 0.38) circle (0.06);
-                            % Ears
-                            \draw[fill=black!70, draw=black, line width=0.4pt] (-0.5, 0.15) rectangle (-0.4, 0.55);
-                            \draw[fill=black!70, draw=black, line width=0.4pt] (0.4, 0.15) rectangle (0.5, 0.55);
-                            % Body
-                            \draw[fill=black!80, draw=black, line width=0.5pt, rounded corners=2pt] (-0.3, -0.55) rectangle (0.3, -0.1);
-                            % Body lines
-                            \draw[gray!45, line width=0.4pt] (-0.2, -0.25) -- (0.2, -0.25);
-                            \draw[gray!45, line width=0.4pt] (-0.2, -0.4) -- (0.2, -0.4);
+                                % === CENTER: LLM Robot (at x=0) ===
+                                % Robot head (main rectangle)
+                                \draw[fill=black!80, draw=black, line width=0.6pt, rounded corners=3pt] (-0.4, -0.1) rectangle (0.4, 0.7);
+                                % Antenna
+                                \draw[black!80, line width=1.2pt] (0, 0.7) -- (0, 0.95);
+                                \fill[black!80] (0, 0.95) circle (0.1);
+                                % Eyes
+                                \draw[fill=white, draw=black, line width=0.4pt] (-0.22, 0.38) circle (0.14);
+                                \draw[fill=white, draw=black, line width=0.4pt] (0.12, 0.38) circle (0.14);
+                                \fill[black] (-0.22, 0.38) circle (0.06);
+                                \fill[black] (0.12, 0.38) circle (0.06);
+                                % Ears
+                                \draw[fill=black!70, draw=black, line width=0.4pt] (-0.5, 0.15) rectangle (-0.4, 0.55);
+                                \draw[fill=black!70, draw=black, line width=0.4pt] (0.4, 0.15) rectangle (0.5, 0.55);
+                                % Body
+                                \draw[fill=black!80, draw=black, line width=0.5pt, rounded corners=2pt] (-0.3, -0.55) rectangle (0.3, -0.1);
+                                % Body lines
+                                \draw[gray!45, line width=0.4pt] (-0.2, -0.25) -- (0.2, -0.25);
+                                \draw[gray!45, line width=0.4pt] (-0.2, -0.4) -- (0.2, -0.4);
 
-                            % LLM label
-                            \node[font=\normalsize\bfseries, text=blue!70!black] at (0, -0.9) {LLM};
+                                % LLM label
+                                \node[font=\normalsize\bfseries, text=blue!70!black] at (0, -0.9) {LLM};
 
-                            % === RIGHT SIDE (Output) ===
-                            % Low-level keywords box (soft green) - top right -> shifted in to 3.8
-                            \node[lowlevelbox] (lowlevel) at (3.8, 1.5) {Attention mechanism,\\Encoder-decoder\\models, Language\\modeling...};
+                                % === RIGHT SIDE (Output) ===
+                                % Low-level keywords box (soft green) - top right -> shifted in to 3.8
+                                \node[lowlevelbox] (lowlevel) at (3.8, 1.5) {Attention mechanism,\\Encoder-decoder\\models, Language\\modeling...};
 
-                            % High-level keywords box (soft pink) - bottom right -> shifted in to 3.8
-                            \node[highlevelbox] (highlevel) at (3.8, -1.5) {Transformer\\architecture, Deep\\learning, Sequence\\processing...};
+                                % High-level keywords box (soft pink) - bottom right -> shifted in to 3.8
+                                \node[highlevelbox] (highlevel) at (3.8, -1.5) {Transformer\\architecture, Deep\\learning, Sequence\\processing...};
 
-                            % === ARROWS ===
+                                % === ARROWS ===
 
-                            % ① User -> Clues (down arrow)
-                            \draw[arrow] (user.south) -- (clues.north);
+                                % ① User -> Clues (down arrow)
+                                \draw[arrow] (user.south) -- (clues.north);
 
-                            % User -> LLM (diagonal down-right)
-                            \draw[arrow] (user.east) -- (-0.6, 0.5);
+                                % User -> LLM (diagonal down-right)
+                                \draw[arrow] (user.east) -- (-0.6, 0.5);
 
-                            % Clues -> LLM (diagonal up-right)
-                            \draw[arrow] (clues.east) -- (-0.6, -0.3);
+                                % Clues -> LLM (diagonal up-right)
+                                \draw[arrow] (clues.east) -- (-0.6, -0.3);
 
-                            % LLM -> Low-level (diagonal up-right)
-                            \draw[arrow] (0.6, 0.5) -- node[midway, above, sloped, font=\scriptsize\itshape, text=red!50!gray, yshift=2pt] {Low-level} (lowlevel.west);
+                                % LLM -> Low-level (diagonal up-right)
+                                \draw[arrow] (0.6, 0.5) -- node[midway, above, sloped, font=\scriptsize\itshape, text=red!50!gray, yshift=2pt] {Low-level} (lowlevel.west);
 
-                            % LLM -> High-level (diagonal down-right)
-                            \draw[arrow] (0.6, -0.3) -- node[midway, below, sloped, font=\scriptsize\itshape, text=red!50!gray, yshift=-2pt] {High-level} (highlevel.west);
+                                % LLM -> High-level (diagonal down-right)
+                                \draw[arrow] (0.6, -0.3) -- node[midway, below, sloped, font=\scriptsize\itshape, text=red!50!gray, yshift=-2pt] {High-level} (highlevel.west);
 
-                            % === LABELS ===
+                                % === LABELS ===
 
-                            % ① Retrieve Content Keywords (left of arrow) -> adjusted x
-                            \node[label, anchor=east] at (-4.1, 0) {\textcircled{\scriptsize 1} \textbf{Retrieve Content}\\Keywords by Similarity};
+                                % ① Retrieve Content Keywords (left of arrow) -> adjusted x
+                                \node[label, anchor=east] at (-4.1, 0) {\textbf{(1)} \textbf{Retrieve Content}\\Keywords by Similarity};
 
-                            % ② Input to LLM (centered above LLM)
-                            \node[label, anchor=south] at (0, 1.15) {\textcircled{\scriptsize 2} \textbf{Input to LLM}};
+                                % ② Input to LLM (centered above LLM)
+                                \node[label, anchor=south] at (0, 1.15) {\textbf{(2)} \textbf{Input to LLM}};
 
-                            % ③ Generate Hierarchical Keywords (right side) -> adjusted x
-                            \node[label, anchor=west] at (1.6, 0) {\textcircled{\scriptsize 3} \textbf{Generate Hierarchical}\\~~~~\textbf{Keywords}};
+                                % ③ Generate Hierarchical Keywords (right side) -> adjusted x
+                                \node[label, anchor=west] at (1.6, 0) {\textbf{(3)} \textbf{Generate Hierarchical}\\~~~~\textbf{Keywords}};
 
-                        \end{tikzpicture}
-                        \caption{Ilustrasi Ekstraksi Kata Kunci Berdasarkan Petunjuk (\textit{clues}) \citep{chen2025acadrag}}
+                            \end{tikzpicture}
+                        \end{adjustbox}
+                        \caption{Ilustrasi ekstraksi kata kunci hierarkis berdasarkan petunjuk semantik (\textit{clues}) \citep{chen2025acadrag}}
                         \label{fig:contoh_ekstraksi_kata_kunci}
                     \end{figure}
 
-                    \hspace*{0.75cm}\ref{fig:contoh_ekstraksi_kata_kunci} mengilustrasikan proses ini. \textit{LLM} berfungsi sebagai \textit{reasoning engine} yang mensintesis pertanyaan asli dengan petunjuk semantik, memecah kompleksitas kueri menjadi komponen pencarian yang relevan secara leksikal dan kontekstual. Pendekatan hierarkis ini meningkatkan \textit{recall} sekaligus menjaga \textit{precision}.
+                    \hspace*{0.75cm}\ref{fig:contoh_ekstraksi_kata_kunci} mengilustrasikan proses ekstraksi kata kunci hierarkis. Pada proses ini, \textit{LLM} berfungsi sebagai \textit{reasoning engine} yang menyintesis pertanyaan asli dengan petunjuk semantik, kemudian memecah kompleksitas kueri menjadi komponen pencarian yang relevan secara leksikal dan kontekstual. Pendekatan hierarkis ini bertujuan meningkatkan \textit{recall} sekaligus menjaga \textit{precision}.
 
               \item \textbf{Ekstraksi Informasi Lokal Berbasis Subgraf (\textit{Local Retrieval})}
                     % Diagram Tahapan Pembentukan Subgraf (TikZ) - Academic Style
                     \begin{figure}[htbp]
                         \centering
-                        \begin{tikzpicture}[
-                                >=Stealth,
-                                scale=1, transform shape,
-                                % Vivid Green/Blue color scheme matching reference
-                                graphnode/.style={circle, draw=blue!40!black, fill=green!60!black, minimum size=0.45cm, line width=0.7pt},
-                                graphnodelight/.style={circle, draw=blue!40!black, fill=green!15, minimum size=0.45cm, line width=0.7pt},
-                                edge/.style={line width=1.5pt, blue!60!cyan},
-                                prunededge/.style={line width=1.5pt, red!80!black},
-                                newedge/.style={line width=1.8pt, red!80!black},
-                                arrow/.style={->, line width=0.7pt, black!80},
-                                dashedoval/.style={draw=orange!90!black, densely dashed, line width=1.0pt}
-                            ]
+                        \begin{adjustbox}{max width=0.94\textwidth, max totalheight=0.70\textheight, center}
+                            \begin{tikzpicture}[
+                                    >=Stealth,
+                                    scale=1, transform shape,
+                                    % Vivid Green/Blue color scheme matching reference
+                                    graphnode/.style={circle, draw=blue!40!black, fill=green!60!black, minimum size=0.45cm, line width=0.7pt},
+                                    graphnodelight/.style={circle, draw=blue!40!black, fill=green!15, minimum size=0.45cm, line width=0.7pt},
+                                    edge/.style={line width=1.5pt, blue!60!cyan},
+                                    prunededge/.style={line width=1.5pt, red!80!black},
+                                    newedge/.style={line width=1.8pt, red!80!black},
+                                    arrow/.style={->, line width=0.7pt, black!80},
+                                    dashedoval/.style={draw=orange!90!black, densely dashed, line width=1.0pt}
+                                ]
 
-                            % ========== STAGE 1: Node Matching (3 nodes) ==========
-                            \begin{scope}[shift={(0,0)}]
-                                % Three separate nodes (tidak terhubung)
-                                \node[graphnode] (n1a) at (0, 0.6) {};
-                                \node[graphnode] (n1b) at (0.4, -0.2) {};
-                                \node[graphnode] (n1c) at (-0.3, -0.5) {};
+                                % ========== STAGE 1: Node Matching (3 nodes) ==========
+                                \begin{scope}[shift={(0,0)}]
+                                    % Three separate nodes (tidak terhubung)
+                                    \node[graphnode] (n1a) at (0, 0.6) {};
+                                    \node[graphnode] (n1b) at (0.4, -0.2) {};
+                                    \node[graphnode] (n1c) at (-0.3, -0.5) {};
 
-                                % Label
-                                \node[font=\scriptsize\itshape] at (0, -1.2) {Node Matching};
-                            \end{scope}
+                                    % Label
+                                    \node[font=\scriptsize\itshape] at (0, -1.2) {Node Matching};
+                                \end{scope}
 
-                            % Arrow to next stage
-                            \draw[arrow] (1.0, 0) -- (1.5, 0);
+                                % Arrow to next stage
+                                \draw[arrow] (1.0, 0) -- (1.5, 0);
 
-                            % ========== STAGE 2: Subgraph Construction (5 nodes pentagon) ==========
-                            \begin{scope}[shift={(2.8, 0)}]
-                                % Pentagon graph - 5 nodes with "Potential Missing Node" pointing here
-                                \node[graphnodelight] (n2a) at (0, 0.8) {};      % top (light) - target of potential missing node
-                                \node[graphnode] (n2b) at (0.65, 0.25) {};       % right upper (dark)
-                                \node[graphnodelight] (n2c) at (0.45, -0.5) {};  % right lower (light)
-                                \node[graphnode] (n2d) at (-0.35, -0.6) {};      % bottom left (dark)
-                                \node[graphnode] (n2e) at (-0.6, 0.1) {};        % left (dark)
+                                % ========== STAGE 2: Subgraph Construction (5 nodes pentagon) ==========
+                                \begin{scope}[shift={(2.8, 0)}]
+                                    % Pentagon graph - 5 nodes with "Potential Missing Node" pointing here
+                                    \node[graphnodelight] (n2a) at (0, 0.8) {};      % top (light) - target of potential missing node
+                                    \node[graphnode] (n2b) at (0.65, 0.25) {};       % right upper (dark)
+                                    \node[graphnodelight] (n2c) at (0.45, -0.5) {};  % right lower (light)
+                                    \node[graphnode] (n2d) at (-0.35, -0.6) {};      % bottom left (dark)
+                                    \node[graphnode] (n2e) at (-0.6, 0.1) {};        % left (dark)
 
-                                % Edges (blue) - pentagon + diagonal
-                                \draw[edge] (n2a) -- (n2b);
-                                \draw[edge] (n2b) -- (n2c);
-                                \draw[edge] (n2c) -- (n2d);
-                                \draw[edge] (n2d) -- (n2e);
-                                \draw[edge] (n2e) -- (n2a);
+                                    % Edges (blue) - pentagon + diagonal
+                                    \draw[edge] (n2a) -- (n2b);
+                                    \draw[edge] (n2b) -- (n2c);
+                                    \draw[edge] (n2c) -- (n2d);
+                                    \draw[edge] (n2d) -- (n2e);
+                                    \draw[edge] (n2e) -- (n2a);
 
-                                % Dashed oval "Potential Missing Node" - pointing to top node of subgraph
-                                \draw[dashedoval] (-1.5, 1.6) ellipse (0.75cm and 0.4cm);
-                                \node[font=\tiny\itshape, align=center, text=orange!70!black] at (-1.5, 1.6) {Potential\\Missing Node};
+                                    % Dashed oval "Potential Missing Node" - pointing to top node of subgraph
+                                    \draw[dashedoval] (-1.5, 1.6) ellipse (0.75cm and 0.4cm);
+                                    \node[font=\tiny\itshape, align=center, text=orange!70!black] at (-1.5, 1.6) {Potential\\Missing Node};
 
-                                % Curved dashed arrow from oval to top node of subgraph
-                                \draw[orange!70!black, densely dashed, line width=0.9pt, ->]
-                                (-1.5, 1.15) to[out=-90, in=90] (n2e.north);
+                                    % Curved dashed arrow from oval to top node of subgraph
+                                    \draw[orange!70!black, densely dashed, line width=0.9pt, ->]
+                                    (-1.5, 1.15) to[out=-90, in=90] (n2e.north);
 
-                                % Label
-                                \node[font=\scriptsize\itshape, align=center] at (0, -1.2) {Subgraph\\Construction};
-                            \end{scope}
+                                    % Label
+                                    \node[font=\scriptsize\itshape, align=center] at (0, -1.2) {Subgraph\\Construction};
+                                \end{scope}
 
-                            % Arrow to next stage
-                            \draw[arrow] (4.2, 0) -- (4.7, 0);
+                                % Arrow to next stage
+                                \draw[arrow] (4.2, 0) -- (4.7, 0);
 
-                            % ========== STAGE 3: Pruning (5 nodes, 1 isolated node with slash) ==========
-                            \begin{scope}[shift={(6.0, 0)}]
-                                % Pentagon - 5 nodes, one is isolated (not connected)
-                                \node[graphnode] (n3a) at (-0.15, 0.8) {};       % top left (dark)
-                                \node[graphnodelight] (n3b) at (0.55, 0.55) {};  % top right (light) - ISOLATED, will be pruned
-                                \node[graphnode] (n3c) at (0.65, -0.15) {};      % right (dark)
-                                \node[graphnode] (n3d) at (0, -0.7) {};          % bottom (dark)
-                                \node[graphnodelight] (n3e) at (-0.6, -0.1) {};  % left (light)
+                                % ========== STAGE 3: Pruning (5 nodes, 1 isolated node with slash) ==========
+                                \begin{scope}[shift={(6.0, 0)}]
+                                    % Pentagon - 5 nodes, one is isolated (not connected)
+                                    \node[graphnode] (n3a) at (-0.15, 0.8) {};       % top left (dark)
+                                    \node[graphnodelight] (n3b) at (0.55, 0.55) {};  % top right (light) - ISOLATED, will be pruned
+                                    \node[graphnode] (n3c) at (0.65, -0.15) {};      % right (dark)
+                                    \node[graphnode] (n3d) at (0, -0.7) {};          % bottom (dark)
+                                    \node[graphnodelight] (n3e) at (-0.6, -0.1) {};  % left (light)
 
-                                % Blue edges - connecting all EXCEPT n3b (isolated node)
-                                \draw[edge] (n3a) -- (n3e);
-                                \draw[edge] (n3e) -- (n3d);
-                                \draw[edge] (n3d) -- (n3c);
+                                    % Blue edges - connecting all EXCEPT n3b (isolated node)
+                                    \draw[edge] (n3a) -- (n3e);
+                                    \draw[edge] (n3e) -- (n3d);
+                                    \draw[edge] (n3d) -- (n3c);
 
-                                % Red slash mark ON TOP of the isolated node (n3b) - marking it for pruning
-                                \draw[red!70!black, line width=2.5pt] (0.38, 0.72) -- (0.72, 0.38);
+                                    % Red slash mark ON TOP of the isolated node (n3b) - marking it for pruning
+                                    \draw[red!70!black, line width=2.5pt] (0.38, 0.72) -- (0.72, 0.38);
 
-                                % Label
-                                \node[font=\scriptsize\itshape] at (0, -1.2) {Pruning};
-                            \end{scope}
+                                    % Label
+                                    \node[font=\scriptsize\itshape] at (0, -1.2) {Pruning};
+                                \end{scope}
 
-                            % Arrow to next stage
-                            \draw[arrow] (7.4, 0) -- (7.9, 0);
+                                % Arrow to next stage
+                                \draw[arrow] (7.4, 0) -- (7.9, 0);
 
-                            % ========== STAGE 4: Edge Expansion (5 nodes, 1 disconnected) ==========
-                            \begin{scope}[shift={(9.2, 0)}]
-                                % 5 nodes - one is disconnected (isolated)
-                                \node[graphnode] (n4a) at (0, 0.75) {};          % top (dark)
-                                \node[graphnodelight] (n4b) at (0.6, 0.15) {};   % right upper (light) - DISCONNECTED
-                                \node[graphnode] (n4c) at (0.4, -0.55) {};       % right lower (dark)
-                                \node[graphnodelight] (n4d) at (-0.4, -0.55) {}; % left lower (light)
-                                \node[graphnode] (n4e) at (-0.6, 0.15) {};       % left upper (dark)
+                                % ========== STAGE 4: Edge Expansion (5 nodes, 1 disconnected) ==========
+                                \begin{scope}[shift={(9.2, 0)}]
+                                    % 5 nodes - one is disconnected (isolated)
+                                    \node[graphnode] (n4a) at (0, 0.75) {};          % top (dark)
+                                    \node[graphnodelight] (n4b) at (0.6, 0.15) {};   % right upper (light) - DISCONNECTED
+                                    \node[graphnode] (n4c) at (0.4, -0.55) {};       % right lower (dark)
+                                    \node[graphnodelight] (n4d) at (-0.4, -0.55) {}; % left lower (light)
+                                    \node[graphnode] (n4e) at (-0.6, 0.15) {};       % left upper (dark)
 
-                                % Blue edges - NOT connecting n4b (disconnected node)
-                                \draw[edge] (n4a) -- (n4e);
-                                \draw[edge] (n4e) -- (n4d);
-                                \draw[edge] (n4d) -- (n4c);
+                                    % Blue edges - NOT connecting n4b (disconnected node)
+                                    \draw[edge] (n4a) -- (n4e);
+                                    \draw[edge] (n4e) -- (n4d);
+                                    \draw[edge] (n4d) -- (n4c);
 
-                                % Red expansion edges (outward from each connected node)
-                                % From top node
-                                \draw[newedge] (n4a) -- ++(0.22, 0.32);
-                                \draw[newedge] (n4a) -- ++(-0.18, 0.35);
-                                % From right upper (disconnected - still has expansion edges)
-                                \draw[newedge] (n4b) -- ++(0.32, 0.12);
-                                \draw[newedge] (n4b) -- ++(0.28, -0.18);
-                                % From right lower
-                                \draw[newedge] (n4c) -- ++(0.28, -0.22);
-                                \draw[newedge] (n4c) -- ++(0.06, -0.38);
-                                % From left lower
-                                \draw[newedge] (n4d) -- ++(-0.28, -0.22);
-                                \draw[newedge] (n4d) -- ++(-0.06, -0.38);
-                                % From left upper
-                                \draw[newedge] (n4e) -- ++(-0.32, 0.12);
-                                \draw[newedge] (n4e) -- ++(-0.28, -0.18);
+                                    % Red expansion edges (outward from each connected node)
+                                    % From top node
+                                    \draw[newedge] (n4a) -- ++(0.22, 0.32);
+                                    \draw[newedge] (n4a) -- ++(-0.18, 0.35);
+                                    % From right upper (disconnected - still has expansion edges)
+                                    \draw[newedge] (n4b) -- ++(0.32, 0.12);
+                                    \draw[newedge] (n4b) -- ++(0.28, -0.18);
+                                    % From right lower
+                                    \draw[newedge] (n4c) -- ++(0.28, -0.22);
+                                    \draw[newedge] (n4c) -- ++(0.06, -0.38);
+                                    % From left lower
+                                    \draw[newedge] (n4d) -- ++(-0.28, -0.22);
+                                    \draw[newedge] (n4d) -- ++(-0.06, -0.38);
+                                    % From left upper
+                                    \draw[newedge] (n4e) -- ++(-0.32, 0.12);
+                                    \draw[newedge] (n4e) -- ++(-0.28, -0.18);
 
-                                % Label
-                                \node[font=\scriptsize\itshape, align=center] at (0, -1.2) {Edge\\Expansion};
-                            \end{scope}
+                                    % Label
+                                    \node[font=\scriptsize\itshape, align=center] at (0, -1.2) {Edge\\Expansion};
+                                \end{scope}
 
-                        \end{tikzpicture}
+                            \end{tikzpicture}
+                        \end{adjustbox}
                         \caption{Tahapan Pembentukan Subgraf}
                         \label{fig:pembentukan-subgraf}
                     \end{figure}
@@ -748,15 +767,13 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
 
                     \end{enumerate}
 
-                    \hspace*{0.75cm}Proses ini menghasilkan konteks lokal terstruktur (\ref{fig:pembentukan-subgraf}). Hasil akhir dinotasikan sebagai tiga komponen: entitas ($\mathcal{E}$), relasi ($\mathcal{R}$), dan unit teks ($\mathcal{T}$):
-
+                    \hspace*{0.75cm}Proses ini menghasilkan konteks lokal terstruktur (\ref{fig:pembentukan-subgraf}). Hasil akhir dinotasikan sebagai tiga komponen, yaitu entitas ($\mathcal{E}$), relasi ($\mathcal{R}$), dan unit teks ($\mathcal{T}$), sehingga formulasi konteks lokal dituliskan sebagai
                     \begin{equation}
                         \mathcal{L}_{\text{local}} = (\mathcal{E}_{\text{local}}, \mathcal{R}_{\text{local}}, \mathcal{T}_{\text{local}})
-                        = \text{pipeline}_{\text{local}}(\mathcal{K}_l, G).
+                        = \text{pipeline}_{\text{local}}(\mathcal{K}_l, G),
                     \end{equation}
-
                     \noindent
-                    di mana $\mathcal{L}_{\text{local}}$ merupakan fungsi dari kata kunci spesifik dan struktur graf, yang direduksi menjadi subset informasi paling signifikan untuk menjawab kueri.
+                    dengan $\mathcal{L}_{\text{local}}$ merupakan hasil fungsi dari kata kunci spesifik dan struktur graf yang direduksi menjadi subset informasi paling signifikan untuk menjawab kueri.
 
 
               \item \textbf{Ekstraksi Jejaring Global (\textit{Global Edge Network Retrieval})}
@@ -780,7 +797,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                     \end{enumerate}
 
                     \noindent
-                    Mekanisme ini menghasilkan konteks global yang kaya akan informasi hubungan, yang diformulasikan dalam persamaan:
+                    Mekanisme ini menghasilkan konteks global yang kaya akan informasi hubungan, yang diformulasikan sebagai
                     \begin{equation}
                         \mathcal{L}_{\text{global}} = (\mathcal{E}_{\text{global}}, \mathcal{R}_{\text{global}}, \mathcal{T}_{\text{global}})
                         = \text{pipeline}_{\text{global}}(\mathcal{K}_h, G).
@@ -795,19 +812,83 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
     \item \textbf{Evaluasi Sistem}
           \label{subsec:system-evaluation}
 
-          \hspace*{0.75cm}Evaluasi sistem disusun untuk memisahkan kualitas pengambilan konteks, kualitas jawaban, dan keterlacakan bukti. Pemisahan ini diperlukan karena sistem \textit{Hybrid GraphRAG} tidak hanya menghasilkan jawaban akhir, tetapi juga mengambil \textit{paper chunks}, entitas, relasi, dan subgraf dari dua basis data yang berbeda.
+          \hspace*{0.75cm}Evaluasi sistem dilakukan untuk menilai dua aspek utama, yaitu kualitas pencarian dokumen referensi (\textit{retrieval quality}) dan kualitas sintesis jawaban (\textit{generation quality}). Data uji pada penelitian ini disusun dan dikurasi secara mandiri berdasarkan karakteristik domain Infokom UNESA, sehingga pertanyaan evaluasi, jawaban acuan (\textit{ground truth}), dan referensi pendukung tetap selaras dengan cakupan data akademik yang digunakan dalam penelitian.
 
-          \hspace*{0.75cm}Dataset evaluasi terdiri atas 60 pertanyaan, yaitu 56 \textit{ranked cases} dan 4 \textit{guardrail cases}. Pertanyaan utama dibagi menjadi kategori faktual, relasional, dan \textit{multi-hop}. Kategori faktual digunakan untuk menguji kemampuan menemukan publikasi atau atribut tertentu. Kategori relasional digunakan untuk menguji hubungan dosen, publikasi, topik, metode, dan kolaborasi. Kategori \textit{multi-hop} digunakan untuk menguji pertanyaan yang memerlukan penggabungan beberapa hubungan dalam graf. Sementara itu, \textit{guardrail cases} digunakan untuk memeriksa apakah sistem mampu menolak atau membatasi jawaban ketika informasi tidak tersedia dalam basis pengetahuan.
+          \hspace*{0.75cm} Kerangka evaluasi menggunakan 60 pertanyaan uji yang terdiri atas 56 \textit{ranked cases} dan 4 \textit{guardrail cases}. \textit{Ranked cases} digunakan untuk mengukur kemampuan sistem menemukan referensi yang relevan berdasarkan jawaban acuan, sedangkan \textit{guardrail cases} digunakan untuk menguji kemampuan sistem menolak pertanyaan di luar cakupan. Pertanyaan uji tersebut dikelompokkan ke dalam tiga kategori utama, yaitu Kategori A (faktual, $n=20$), Kategori B (relasional, $n=30$), dan Kategori C (\textit{multi-hop}/sintesis, $n=6$).
 
-          \hspace*{0.75cm}Evaluasi dilakukan dalam empat lapis. Lapis pertama mengukur kualitas \textit{retrieval} menggunakan \textit{Hit@K}, \textit{Mean Reciprocal Rank} (MRR), \textit{Precision@K}, dan latensi. Lapis kedua mengukur kualitas jawaban menggunakan metrik berbasis RAGAS dan heuristik lokal, seperti \textit{faithfulness}, \textit{answer relevancy}, \textit{context precision}, dan \textit{context recall}. Lapis ketiga membandingkan performa beberapa mode retrieval, yaitu \texttt{naive}, \texttt{subgraph}, \texttt{hybrid}, dan \texttt{mix}. Lapis keempat menggunakan \textit{LLM-as-a-judge} untuk membandingkan jawaban \textit{Vector RAG} sebagai baseline terhadap mode berbasis graf berdasarkan dimensi \textit{faithfulness}, \textit{traceability}, \textit{comprehensiveness}, dan penilaian keseluruhan.
+          \hspace*{0.75cm}Evaluasi dilakukan melalui tiga lapisan pengukuran yang saling melengkapi sebagai berikut:
 
-          \hspace*{0.75cm}Mode \texttt{naive} diperlakukan sebagai representasi \textit{Vector RAG} karena hanya mengandalkan pencarian semantik pada \texttt{PaperChunk}. Mode \texttt{subgraph} memanfaatkan simpul dan jalur graf lokal. Mode \texttt{global} menggunakan relasi yang diretrieval dari indeks \texttt{RelationshipEmbedding}. Mode \texttt{hybrid} menggabungkan konteks lokal dan global, sedangkan mode \texttt{mix} menggabungkan bukti tekstual, petunjuk kata kunci, entitas, relasi, dan subgraf. Hasil evaluasi disimpan dalam \texttt{notebooks/build-graph/outputs/evaluation} dan diekspor menjadi tabel serta gambar yang dapat langsung digunakan pada Bab IV.
+          \begin{enumerate}[label=\alph*., leftmargin=0.75cm, itemsep=4pt]
+
+              \item \textbf{Evaluasi Akurasi \textit{Retrieval}}
+
+                    \hspace*{0.75cm} Evaluasi ini mengukur kemampuan sistem dalam menemukan dan menempatkan dokumen ilmiah yang relevan pada peringkat teratas. Metrik yang digunakan adalah \textit{Mean Reciprocal Rank} (MRR) dan \textit{Hit@K} untuk $K = 1, 5, 10$ \citep{manning2008introduction}.
+
+                    \textit{Mean Reciprocal Rank} (MRR) didefinisikan sebagai rata-rata kebalikan dari posisi dokumen relevan pertama yang berhasil ditemukan pada setiap kueri:
+                    \begin{equation}
+                        \textit{MRR} = \frac{1}{|Q|} \sum_{i=1}^{|Q|} \frac{1}{\text{rank}_i}
+                    \end{equation}
+                    di mana $|Q|$ melambangkan jumlah kueri dan $\text{rank}_i$ merupakan posisi peringkat dokumen relevan pertama pada kueri ke-$i$.
+
+                    \textit{Hit@K} mengukur proporsi kueri ketika setidaknya satu dokumen relevan berhasil ditemukan pada $K$ peringkat teratas. Notasi $Q_{\text{relevan@}K}$ menyatakan himpunan kueri yang memiliki dokumen relevan pada $K$ peringkat teratas:
+                    \begin{equation}
+                        \textit{Hit@K} = \frac{|Q_{\text{relevan@}K}|}{|Q|}
+                    \end{equation}
+
+              \item \textbf{Evaluasi Kualitas Jawaban Berbasis \textit{RAGAS}}
+
+                    \hspace*{0.75cm} Evaluasi ini untuk melihat kualitas jawaban secara otomatis menggunakan kerangka kerja \textit{RAGAS} \citep{es-etal-2024-ragas}. Evaluasi difokuskan pada kesesuaian jawaban terhadap konteks yang digunakan, keterlacakan informasi, serta relevansi respons terhadap pertanyaan. Metrik utama yang digunakan meliputi \textit{Context Precision}, \textit{Context Recall}, \textit{Faithfulness}, \textit{Answer Relevancy}, dan \textit{Answer Correctness}.
+
+                    \textit{Faithfulness} didefinisikan sebagai rasio klaim dalam jawaban yang dapat diverifikasi oleh konteks pendukung ($V$) terhadap seluruh klaim yang diekstraksi dari jawaban ($S$):
+                    \begin{equation}
+                        \textit{Faithfulness} = \frac{|V|}{|S|}
+                    \end{equation}
+
+                    \textit{Answer Relevancy} mengukur relevansi semantik jawaban terhadap kueri pengguna dengan menghitung rata-rata kemiripan kosinus (\textit{cosine similarity}) antara representasi vektor kueri asli dan beberapa pertanyaan sintetis yang dibangkitkan dari jawaban tersebut:
+                    \begin{equation}
+                        \textit{Answer Relevancy} = \frac{1}{m} \sum_{i=1}^{m} \cos(E_{q_i}, E_q)
+                    \end{equation}
+                    di mana $E_q$ adalah representasi vektor kueri asli, $E_{q_i}$ adalah representasi vektor pertanyaan sintetis ke-$i$, dan $m$ adalah jumlah pertanyaan sintetis.
+
+              \item \textbf{Evaluasi \textit{Pairwise LLM Judge}}
+
+                    \hspace*{0.75cm}Evaluasi ini menggunakan model bahasa besar (\textit{Llama 3.3 70B}) sebagai hakim otomatis (\textit{LLM-as-a-Judge}) untuk membandingkan kualitas jawaban sistem yang diusulkan (\textit{Subgraph} dan \textit{Hybrid}) terhadap baseline (\textit{Naive}) secara berpasangan (\textit{pairwise}) \citep{zheng2023judging}. Agar penilaian lebih mudah dibaca, empat dimensi evaluasi disajikan dalam bentuk kuadran sebagai berikut:
+
+                    \begin{center}
+                        \begingroup
+                        \small
+                        \setlength{\tabcolsep}{4pt}
+                        \renewcommand{\arraystretch}{1.15}
+                        \begin{tabularx}{0.95\linewidth}{|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|}
+                            \hline
+                            \textbf{Kuadran 1: \textit{Faithfulness}}                    & \textbf{Kuadran 2: \textit{Traceability}}                                             \\
+                            Menilai kesesuaian klaim jawaban terhadap konteks pendukung. & Menilai kemudahan penelusuran jawaban ke referensi atau bukti yang digunakan.         \\ \hline
+                            \textbf{Kuadran 3: \textit{Comprehensiveness}}               & \textbf{Kuadran 4: \textit{Overall}}                                                  \\
+                            Menilai kelengkapan cakupan informasi dalam jawaban.         & Menilai kualitas jawaban secara keseluruhan berdasarkan kombinasi dimensi sebelumnya. \\ \hline
+                        \end{tabularx}
+                        \endgroup
+                    \end{center}
+
+                    Hasil penilaian dinyatakan dalam bentuk \textit{Win Rate}, yaitu persentase kemenangan suatu mode terhadap baseline:
+                    \begin{equation}
+                        \textit{Win Rate}_{M} = \frac{|Q_{\text{menang}, M}|}{|Q|} \times 100\%
+                    \end{equation}
+
+          \end{enumerate}
+
+          \hspace*{0.75cm}Melalui skenario evaluasi multi-lapis ini, kelebihan dan kelemahan masing-masing mode pencarian (\textit{Naive}, \textit{Subgraph}, dan \textit{Hybrid}) dapat diidentifikasi secara komprehensif tanpa bergantung pada satu metrik tunggal. Selain itu, penelitian ini menetapkan target keberhasilan sistem berdasarkan \textit{threshold} berikut:
+          \begin{itemize}[leftmargin=0.75cm]
+              \item \textit{Context Precision} $> 0.85$ (relevansi tinggi)
+              \item \textit{Context Recall} $> 0.80$ (cakupan informasi luas)
+              \item \textit{Faithfulness} $> 0.90$ (minimal halusinasi)
+              \item \textit{Answer Correctness} $> 0.75$ (keakuratan jawaban)
+          \end{itemize}
+
+          Sistem dianggap berhasil apabila memenuhi standar pada seluruh metrik tersebut. Untuk memvalidasi efektivitas pendekatan yang diusulkan, hasil evaluasi dibandingkan melalui \textit{benchmarking} antara \textit{Baseline} (\textit{Standard Vector RAG}) dan sistem \textit{Hybrid GraphRAG}.
 
 
           % 6. GUI Implementation
     \item \textbf{Implementasi GUI (\textit{GUI Implementation})}
 
-          \hspace*{0.75cm}Antarmuka pengguna dikembangkan sebagai aplikasi web yang mengadaptasi backbone Yuxi. Pada sisi pengguna, sistem disajikan sebagai antarmuka percakapan sehingga dosen atau pengguna lain dapat mengajukan pertanyaan dalam bahasa natural. Pada sisi belakang, pertanyaan tersebut diteruskan ke \textit{agent} dan alat \texttt{query\_kb} untuk menjalankan proses \textit{Academic GraphRAG} terhadap Neo4j dan Zilliz/Milvus.
-
-          \hspace*{0.75cm}GUI tidak digunakan untuk membangun graf, tetapi menjadi lapisan interaksi dan inspeksi hasil. Antarmuka ini menampilkan jawaban akhir, sumber publikasi, potongan dokumen, \textit{graph triples}, serta panel bukti akademik yang membantu pengguna melihat dari mana jawaban diperoleh. Dengan demikian, GUI diposisikan sebagai penghubung antara pengguna dan sistem \textit{Hybrid GraphRAG}, bukan sebagai pengganti pipeline konstruksi KG.
+          \hspace*{0.75cm}Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan menggunakan aplikasi berbasis web untuk memfasilitasi interaksi pengguna dengan sistem. Antarmuka ini menampilkan jawaban, referensi sumber, dan visualisasi subgraf secara \textit{real-time}, sehingga memberikan transparansi terhadap proses perolehan jawaban.
 \end{enumerate}

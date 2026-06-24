@@ -165,6 +165,26 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
        - Try direct request first.
        - If blocked (403, 503, Cloudflare/anti-bot detected) or fails, escalate to BrightData Web Unlocker proxy.
     """
+    # Reorder query parameters for Google Scholar citations to ensure compliance with robots.txt (user= parameter first)
+    # This prevents Bright Data's robots.txt check from blocking it (brob error) under Immediate Access mode.
+    if url and "scholar.google.com/citations" in url:
+        try:
+            parsed = urllib.parse.urlparse(url)
+            params = urllib.parse.parse_qsl(parsed.query)
+            user_param = None
+            other_params = []
+            for k, v in params:
+                if k == 'user':
+                    user_param = (k, v)
+                else:
+                    other_params.append((k, v))
+            if user_param:
+                new_params = [user_param] + other_params
+                new_query = urllib.parse.urlencode(new_params)
+                url = urllib.parse.urlunparse(parsed._replace(query=new_query))
+        except Exception as e:
+            logger.debug(f"Error reordering citation query params: {e}")
+
     headers = _get_headers(referer)
     is_google_scholar = "scholar.google" in url.lower() if url else False
 

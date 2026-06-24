@@ -30,12 +30,14 @@ try:
         search_scholar_proxy_query,
         scrape_publisher_page,
         search_scholar_proxy_query_html,
+        scrape_scholar_citation_page,
     )
 except ImportError:
     # Fallback if scraping dependencies are missing
     search_scholar_proxy_query = None
     scrape_publisher_page = None
     search_scholar_proxy_query_html = None
+    scrape_scholar_citation_page = None
 
 logger = logging.getLogger(__name__)
 
@@ -826,14 +828,33 @@ def enrich_paper_batch(
             logger.debug("openalex.no_match | title=%s", title[:80])
 
         # ── Phase 2.5: BrightData Google Scholar (PAID) ──
-        if allow_paid_proxy and search_scholar_proxy_query and (not abstract or not keywords or not doi):
+        if allow_paid_proxy and (not abstract or not keywords or not doi):
             missing_fields = ",".join(
                 field for field, value in (("Abstract", abstract), ("Keywords", keywords), ("DOI", doi)) if not value
             )
             log_event(logger, "paper.enrich_row.phase", index=count, phase="brightdata_scholar", missing=missing_fields)
             try:
-                bd = search_scholar_proxy_query(title)
+                bd = None
+                link = row.get("Link", "")
+                # If it's a Google Scholar citation page, fetch it directly to comply with robots.txt
+                if scrape_scholar_citation_page and "scholar.google.com/citations?view_op=view_citation" in link:
+                    logger.info(f"Scraping citation page directly for Google Scholar paper: {link[:80]}")
+                    bd = scrape_scholar_citation_page(link)
+                
+                # Fallback to title search if we don't have a direct citation link
+                if not bd and search_scholar_proxy_query:
+                    logger.info(f"Direct citation page not available. Searching Google Scholar by title: {title[:50]}...")
+                    bd = search_scholar_proxy_query(title)
+                
                 if bd:
+                    if not abstract and bd.get("abstract"):
+                        abstract = clean_abstract_text(bd["abstract"])
+                        source_contributions["bd"].append("Abstract")
+                    # Fallback to snippet if abstract is missing (for title search compatibility)
+                    elif not abstract and bd.get("snippet"):
+                        abstract = clean_abstract_text(bd["snippet"])
+                        source_contributions["bd"].append("Abstract(snippet)")
+                        
                     if not keywords and bd.get("keywords"):
                         keywords = bd["keywords"]
                         source_contributions["bd"].append("Keywords")
@@ -843,23 +864,44 @@ def enrich_paper_batch(
                     if not journal and bd.get("journal"):
                         journal = str(bd["journal"])
                         source_contributions["bd"].append("Journal")
+                    if not doi and bd.get("doi"):
+                        doi = bd["doi"]
+                        source_contributions["bd"].append("DOI")
                     
                     # Collect Scholar IDs
                     if bd.get("author_ids"):
                         for aid in bd["author_ids"]:
-                            if aid not in collected_author_ids: collected_author_ids.append(aid)
+                            if aid not in collected_author_ids: 
+                                collected_author_ids.append(aid)
                     
                     # Scholar -> Web scraping fallback (paid proxy only when needed)
                     scholar_links = []
-                    if bd.get("title_link"):
+                    # scrape_scholar_citation_page returns 'publisher_link' and 'pdf_link'
+                    if bd.get("publisher_link"):
+                        scholar_links.append(("Scholar-Pub", bd["publisher_link"], True))
+                    elif bd.get("title_link"):
                         scholar_links.append(("Scholar-Pub", bd["title_link"], True))
+                    
                     if bd.get("pdf_link"):
                         scholar_links.append(("Scholar-PDF", bd["pdf_link"], True))
                     if bd.get("html_direct"):
                         scholar_links.append(("Scholar-HTML", bd["html_direct"], True))
                     if bd.get("cached_html"):
                         scholar_links.append(("Scholar-Cache", bd["cached_html"], True))
-                    if (not keywords or not abstract) and scholar_links:
+                        
+                    # If abstract is truncated (ends with ... or …), we should try to fetch the full abstract from publisher links.
+                    is_abstract_truncated = False
+                    if abstract:
+                        clean_abs = abstract.strip()
+                        if clean_abs.endswith('...') or clean_abs.endswith('…') or clean_abs.endswith('...'):
+                            is_abstract_truncated = True
+                            logger.info(f"Abstract retrieved from Scholar is truncated. Will try to fetch full abstract from publisher links.")
+
+                    if (not keywords or not abstract or is_abstract_truncated) and scholar_links:
+                        orig_abstract = abstract
+                        if is_abstract_truncated:
+                            abstract = ""  # Clear so _scrape_metadata_links is forced to find it
+                        
                         abstract, keywords, doi, doc_type, contributions = _scrape_metadata_links(
                             scholar_links,
                             row_index=count,
@@ -871,10 +913,11 @@ def enrich_paper_batch(
                             doc_type=doc_type,
                         )
                         source_contributions["bd"].extend(contributions)
+                        
+                        # Restore original truncated abstract if publisher scraper failed to find anything better
+                        if not abstract and orig_abstract:
+                            abstract = orig_abstract
                     
-                    if not abstract and bd.get("snippet"):
-                        abstract = clean_abstract_text(bd["snippet"])
-                        source_contributions["bd"].append("Abstract(snippet)")
                     log_event(
                         logger,
                         "paper.enrich_row.brightdata_done",

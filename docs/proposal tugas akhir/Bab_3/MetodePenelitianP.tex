@@ -797,11 +797,50 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
     \item \textbf{Evaluasi Sistem}
           \label{subsec:system-evaluation}
 
-          \hspace*{0.75cm}Evaluasi sistem disusun untuk memisahkan kualitas pengambilan konteks, kualitas jawaban, dan keterlacakan bukti. Pemisahan ini diperlukan karena sistem \textit{Hybrid GraphRAG} tidak hanya menghasilkan jawaban akhir, tetapi juga mengambil \textit{paper chunks}, entitas, relasi, dan subgraf dari dua basis data yang berbeda.
+          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan pendekatan multi-lapis untuk mengukur kualitas pencarian dokumen referensi (\textit{retrieval quality}) dan kualitas sintesis jawaban (\textit{generation quality}). Kerangka kerja evaluasi terdiri dari 60 pertanyaan uji, yang terbagi menjadi 56 \textit{ranked cases} (pertanyaan dengan jawaban acuan/\textit{ground truth}) dan 4 \textit{guardrail cases} (pertanyaan di luar cakupan untuk menguji penolakan sistem). Kumpulan pertanyaan tersebut dikelompokkan ke dalam tiga kategori utama: Kategori A (faktual, $n=20$), Kategori B (relasional, $n=30$), dan Kategori C (\textit{multi-hop}/sintesis, $n=6$).
 
-          \hspace*{0.75cm}Dataset evaluasi terdiri atas 60 pertanyaan, yaitu 56 \textit{ranked cases} dan 4 \textit{guardrail cases}. Pertanyaan utama dibagi menjadi kategori faktual, relasional, dan \textit{multi-hop}. Kategori faktual digunakan untuk menguji kemampuan menemukan publikasi atau atribut tertentu. Kategori relasional digunakan untuk menguji hubungan dosen, publikasi, topik, metode, dan kolaborasi. Kategori \textit{multi-hop} digunakan untuk menguji pertanyaan yang memerlukan penggabungan beberapa hubungan dalam graf. Sementara itu, \textit{guardrail cases} digunakan untuk memeriksa apakah sistem mampu menolak atau membatasi jawaban ketika informasi tidak tersedia dalam basis pengetahuan.
+          \hspace*{0.75cm}Evaluasi dilakukan melalui tiga lapisan pengukuran yang saling melengkapi sebagai berikut:
 
-          \hspace*{0.75cm}Evaluasi dilakukan dalam empat lapis. Lapis pertama mengukur kualitas \textit{retrieval} menggunakan \textit{Hit@K}, \textit{Mean Reciprocal Rank} (MRR), \textit{Precision@K}, dan latensi. Lapis kedua mengukur kualitas jawaban menggunakan metrik berbasis RAGAS dan heuristik lokal, seperti \textit{faithfulness}, \textit{answer relevancy}, \textit{context precision}, dan \textit{context recall}. Lapis ketiga membandingkan performa beberapa mode retrieval, yaitu \texttt{naive}, \texttt{subgraph}, \texttt{hybrid}, dan \texttt{mix}. Lapis keempat menggunakan \textit{LLM-as-a-judge} untuk membandingkan jawaban \textit{Vector RAG} sebagai baseline terhadap mode berbasis graf berdasarkan dimensi \textit{faithfulness}, \textit{traceability}, \textit{comprehensiveness}, dan penilaian keseluruhan.
+          \begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=4pt]
+
+              \item \textbf{Evaluasi Akurasi \textit{Retrieval} (Layer 1)}:
+                    Mengukur kemampuan pencarian dalam menemukan dokumen ilmiah yang relevan menggunakan metrik \textit{Mean Reciprocal Rank} (MRR) dan \textit{Hit@K} (untuk $K = 1, 5, 10$) \citep{manning2008introduction}.
+                    
+                    \textit{Mean Reciprocal Rank} (MRR) didefinisikan sebagai rata-rata kebalikan dari posisi peringkat dokumen relevan pertama yang berhasil ditemukan:
+                    \begin{equation}
+                        \textit{MRR} = \frac{1}{|Q|} \sum_{i=1}^{|Q|} \frac{1}{\text{rank}_i}
+                    \end{equation}
+                    di mana $|Q|$ melambangkan total kueri dan $\text{rank}_i$ merupakan peringkat posisi dokumen relevan pertama pada kueri ke-$i$.
+                    
+                    \textit{Hit@K} mengukur proporsi kueri di mana setidaknya satu dokumen relevan berhasil diambil dalam peringkat $K$ teratas:
+                    \begin{equation}
+                        \textit{Hit@K} = \frac{\text{Jumlah kueri dengan dokumen relevan di top } K}{|Q|}
+                    \end{equation}
+
+              \item \textbf{Evaluasi Kualitas Jawaban Berbasis RAGAS (Layer 2)}:
+                    Mengevaluasi aspek kualitas pembuatan teks secara otomatis menggunakan kerangka kerja RAGAS \citep{es-etal-2024-ragas}. Metrik yang digunakan meliputi \textit{Faithfulness} untuk mengukur tingkat kebebasan dari halusinasi dan \textit{Answer Relevancy} untuk mengukur keselarasan respons terhadap pertanyaan.
+                    
+                    \textit{Faithfulness} didefinisikan sebagai rasio klaim atau pernyataan dalam jawaban ($V$) yang dapat diverifikasi secara langsung terhadap dokumen konteks pendukung ($S$):
+                    \begin{equation}
+                        \textit{Faithfulness} = \frac{|V|}{|S|}
+                    \end{equation}
+                    
+                    \textit{Answer Relevancy} mengukur relevansi semantik jawaban yang dihasilkan terhadap kueri pengguna dengan menghitung rata-rata kemiripan kosinus (\textit{cosine similarity}) dari representasi vektor kueri asli terhadap beberapa pertanyaan buatan yang dibangkitkan dari jawaban tersebut:
+                    \begin{equation}
+                        \textit{Answer Relevancy} = \frac{1}{m} \sum_{i=1}^{m} \cos(E_{q_i}, E_q)
+                    \end{equation}
+                    di mana $E_q$ adalah representasi vektor dari kueri asli, $E_{q_i}$ adalah vektor kueri buatan ke-$i$, dan $m$ adalah jumlah kueri buatan.
+
+              \item \textbf{Evaluasi Hakim LLM Berpasangan (\textit{Pairwise LLM Judge} - Layer 4)}:
+                    Menggunakan model bahasa besar berkapasitas tinggi (\textit{Llama 3.3 70B}) sebagai hakim otomatis (\textit{LLM-as-a-Judge}) untuk membandingkan performa jawaban sistem yang diusulkan (\textit{Subgraph} dan \textit{Hybrid}) terhadap baseline (\textit{Naive}) secara berpasangan (\textit{pairwise}) \citep{zheng2023judging}. Evaluasi ini menilai respons berdasarkan empat dimensi utama: \textit{Faithfulness}, \textit{Traceability} (kemudahan penelusuran bukti referensi), \textit{Comprehensiveness} (kelengkapan informasi), serta penilaian keseluruhan (\textit{Overall}). Hasil evaluasi dinyatakan dalam bentuk \textit{Win Rate} (persentase kemenangan terhadap baseline):
+                    \begin{equation}
+                        \textit{Win Rate} = \frac{\text{Jumlah kueri dimenangkan oleh mode } M}{|Q|} \times 100\%
+                    \end{equation}
+
+          \end{enumerate}
+
+          \hspace*{0.75cm}Melalui skenario evaluasi multi-lapis ini, kelebihan dan kelemahan masing-masing mode pencarian (\textit{Naive}, \textit{Subgraph}, dan \textit{Hybrid}) dapat diidentifikasi secara komprehensif tanpa bergantung pada ambang batas keberhasilan tunggal. Hasil evaluasi disimpan secara terstruktur dan diekspor dalam bentuk tabel serta diagram radar yang disajikan pada Bab IV.
+
 
           \hspace*{0.75cm}Mode \texttt{naive} diperlakukan sebagai representasi \textit{Vector RAG} karena hanya mengandalkan pencarian semantik pada \texttt{PaperChunk}. Mode \texttt{subgraph} memanfaatkan simpul dan jalur graf lokal. Mode \texttt{global} menggunakan relasi yang diretrieval dari indeks \texttt{RelationshipEmbedding}. Mode \texttt{hybrid} menggabungkan konteks lokal dan global, sedangkan mode \texttt{mix} menggabungkan bukti tekstual, petunjuk kata kunci, entitas, relasi, dan subgraf. Hasil evaluasi disimpan dalam \texttt{notebooks/build-graph/outputs/evaluation} dan diekspor menjadi tabel serta gambar yang dapat langsung digunakan pada Bab IV.
 
