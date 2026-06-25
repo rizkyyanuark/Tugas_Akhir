@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Hasil retrieval berdasarkan kategori pertanyaan}
+    \label{tab:bab4-retrieval-category}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lrrrrrr}
+        \toprule
+        Mode & MRR A & Hit@5 A & MRR B & Hit@5 B & MRR C & Hit@5 C \\
+        \midrule
+        Vector RAG & 0.878 & 0.900 & 0.463 & 0.600 & 0.361 & 0.333 \\
+        Subgraph & 0.900 & 0.950 & 0.417 & 0.567 & 0.208 & 0.333 \\
+        Hybrid & 0.900 & 0.950 & 0.421 & 0.567 & 0.208 & 0.333 \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}

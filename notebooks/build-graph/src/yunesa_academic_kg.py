@@ -5036,51 +5036,181 @@ def _graphrag_retrieve_impl(
     result["local_query"] = local_query
     result["global_query"] = global_query
 
-    if param.include_vector and mode in {"naive", "mix"}:
-        result["paper_chunks"] = _milvus_search(
-            query,
-            "PaperChunk",
-            output_fields=["graphName", "title", "content", "year", "paperUrl", "authors"],
-            top_k=param.top_k,
-            config=milvus_config,
-            graph_name=param.graph_name,
-        )
-    if param.include_vector and mode in {"subgraph", "global", "hybrid"}:
-        result["text_units"] = _milvus_search(
-            fused_text_query,
-            "PaperChunk",
-            output_fields=["graphName", "title", "content", "year", "paperUrl", "authors"],
-            top_k=param.top_k,
-            config=milvus_config,
-            graph_name=param.graph_name,
-        )
+    import math
+    from neo4j import GraphDatabase
+
+    final_entity_ids = []
+
+    # Get Neo4j credentials
+    uri = neo4j_uri_for_driver()
+    username = os.getenv("NEO4J_USERNAME")
+    password = os.getenv("NEO4J_PASSWORD")
+    database = os.getenv("NEO4J_DATABASE") or "neo4j"
+    has_neo4j = bool(uri and username and password)
+
+    # 1. Fetch & Rerank Entities (if needed by mode)
     if param.include_vector and mode in {"subgraph", "hybrid", "mix"}:
         entities = _milvus_search(
             local_query,
             "EntityEmbedding",
             output_fields=["graphName", "entityName", "entityType", "description", "nodeId", "sourceId"],
-            top_k=param.top_k,
+            top_k=param.top_k * 2,
             config=milvus_config,
             graph_name=param.graph_name,
         )
+        
+        # Query degrees and rerank
+        if has_neo4j and entities:
+            try:
+                entity_node_ids = [safe_str(e.get("nodeId")) for e in entities if e.get("nodeId")]
+                entity_degrees = {}
+                driver = GraphDatabase.driver(uri, auth=(username, password))
+                try:
+                    with driver.session(database=database) as session:
+                        res = session.run(
+                            """
+                            UNWIND $node_ids AS nid
+                            MATCH (n:KGNode {id: nid})
+                            WHERE $graph_name = '' OR n.graph_name = $graph_name
+                            RETURN n.id AS nodeId, count { (n)-[]-() } AS degree
+                            """,
+                            node_ids=entity_node_ids,
+                            graph_name=param.graph_name
+                        )
+                        for record in res:
+                            entity_degrees[record["nodeId"]] = record["degree"]
+                finally:
+                    driver.close()
+
+                for ent in entities:
+                    node_id = ent.get("nodeId")
+                    deg = entity_degrees.get(node_id, 0)
+                    ent["degree"] = deg
+                    # Scale down distance based on degree (lower distance is better)
+                    ent["distance"] = ent.get("distance", 0.0) / (1.0 + 0.15 * math.log(deg + 1.0))
+            except Exception:
+                pass
+
+        # Sort ascending (lower distance is better) and slice to top_k
+        entities = sorted(entities, key=lambda x: x.get("distance", 0.0), reverse=False)[:param.top_k]
         result["entities"] = entities
-        node_ids = [safe_str(row.get("nodeId")) for row in entities if safe_str(row.get("nodeId"))]
-        if param.include_graph:
+        final_entity_ids = [safe_str(row.get("nodeId")) for row in entities if safe_str(row.get("nodeId"))]
+        
+        if param.include_graph and final_entity_ids:
             result["subgraph"] = _neo4j_shortest_path_subgraph(
-                node_ids,
+                final_entity_ids,
                 graph_name=param.graph_name,
                 limit=param.top_k * 10,
                 max_depth=param.local_path_depth,
             )
+
+    # 2. Fetch & Rerank Relationships (if needed by mode)
     if param.include_vector and mode in {"global", "hybrid", "mix"}:
-        result["relationships"] = _milvus_search(
+        relationships = _milvus_search(
             global_query,
             "RelationshipEmbedding",
             output_fields=["graphName", "srcId", "tgtId", "relType", "description", "sourceId"],
-            top_k=param.top_k * 2 if mode in {"global", "hybrid", "mix"} else param.top_k,
+            top_k=param.top_k * 2,
             config=milvus_config,
             graph_name=param.graph_name,
-        )[: param.top_k]
+        )
+
+        if has_neo4j and relationships:
+            try:
+                rel_node_ids = []
+                for rel in relationships:
+                    if rel.get("srcId"): rel_node_ids.append(rel.get("srcId"))
+                    if rel.get("tgtId"): rel_node_ids.append(rel.get("tgtId"))
+                
+                rel_node_degrees = {}
+                if rel_node_ids:
+                    driver = GraphDatabase.driver(uri, auth=(username, password))
+                    try:
+                        with driver.session(database=database) as session:
+                            res = session.run(
+                                """
+                                UNWIND $node_ids AS nid
+                                MATCH (n:KGNode {id: nid})
+                                WHERE $graph_name = '' OR n.graph_name = $graph_name
+                                RETURN n.id AS nodeId, count { (n)-[]-() } AS degree
+                                """,
+                                node_ids=list(set(rel_node_ids)),
+                                graph_name=param.graph_name
+                            )
+                            for record in res:
+                                rel_node_degrees[record["nodeId"]] = record["degree"]
+                    finally:
+                        driver.close()
+
+                for rel in relationships:
+                    src_id = rel.get("srcId")
+                    tgt_id = rel.get("tgtId")
+                    src_deg = rel_node_degrees.get(src_id, 0)
+                    tgt_deg = rel_node_degrees.get(tgt_id, 0)
+                    rel["distance"] = rel.get("distance", 0.0) / (1.0 + 0.05 * (math.log(src_deg + 1) + math.log(tgt_deg + 1)))
+            except Exception:
+                pass
+
+        result["relationships"] = sorted(relationships, key=lambda x: x.get("distance", 0.0), reverse=False)[:param.top_k]
+
+    # Helper function to query paper connection counts and rerank
+    def rerank_papers(papers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if has_neo4j and papers and final_entity_ids:
+            try:
+                paper_titles = [p.get("title") for p in papers if p.get("title")]
+                paper_matches = {}
+                driver = GraphDatabase.driver(uri, auth=(username, password))
+                try:
+                    with driver.session(database=database) as session:
+                        res = session.run(
+                            """
+                            UNWIND $titles AS paper_title
+                            MATCH (p:Publication) WHERE p.title = paper_title
+                            AND ($graph_name = '' OR p.graph_name = $graph_name)
+                            OPTIONAL MATCH (p)-[r]-(e:KGNode)
+                            WHERE e.id IN $entity_ids
+                            RETURN paper_title, count(DISTINCT e) AS match_count
+                            """,
+                            titles=list(set(paper_titles)),
+                            entity_ids=final_entity_ids,
+                            graph_name=param.graph_name
+                        )
+                        for record in res:
+                            paper_matches[record["paper_title"]] = record["match_count"]
+                finally:
+                    driver.close()
+
+                for paper in papers:
+                    title = paper.get("title")
+                    match_cnt = paper_matches.get(title, 0)
+                    paper["distance"] = paper.get("distance", 0.0) / (1.0 + 0.3 * match_cnt)
+            except Exception:
+                pass
+        return sorted(papers, key=lambda x: x.get("distance", 0.0), reverse=False)[:param.top_k]
+
+    # 3. Fetch & Rerank Paper Chunks
+    if param.include_vector and mode in {"naive", "mix"}:
+        candidate_papers = _milvus_search(
+            query,
+            "PaperChunk",
+            output_fields=["graphName", "title", "content", "year", "paperUrl", "authors"],
+            top_k=param.top_k * 3,
+            config=milvus_config,
+            graph_name=param.graph_name,
+        )
+        result["paper_chunks"] = rerank_papers(candidate_papers)
+
+    if param.include_vector and mode in {"subgraph", "global", "hybrid"}:
+        candidate_units = _milvus_search(
+            fused_text_query,
+            "PaperChunk",
+            output_fields=["graphName", "title", "content", "year", "paperUrl", "authors"],
+            top_k=param.top_k * 3,
+            config=milvus_config,
+            graph_name=param.graph_name,
+        )
+        result["text_units"] = rerank_papers(candidate_units)
+
     if param.include_graph and mode in {"hybrid", "mix"} and _is_overview_query(query):
         result["overview_publications"] = _neo4j_publication_overview(
             graph_name=param.graph_name,

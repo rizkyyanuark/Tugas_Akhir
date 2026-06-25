@@ -6,56 +6,42 @@
 \section{Simpulan}
 \label{sec:simpulan-bab5}
 
-Berdasarkan hasil analisis, pengujian, serta pembahasan yang telah dipaparkan pada Bab~IV, diperoleh beberapa kesimpulan penting guna menjawab ketiga rumusan masalah yang diajukan dalam penelitian ini:
+Berdasarkan hasil analisis, pengujian, serta pembahasan yang telah dilakukan, diperoleh beberapa kesimpulan sebagai berikut:
 
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=0.75cm, itemsep=8pt]
-    \item \textbf{Konstruksi \textit{Knowledge Graph} Akademik}
-          \textit{Pipeline} otomatis yang dirancang berhasil mengekstraksi dan menstandarisasi entitas serta relasi dari korpus publikasi akademik rumpun Informatika dan Komputer (Infokom) UNESA secara mandiri. Hasil konstruksi menghasilkan \textit{Scholarly Knowledge Graph} (SKG) heterogen yang memuat \textbf{1.253 simpul} dan \textbf{1.970 relasi} yang terhubung dari korpus awal berupa \textbf{51 publikasi}, \textbf{128 dosen}, \textbf{41 venue}, \textbf{13 tahun publikasi}, dan \textbf{23 afiliasi}. Proses pemetaan konsep ke \textit{IEEE Thesaurus} melalui struktur SKOS mencatat tingkat keberhasilan sebesar \textbf{81,23\%} (675 dari 831 konsep), membuktikan bahwa ontologi yang dirancang mampu merepresentasikan taksonomi keilmuan secara komprehensif dan terstandardisasi.
+      \item \textit{Pipeline Construction Knowledge Graph} yang dirancang untuk mengekstraksi dan menstandardisasi entitas serta relasi menghasilkan \textit{Knowledge Graph}heterogen yang memuat \textbf{simpul} dan \textbf{relasi} yang terhubung dengan proses pemetaan konsep ke \textit{IEEE Thesaurus} melalui struktur SKOS mencatat tingkat keberhasilan sebesar \textbf{81,23\%}, menunjukkan bahwa ontologi yang dirancang mampu memetakan sebagian besar konsep keilmuan ke taksonomi standar.
 
-    \item \textbf{Arsitektur \textit{Dual Indexing}}
-          Integrasi antara pencarian semantik dan struktural berhasil diimplementasikan melalui arsitektur \textit{dual indexing} yang memisahkan penyimpanan relasional graf pada Neo4j dan penyimpanan representasi vektor pada Qdrant (menggunakan model embedding \textit{Qwen/Qwen3-Embedding-0.6B} dengan dimensi 1.024). Penyatuan kedua basis data tersebut melalui atribut \textit{bridging} \texttt{entity\_id} yang unik berhasil memfasilitasi resolusi entitas lintas paradigma secara langsung tanpa langkah pemrosesan tambahan yang memakan waktu komputasi.
+      \item Hasil pengujian retrieval terhadap kueri akademik menunjukkan bahwa mode \textit{Vector RAG} (Naive) memperoleh metrik retrieval keseluruhan tertinggi dengan \textit{Mean Reciprocal Rank} (MRR) sebesar \textbf{0,600}, \textit{Hit@10} sebesar \textbf{0,768}, dan latensi terendah sebesar \textbf{2,46 detik}. Namun, penambahan konteks graf pada mode \textit{Subgraph} memberikan konfigurasi penelusuran yang seimbang (\textit{sweet spot}) dengan latensi \textbf{8,99 detik} (24,4\% lebih cepat dibandingkan mode \textit{Hybrid} yang membutuhkan \textbf{11,89 detik}), serta mampu meningkatkan akurasi pada pertanyaan faktual (Kategori A) dengan MRR \textbf{0,900} dan Hit@5 \textbf{0,950} dibandingkan Vector RAG yang memperoleh MRR \textbf{0,878} dan Hit@5 \textbf{0,900}.
 
-    \item \textbf{Efektivitas Mekanisme \textit{Retrieval}}
-          Hasil pengujian terhadap kueri akademik menunjukkan bahwa mode \textit{Hybrid} memberikan akurasi tertinggi di tingkat pencarian awal dengan metrik \textit{Mean Reciprocal Rank} (MRR) sebesar \textbf{0,6447} dan \textit{Hit@10} sebesar \textbf{0,8393}, namun menghasilkan latensi rata-rata tertinggi yaitu \textbf{10,19 detik}. Sementara itu, mode \textit{Subgraph} (local retrieval) terbukti sebagai konfigurasi \textit{sweet spot} yang paling optimal dengan latensi \textbf{7,71 detik} (24,3\% lebih cepat dari Hybrid) serta performa pencarian relasional (Kategori B) yang sangat baik, mencatat MRR \textbf{0,5700} dan \textit{Hit@5} \textbf{76,67\%} (meningkat 20 poin persentase dibanding mode Naive yang mencatat Hit@5 \textbf{56,67\%}).
+      \item Evaluasi berpasangan (\textit{pairwise}) menggunakan model \textit{Llama 3.3 70B} terhadap model generator \textit{DeepSeek R1} menunjukkan bahwa mode \textit{Subgraph} meraih \textit{win rate} keseluruhan tertinggi sebesar \textbf{51,3\%} terhadap baseline Naive. Keunggulan ini paling terlihat pada kueri kompleks bercabang banyak (multi-hop Kategori C), dengan \textit{win rate} keseluruhan mencapai \textbf{75,0\%} dan ketertelusuran (\textit{Traceability}) sebesar \textbf{75,0\%}. Mode \textit{Hybrid} justru mengalami penurunan performa, dengan \textit{win rate} keseluruhan hanya \textbf{45,5\%} karena metrik \textit{Traceability} turun menjadi \textbf{42,9\%}.
 
-    \item \textbf{Kualitas Jawaban LLM-as-a-Judge}
-          Evaluasi berpasangan (\textit{pairwise}) menggunakan model hakim Llama 3.3 70B terhadap model generator DeepSeek R1 menunjukkan bahwa mode \textit{Subgraph} meraih \textit{win rate} keseluruhan tertinggi sebesar \textbf{51,3\%} terhadap baseline Naive. Keunggulan ini sangat dominan pada kueri kompleks bercabang banyak (multi-hop Kategori C) dengan \textit{win rate} keseluruhan mencapai \textbf{75,0\%} dan ketertelusuran (\textit{Traceability}) sebesar \textbf{75,0\%}. Sebaliknya, mode \textit{Hybrid} mengalami penurunan performa dengan \textit{win rate} keseluruhan hanya \textbf{45,5\%} karena metrik \textit{Traceability} yang turun menjadi \textbf{42,9\%}.
-
-    \item \textbf{Keterlacakan Jawaban dan Keterbatasan Sistem}
-          Penerapan \textit{Knowledge Graph} yang disajikan dalam panel bukti (\textit{evidence panel}) terstruktur berhasil memfasilitasi pelacakan asal-usul wawasan akademik secara transparan hingga ke tingkat \textit{graph triples} dan dokumen rujukan. Meskipun demikian, risiko halusinasi belum sepenuhnya dapat dieliminasi secara mutlak. Temuan empiris mengidentifikasi adanya kegagalan berupa kontaminasi metode (\textit{method contamination}) pada kasus [A01] serta kebocoran konteks (\textit{context leakage}) pada kasus [B08] kolaborasi I Made Suartana (yang mencatat \textit{win rate} 0\% di seluruh dimensi), akibat tidak adanya penyaringan relasi yang ketat pada traversal graf multi-hop.
+      \item Panel bukti (\textit{evidence panel}) terstruktur yang menyajikan \textit{Knowledge Graph} memungkinkan pelacakan asal-usul wawasan akademik hingga ke tingkat \textit{graph triples} dan dokumen rujukan. Risiko halusinasi, meski berkurang, belum hilang sepenuhnya. Temuan empiris mengidentifikasi dua kegagalan: kontaminasi metode (\textit{method contamination}) pada kasus [A01], dan kebocoran konteks (\textit{context leakage}) pada kasus [B08] (kolaborasi I Made Suartana, dengan \textit{win rate} 0\% di seluruh dimensi). Kedua kegagalan ini muncul akibat tidak adanya penyaringan relasi yang ketat pada traversal graf multi-hop.
 \end{enumerate}
 
 \section{Implikasi Penelitian}
 \label{sec:implikasi-bab5}
 
-Hasil temuan dalam penelitian ini memiliki dua dimensi implikasi utama yang kontributif bagi pengembangan sistem kecerdasan buatan di lingkungan akademik:
+Penelitian ini memberikan dua implikasi, praktis dan teoretis, bagi pengembangan sistem kecerdasan buatan di lingkungan akademik:
 
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=0.75cm, itemsep=8pt]
-    \item \textbf{Implikasi Praktis:}
-          Aplikasi web penelusuran akademik berbasis web terintegrasi menyediakan platform interaktif yang intuitif bagi sivitas akademika UNESA untuk menavigasi publikasi ilmiah dosen rumpun Infokom. Sistem ini mempermudah identifikasi kepakaran spesifik dosen, visualisasi peta kolaborasi kepengarangan secara riil, dan penemuan publikasi relevan berbasis bahasa alami yang didukung bukti akademik terpercaya. Hal ini dapat mempercepat proses tinjauan pustaka dan perancangan kolaborasi riset lintas program studi.
+      \item Penelitian ini memberikan implikasi praktis bagi pengembangan sistem kecerdasan buatan di lingkungan akademik. Sistem ini mempermudah identifikasi kepakaran spesifik dosen, visualisasi peta kolaborasi dosen, dan penemuan publikasi relevan berbasis bahasa alami yang didukung bukti akademik terpercaya.
 
-    \item \textbf{Implikasi Teoretis:}
-          Penelitian ini memberikan kontribusi empiris penting pada literatur \textit{Retrieval-Augmented Generation} (RAG), khususnya dalam menunjukkan bahwa menyajikan informasi relasional secara berlebihan (\textit{over-contextualization}) tidak berkorelasi positif dengan kualitas jawaban model bahasa besar (LLM). Temuan ini meredefinisi strategi penyusunan prompt RAG akademik, di mana kurasi subgraf lokal yang presisi dan ringkas terbukti lebih efektif dalam mengurangi efek \textit{lost in the middle} dan menjaga ketertelusuran informasi dibandingkan dengan membanjiri model dengan seluruh jalur relasional taksonomi graf (hybrid).
+      \item Penelitian ini memberikan implikasi teoretis bagi pengembangan sistem kecerdasan buatan di lingkungan akademik. Penelitian ini memberikan kontribusi empiris pada literatur \textit{Retrieval-Augmented Generation} (\textit{RAG}), menyajikan informasi relasional secara berlebihan (\textit{over-contextualization}) tidak berkorelasi positif dengan kualitas jawaban model bahasa besar. Temuan ini mendorong peninjauan ulang strategi penyusunan prompt \textit{RAG} akademik, karena kurasi subgraf lokal yang presisi dan ringkas terbukti lebih efektif dalam mengurangi efek \textit{lost in the middle} dan menjaga ketertelusuran informasi, dibandingkan membanjiri model dengan seluruh jalur relasional taksonomi graf.
 \end{enumerate}
 
 \section{Saran}
 \label{sec:saran-bab5}
 
-Berdasarkan batasan penelitian dan temuan kegagalan sistem yang dianalisis pada Bab~IV, terdapat beberapa saran taktis yang direkomendasikan untuk pengembangan penelitian selanjutnya:
+Berdasarkan batasan penelitian dan temuan kegagalan sistem yang telah dianalisis, terdapat beberapa saran taktis yang dapat dipertimbangkan untuk pengembangan penelitian selanjutnya:
 
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=0.75cm, itemsep=8pt]
-    \item \textbf{Perluasan Skala dan Tipe Data:}
-          Penelitian berikutnya disarankan untuk memperluas cakupan data publikasi di luar rumpun Infokom UNESA, meningkatkan jumlah dokumen masukan, serta mengaktifkan relasi sitasi (\texttt{CITES}) antar-publikasi guna membangun representasi graf bibliometrik yang lebih utuh dan dinamis.
+      \item Penelitian berikutnya dapat memperluas cakupan data publikasi di luar rumpun Infokom UNESA, meningkatkan jumlah dokumen masukan, serta mengaktifkan relasi sitasi (\texttt{CITES}) antar-publikasi guna membangun representasi graf bibliometrik yang lebih utuh dan dinamis.
 
-    \item \textbf{Pengendalian Pergeseran Semantik (\textit{Semantic Drift}):}
-          Perlu dilakukan validasi dan audit manual secara berkala oleh pakar domain (\textit{domain experts}) terhadap hasil ekstraksi konsep hierarkis dari IEEE SKOS untuk mengidentifikasi dan memitigasi risiko pergeseran makna semantik yang dapat merusak kualitas representasi pengetahuan.
+      \item Perlu dilakukan validasi dan audit manual secara berkala oleh pakar domain (\textit{domain experts}) terhadap hasil ekstraksi konsep hierarkis dari IEEE SKOS untuk mengidentifikasi dan memitigasi risiko pergeseran makna semantik yang dapat merusak kualitas representasi pengetahuan.
 
-    \item \textbf{Optimasi Mekanisme Retrieval dan Penyaringan Prompt:}
-          Disarankan untuk mengintegrasikan modul \textit{reranker} (seperti Cohere Rerank atau Cross-Encoder) serta menerapkan algoritma pemangkasan jalur graf (\textit{path pruning}) yang dinamis untuk menyaring dan membatasi jumlah \textit{context token} sebelum diserahkan ke model generator.
+      \item Penelitian selanjutnya dapat mengintegrasikan modul \textit{reranker} (seperti Cohere Rerank atau Cross-Encoder) serta menerapkan algoritma pemangkasan jalur graf (\textit{path pruning}) yang dinamis untuk menyaring dan membatasi jumlah \textit{context token} sebelum diserahkan ke model generator.
 
-    \item \textbf{Penyusunan Dataset Evaluasi Standar:}
-          Penelitian mendatang sebaiknya membangun kumpulan pertanyaan uji akademik dan jawaban acuan (\textit{ground truth}) yang disusun secara manual oleh kolaborasi pakar manusia guna menghasilkan pengukuran metrik evaluasi RAGAS (seperti \textit{context precision} dan \textit{context recall}) yang lebih adil dan komprehensif.
+      \item Penelitian selanjutnya sebaiknya membangun kumpulan pertanyaan uji akademik dan jawaban acuan (\textit{ground truth}) yang disusun secara manual guna menghasilkan pengukuran metrik evaluasi \textit{RAGAS} yang lebih akurat dan komprehensif.
 
-    \item \textbf{Implementasi Observabilitas Tracing Sistem:}
-          Disarankan untuk mengimplementasikan \textit{tracing agent} terintegrasi (seperti Opik, Langfuse, atau Phoenix) pada server produksi untuk merekam dan memantau alur penalaran LLM, query Neo4j, dan dokumen Qdrant secara real-time guna mendeteksi kegagalan kontaminasi metode secara dini.
+      \item Disarankan untuk mengimplementasikan \textit{tracing agent} terintegrasi pada server produksi untuk merekam dan memantau alur penalaran LLM, query Neo4j, dan dokumen Qdrant secara real-time guna mendeteksi kegagalan kontaminasi metode secara dini.
 \end{enumerate}

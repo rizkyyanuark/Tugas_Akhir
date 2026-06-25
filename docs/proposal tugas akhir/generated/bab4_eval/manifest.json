@@ -1,0 +1,196 @@
+{
+  "generated_at": "2026-06-25T03:20:50+0700",
+  "output_dir": "notebooks/build-graph/outputs/evaluation",
+  "artifact_dir": "notebooks/build-graph/outputs/evaluation/bab4_artifacts",
+  "docs_bab4_eval_dir": "docs/proposal tugas akhir/generated/bab4_eval",
+  "docs_gambar_dir": "docs/proposal tugas akhir/Gambar",
+  "latex_artifact_prefix": "generated/bab4_eval",
+  "dataset": {
+    "total": 60,
+    "ranked_cases": 56,
+    "guardrail_cases": 4,
+    "category_counts": {
+      "A": 20,
+      "B": 30,
+      "C": 6,
+      "G": 4
+    },
+    "data_dir": "C:\\Users\\rizky\\Documents\\GitHub\\Tugas_Akhir\\notebooks\\build-graph\\eval_pipeline\\data",
+    "ranked_cases_path": "C:\\Users\\rizky\\Documents\\GitHub\\Tugas_Akhir\\notebooks\\build-graph\\eval_pipeline\\data\\eval_cases_ranked_56.json",
+    "guardrail_cases_path": "C:\\Users\\rizky\\Documents\\GitHub\\Tugas_Akhir\\notebooks\\build-graph\\eval_pipeline\\data\\eval_cases_guardrail_4.json"
+  },
+  "input_status": {
+    "layer1": {
+      "path": "notebooks/build-graph/outputs/evaluation/eval_layer1_results.json",
+      "exists": true,
+      "modified_at": "2026-06-25T02:59:28+0700"
+    },
+    "layer2": {
+      "path": "notebooks/build-graph/outputs/evaluation/eval_layer2_results.json",
+      "exists": true,
+      "modified_at": "2026-06-25T03:20:49+0700"
+    },
+    "layer4": {
+      "path": "notebooks/build-graph/outputs/evaluation/eval_layer4_results.json",
+      "exists": true,
+      "modified_at": "2026-06-19T03:01:39+0700"
+    }
+  },
+  "tables": [
+    "bab4_table_answer_quality.tex",
+    "bab4_table_eval_dataset.tex",
+    "bab4_table_llm_judge.tex",
+    "bab4_table_retrieval_by_category.tex",
+    "bab4_table_retrieval_overall.tex"
+  ],
+  "pgfplots_figures": [
+    "bab4_fig_latency_hit.tex",
+    "bab4_fig_mrr_by_category.tex"
+  ],
+  "written_artifacts": {
+    "bab4_table_eval_dataset.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_table_eval_dataset.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_table_eval_dataset.tex"
+    ],
+    "bab4_table_retrieval_overall.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_table_retrieval_overall.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_table_retrieval_overall.tex"
+    ],
+    "bab4_table_retrieval_by_category.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_table_retrieval_by_category.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_table_retrieval_by_category.tex"
+    ],
+    "bab4_table_answer_quality.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_table_answer_quality.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_table_answer_quality.tex"
+    ],
+    "bab4_table_llm_judge.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_table_llm_judge.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_table_llm_judge.tex"
+    ],
+    "bab4_fig_mrr_by_category.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_fig_mrr_by_category.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_fig_mrr_by_category.tex"
+    ],
+    "bab4_fig_latency_hit.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_fig_latency_hit.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_fig_latency_hit.tex"
+    ],
+    "bab4_figures_includegraphics.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_figures_includegraphics.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_figures_includegraphics.tex"
+    ],
+    "bab4_tables_all.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_tables_all.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_tables_all.tex"
+    ],
+    "bab4_eval_all.tex": [
+      "notebooks/build-graph/outputs/evaluation/bab4_artifacts/bab4_eval_all.tex",
+      "docs/proposal tugas akhir/generated/bab4_eval/bab4_eval_all.tex"
+    ]
+  },
+  "png_figures_copied": [
+    {
+      "file": "eval_layer1_hit_rate.png",
+      "caption": "Perbandingan Hit@K pada evaluasi retrieval.",
+      "label": "fig:eval-layer1-hit-rate",
+      "width": "0.82\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer1_hit_rate.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer1_hit_rate.png"
+    },
+    {
+      "file": "eval_layer1_mrr.png",
+      "caption": "Perbandingan Mean Reciprocal Rank pada evaluasi retrieval.",
+      "label": "fig:eval-layer1-mrr",
+      "width": "0.82\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer1_mrr.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer1_mrr.png"
+    },
+    {
+      "file": "eval_layer1_latency.png",
+      "caption": "Rata-rata latensi retrieval pada setiap mode.",
+      "label": "fig:eval-layer1-latency",
+      "width": "0.78\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer1_latency.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer1_latency.png"
+    },
+    {
+      "file": "eval_layer3_hit_curves.png",
+      "caption": "Kurva Hit@K untuk membandingkan mode retrieval.",
+      "label": "fig:eval-layer3-hit-curves",
+      "width": "0.86\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer3_hit_curves.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer3_hit_curves.png"
+    },
+    {
+      "file": "eval_layer3_mrr_by_category.png",
+      "caption": "MRR tiap mode retrieval berdasarkan kategori pertanyaan.",
+      "label": "fig:eval-layer3-mrr-category",
+      "width": "0.86\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer3_mrr_by_category.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer3_mrr_by_category.png"
+    },
+    {
+      "file": "eval_layer3_latency_quality.png",
+      "caption": "Trade-off antara kualitas retrieval dan latensi.",
+      "label": "fig:eval-layer3-latency-quality",
+      "width": "0.82\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer3_latency_quality.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer3_latency_quality.png"
+    },
+    {
+      "file": "eval_layer3_scorecard.png",
+      "caption": "Scorecard perbandingan mode retrieval.",
+      "label": "fig:eval-layer3-scorecard",
+      "width": "0.86\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer3_scorecard.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer3_scorecard.png"
+    },
+    {
+      "file": "eval_layer4_winrate.png",
+      "caption": "Win rate LLM judge terhadap baseline Vector RAG.",
+      "label": "fig:eval-layer4-winrate",
+      "width": "0.82\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer4_winrate.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer4_winrate.png"
+    },
+    {
+      "file": "eval_layer4_category.png",
+      "caption": "Win rate LLM judge berdasarkan kategori pertanyaan.",
+      "label": "fig:eval-layer4-category",
+      "width": "0.82\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer4_category.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer4_category.png"
+    },
+    {
+      "file": "eval_layer4_heatmap.png",
+      "caption": "Heatmap hasil pairwise LLM judge per kasus evaluasi.",
+      "label": "fig:eval-layer4-heatmap",
+      "width": "0.90\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer4_heatmap.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer4_heatmap.png"
+    },
+    {
+      "file": "eval_layer4_radar.png",
+      "caption": "Perbandingan dimensi jawaban menurut LLM judge.",
+      "label": "fig:eval-layer4-radar",
+      "width": "0.76\\linewidth",
+      "source": "notebooks/build-graph/outputs/evaluation/eval_layer4_radar.png",
+      "target": "docs/proposal tugas akhir/Gambar/eval_layer4_radar.png"
+    }
+  ],
+  "png_figures_missing": [],
+  "include_files": [
+    "bab4_tables_all.tex",
+    "bab4_figures_includegraphics.tex",
+    "bab4_eval_all.tex"
+  ],
+  "copy_figures": true,
+  "strict": false,
+  "notes": [
+    "Tables use booktabs style; include \\usepackage{booktabs}.",
+    "PGFPlots snippets require \\usepackage{pgfplots} and \\pgfplotsset{compat=1.18}.",
+    "PNG figure snippets assume the thesis root can resolve Gambar/<filename>.",
+    "Layer 2/4 artifacts are preliminary if their corresponding result JSON was generated from a subset run."
+  ]
+}

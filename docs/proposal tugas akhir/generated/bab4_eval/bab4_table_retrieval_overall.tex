@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption{Hasil retrieval keseluruhan per mode}
+    \label{tab:bab4-retrieval-overall}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lrrrrrrr}
+        \toprule
+        Mode & n & MRR & Hit@1 & Hit@5 & Hit@10 & P@5 & Latensi \\
+        \midrule
+        Vector RAG & 56 & 0.600 & 0.536 & 0.679 & 0.768 & 0.293 & 2.46 \\
+        Subgraph & 56 & 0.567 & 0.500 & 0.679 & 0.732 & 0.264 & 8.99 \\
+        Hybrid & 56 & 0.569 & 0.500 & 0.679 & 0.750 & 0.264 & 11.89 \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
