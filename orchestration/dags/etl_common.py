@@ -167,6 +167,9 @@ def worker_env() -> dict[str, str]:
         "YUNESA_MILVUS_PROGRESS_EVERY_BATCHES": _clean_env(
             "YUNESA_MILVUS_PROGRESS_EVERY_BATCHES", "25"
         ),
+        "YUNESA_MILVUS_INSERT_BATCH_SIZE": _clean_env(
+            "YUNESA_MILVUS_INSERT_BATCH_SIZE", "128"
+        ),
         "YUNESA_USE_GLINER": _clean_env("YUNESA_USE_GLINER", "0"),
         "YUNESA_USE_GLIREL": _clean_env("YUNESA_USE_GLIREL", "0"),
         # Entity Resolution

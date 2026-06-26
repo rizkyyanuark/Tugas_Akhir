@@ -3334,6 +3334,35 @@ def _embed_milvus_records(
     return embedded
 
 
+def _embed_milvus_record_batch(
+    rows: list[dict[str, Any]],
+    *,
+    provider: str,
+    model_name: str,
+    batch_size: int,
+    normalize_embeddings: bool = False,
+    progress_label: str = "",
+) -> list[dict[str, Any]]:
+    """Embed a small Milvus batch without materializing a full collection in RAM."""
+    if not rows:
+        return []
+    texts = [safe_str(row.get("_embedding_text")) for row in rows]
+    vectors = _embed_texts(
+        texts,
+        provider=provider,
+        model_name=model_name,
+        batch_size=batch_size,
+        normalize_embeddings=normalize_embeddings,
+        progress_label=progress_label,
+    )
+    embedded_rows: list[dict[str, Any]] = []
+    for row, vector in zip(rows, vectors):
+        clean_row = {key: value for key, value in row.items() if not key.startswith("_")}
+        clean_row["embedding"] = [float(value) for value in vector]
+        embedded_rows.append(clean_row)
+    return embedded_rows
+
+
 def _milvus_client(config: MilvusVectorIndexConfig):
     try:
         from pymilvus import MilvusClient
@@ -3510,14 +3539,8 @@ def write_vector_index_to_milvus(
         config.batch_size,
         {name: len(rows) for name, rows in records.items()},
     )
-    embedded_records = _embed_milvus_records(
-        records,
-        provider=config.embedding_provider,
-        model_name=config.embedding_model,
-        batch_size=config.batch_size,
-        normalize_embeddings=normalize_embeddings,
-    )
     client = _milvus_client(config)
+    insert_batch_size = _positive_env_int("YUNESA_MILVUS_INSERT_BATCH_SIZE", 128)
 
     report: dict[str, Any] = {
         "uri_configured": bool(config.uri),
@@ -3532,13 +3555,16 @@ def write_vector_index_to_milvus(
     }
 
     try:
-        for collection_name, rows in embedded_records.items():
+        for collection_name, rows in records.items():
             collection_started = time.perf_counter()
             logger.info(
-                "milvus.collection.start | collection=%s | rows=%s | clear_existing=%s",
+                "milvus.collection.start | collection=%s | rows=%s | clear_existing=%s | "
+                "embedding_batch_size=%s | insert_batch_size=%s",
                 collection_name,
                 len(rows),
                 clear_existing,
+                config.batch_size,
+                insert_batch_size,
             )
             _ensure_milvus_collection(
                 client,
@@ -3551,14 +3577,21 @@ def write_vector_index_to_milvus(
             if clear_existing:
                 deleted_report = _delete_milvus_graph_records(client, collection_name, graph_name)
             inserted = 0
-            total_batches = (len(rows) + config.batch_size - 1) // config.batch_size
+            total_batches = (len(rows) + insert_batch_size - 1) // insert_batch_size
             progress_every = _positive_env_int("YUNESA_MILVUS_PROGRESS_EVERY_BATCHES", 25)
-            for batch_index, start in enumerate(range(0, len(rows), config.batch_size), start=1):
-                batch = rows[start : start + config.batch_size]
+            for batch_index, start in enumerate(range(0, len(rows), insert_batch_size), start=1):
+                batch = rows[start : start + insert_batch_size]
                 if not batch:
                     continue
-                client.insert(collection_name=collection_name, data=batch)
-                inserted += len(batch)
+                embedded_batch = _embed_milvus_record_batch(
+                    batch,
+                    provider=config.embedding_provider,
+                    model_name=config.embedding_model,
+                    batch_size=config.batch_size,
+                    normalize_embeddings=normalize_embeddings,
+                )
+                client.insert(collection_name=collection_name, data=embedded_batch)
+                inserted += len(embedded_batch)
                 if batch_index == 1 or batch_index == total_batches or batch_index % progress_every == 0:
                     logger.info(
                         "milvus.collection.progress | collection=%s | batch=%s/%s | inserted=%s/%s | "
@@ -3570,6 +3603,7 @@ def write_vector_index_to_milvus(
                         len(rows),
                         time.perf_counter() - collection_started,
                     )
+                del embedded_batch
             try:
                 client.flush(collection_name)
             except Exception:
