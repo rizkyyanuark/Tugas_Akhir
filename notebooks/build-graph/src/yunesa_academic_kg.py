@@ -4655,12 +4655,12 @@ class GraphRAGQueryParam:
 
     mode: str = "mix"
     top_k: int = 5
-    graph_name: str = "yunesa_academic_kg_local"
+    graph_name: str = os.getenv("YUNESA_GRAPH_NAME") or "yunesa_academic_kg"
     include_vector: bool = True
     include_graph: bool = True
     use_keyword_decomposition: bool = True
     keyword_top_k: int = 8
-    keyword_provider: str = "heuristic"
+    keyword_provider: str = "groq"
     keyword_model: str = "llama-3.1-8b-instant"
     keyword_cache_path: str = ""
     max_keyword_terms: int = 8
@@ -5318,9 +5318,15 @@ def _graphrag_retrieve_impl(
     - mix: naive + content keyword clues + subgraph + global.
     """
     param = param or GraphRAGQueryParam()
-    mode = normalize_text(param.mode)
-    if mode not in {"naive", "subgraph", "global", "hybrid", "mix"}:
+    requested_mode = normalize_text(param.mode)
+    if requested_mode not in {"naive", "subgraph", "global", "hybrid", "mix"}:
         raise ValueError("mode must be one of: naive, subgraph, global, hybrid, mix")
+
+    # Paradigm Shift:
+    # 1. The old 'hybrid' mode (subgraph + global) is no longer evaluated.
+    # 2. The old 'mix' mode (naive vector + KG with RRF) is renamed to 'hybrid' (the real hybrid).
+    # To run the old 'mix' logic when 'hybrid' is requested:
+    mode = "mix" if requested_mode == "hybrid" else requested_mode
 
     result: dict[str, Any] = {
         "query": query,
@@ -5375,6 +5381,39 @@ def _graphrag_retrieve_impl(
 
     # 1. Fetch & Rerank Entities (if needed by mode)
     if param.include_vector and mode in {"subgraph", "hybrid", "mix"}:
+        mentioned_entities = []
+        if has_neo4j:
+            try:
+                driver = GraphDatabase.driver(uri, auth=(username, password))
+                try:
+                    with driver.session(database=database) as session:
+                        res = session.run(
+                            """
+                            MATCH (n:KGNode)
+                            WHERE n.node_type IN ['Lecturer', 'Venue']
+                              AND (
+                                (n.nama_norm IS NOT NULL AND toLower($q) CONTAINS toLower(n.nama_norm))
+                                OR toLower($q) CONTAINS toLower(n.label)
+                              )
+                            RETURN n.id AS id, n.label AS label, n.node_type AS type, n.description AS description
+                            """,
+                            q=query
+                        )
+                        for r in res:
+                            mentioned_entities.append({
+                                "graphName": param.graph_name,
+                                "entityName": r["label"],
+                                "entityType": r["type"],
+                                "description": r["description"] or f"{r['type']}: {r['label']}",
+                                "nodeId": r["id"],
+                                "sourceId": "",
+                                "distance": 0.0,
+                            })
+                finally:
+                    driver.close()
+            except Exception as e:
+                logger.warning(f"Failed to match mentioned entities in Neo4j: {e}")
+
         entities = _milvus_search(
             local_query,
             "EntityEmbedding",
@@ -5383,6 +5422,20 @@ def _graphrag_retrieve_impl(
             config=milvus_config,
             graph_name=param.graph_name,
         )
+
+        seen_node_ids = set()
+        merged_entities = []
+        for ent in mentioned_entities:
+            nid = ent.get("nodeId")
+            if nid and nid not in seen_node_ids:
+                seen_node_ids.add(nid)
+                merged_entities.append(ent)
+        for ent in entities:
+            nid = ent.get("nodeId")
+            if nid and nid not in seen_node_ids:
+                seen_node_ids.add(nid)
+                merged_entities.append(ent)
+        entities = merged_entities
         
         # Query degrees and rerank
         if has_neo4j and entities:
@@ -5480,7 +5533,14 @@ def _graphrag_retrieve_impl(
 
     # Helper function to query paper connection counts and rerank
     def rerank_papers(papers: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        if has_neo4j and papers and final_entity_ids:
+        if not papers:
+            return []
+        
+        # Sort papers by Milvus semantic distance to establish vector ranks (1-indexed)
+        sorted_by_vector = sorted(papers, key=lambda x: x.get("distance", 0.0), reverse=False)
+        vector_ranks = {id(paper): i + 1 for i, paper in enumerate(sorted_by_vector)}
+        
+        if has_neo4j and final_entity_ids:
             try:
                 paper_titles = [p.get("title") for p in papers if p.get("title")]
                 paper_matches = {}
@@ -5504,14 +5564,71 @@ def _graphrag_retrieve_impl(
                             paper_matches[record["paper_title"]] = record["match_count"]
                 finally:
                     driver.close()
-
+                
+                # Sort papers by match_count descending to establish graph connection ranks (1-indexed)
+                sorted_by_graph = sorted(papers, key=lambda x: paper_matches.get(x.get("title"), 0), reverse=True)
+                graph_ranks = {id(paper): i + 1 for i, paper in enumerate(sorted_by_graph)}
+                
+                # Reciprocal Rank Fusion (RRF) with constant k=60
+                k = 60
                 for paper in papers:
-                    title = paper.get("title")
-                    match_cnt = paper_matches.get(title, 0)
-                    paper["distance"] = paper.get("distance", 0.0) / (1.0 + 0.3 * match_cnt)
+                    p_id = id(paper)
+                    v_rank = vector_ranks.get(p_id, len(papers) + 1)
+                    g_rank = graph_ranks.get(p_id, len(papers) + 1)
+                    rrf_score = 1.0 / (k + v_rank) + 1.0 / (k + g_rank)
+                    paper["rrf_score"] = rrf_score
+                
+                # Sort descending by rrf_score (highest score first)
+                fused_papers = sorted(papers, key=lambda x: x.get("rrf_score", 0.0), reverse=True)
             except Exception:
-                pass
-        return sorted(papers, key=lambda x: x.get("distance", 0.0), reverse=False)[:param.top_k]
+                fused_papers = sorted_by_vector
+        else:
+            fused_papers = sorted_by_vector
+
+        # Now, if Reranker is enabled, apply it!
+        if os.getenv("YUNESA_USE_RERANKER", "true") == "true":
+            try:
+                import requests
+                api_key = os.getenv("SILICONFLOW_API_KEY")
+                url = os.getenv("SILICONFLOW_RERANK_URL", "https://api.siliconflow.com/v1/rerank")
+                if api_key and fused_papers:
+                    # Rerank the top 25 papers
+                    candidates = fused_papers[:25]
+                    doc_texts = []
+                    for p in candidates:
+                        # Construct a description text for the reranker
+                        title = p.get("title") or ""
+                        content = p.get("content") or ""
+                        authors = p.get("authors") or ""
+                        doc_texts.append(f"Title: {title}\nAuthors: {authors}\nContent: {content}")
+                    
+                    response = requests.post(
+                        url,
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": "Qwen/Qwen3-Reranker-8B",
+                            "query": query,
+                            "documents": doc_texts,
+                            "top_n": min(param.top_k, len(candidates))
+                        },
+                        timeout=30.0
+                    )
+                    if response.status_code == 200:
+                        results = response.json().get("results", [])
+                        reranked = []
+                        for item in results:
+                            idx = item["index"]
+                            doc = candidates[idx]
+                            doc["rerank_score"] = item["relevance_score"]
+                            reranked.append(doc)
+                        return reranked
+            except Exception as e:
+                logger.warning(f"Reranker failed, falling back: {e}")
+
+        return fused_papers[:param.top_k]
 
     # 3. Fetch & Rerank Paper Chunks
     if param.include_vector and mode in {"naive", "mix"}:
@@ -5541,6 +5658,7 @@ def _graphrag_retrieve_impl(
             graph_name=param.graph_name,
             limit=max(param.top_k * 4, 12),
         )
+    result["mode"] = requested_mode
     return result
 
 
@@ -5794,8 +5912,49 @@ def _generate_graphrag_answer_with_groq_impl(
     *,
     param: GraphRAGGenerationParam | None = None,
 ) -> dict[str, Any]:
-    """Generate an evidence-grounded answer using Groq's OpenAI-compatible chat API."""
+    """Generate an evidence-grounded answer using Groq's or DeepSeek's OpenAI-compatible chat API."""
     param = param or GraphRAGGenerationParam()
+
+    # Route DeepSeek models to official DeepSeek API via OpenAI client
+    if param.model and (param.model == "deepseek-chat" or param.model.startswith("deepseek")):
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise ValueError("Set DEEPSEEK_API_KEY first for DeepSeek generation.")
+        base_url = os.getenv("DEEPSEEK_API_BASE") or "https://api.deepseek.com"
+
+        try:
+            from openai import OpenAI
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError("Install openai first: pip install openai") from exc
+
+        messages = build_graphrag_generation_messages(query, retrieval, param=param)
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        extra_body = {}
+        if "deepseek" in param.model.lower():
+            extra_body["thinking"] = {"type": "disabled"}
+            
+        response = client.chat.completions.create(
+            model=param.model,
+            messages=messages,
+            temperature=param.temperature,
+            max_tokens=param.max_tokens,
+            extra_body=extra_body,
+        )
+        choice = response.choices[0]
+        usage = getattr(response, "usage", None)
+        return {
+            "query": query,
+            "model": param.model,
+            "answer": clean_graphrag_answer_text(safe_str(choice.message.content)),
+            "sources": summarize_graphrag_sources(retrieval),
+            "usage": {
+                "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                "completion_tokens": getattr(usage, "completion_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+            },
+        }
+
+    # Default to Groq API
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise ValueError("Set GROQ_API_KEY first.")

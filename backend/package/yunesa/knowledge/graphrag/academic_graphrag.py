@@ -22,6 +22,14 @@ from yunesa.utils import logger
 from .base import BaseGraphStorage, BaseVectorStorage
 from .query_planner import AcademicQueryParam, AcademicQueryPlanner
 from .storage import MilvusVectorStorage, Neo4jGraphStorage, normalize_milvus_uri
+from .reranker import rerank_documents
+from .fusion import (
+    reciprocal_rank_fusion,
+    degree_rerank_entities,
+    degree_rerank_relationships,
+    graph_connection_rank,
+    match_mentioned_entities,
+)
 
 KeywordExtractor = Callable[[str], str | Awaitable[str]]
 
@@ -94,9 +102,10 @@ class AcademicGraphRAGService:
         "naive": "vector",
         "bm25": "keyword",
         "local": "subgraph",
-        "academic": "mix",
-        "academic_graphrag": "mix",
-        "graphrag": "mix",
+        "academic": "hybrid",
+        "academic_graphrag": "hybrid",
+        "graphrag": "hybrid",
+        "mix": "hybrid",
     }
     # AcademicRAG-style query planning lives in query_planner.py. These aliases
     # keep existing tests and callers stable while making the upstream-inspired
@@ -137,7 +146,7 @@ class AcademicGraphRAGService:
         modes stay untouched so evaluation scripts can compare modes cleanly.
         """
         normalized_mode = cls.normalize_mode(requested_mode, include_graph=include_graph)
-        if normalized_mode not in {"mix"}:
+        if normalized_mode not in {"hybrid"}:
             return {
                 "requested_mode": normalized_mode,
                 "effective_mode": normalized_mode,
@@ -187,7 +196,7 @@ class AcademicGraphRAGService:
             "requested_mode": normalized_mode,
             "effective_mode": effective_mode,
             "auto_routed": effective_mode != normalized_mode,
-            "reason": ",".join(reasons) if reasons else "default_mix",
+            "reason": ",".join(reasons) if reasons else "default_hybrid",
             "intents": intents,
         }
 
@@ -1830,7 +1839,7 @@ class AcademicGraphRAGService:
         cls,
         query_text: str,
         *,
-        retrieval_mode: str = "mix",
+        retrieval_mode: str = "hybrid",
         graph_name: str | None = None,
         top_k: int = 8,
         keyword_top_k: int = 8,
@@ -2026,6 +2035,48 @@ class AcademicGraphRAGService:
             payload.update(
                 await cls._gather_search_results(second_labels, second_tasks)
             )
+
+        # Mentioned entity matching (Neo4j lookup)
+        mentioned_entities = await match_mentioned_entities(
+            query_text, graph_storage, resolved_graph_name
+        )
+        existing_entities = payload.get("entities", []) or []
+        seen_node_ids = {m.get("nodeId") for m in mentioned_entities if m.get("nodeId")}
+        merged_entities = list(mentioned_entities)
+        for ent in existing_entities:
+            nid = ent.get("nodeId")
+            if nid and nid not in seen_node_ids:
+                seen_node_ids.add(nid)
+                merged_entities.append(ent)
+        
+        # Degree reranking for entities
+        if merged_entities:
+            merged_entities = await degree_rerank_entities(
+                merged_entities, graph_storage, resolved_graph_name
+            )
+        payload["entities"] = merged_entities[:top_k]
+
+        # Degree reranking for relationships
+        relationships = payload.get("relationships", []) or []
+        if relationships:
+            relationships = await degree_rerank_relationships(
+                relationships, graph_storage, resolved_graph_name
+            )
+        payload["relationships"] = relationships[:top_k]
+
+        # Reciprocal Rank Fusion (RRF) for paper chunks
+        paper_chunks = payload.get("paper_chunks", []) or []
+        entity_ids = [row.get("nodeId") for row in payload.get("entities", []) if row.get("nodeId")]
+        if paper_chunks and entity_ids:
+            graph_ranks = await graph_connection_rank(
+                paper_chunks, entity_ids, graph_storage, resolved_graph_name
+            )
+            paper_chunks = reciprocal_rank_fusion(paper_chunks, graph_ranks)
+        
+        # Cross-Encoder Reranker for paper chunks
+        if paper_chunks:
+            paper_chunks = await rerank_documents(query_text, paper_chunks, top_k=top_k)
+        payload["paper_chunks"] = paper_chunks
 
         node_ids = cls._dedupe_terms(
             [
@@ -2574,7 +2625,7 @@ class AcademicGraphRAGService:
         graph: dict[str, Any],
         academic: dict[str, Any] | None = None,
         grounding: dict[str, Any] | None = None,
-        mode: str = "mix",
+        mode: str = "hybrid",
     ) -> str:
         del grounding
         # Fetch limits according to original AcademicRAG parameters
@@ -3028,7 +3079,7 @@ class AcademicGraphRAGService:
         chunks: list[dict[str, Any]] | None,
         kb_name: str,
         collection_id: str | None = None,
-        retrieval_mode: str = "mix",
+        retrieval_mode: str = "hybrid",
         include_graph: bool = True,
         graph_max_depth: int = 2,
         graph_max_nodes: int = 80,

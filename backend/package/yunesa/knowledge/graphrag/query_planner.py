@@ -204,8 +204,8 @@ class AcademicQueryParam:
     calls, but this object records the upstream mode explicitly.
     """
 
-    mode: AcademicMode = "mix"
-    runtime_mode: str = "mix"
+    mode: AcademicMode = "hybrid"
+    runtime_mode: str = "hybrid"
     only_need_context: bool = False
     only_need_prompt: bool = False
     response_type: str = "Multiple Paragraphs"
@@ -230,6 +230,8 @@ class AcademicQueryParam:
     ids: list[str] | None = None
     max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_RESPONSE_MAX_TOKENS", "4096")))
     temperature: float = field(default_factory=lambda: float(os.getenv("LLM_TEMPERATURE", "1.0")))
+    use_reranker: bool = True
+    use_rrf: bool = True
 
     @classmethod
     def from_runtime(
@@ -251,20 +253,21 @@ class AcademicQueryParam:
 
     @staticmethod
     def normalize_runtime_mode(mode: str | None, *, include_graph: bool = False) -> str:
-        value = str(mode or "").strip().lower() or "mix"
+        value = str(mode or "").strip().lower() or "hybrid"
         aliases = {
             "naive": "vector",
             "bm25": "keyword",
             "local": "subgraph",
-            "academic": "mix",
-            "academic_graphrag": "mix",
-            "graphrag": "mix",
+            "academic": "hybrid",
+            "academic_graphrag": "hybrid",
+            "graphrag": "hybrid",
+            "mix": "hybrid",
         }
         normalized = aliases.get(value, value)
         if normalized not in {"vector", "keyword", "subgraph", "global", "graph", "hybrid", "mix"}:
-            normalized = "mix"
+            normalized = "hybrid"
         if include_graph and normalized in {"vector", "keyword"}:
-            normalized = "mix"
+            normalized = "hybrid"
         return normalized
 
     @staticmethod
@@ -277,7 +280,7 @@ class AcademicQueryParam:
             return "hybrid"
         if runtime_mode in {"subgraph", "global", "hybrid", "mix"}:
             return runtime_mode  # type: ignore[return-value]
-        return "mix"
+        return "hybrid"
 
     def with_keywords(
         self,
@@ -295,7 +298,7 @@ class AcademicQueryParam:
 
     @property
     def needs_raw_vector(self) -> bool:
-        return self.runtime_mode in {"vector", "mix"}
+        return self.runtime_mode in {"vector", "mix", "hybrid"}
 
     @property
     def needs_fused_vector(self) -> bool:
@@ -334,6 +337,8 @@ class AcademicQueryParam:
             "fused_vector": self.needs_fused_vector,
             "local": kg_mode in {"subgraph", "hybrid"},
             "global": kg_mode in {"global", "hybrid"},
+            "rrf": self.use_rrf,
+            "rerank": self.use_reranker,
         }
 
     def context_template(self) -> str:
@@ -365,6 +370,10 @@ class AcademicQueryParam:
             steps.append("subgraph_entity_query")
         if layers["global"]:
             steps.append("global_relationship_query")
+        if layers.get("rrf"):
+            steps.append("rrf_fusion")
+        if layers.get("rerank"):
+            steps.append("cross_encoder_rerank")
         steps.append(self.context_template())
         return {
             "mode": self.mode,

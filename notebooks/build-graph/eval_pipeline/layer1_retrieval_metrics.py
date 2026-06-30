@@ -68,10 +68,9 @@ def extract_retrieved_titles(retrieval: dict) -> list[str]:
     """
     Pull out all paper titles from graphrag_retrieve() output, in ranked order.
     Each mode stores titles in DIFFERENT keys:
-      naive : paper_chunks[*].title         (ranked by vector distance)
-      subgraph: text_units[*].title         (ranked by distance)
-      hybrid: text_units[*].title + overview_publications[*].title
-      mix   : paper_chunks[*].title + overview_publications[*].title
+      naive   : paper_chunks[*].title         (ranked by vector distance)
+      subgraph: text_units[*].title           (ranked by local distance)
+      hybrid  : paper_chunks[*].title + overview_publications[*].title (RRF reranked)
     """
     titles: list[str] = []
 

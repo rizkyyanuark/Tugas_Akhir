@@ -326,7 +326,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                                 datenode/.style={base, rectangle, rounded corners=6pt, fill=cyan!30, draw=cyan!60!black, minimum width=2.2cm, minimum height=1.2cm},
                                 confnode/.style={base, rectangle, rounded corners=6pt, fill=lime!30, draw=lime!60!black, minimum width=2.2cm, minimum height=1.2cm},
                                 keynode/.style={base, rectangle, rounded corners=5pt, fill=green!10, draw=green!50!black, minimum width=2.2cm, minimum height=1.2cm},
-                                fieldnode/.style={base, rectangle, rounded corners=6pt, fill=cyan!20, draw=cyan!50!black, minimum width=2.2cm, minimum height=1.2cm},
+                                topicnode/.style={base, rectangle, rounded corners=6pt, fill=cyan!20, draw=cyan!50!black, minimum width=2.2cm, minimum height=1.2cm},
                                 % Scientific Concepts (Circles) - Consistent Size (1.8cm)
                                 problemnode/.style={base, circle, fill=orange!30, draw=orange!60!black, minimum size=1.8cm},
                                 methodnode/.style={base, circle, fill=yellow!40, draw=yellow!60!black, minimum size=1.8cm},
@@ -354,7 +354,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                             \node[instnode] (Inst) at (-1, 2.8) {Institution};
                             \node[confnode] (Conf) at (1.7, 2.8) {Conference};
                             \node[keynode] (Key) at (4, 1.5) {Keywords};
-                            \node[fieldnode] (Field) at (5, 0.0) {Field};
+                            \node[topicnode] (ResearchTopic) at (5, 0.0) {ResearchTopic};
 
                             % Middle Row (Concepts) - Compacted Layout
                             \node[problemnode] (Prob) at (-6.0, -2.5) {Problem};
@@ -384,7 +384,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                             \draw[arrow] (Title) -- node[labelstyle, sloped] {writes on} (Date);
                             \draw[arrow] (Conf) -- node[labelstyle, sloped] {publishes} (Title);
                             \draw[arrow] (Title) -- node[labelstyle, sloped] {keywords} (Key);
-                            \draw[arrow] (Title) -- node[labelstyle, sloped] {belongs to} (Field);
+                            \draw[arrow] (Title) -- node[labelstyle, sloped] {belongs to} (ResearchTopic);
 
                             % --- Title to Concepts ---
                             \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {solves} (Prob);
@@ -797,7 +797,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
     \item \textbf{Evaluasi Sistem}
           \label{subsec:system-evaluation}
 
-          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan pendekatan multi-lapis untuk mengukur kualitas pencarian dokumen referensi (\textit{retrieval quality}) dan kualitas sintesis jawaban (\textit{generation quality}). Kerangka kerja evaluasi terdiri dari 60 pertanyaan uji, yang terbagi menjadi 56 \textit{ranked cases} (pertanyaan dengan jawaban acuan/\textit{ground truth}) dan 4 \textit{guardrail cases} (pertanyaan di luar cakupan untuk menguji penolakan sistem). Kumpulan pertanyaan tersebut dikelompokkan ke dalam tiga kategori utama: Kategori A (faktual, $n=20$), Kategori B (relasional, $n=30$), dan Kategori C (\textit{multi-hop}/sintesis, $n=6$).
+          \hspace*{0.75cm}Penelitian ini mengevaluasi kinerja sistem menggunakan pendekatan multi-lapis untuk mengukur kualitas pencarian dokumen referensi (\textit{retrieval quality}) dan kualitas sintesis jawaban (\textit{generation quality}). Kerangka kerja evaluasi terdiri dari 94 pertanyaan uji, yang terbagi menjadi 90 \textit{ranked cases} (pertanyaan dengan jawaban acuan/\textit{ground truth}) dan 4 \textit{guardrail cases} (pertanyaan di luar cakupan untuk menguji penolakan sistem). Kumpulan pertanyaan tersebut dikelompokkan ke dalam tiga kategori utama: Kategori A (faktual, $n=30$), Kategori B (relasional, $n=30$), dan Kategori C (\textit{multi-hop}/sintesis, $n=30$).
 
           \hspace*{0.75cm}Evaluasi dilakukan melalui tiga lapisan pengukuran yang saling melengkapi sebagai berikut:
 
@@ -832,7 +832,7 @@ Alur penelitian dirancang sebagai rangkaian proses sistematis untuk membangun \t
                     di mana $E_q$ adalah representasi vektor dari kueri asli, $E_{q_i}$ adalah vektor kueri buatan ke-$i$, dan $m$ adalah jumlah kueri buatan.
 
               \item \textbf{Evaluasi Hakim LLM Berpasangan (\textit{Pairwise LLM Judge} - Layer 4)}:
-                    Menggunakan model bahasa besar berkapasitas tinggi (\textit{Llama 3.3 70B}) sebagai hakim otomatis (\textit{LLM-as-a-Judge}) untuk membandingkan performa jawaban sistem yang diusulkan (\textit{Subgraph} dan \textit{Hybrid}) terhadap baseline (\textit{Naive}) secara berpasangan (\textit{pairwise}) \citep{zheng2023judging}. Evaluasi ini menilai respons berdasarkan empat dimensi utama: \textit{Faithfulness}, \textit{Traceability} (kemudahan penelusuran bukti referensi), \textit{Comprehensiveness} (kelengkapan informasi), serta penilaian keseluruhan (\textit{Overall}). Hasil evaluasi dinyatakan dalam bentuk \textit{Win Rate} (persentase kemenangan terhadap baseline):
+                    Menggunakan model bahasa besar (\textit{DeepSeek v4-flash}) sebagai hakim otomatis (\textit{LLM-as-a-Judge}) untuk membandingkan performa jawaban sistem yang diusulkan (\textit{Subgraph} dan \textit{Hybrid}) terhadap baseline (\textit{Naive}) secara berpasangan (\textit{pairwise}) \citep{zheng2023judging}. Evaluasi ini menilai respons berdasarkan empat dimensi utama: \textit{Faithfulness}, \textit{Traceability} (kemudahan penelusuran bukti referensi), \textit{Comprehensiveness} (kelengkapan informasi), serta penilaian keseluruhan (\textit{Overall}). Hasil evaluasi dinyatakan dalam bentuk \textit{Win Rate} (persentase kemenangan terhadap baseline):
                     \begin{equation}
                         \textit{Win Rate} = \frac{\text{Jumlah kueri dimenangkan oleh mode } M}{|Q|} \times 100\%
                     \end{equation}

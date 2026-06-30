@@ -7,7 +7,7 @@ __pycache__/
 *.py[oc]
 *.egg-info/
 .venv/
-.uv-cache/
+.uv-cache*/
 .ruff_cache
 .pytest_cache/
 .hf_cache
@@ -15,6 +15,7 @@ airflow_variables_import.json
 kg.env
 kayanya final.pdf
 TexTA_Rizky.pdf
+scratch
 
 # Node / Vue
 node_modules/

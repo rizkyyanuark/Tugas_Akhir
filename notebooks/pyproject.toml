@@ -72,4 +72,8 @@ dependencies = [
     "undetected-chromedriver>=3.5.5",
     "watermark>=2.6.0",
     "webdriver-manager>=4.0.2",
+    "ragas>=0.3.1",
+    "langchain-community>=0.4.2",
+    "langchain-google-vertexai>=3.2.4",
+    "google-cloud-aiplatform>=1.148.1",
 ]

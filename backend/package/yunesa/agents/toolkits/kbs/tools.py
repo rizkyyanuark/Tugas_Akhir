@@ -175,10 +175,10 @@ class QueryKBInput(BaseModel):
         description="Whether to include graph entities and relationships in the result for visualization.",
     )
     retrieval_mode: str = Field(
-        default="mix",
+        default="hybrid",
         description=(
-            "Retrieval mode: vector, keyword, subgraph, global, graph, hybrid, or mix. "
-            "Use mix for Academic GraphRAG because it combines Zilliz/Milvus vector evidence "
+            "Retrieval mode: vector, keyword, subgraph, global, graph, or hybrid. "
+            "Use hybrid for Academic GraphRAG because it combines Zilliz/Milvus vector evidence "
             "and Neo4j/AuraDB academic graph evidence."
         ),
     )
@@ -740,7 +740,7 @@ async def query_kb(
     query_text: str,
     file_name: str | None = None,
     include_graph: bool = False,
-    retrieval_mode: str = "mix",
+    retrieval_mode: str = "hybrid",
     runtime: ToolRuntime = None,
     tool_call_id: Annotated[str, InjectedToolCallId] = None,
 ) -> Any:

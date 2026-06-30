@@ -23,9 +23,13 @@ Dependensi:
 
 from __future__ import annotations
 
+import sys
+from unittest.mock import MagicMock
+# Mock the deprecated langchain_community.chat_models.vertexai module to prevent RAGAS imports from crashing
+sys.modules['langchain_community.chat_models.vertexai'] = MagicMock()
+
 import json
 import os
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -58,18 +62,34 @@ from eval_pipeline.eval_dataset import EVAL_DATASET    # noqa: E402
 GRAPH_NAME     = "yunesa_academic_kg"
 TOP_K          = 10
 EVAL_MODES     = ["subgraph", "hybrid"]    # evaluate best modes from Layer 1
-GROQ_MODEL     = "llama-3.3-70b-versatile"
+GROQ_MODEL     = "deepseek-v4-flash"
 OUT_DIR        = HERE / "outputs" / "evaluation"
 
-# RAGAS judge LLM: gunakan Google Gemini (melalui langchain-google-genai)
-# atau OpenAI-compatible. Set env var yang sesuai.
-RAGAS_LLM_PROVIDER = "gemini"  # "gemini" | "openai" | "groq"
+# RAGAS judge LLM: gunakan DeepSeek-V3, Google Gemini, atau OpenAI-compatible.
+RAGAS_LLM_PROVIDER = "deepseek"  # "deepseek" | "gemini" | "openai" | "groq"
 
 
 # ── LLM setup untuk RAGAS ────────────────────────────────────────────────────
 
 def get_ragas_llm_and_embeddings():
     """Return (llm, embeddings) tuple for RAGAS evaluation."""
+    if RAGAS_LLM_PROVIDER == "deepseek":
+        from langchain_openai import ChatOpenAI
+        llm = ChatOpenAI(
+            model="deepseek-v4-flash",
+            api_key=os.environ.get("DEEPSEEK_API_KEY"),
+            base_url=os.environ.get("DEEPSEEK_API_BASE") or "https://api.deepseek.com",
+            temperature=0.1,
+        )
+        
+        from langchain_openai import OpenAIEmbeddings
+        embeddings = OpenAIEmbeddings(
+            model="Qwen/Qwen3-Embedding-0.6B",
+            api_key=os.environ.get("SILICONFLOW_API_KEY"),
+            base_url="https://api.siliconflow.com/v1",
+        )
+        return llm, embeddings
+
     if RAGAS_LLM_PROVIDER == "gemini":
         try:
             from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -85,7 +105,7 @@ def get_ragas_llm_and_embeddings():
         except ImportError:
             print("[WARN] langchain-google-genai not installed. Falling back to openai-compatible.")
 
-    if RAGAS_LLM_PROVIDER == "openai" or True:  # fallback
+    if RAGAS_LLM_PROVIDER == "openai":
         from langchain_openai import ChatOpenAI, OpenAIEmbeddings
         llm = ChatOpenAI(
             model="gpt-4o-mini",

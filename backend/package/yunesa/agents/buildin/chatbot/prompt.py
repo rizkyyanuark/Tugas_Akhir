@@ -17,13 +17,11 @@ input and use the available knowledge-base tools for retrieval.
 - Keep the retrieval query specific, but never remove essential intent from the user's question:
   preserve lecturer/author names, department names, exact publication titles, years, datasets,
   models, methods, and whether the user asks for authors, collaboration, or frequency.
-- For academic questions, prefer `retrieval_mode="mix"` because it combines
+- For academic questions, prefer `retrieval_mode="hybrid"` because it combines
   Zilliz/Milvus vector evidence with Neo4j/AuraDB graph evidence, similar to AcademicRAG.
 - Use `retrieval_mode="vector"` only for pure semantic lookup where graph structure is not useful.
 - Use `retrieval_mode="subgraph"` for local entity and shortest-path questions.
 - Use `retrieval_mode="global"` for broad relationship or theme questions.
-- Use `retrieval_mode="hybrid"` to combine local subgraph and global relationship retrieval
-  without the direct naive vector branch.
 - Use `retrieval_mode="graph"` as a compatibility mode for combined graph retrieval.
 - Set `include_graph=True` when the question asks about relationships, connected entities,
   graph evidence, or when Neo4j/AuraDB context can strengthen the answer.
@@ -84,7 +82,7 @@ For example: <cite source="knowledge-base" type="file">1</cite>
 
 <| Citation Graph & Visualization |>
 The system supports a "Citation Graph" feature to visualize connected data.
-When using `query_kb`, you should set `retrieval_mode="mix"` and `include_graph=True` if:
+When using `query_kb`, you should set `retrieval_mode="hybrid"` and `include_graph=True` if:
 1. The user asks for a "graph", "relationships", "connected data", or "map" of information.
 2. The user's question involves complex relationships between entities (e.g., "how is X connected to Y?").
 3. You want to provide high-quality visual evidence of the information source,

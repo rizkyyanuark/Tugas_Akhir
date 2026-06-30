@@ -75,12 +75,12 @@ from eval_pipeline.eval_dataset import EVAL_DATASET, RANKED_CASES   # noqa: E402
 # â”€â”€ constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 GRAPH_NAME   = "yunesa_academic_kg"
 TOP_K        = 10
-GROQ_MODEL   = "llama-3.3-70b-versatile"
-DEFAULT_JUDGE_PROVIDER = "groq"
+GROQ_MODEL   = "deepseek-v4-flash"
+DEFAULT_JUDGE_PROVIDER = "deepseek"
 DEFAULT_GROQ_JUDGE_MODEL = "llama-3.3-70b-versatile"
 DEFAULT_GEMINI_JUDGE_MODEL = "gemini-2.5-flash-lite"
-DEFAULT_OPENAI_COMPATIBLE_JUDGE_MODEL = "deepseek-reasoner"
-JUDGE_MODEL  = DEFAULT_GROQ_JUDGE_MODEL
+DEFAULT_OPENAI_COMPATIBLE_JUDGE_MODEL = "deepseek-v4-flash"
+JUDGE_MODEL  = DEFAULT_OPENAI_COMPATIBLE_JUDGE_MODEL
 try:
     from eval_pipeline.paths import DOCS_GAMBAR_DIR as GAMBAR_DIR, OUTPUT_DIR as OUT_DIR
 except Exception:  # pragma: no cover - direct script fallback
@@ -162,21 +162,25 @@ def get_judge_client() -> dict[str, Any]:
             from openai import OpenAI
         except ImportError as exc:
             raise ImportError("Install openai first: uv sync --project notebooks") from exc
+        
         api_key = (
             os.environ.get("YUNESA_JUDGE_API_KEY")
             or os.environ.get("DEEPSEEK_API_KEY")
             or os.environ.get("OPENAI_API_KEY")
         )
-        if not api_key:
-            raise RuntimeError(
-                "Set YUNESA_JUDGE_API_KEY, DEEPSEEK_API_KEY, or OPENAI_API_KEY first "
-                "for OpenAI-compatible judge providers."
-            )
         base_url = (
             os.environ.get("YUNESA_JUDGE_BASE_URL")
             or os.environ.get("DEEPSEEK_API_BASE")
             or os.environ.get("OPENAI_API_BASE")
         )
+
+        if provider == "deepseek" and not base_url:
+            base_url = "https://api.deepseek.com"
+
+        if not api_key:
+            raise RuntimeError(
+                "Set YUNESA_JUDGE_API_KEY, DEEPSEEK_API_KEY, or OPENAI_API_KEY first."
+            )
         kwargs = {"api_key": api_key}
         if base_url:
             kwargs["base_url"] = base_url
@@ -322,8 +326,10 @@ def _call_chat_completion_judge(judge: dict[str, Any], prompt: str) -> str:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 700,
+        "max_tokens": 4096,
     }
+    if "deepseek" in judge["model"].lower():
+        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
     try:
         response = client.chat.completions.create(
             **kwargs,

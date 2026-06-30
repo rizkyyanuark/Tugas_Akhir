@@ -58,7 +58,7 @@
     "intent": "method_domain",
     "query": "Pendekatan analisis sentimen berbahasa Indonesia apa yang dipakai untuk mengukur comprehension mahasiswa dari teks feedback mereka?",
     "relevant_titles": [
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine"
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine"
     ],
     "key_concepts": [
       "sentiment analysis",
@@ -262,7 +262,7 @@
     "intent": "method_accuracy",
     "query": "Metode stacking ensemble dengan base learner apa yang mencapai akurasi 91.1% dan 94.8% pada dua dataset klasifikasi mahasiswa?",
     "relevant_titles": [
-      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm"
+      "Improving the Performance of Classification via Clustering on the Students’ Academic Performance using Stacking Algorithm"
     ],
     "key_concepts": [
       "stacking algorithm",
@@ -343,6 +343,175 @@
     "reference_answer": "Gini Index digunakan sebagai metode feature selection untuk meningkatkan kualitas K-means clustering performa mahasiswa, divalidasi dengan Silhouette, ANOVA, dan t-test."
   },
   {
+    "id": "A21",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Apa judul paper yang membahas desain antena mikrostrip array untuk sistem monitoring tanda vital berbasis radar 24 GHz?",
+    "relevant_titles": [
+      "MicrOstrip Array Antenna Design fOr a 24 GHz Radar-Based Vital Signs MOnitOring System"
+    ],
+    "key_concepts": [
+      "microstrip",
+      "array antenna",
+      "24 GHz",
+      "radar",
+      "vital signs"
+    ],
+    "reference_answer": "Sistem menggunakan MicrOstrip Array Antenna untuk radar vital signs monitoring 24 GHz."
+  },
+  {
+    "id": "A22",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Metode oversampling apa yang digunakan untuk mengatasi ketidakseimbangan kelas pada deteksi stroke menggunakan Naive Bayes dan Random Forest?",
+    "relevant_titles": [
+      "Perbandingan Metode Naïve Bayes Dan Random Forest Pada Deteksi Penyakit Stroke Menggunakan Teknik SMOTE (Synthetic Minority Over-Sampling Technique)"
+    ],
+    "key_concepts": [
+      "SMOTE",
+      "Random Forest",
+      "Naive Bayes",
+      "stroke",
+      "Synthetic Minority Over-Sampling Technique"
+    ],
+    "reference_answer": "Penelitian menggunakan teknik SMOTE (Synthetic Minority Over-Sampling Technique) untuk mengatasi ketidakseimbangan kelas pada klasifikasi stroke menggunakan Naive Bayes dan Random Forest."
+  },
+  {
+    "id": "A23",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Bagaimana implementasi algoritma K-Nearest Neighbor dengan pemilihan fitur untuk memprediksi kelayakan pengajuan pinjaman?",
+    "relevant_titles": [
+      "Implementasi K-Nearest Neighbor dengan Pemilihan Fitur pada Aplikasi Prediksi Kelayakan Pengajuan Pinjaman"
+    ],
+    "key_concepts": [
+      "K-Nearest Neighbor",
+      "pemilihan fitur",
+      "korelasi Pearson",
+      "kelayakan pengajuan pinjaman",
+      "Accuracy 100%",
+      "rasio 20% data uji"
+    ],
+    "reference_answer": "Sistem menggunakan algoritma K-Nearest Neighbor (KNN) dengan seleksi fitur Pearson Correlation untuk memprediksi kelayakan pengajuan pinjaman. Pengujian dengan K=3 menghasilkan akurasi 100% pada rasio perbandingan 20% data uji dan 80% data latih."
+  },
+  {
+    "id": "A24",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Bagaimana klasifikasi penyakit diabetic retinopathy menggunakan citra fundus retinoskopi dengan metode Learning Vector Quantization (LVQ)?",
+    "relevant_titles": [
+      "Klasifikasi Penyakit Diabetic Retinopathy Menggunakan Metode Learning Vector Quantization (LVQ)"
+    ],
+    "key_concepts": [
+      "diabetic retinopathy",
+      "Learning Vector Quantization",
+      "citra fundus retinoskopi",
+      "ekstraksi fitur warna",
+      "akurasi pelatihan 90%",
+      "akurasi pengujian 43.75%"
+    ],
+    "reference_answer": "Klasifikasi diabetic retinopathy dilakukan dengan citra fundus retinoskopi menggunakan metode Learning Vector Quantization (LVQ) setelah ekstraksi fitur pembuluh darah. Akurasi pelatihan mencapai 90% sedangkan akurasi pengujian adalah 43.75%."
+  },
+  {
+    "id": "A25",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Apa algoritma heuristik meta yang diusulkan untuk mengoptimasi arsitektur jaringan saraf tiruan (ANN) pada klasifikasi tingkat stres?",
+    "relevant_titles": [
+      "Optimizing ANN Architecture for Classifying Student Stress Levels"
+    ],
+    "key_concepts": [
+      "ANN",
+      "stress levels",
+      "SMOTE-N",
+      "Adam optimizer"
+    ],
+    "reference_answer": "Oversampling SMOTE-N digunakan bersama ANN dengan Adam optimizer."
+  },
+  {
+    "id": "A26",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Apa arsitektur Vision Transformer yang digunakan untuk mendeteksi ras dan jenis kelamin dari gambar wajah?",
+    "relevant_titles": [
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images"
+    ],
+    "key_concepts": [
+      "Dual Vision Transformer",
+      "race",
+      "gender",
+      "facial images"
+    ],
+    "reference_answer": "Mengintegrasikan dua ViT: ViT-Face dan ViT-Emotion untuk ras dan jenis kelamin."
+  },
+  {
+    "id": "A27",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Apa keunggulan penggunaan optimasi Optuna pada klasifikasi risiko default kredit menggunakan algoritma XGBoost?",
+    "relevant_titles": [
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction"
+    ],
+    "key_concepts": [
+      "Optuna",
+      "boosting",
+      "default risk",
+      "XGBoost"
+    ],
+    "reference_answer": "Optuna mempercepat pencarian hyperparameter terbaik pada model XGBoost, CatBoost, dan LightGBM."
+  },
+  {
+    "id": "A28",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Metode apa yang digunakan untuk mengklasifikasi tingkat stres mahasiswa melalui telegram bot?",
+    "relevant_titles": [
+      "Exploring the tree algorithms to generate the optimal detection system of students' stress levels"
+    ],
+    "key_concepts": [
+      "tree algorithms",
+      "stress levels",
+      "bot Telegram",
+      "ID3"
+    ],
+    "reference_answer": "Menggunakan decision tree (ID3) yang diintegrasikan ke bot Telegram."
+  },
+  {
+    "id": "A29",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Bagaimana pengolahan citra dan algoritma KNN digunakan untuk menyortir tingkat kematangan buah stroberi?",
+    "relevant_titles": [
+      "Pengolahan Citra untuk Sortir Buah Stroberi Berdasarkan Kematangan Menggunakan Algoritma K-Nearst Neighbors (KNN)"
+    ],
+    "key_concepts": [
+      "sortir buah stroberi",
+      "kematangan",
+      "K-Nearst Neighbors",
+      "HSV",
+      "akurasi mentah 80%",
+      "akurasi matang 90%"
+    ],
+    "reference_answer": "Sortir buah stroberi berdasarkan kematangan menggunakan algoritma K-Nearest Neighbors (KNN) dan deteksi warna HSV (Hue, Saturation, Value). Akurasi rata-rata yang dicapai adalah 80% untuk kondisi mentah/setengah matang dan 90% untuk stroberi matang."
+  },
+  {
+    "id": "A30",
+    "category": "A",
+    "intent": "factual_retrieval",
+    "query": "Bagaimana perbandingan ekstraksi fitur Haar-like dan Local Binary Pattern untuk deteksi wajah?",
+    "relevant_titles": [
+      "Perbandingan Ekstraksi Fitur Haar-like dan Local Binary Pattern untuk Deteksi Wajah"
+    ],
+    "key_concepts": [
+      "Haar-like",
+      "Local Binary Pattern",
+      "LBP",
+      "deteksi wajah",
+      "ekstraksi fitur"
+    ],
+    "reference_answer": "Perbandingan ekstraksi fitur Haar-like dan Local Binary Pattern (LBP) untuk sistem deteksi wajah."
+  },
+  {
     "id": "B01",
     "category": "B",
     "intent": "author_publication_list",
@@ -372,10 +541,10 @@
     "intent": "author_publication_list",
     "query": "Apa saja paper yang ditulis oleh Naim Rochmawati dan di jurnal/venue apa saja dipublikasikan?",
     "relevant_titles": [
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine",
       "Exploring the tree algorithms to generate the optimal detection system of students' stress levels",
-      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
-      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm",
+      "Detecting Students’ Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Improving the Performance of Classification via Clustering on the Students’ Academic Performance using Stacking Algorithm",
       "Predicting the Students Performance using Regularization-based Linear Regression",
       "Clustering Students in the Online Learning Climate based on Internal and External Factors"
     ],
@@ -395,7 +564,7 @@
     "query": "Berapa jumlah paper yang ditulis oleh Anita Qoiriah dan sebutkan 5 paper terbarunya.",
     "relevant_titles": [
       "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine",
       "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
       "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
       "Exploring the tree algorithms to generate the optimal detection system of students' stress levels"
@@ -434,7 +603,7 @@
       "Optimizing ANN Architecture for Classifying Student Stress Levels",
       "Exploring the tree algorithms to generate the optimal detection system of students' stress levels",
       "Educational Training on Business Management Using Web-Based Applications with Cryptocurrency Integration",
-      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm",
+      "Improving the Performance of Classification via Clustering on the Students’ Academic Performance using Stacking Algorithm",
       "Pengenalan pentingnya cyber security awareness pada umkm"
     ],
     "key_concepts": [
@@ -451,7 +620,17 @@
     "category": "B",
     "intent": "collaboration_network",
     "query": "Siapa saja dosen yang pernah berkolaborasi (co-author) dengan Yuni Yamasari dalam penelitian?",
-    "relevant_titles": [],
+    "relevant_titles": [
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "Biomedical image classification using vision transformer",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Detecting Students’ Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
+      "Improving the Performance of Classification via Clustering on the Students’ Academic Performance using Stacking Algorithm",
+      "Reducing the Error Mapping of the Students’ Performance Using Feature Selection",
+      "Improving the quality of the clustering process on students' performance using feature selection"
+    ],
     "key_concepts": [
       "Yuni Yamasari",
       "co-author",
@@ -511,7 +690,7 @@
     "relevant_titles": [
       "Optimizing ANN Architecture for Classifying Student Stress Levels",
       "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
-      "Exploring Automatic Assessment-Based Features for Clustering of Students' Academic Performance"
+      "Exploring Automatic Assessment-Based Features for Clustering of Students’ Academic Performance"
     ],
     "key_concepts": [
       "Andi Iwan Nurhidayat",
@@ -528,9 +707,9 @@
     "query": "Dosen mana saja yang memiliki penelitian di bidang klasterisasi atau clustering data mahasiswa?",
     "relevant_titles": [
       "Clustering Students in the Online Learning Climate based on Internal and External Factors",
-      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm",
+      "Improving the Performance of Classification via Clustering on the Students’ Academic Performance using Stacking Algorithm",
       "Identifying dominant characteristics of students' cognitive domain on clustering-based classification",
-      "Exploring Automatic Assessment-Based Features for Clustering of Students' Academic Performance",
+      "Exploring Automatic Assessment-Based Features for Clustering of Students’ Academic Performance",
       "Improving the quality of the clustering process on students' performance using feature selection"
     ],
     "key_concepts": [
@@ -594,7 +773,7 @@
       "A Text Mining Analysis of Social Media Criticisms on Tuition Fee Policies at State Universities in Indonesia",
       "Deteksi Validitas Berita pada Media Sosial Twitter dengan Algoritma Naive Bayes",
       "Utilizing Hybrid CNN-SVM and FastText Word Embedding for Twitter Cyberbullying Classification",
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine"
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine"
     ],
     "key_concepts": [
       "NLP",
@@ -639,8 +818,8 @@
     "query": "Paper apa saja yang menggunakan ensemble learning dan domain apa yang dicakupnya?",
     "relevant_titles": [
       "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
-      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
-      "Improving the Performance of Classification via Clustering on the Students' Academic Performance using Stacking Algorithm"
+      "Detecting Students’ Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Improving the Performance of Classification via Clustering on the Students’ Academic Performance using Stacking Algorithm"
     ],
     "key_concepts": [
       "ensemble learning",
@@ -657,8 +836,8 @@
     "intent": "multi_hop_concept",
     "query": "Paper apa yang menggunakan metode SVM dan domain apa saja yang dicakup?",
     "relevant_titles": [
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
-      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine",
+      "Detecting Students’ Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
       "Exploring the Kernel on SVM to Enhance the Classification Performance of Students' Academic Performance",
       "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
       "Klasifikasi Penyakit Stroke dengan Metode Support Vector Machine (SVM)",
@@ -721,7 +900,7 @@
     "query": "Paper apa saja yang dipublikasikan di International Journal of Intelligent Engineering and Systems?",
     "relevant_titles": [
       "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
-      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Detecting Students’ Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
       "Severity classification of non-proliferative diabetic retinopathy using convolutional support vector machine",
       "Identifying dominant characteristics of students' cognitive domain on clustering-based classification"
     ],
@@ -740,7 +919,7 @@
     "relevant_titles": [
       "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
       "Biomedical image classification using vision transformer",
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine",
       "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
       "Enhancing photovoltaic parameters based on modified puma optimizer",
       "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction"
@@ -788,7 +967,18 @@
     "category": "B",
     "intent": "temporal_trend",
     "query": "Topik penelitian apa yang semakin banyak muncul di publikasi tahun 2023–2026?",
-    "relevant_titles": [],
+    "relevant_titles": [
+      "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
+      "Biomedical image classification using vision transformer",
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine",
+      "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
+      "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
+      "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection",
+      "MicrOstrip Array Antenna Design fOr a 24 GHz Radar-Based Vital Signs MOnitOring System",
+      "A systematic review of digital assessment trends in education from 2015-2025",
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior",
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
     "key_concepts": [
       "trend",
       "2023",
@@ -831,7 +1021,7 @@
       "Analisa pemetaan kriminalitas kabupaten bangkalan menggunakan metode k-means dan k-means++",
       "Clustering Students in the Online Learning Climate based on Internal and External Factors",
       "Klastering wilayah kota/kabupaten berdasarkan data persebaran COVID-19 di Propinsi Jawa Timur dengan metode K-Means",
-      "Exploring Automatic Assessment-Based Features for Clustering of Students' Academic Performance",
+      "Exploring Automatic Assessment-Based Features for Clustering of Students’ Academic Performance",
       "Improving the quality of the clustering process on students' performance using feature selection"
     ],
     "key_concepts": [
@@ -849,7 +1039,7 @@
     "intent": "multi_hop_concept",
     "query": "Paper yang mana yang menggunakan feature selection dan tujuan akhirnya apa?",
     "relevant_titles": [
-      "Reducing the Error Mapping of the Students' Performance Using Feature Selection",
+      "Reducing the Error Mapping of the Students’ Performance Using Feature Selection",
       "Improving the quality of the clustering process on students' performance using feature selection",
       "Identifying dominant characteristics of students' cognitive domain on clustering-based classification",
       "Features extraction to improve performance of clustering process on student achievement"
@@ -979,7 +1169,7 @@
     "intent": "multi_hop_author_topic",
     "query": "Dosen mana dari prodi S2 Informatika yang memiliki penelitian di bidang machine learning untuk pendidikan?",
     "relevant_titles": [
-      "Detecting Students' Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
+      "Detecting Students’ Behavior on the E-Learning System Using SVM Kernels - Based Ensemble Learning Algorithm",
       "Optimizing ANN Architecture for Classifying Student Stress Levels",
       "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection"
     ],
@@ -1065,7 +1255,7 @@
     "relevant_titles": [
       "BeyondRPC: A Contrastive and Augmentation-Driven Framework for Robust Point Cloud Understanding",
       "Biomedical image classification using vision transformer",
-      "Detecting Students' Comprehension Based on Sentiment Analysis of Students' Feedback in Indonesian Using Support Vector Machine",
+      "Detecting Students’ Comprehension Based on Sentiment Analysis of Students’ Feedback in Indonesian Using Support Vector Machine",
       "Implementing Optuna and Ensemble Learning on Boosting Models for Credit Default Risk Prediction",
       "Dual Vision Transformer Integration for Race and Gender Recognition Based on Facial Images",
       "Rule-Based Adaptive Chatbot on WhatsApp for Visual, Auditory, and Kinesthetic Learning Style Detection"
@@ -1095,5 +1285,373 @@
       "I Made Suartana"
     ],
     "reference_answer": "Dosen yang co-author Ricky Eka Putra DAN Anita Qoiriah sekaligus: Yuni Yamasari (WhatsApp Chatbot 2026, CNN-SVM 2024) dan I Made Suartana (WhatsApp 2026, CNN-SVM 2024). Ini membutuhkan 2-hop: AUTHOR-A → PAPER ← AUTHOR-B → PAPER ← AUTHOR-C."
+  },
+  {
+    "id": "C07",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Siapa saja dosen yang menulis paper bersama Tri Rijanto mengenai tren asesmen digital dalam pendidikan?",
+    "relevant_titles": [
+      "A systematic review of digital assessment trends in education from 2015-2025"
+    ],
+    "key_concepts": [
+      "Tri Rijanto",
+      "Yeni Anistyasari",
+      "Ekohariadi",
+      "Mohammad Wildan Habibi",
+      "assessment trends"
+    ],
+    "reference_answer": "Dosen yang menulis paper tersebut adalah Yeni Anistyasari, Ekohariadi, dan Mohammad Wildan Habibi bersama Tri Rijanto."
+  },
+  {
+    "id": "C08",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Sebutkan paper hasil kolaborasi antara Yeni Anistyasari dan Tri Rijanto yang membahas instrumen penilaian alternatif untuk guru IPA!",
+    "relevant_titles": [
+      "An alternative assessment instrument for science teachers’ ability in designing and implementing assessments"
+    ],
+    "key_concepts": [
+      "Yeni Anistyasari",
+      "Tri Rijanto",
+      "alternative assessment",
+      "science teachers"
+    ],
+    "reference_answer": "Paper tersebut berjudul 'An alternative assessment instrument for science teachers' ability in designing and implementing assessments'."
+  },
+  {
+    "id": "C09",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Paper apa saja hasil kolaborasi antara Yeni Anistyasari, Tri Rijanto, dan Ekohariadi yang terbit pada tahun 2026?",
+    "relevant_titles": [
+      "A systematic review of digital assessment trends in education from 2015-2025",
+      "Collaborative assessment in education: A systematic review of practices and impact in schools (2014–2024)"
+    ],
+    "key_concepts": [
+      "Yeni Anistyasari",
+      "Tri Rijanto",
+      "Ekohariadi",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 di antaranya 'A systematic review of digital assessment trends in education from 2015-2025' dan 'Collaborative assessment in education: A systematic review of practices and impact in schools (2014-2024)'."
+  },
+  {
+    "id": "C10",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Dosen mana dari prodi S2 Informatika yang menulis paper tentang automated essay scoring bersama Tri Rijanto?",
+    "relevant_titles": [
+      "Automated essay scoring to assess digital literacy competence"
+    ],
+    "key_concepts": [
+      "Yeni Anistyasari",
+      "Tri Rijanto",
+      "automated essay scoring",
+      "S2 Informatika"
+    ],
+    "reference_answer": "Dosen S2 Informatika tersebut adalah Yeni Anistyasari, menulis paper 'Automated essay scoring to assess digital literacy competence'."
+  },
+  {
+    "id": "C11",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Dosen mana saja yang mempublikasikan penelitian mengenai radar vital sign monitoring system berbasis 24 GHz?",
+    "relevant_titles": [
+      "MicrOstrip Array Antenna Design fOr a 24 GHz Radar-Based Vital Signs MOnitOring System"
+    ],
+    "key_concepts": [
+      "Lilik Anifah",
+      "vital signs",
+      "radar",
+      "antenna array"
+    ],
+    "reference_answer": "Dosen yang mempublikasikan penelitian tersebut adalah Lilik Anifah."
+  },
+  {
+    "id": "C12",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Siapa saja dosen prodi S1 Teknik Elektro yang berkolaborasi dalam merancang bangun sistem pendeteksi kebakaran berbasis IoT?",
+    "relevant_titles": [
+      "RANCANG BANGUN SISTEM PENDETEKSI KEBAKARAN BERBASIS IOT"
+    ],
+    "key_concepts": [
+      "Lilik Anifah",
+      "Tri Rijanto",
+      "IoT",
+      "pendeteksi kebakaran"
+    ],
+    "reference_answer": "Dosen yang berkolaborasi adalah Lilik Anifah dan Tri Rijanto."
+  },
+  {
+    "id": "C13",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Moch Deny Pratama dan Hujjatullah Fazlurrahman yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The Unpredictability of the Traffic Sources Model on Instagram Content Using Tree-Based Models Machine Learning Algorithms"
+    ],
+    "key_concepts": [
+      "Moch Deny Pratama",
+      "Hujjatullah Fazlurrahman",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The Unpredictability of the Traffic Sources Model on Instagram Content Using Tree-Based Models Machine Learning Algorithms'."
+  },
+  {
+    "id": "C14",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Hujjatullah Fazlurrahman dan Moch Deny Pratama yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The Unpredictability of the Traffic Sources Model on Instagram Content Using Tree-Based Models Machine Learning Algorithms"
+    ],
+    "key_concepts": [
+      "Hujjatullah Fazlurrahman",
+      "Moch Deny Pratama",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The Unpredictability of the Traffic Sources Model on Instagram Content Using Tree-Based Models Machine Learning Algorithms'."
+  },
+  {
+    "id": "C15",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Muhammad Fajar Wahyudi Rahman dan Ronggo Alit yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
+    "key_concepts": [
+      "Muhammad Fajar Wahyudi Rahman",
+      "Ronggo Alit",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement'."
+  },
+  {
+    "id": "C16",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Dhiyan Septa Wihara dan Ronggo Alit yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
+    "key_concepts": [
+      "Dhiyan Septa Wihara",
+      "Ronggo Alit",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement'."
+  },
+  {
+    "id": "C17",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Ronggo Alit dan Muhammad Fajar Wahyudi Rahman yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
+    "key_concepts": [
+      "Ronggo Alit",
+      "Muhammad Fajar Wahyudi Rahman",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement'."
+  },
+  {
+    "id": "C18",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Dhiyan Septa Wihara dan Muhammad Fajar Wahyudi Rahman yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
+    "key_concepts": [
+      "Dhiyan Septa Wihara",
+      "Muhammad Fajar Wahyudi Rahman",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement'."
+  },
+  {
+    "id": "C19",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Ronggo Alit dan Dhiyan Septa Wihara yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
+    "key_concepts": [
+      "Ronggo Alit",
+      "Dhiyan Septa Wihara",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement'."
+  },
+  {
+    "id": "C20",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Muhammad Fajar Wahyudi Rahman dan Dhiyan Septa Wihara yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement"
+    ],
+    "key_concepts": [
+      "Muhammad Fajar Wahyudi Rahman",
+      "Dhiyan Septa Wihara",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Does Social Media Use Increase Innovative Work Behavior? The Mediating Role of Digital Engagement'."
+  },
+  {
+    "id": "C21",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Dhiyan Septa Wihara dan Hafid Kholidi Hadi yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior"
+    ],
+    "key_concepts": [
+      "Dhiyan Septa Wihara",
+      "Hafid Kholidi Hadi",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior'."
+  },
+  {
+    "id": "C22",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Achmad Fitro dan Hafid Kholidi Hadi yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior"
+    ],
+    "key_concepts": [
+      "Achmad Fitro",
+      "Hafid Kholidi Hadi",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior'."
+  },
+  {
+    "id": "C23",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Hafid Kholidi Hadi dan Dhiyan Septa Wihara yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior"
+    ],
+    "key_concepts": [
+      "Hafid Kholidi Hadi",
+      "Dhiyan Septa Wihara",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior'."
+  },
+  {
+    "id": "C24",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Achmad Fitro dan Dhiyan Septa Wihara yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior"
+    ],
+    "key_concepts": [
+      "Achmad Fitro",
+      "Dhiyan Septa Wihara",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior'."
+  },
+  {
+    "id": "C25",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Hafid Kholidi Hadi dan Achmad Fitro yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior"
+    ],
+    "key_concepts": [
+      "Hafid Kholidi Hadi",
+      "Achmad Fitro",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior'."
+  },
+  {
+    "id": "C26",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Dhiyan Septa Wihara dan Achmad Fitro yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior"
+    ],
+    "key_concepts": [
+      "Dhiyan Septa Wihara",
+      "Achmad Fitro",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'The influence of digital leadership on employee performance at PT. Visi Cloud: The mediating role of innovative work behavior'."
+  },
+  {
+    "id": "C27",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Nanang Hoesen. H. A. dan Hujjatullah Fazlurrahman yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Integration of Digital Marketing, Financial Technology, and Green Innovation on the Performance of Surabaya's Culinary MSMEs"
+    ],
+    "key_concepts": [
+      "Nanang Hoesen. H. A.",
+      "Hujjatullah Fazlurrahman",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Integration of Digital Marketing, Financial Technology, and Green Innovation on the Performance of Surabaya's Culinary MSMEs'."
+  },
+  {
+    "id": "C28",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Hujjatullah Fazlurrahman dan Nanang Hoesen. H. A. yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Integration of Digital Marketing, Financial Technology, and Green Innovation on the Performance of Surabaya's Culinary MSMEs"
+    ],
+    "key_concepts": [
+      "Hujjatullah Fazlurrahman",
+      "Nanang Hoesen. H. A.",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Integration of Digital Marketing, Financial Technology, and Green Innovation on the Performance of Surabaya's Culinary MSMEs'."
+  },
+  {
+    "id": "C29",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Riska Dhenabayu dan Hujjatullah Fazlurrahman yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Financial Reporting Transparency as A Managerial Control Mechanism: A Case Study of Accounting Information System Implementation in An Environmental Consulting Firm"
+    ],
+    "key_concepts": [
+      "Riska Dhenabayu",
+      "Hujjatullah Fazlurrahman",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Financial Reporting Transparency as A Managerial Control Mechanism: A Case Study of Accounting Information System Implementation in An Environmental Consulting Firm'."
+  },
+  {
+    "id": "C30",
+    "category": "C",
+    "intent": "multihop_retrieval",
+    "query": "Apa judul paper hasil kolaborasi antara Hujjatullah Fazlurrahman dan Riska Dhenabayu yang dipublikasikan pada tahun 2026?",
+    "relevant_titles": [
+      "Financial Reporting Transparency as A Managerial Control Mechanism: A Case Study of Accounting Information System Implementation in An Environmental Consulting Firm"
+    ],
+    "key_concepts": [
+      "Hujjatullah Fazlurrahman",
+      "Riska Dhenabayu",
+      "2026"
+    ],
+    "reference_answer": "Paper kolaborasi mereka pada tahun 2026 berjudul 'Financial Reporting Transparency as A Managerial Control Mechanism: A Case Study of Accounting Information System Implementation in An Environmental Consulting Firm'."
   }
 ]

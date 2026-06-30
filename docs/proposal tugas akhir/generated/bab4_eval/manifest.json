@@ -1,18 +1,18 @@
 {
-  "generated_at": "2026-06-25T03:20:50+0700",
+  "generated_at": "2026-06-29T15:43:58+0700",
   "output_dir": "notebooks/build-graph/outputs/evaluation",
   "artifact_dir": "notebooks/build-graph/outputs/evaluation/bab4_artifacts",
   "docs_bab4_eval_dir": "docs/proposal tugas akhir/generated/bab4_eval",
   "docs_gambar_dir": "docs/proposal tugas akhir/Gambar",
   "latex_artifact_prefix": "generated/bab4_eval",
   "dataset": {
-    "total": 60,
-    "ranked_cases": 56,
+    "total": 94,
+    "ranked_cases": 90,
     "guardrail_cases": 4,
     "category_counts": {
-      "A": 20,
+      "A": 30,
       "B": 30,
-      "C": 6,
+      "C": 30,
       "G": 4
     },
     "data_dir": "C:\\Users\\rizky\\Documents\\GitHub\\Tugas_Akhir\\notebooks\\build-graph\\eval_pipeline\\data",
@@ -23,17 +23,17 @@
     "layer1": {
       "path": "notebooks/build-graph/outputs/evaluation/eval_layer1_results.json",
       "exists": true,
-      "modified_at": "2026-06-25T02:59:28+0700"
+      "modified_at": "2026-06-29T10:57:06+0700"
     },
     "layer2": {
       "path": "notebooks/build-graph/outputs/evaluation/eval_layer2_results.json",
       "exists": true,
-      "modified_at": "2026-06-25T03:20:49+0700"
+      "modified_at": "2026-06-29T12:13:24+0700"
     },
     "layer4": {
       "path": "notebooks/build-graph/outputs/evaluation/eval_layer4_results.json",
       "exists": true,
-      "modified_at": "2026-06-19T03:01:39+0700"
+      "modified_at": "2026-06-29T14:55:33+0700"
     }
   },
   "tables": [
