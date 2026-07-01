@@ -1741,7 +1741,7 @@ class AcademicGraphRAGService:
                         limit=top_k,
                         output_fields=output_fields,
                         search_params={"metric_type": os.getenv("YUNESA_MILVUS_METRIC_TYPE", "L2")},
-                        filter=cls._graph_filter(graph_name),
+                        filter=cls._graph_filter(graph_name) if collection_name != "community_summaries" else None,
                         timeout=DEFAULT_MILVUS_TIMEOUT_SECONDS,
                     )
                     if candidate_db != db_name:
@@ -2025,6 +2025,19 @@ class AcademicGraphRAGService:
                     output_fields=["graphName", "srcId", "tgtId", "relType", "description", "sourceId"],
                     text_fields=["srcId", "tgtId", "relType", "description"],
                     top_k=top_k,
+                    graph_name=resolved_graph_name,
+                    query_vector=query_vectors.get(payload["global_query"]),
+                    embed_if_missing=False,
+                )
+            )
+            second_labels.append("community_summaries")
+            second_tasks.append(
+                vector_store.query(
+                    query_text=payload["global_query"],
+                    collection_name="community_summaries",
+                    output_fields=["id", "community_id", "content"],
+                    text_fields=["content"],
+                    top_k=int(os.getenv("YUNESA_COMMUNITY_TOP_K", "3")),
                     graph_name=resolved_graph_name,
                     query_vector=query_vectors.get(payload["global_query"]),
                     embed_if_missing=False,
@@ -2785,24 +2798,47 @@ class AcademicGraphRAGService:
             writer.writerows(rows)
             return output.getvalue().strip()
 
-        evidence = (
+        community_summaries = (academic or {}).get("community_summaries") or []
+        community_rows: list[list[Any]] = [["id", "community_id", "summary"]]
+        for index, comm in enumerate(community_summaries, start=1):
+            community_rows.append([
+                index,
+                comm.get("community_id") or comm.get("id"),
+                cls._clip_text(comm.get("content") or "", 1200)
+            ])
+
+        evidence_parts = []
+        if len(community_rows) > 1:
+            evidence_parts.append(
+                "-----Community Summaries-----\n"
+                "```csv\n"
+                f"{to_csv(community_rows)}\n"
+                "```"
+            )
+        evidence_parts.append(
             "-----Entities-----\n"
             "```csv\n"
             f"{to_csv(entity_rows)}\n"
-            "```\n"
+            "```"
+        )
+        evidence_parts.append(
             "-----Relationships-----\n"
             "```csv\n"
             f"{to_csv(relationship_rows)}\n"
-            "```\n"
+            "```"
+        )
+        evidence_parts.append(
             "-----Sources-----\n"
             "```csv\n"
             f"{to_csv(source_rows)}\n"
             "```"
         )
+        evidence = "\n".join(evidence_parts)
         logger.debug(
             "Academic GraphRAG evidence_text size: %d chars "
-            "(entities=%d, relations=%d, sources=%d)",
+            "(communities=%d, entities=%d, relations=%d, sources=%d)",
             len(evidence),
+            len(community_rows) - 1,
             len(entity_rows) - 1,
             len(relationship_rows) - 1,
             len(source_rows) - 1,

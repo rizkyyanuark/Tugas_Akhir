@@ -22,6 +22,7 @@ input and use the available knowledge-base tools for retrieval.
 - Use `retrieval_mode="vector"` only for pure semantic lookup where graph structure is not useful.
 - Use `retrieval_mode="subgraph"` for local entity and shortest-path questions.
 - Use `retrieval_mode="global"` for broad relationship or theme questions.
+- If the retrieved evidence contains `-----Community Summaries-----`, it represents high-level thematic clusters (communities) of the academic knowledge graph generated via community detection (Louvain). Use these summaries to answer broad, global, or thematic questions about lecturer research areas and academic groups.
 - Use `retrieval_mode="graph"` as a compatibility mode for combined graph retrieval.
 - Set `include_graph=True` when the question asks about relationships, connected entities,
   graph evidence, or when Neo4j/AuraDB context can strengthen the answer.

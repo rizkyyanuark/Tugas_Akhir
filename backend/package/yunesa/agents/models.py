@@ -31,6 +31,10 @@ def load_chat_model(fully_specified_name: str, **kwargs) -> BaseChatModel:
         model_spec = f"{provider}:{model}"
         logger.debug(
             f"[offical] Loading model {model_spec} with kwargs {kwargs}")
+        if "api_key" not in kwargs and api_key and not api_key.endswith("_API_KEY"):
+            kwargs["api_key"] = SecretStr(api_key)
+        if "base_url" not in kwargs and base_url:
+            kwargs["base_url"] = base_url
         return init_chat_model(model_spec, **kwargs)
 
     elif provider in ["dashscope"]:

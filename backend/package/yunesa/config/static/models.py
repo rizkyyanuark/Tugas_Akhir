@@ -62,8 +62,8 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
     ),
     "deepseek": ChatModelProvider(
         name="DeepSeek",
-        url="https://platform.deepseek.com/api-docs/zh-cn/pricing",
-        base_url="https://api.deepseek.com/v1",
+        url="https://api-docs.deepseek.com/",
+        base_url="https://api.deepseek.com",
         default="deepseek-chat",
         env="DEEPSEEK_API_KEY",
         models=["deepseek-chat", "deepseek-reasoner"],
