@@ -1385,9 +1385,22 @@ class AcademicGraphRAGService:
 
             resolved_graph_name = cls._academic_graph_name(graph_name)
             cypher = """
-                MATCH (lecturer:Lecturer)-[:PUBLISHES]->(paper:Publication)
+                MATCH (paper:Publication)
+                WHERE paper.graph_name = $graph_name
+                  AND (
+                    any(term IN $topic_terms WHERE toLower(coalesce(paper.title, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.label, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.abstract, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.tldr, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.keywords, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.authors, '')) CONTAINS toLower(term))
+                    OR EXISTS {
+                        MATCH (paper)-[:HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN]->(concept)
+                        WHERE any(term IN $topic_terms WHERE toLower(coalesce(concept.label, '')) CONTAINS toLower(term) OR toLower(coalesce(concept.name, '')) CONTAINS toLower(term))
+                    }
+                  )
+                MATCH (lecturer:Lecturer)-[:PUBLISHES]->(paper)
                 WHERE lecturer.graph_name = $graph_name
-                  AND paper.graph_name = $graph_name
                 OPTIONAL MATCH (lecturer)-[:HAS_AFFILIATION]->(affiliation:Institution)
                 WITH lecturer, paper, collect(DISTINCT affiliation) AS affiliations
                 OPTIONAL MATCH (paper)-[
