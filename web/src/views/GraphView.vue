@@ -69,20 +69,17 @@
                   />
                 </template>
               </a-input>
-              <a-input
-                v-model:value="sampleNodeCount"
-                placeholder="Nodes"
-                style="width: 100px"
-                @keydown.enter="loadSampleNodes"
+              <a-button
+                @click="loadSampleNodes"
                 :loading="graph.fetching"
+                title="Reload default graph"
+                style="height: 32px; display: flex; align-items: center; justify-content: center;"
               >
-                <template #suffix>
-                  <component
-                    :is="graph.fetching ? LoadingOutlined : ReloadOutlined"
-                    @click="loadSampleNodes"
-                  />
+                <template #icon v-if="!graph.fetching">
+                  <ReloadOutlined />
                 </template>
-              </a-input>
+                Default Graph
+              </a-button>
             </div>
           </div>
         </template>
@@ -136,7 +133,7 @@ const modelMatched = computed(
 
 const graphRef = ref(null)
 const graphInfo = ref(null)
-const sampleNodeCount = ref(80)
+const sampleNodeCount = ref(150)
 
 const graph = reactive(useGraph(graphRef))
 

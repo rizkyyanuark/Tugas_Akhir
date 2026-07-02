@@ -219,14 +219,14 @@ function initGraph() {
     node: {
       type: 'circle',
       style: {
-        labelText: (d) => d.data.label,
-        fill: (d) => getNodeColor(d.data.original),
+        labelText: (d) => d.data?.label || d.id || '',
+        fill: (d) => d.data?.original ? getNodeColor(d.data.original) : '#64748b',
         labelFill: getCSSVariable('--gray-700'),
         labelWordWrap: true, // enable label ellipsis
         labelMaxWidth: '300%',
         size: (d) => {
           if (!props.sizeByDegree) return 24
-          const deg = d.data.degree || 0
+          const deg = d.data?.degree || 0
           return Math.min(15 + deg * 5, 50)
         },
         opacity: 0.9,
@@ -241,7 +241,7 @@ function initGraph() {
     edge: {
       type: 'quadratic',
       style: {
-        labelText: (d) => d.data.label,
+        labelText: (d) => d.data?.label || '',
         labelFill: getCSSVariable('--gray-800'),
         labelBackground: true,
         labelBackgroundFill: getCSSVariable('--gray-100'),
@@ -351,41 +351,31 @@ async function setGraphData() {
 function applyHighlightKeywords() {
   if (!graphInstance || !props.highlightKeywords || props.highlightKeywords.length === 0) return
 
-  const { nodes } = graphInstance.getData()
-  const updates = {}
+  const { nodes } = graphInstance.getGraphData()
 
   nodes.forEach((node) => {
-    const nodeLabel = node.data.label || node.data[props.labelField] || String(node.id)
+    const nodeLabel = node.data?.label || node.data?.[props.labelField] || String(node.id)
     const shouldHighlight = props.highlightKeywords.some(
       (keyword) => keyword.trim() !== '' && nodeLabel.toLowerCase().includes(keyword.toLowerCase())
     )
 
     if (shouldHighlight) {
-      updates[node.id] = ['highlighted']
+      graphInstance.setElementState(node.id, 'highlighted')
+    } else {
+      graphInstance.setElementState(node.id, [])
     }
   })
-
-  if (Object.keys(updates).length > 0) {
-    graphInstance.setElementState(updates)
-    graphInstance.draw()
-  }
 }
 
 // Clear highlights
 function clearHighlights() {
   if (!graphInstance) return
 
-  const { nodes } = graphInstance.getData()
-  const updates = {}
+  const { nodes } = graphInstance.getGraphData()
 
   nodes.forEach((node) => {
-    updates[node.id] = []
+    graphInstance.setElementState(node.id, [])
   })
-
-  if (Object.keys(updates).length > 0) {
-    graphInstance.setElementState(updates)
-    graphInstance.draw()
-  }
 }
 
 function renderGraph() {
@@ -434,40 +424,43 @@ function getInstance() {
 
 async function focusNode(id) {
   if (!graphInstance || !props.enableFocusNeighbor) return
-  const { nodes, edges } = graphInstance.getData()
-  const nodeIds = nodes.map((n) => n.id)
-  const edgeIds = edges.map((e) => e.id)
-  const updates = {}
-  nodeIds.forEach((nid) => (updates[nid] = ['hidden']))
-  edgeIds.forEach((eid) => (updates[eid] = ['hidden']))
+  const { nodes, edges } = graphInstance.getGraphData()
   const neighborSet = new Set()
-  const related = []
+  
   edges.forEach((e) => {
     if (e.source === id) {
       neighborSet.add(e.target)
-      related.push(e.id)
     } else if (e.target === id) {
       neighborSet.add(e.source)
-      related.push(e.id)
     }
   })
-  updates[id] = ['focus']
-  Array.from(neighborSet).forEach((nid) => (updates[nid] = ['focus']))
-  related.forEach((eid) => (updates[eid] = ['focus']))
-  await graphInstance.setElementState(updates)
-  await graphInstance.draw()
+
+  nodes.forEach((n) => {
+    if (n.id === id || neighborSet.has(n.id)) {
+      graphInstance.setElementState(n.id, 'focus')
+    } else {
+      graphInstance.setElementState(n.id, 'hidden')
+    }
+  })
+
+  edges.forEach((e) => {
+    if (e.source === id || e.target === id) {
+      graphInstance.setElementState(e.id, 'focus')
+    } else {
+      graphInstance.setElementState(e.id, 'hidden')
+    }
+  })
 }
 
 async function clearFocus() {
   if (!graphInstance) return
-  const { nodes, edges } = graphInstance.getData()
-  const nodeIds = nodes.map((n) => n.id)
-  const edgeIds = edges.map((e) => e.id)
-  const updates = {}
-  nodeIds.forEach((nid) => (updates[nid] = []))
-  edgeIds.forEach((eid) => (updates[eid] = []))
-  await graphInstance.setElementState(updates)
-  await graphInstance.draw()
+  const { nodes, edges } = graphInstance.getGraphData()
+  nodes.forEach((n) => {
+    graphInstance.setElementState(n.id, [])
+  })
+  edges.forEach((e) => {
+    graphInstance.setElementState(e.id, [])
+  })
 }
 
 watch(
