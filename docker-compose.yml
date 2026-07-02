@@ -23,6 +23,11 @@ x-api-worker-env: &api-worker-env
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
   GROQ_API_KEY: ${GROQ_API_KEY}
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  TAVILY_API_KEY: ${TAVILY_API_KEY:-}
   # Entity Resolution
   YUNESA_ALIAS_SUGGESTIONS_PATH: ${YUNESA_ALIAS_SUGGESTIONS_PATH:-/app/data/kg/entity_resolution/concept_alias_suggestions.json}
   YUNESA_ALIAS_CURATION_STORE: ${YUNESA_ALIAS_CURATION_STORE:-/app/data/kg/entity_resolution/alias_curation_store.json}

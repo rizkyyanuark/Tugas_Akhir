@@ -34,13 +34,13 @@ def generate_subgraph_vis():
 
     plt.figure(figsize=(6, 5))
     
-    # Fixed position mapping for aesthetic layout
+    # Closer positions to make the graph compact
     pos = {
-        pub: (0, 1),
-        venue: (-1, 1.8),
-        model: (1, 1.8),
-        lecturer1: (-0.6, 0),
-        lecturer2: (0.6, 0)
+        pub: (0, 0.5),
+        venue: (-0.9, 1.2),
+        model: (0.9, 1.2),
+        lecturer1: (-0.6, -0.1),
+        lecturer2: (0.6, -0.1)
     }
     
     # Draw nodes by type
@@ -54,11 +54,11 @@ def generate_subgraph_vis():
     for ntype, color in colors.items():
         nlist = [n for n, attr in G.nodes(data=True) if attr.get("type") == ntype]
         if nlist:
-            nx.draw_networkx_nodes(G, pos, nodelist=nlist, node_color=color, node_size=1500, alpha=0.9)
+            nx.draw_networkx_nodes(G, pos, nodelist=nlist, node_color=color, node_size=7500, alpha=0.9)
         
-    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), width=1.5, arrowstyle="->", arrowsize=15, edge_color="#7f8c8d")
+    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), width=3.0, arrowstyle="->", arrowsize=22, edge_color="#7f8c8d")
     
-    # Custom wrapped node labels
+    # Custom wrapped node labels with much larger font
     labels = {
         pub: "Eksplorasi\nTeknik...",
         venue: "JINACS",
@@ -66,18 +66,24 @@ def generate_subgraph_vis():
         lecturer1: "Achmad\nKautsar",
         lecturer2: "Yuni\nYamasari"
     }
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=8, font_weight="bold")
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=15, font_weight="bold")
     
-    # Draw edge labels
+    # Draw edge labels with much larger font
     edge_labels = nx.get_edge_attributes(G, "label")
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=12)
     
-    plt.title("Visualisasi Subgraf (Local Search)", fontsize=10, fontweight="bold")
     plt.axis("off")
-    plt.tight_layout()
+    
+    # Set limits manually with extra padding to prevent cropping of large node circles
+    x_coords = [coords[0] for coords in pos.values()]
+    y_coords = [coords[1] for coords in pos.values()]
+    plt.xlim(min(x_coords) - 0.55, max(x_coords) + 0.55)
+    plt.ylim(min(y_coords) - 0.55, max(y_coords) + 0.55)
+    
+    plt.tight_layout(pad=0.1)
     
     out_path = DOCS_GAMBAR_DIR / "sample_subgraph.png"
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close()
     print("[OK] Saved:", out_path)
 
@@ -115,17 +121,17 @@ def generate_hybrid_vis():
     G.add_edge(lecturer1, lecturer3, label="COLLABORATES")
     G.add_edge(lecturer2, lecturer3, label="COLLABORATES")
 
-    plt.figure(figsize=(6.5, 5))
+    plt.figure(figsize=(7, 6))
     
-    # Fixed position mapping for hybrid aesthetic layout
+    # Closer positions to make the graph compact
     pos = {
-        pub1: (-1, 1),
-        pub2: (1, 1),
-        model1: (-1.8, 1.8),
-        model2: (1.8, 1.8),
-        lecturer1: (-1, -0.6),
-        lecturer2: (0, 0.2),
-        lecturer3: (1, -0.6)
+        pub1: (-0.8, 0.5),
+        pub2: (0.8, 0.5),
+        model1: (-1.6, 1.2),
+        model2: (1.6, 1.2),
+        lecturer1: (-1.0, -0.6),
+        lecturer2: (0, 0.0),
+        lecturer3: (1.0, -0.6)
     }
     
     colors = {
@@ -137,9 +143,9 @@ def generate_hybrid_vis():
     for ntype, color in colors.items():
         nlist = [n for n, attr in G.nodes(data=True) if attr.get("type") == ntype]
         if nlist:
-            nx.draw_networkx_nodes(G, pos, nodelist=nlist, node_color=color, node_size=1500, alpha=0.9)
+            nx.draw_networkx_nodes(G, pos, nodelist=nlist, node_color=color, node_size=7500, alpha=0.9)
         
-    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), width=1.3, arrowstyle="->", arrowsize=13, edge_color="#7f8c8d")
+    nx.draw_networkx_edges(G, pos, edgelist=G.edges(), width=2.5, arrowstyle="->", arrowsize=20, edge_color="#7f8c8d")
     
     labels = {
         pub1: "Implementing\nOptuna...",
@@ -150,17 +156,23 @@ def generate_hybrid_vis():
         model1: "CatBoost",
         model2: "XGBoost"
     }
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=8, font_weight="bold")
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=15, font_weight="bold")
     
     edge_labels = nx.get_edge_attributes(G, "label")
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=12)
     
-    plt.title("Visualisasi Subgraf (Hybrid Search)", fontsize=10, fontweight="bold")
     plt.axis("off")
-    plt.tight_layout()
+    
+    # Set limits manually with extra padding to prevent cropping of large node circles
+    x_coords = [coords[0] for coords in pos.values()]
+    y_coords = [coords[1] for coords in pos.values()]
+    plt.xlim(min(x_coords) - 0.55, max(x_coords) + 0.55)
+    plt.ylim(min(y_coords) - 0.55, max(y_coords) + 0.55)
+    
+    plt.tight_layout(pad=0.1)
     
     out_path = DOCS_GAMBAR_DIR / "sample_hybrid.png"
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close()
     print("[OK] Saved:", out_path)
 

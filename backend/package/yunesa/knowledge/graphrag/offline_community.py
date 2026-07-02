@@ -63,7 +63,7 @@ def run_gds_louvain():
         CALL gds.graph.project(
             'academic_graph',
             ['Lecturer', 'Publication', 'Concept', 'Keyword', 'Venue', 'Year'],
-            ['PUBLISHES', 'HAS_AUTHOR', 'HAS_TOPIC', 'HAS_KEYWORD', 'PUBLISHED_IN_VENUE', 'PUBLISHED_IN_YEAR'],
+            ['PUBLISHES', 'HAS_AUTHOR', 'HAS_TOPIC', 'SOLVES_PROBLEM', 'WORKS_ON_TASK', 'PROPOSES_INNOVATION', 'HAS_KEYWORD', 'PUBLISHED_IN_VENUE', 'PUBLISHED_IN_YEAR'],
             { memory: '2GB' }
         )
         """

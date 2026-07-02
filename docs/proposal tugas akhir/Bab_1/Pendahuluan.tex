@@ -2,11 +2,11 @@
 
 \section{Latar Belakang}
 
-Ekosistem penelitian akademik saat ini mengalami ledakan literatur ilmiah yang belum pernah terjadi sebelumnya. Produksi literatur meningkat secara eksponensial, dengan perkiraan jutaan artikel baru diterbitkan setiap tahunnya di berbagai bidang ilmu. Basis data \textit{PubMed} bahkan melaporkan hampir tiga ribu artikel baru terbit setiap hari \citep{lee2016best}. Sebagai ilustrasi, mesin pencari seperti \textit{Google Scholar} menghasilkan ribuan entri untuk kata kunci ``\textit{machine learning}'' \citep{Khalid2019OnTC}. Meskipun kelimpahan data ini membuka peluang inovasi, volume masif tersebut menimbulkan beban kognitif (\textit{cognitive overload}) bagi peneliti yang harus menavigasi tumpukan literatur untuk menemukan wawasan relevan.
+Ekosistem penelitian akademik saat ini mengalami ledakan literatur ilmiah yang belum pernah terjadi sebelumnya. Produksi literatur meningkat secara eksponensial, dengan perkiraan jutaan artikel baru diterbitkan setiap tahunnya di berbagai bidang ilmu. Basis data \textit{PubMed} bahkan melaporkan hampir tiga ribu artikel baru terbit setiap hari \citep{lee2016best}. Sebagai ilustrasi, mesin pencari seperti \textit{Google Scholar} menghasilkan ribuan entri untuk kata kunci ``\textit{machine learning}'' \citep{Khalid2019OnTC}. Meskipun kelimpahan data ini membuka peluang inovasi, volume yang sangat masif tersebut menimbulkan beban kognitif (\textit{cognitive overload}) bagi peneliti yang harus menavigasi tumpukan literatur untuk menemukan wawasan relevan.
 
-Merespons kondisi tersebut, berbagai mesin pencari literatur seperti \textit{Google Scholar}, \textit{Semantic Scholar}, dan \textit{Microsoft Academic Search} dikembangkan untuk memfasilitasi penemuan publikasi ilmiah \citep{MartínMartín2021}. Di antara layanan tersebut, \textit{Google Scholar} mendominasi dengan cakupan sekitar 389 juta dokumen \citep{Gusenbauer2018Google}. Namun, platform ini masih mengandalkan pencarian tradisional berbasis pencocokan kata kunci. \citet{https://doi.org/10.1002/(SICI)1097-4571(199009)41:6<391::AID-ASI1>3.0.CO;2-9} menyatakan bahwa metode \textit{keyword matching} sering gagal menangkap konteks semantik yang kompleks, sehingga berpotensi melewatkan literatur penting yang menggunakan istilah berbeda namun bermakna serupa. Pendekatan seperti ini menyebabkan sumber daya akademik yang berharga tidak teridentifikasi, yang pada akhirnya dapat menghambat proses transfer pengetahuan dan kolaborasi ilmiah.
+Merespons kondisi tersebut, berbagai mesin pencari literatur seperti \textit{Google Scholar}, \textit{Semantic Scholar}, dan \textit{Microsoft Academic Search} dikembangkan untuk memfasilitasi pencarian publikasi ilmiah \citep{MartínMartín2021}. Di antara layanan tersebut, \textit{Google Scholar} mendominasi dengan cakupan sekitar 389 juta dokumen \citep{Gusenbauer2018Google}. Namun, platform ini masih mengandalkan pencarian tradisional berbasis pencocokan kata kunci. \citet{https://doi.org/10.1002/(SICI)1097-4571(199009)41:6<391::AID-ASI1>3.0.CO;2-9} menyatakan bahwa metode \textit{keyword matching} sering gagal menangkap konteks semantik yang kompleks, sehingga berpotensi melewatkan literatur penting yang menggunakan istilah berbeda namun memiliki makna yang serupa. Pendekatan seperti ini menyebabkan sumber daya akademik yang berharga tidak teridentifikasi, yang pada akhirnya dapat menghambat proses transfer pengetahuan dan kolaborasi ilmiah.
 
-Inefisiensi pencarian tersebut semakin krusial di lingkungan institusi pendidikan tinggi seperti UNESA. Berdasarkan data SINTA \citep{sinta_unesa2024}, produktivitas publikasi dosen UNESA menunjukkan tren positif dengan peningkatan rata-rata 20--30\% per tahun dalam lima tahun terakhir. Sayangnya, pertumbuhan ini tersebar dalam sistem penyimpanan yang terfragmentasi. Studi oleh \citet{9320965} menyebut fenomena terpisahnya data profil kepakaran dari luaran penelitian dan sitasi sebagai fragmentasi pengetahuan. Akibatnya, pemangku kebijakan menghadapi kesulitan dalam menjawab pertanyaan kompleks yang membutuhkan sintesis dari berbagai sumber data terpisah, bukan sekadar pencarian dokumen tunggal. Metode pencarian konvensional gagal melakukan sintesis ini karena hanya melihat dokumen sebagai entitas terpisah, bukan sebagai jaringan pengetahuan yang saling terkait.
+Inefisiensi dalam proses pencarian tersebut semakin krusial di lingkungan institusi pendidikan tinggi seperti UNESA. Berdasarkan data SINTA \citep{sinta_unesa2024}, produktivitas publikasi dosen UNESA menunjukkan tren positif dengan peningkatan rata-rata 20--30\% per tahun dalam lima tahun terakhir. Sayangnya, pertumbuhan ini tersebar dalam sistem penyimpanan yang terfragmentasi. Studi oleh \citet{9320965} menyebut fenomena terpisahnya data profil kepakaran dari luaran penelitian dan sitasi sebagai fragmentasi pengetahuan. Akibatnya, pemangku kebijakan menghadapi kesulitan dalam menjawab pertanyaan kompleks yang membutuhkan sintesis dari berbagai sumber data terpisah, bukan sekadar pencarian dokumen tunggal. Metode pencarian konvensional gagal melakukan sintesis ini karena hanya melihat dokumen sebagai entitas terpisah, bukan sebagai jaringan pengetahuan yang saling terkait.
 
 Menjawab tantangan tersebut, \textit{Large Language Models} (LLM) dengan arsitektur \textit{Retrieval-Augmented Generation} (RAG) menawarkan pendekatan baru melalui interaksi bahasa alami terhadap korpus data \citep{lewis2021retrievalaugmentedgenerationknowledgeintensivenlp}. \textit{RAG} tradisional, atau \textit{Vector RAG}, memecah dokumen menjadi segmen teks (\textit{chunks}) dan menyimpannya dalam basis data vektor untuk pencarian kemiripan semantik \citep{gao2024retrievalaugmentedgenerationlargelanguage}. Meskipun efektif untuk kueri sederhana, \textit{Vector RAG} memiliki kelemahan fundamental pada tugas penalaran kompleks. Studi oleh \citet{han2025ragvsgraphragsystematic} menyoroti bahwa pendekatan vektor memperlakukan informasi sebagai data terisolasi, sehingga gagal menghubungkan titik-titik informasi yang tersebar namun saling terkait di berbagai dokumen.
 
@@ -21,13 +21,13 @@ Berdasarkan permasalahan tersebut, penelitian ini mengusulkan pengembangan siste
 \section{Identifikasi Masalah}
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm]
-    \item Pertumbuhan literatur dan rekam jejak publikasi dosen pada domain Informatika dan Komputer di UNESA meningkat serta tersebar pada berbagai sumber, sehingga penelusuran literatur yang komprehensif dan efisien menjadi sulit.
+    \item Pertumbuhan literatur publikasi dosen pada domain Informatika dan Komputer di UNESA meningkat namun tersebar pada berbagai sumber, sehingga penelusuran literatur yang komprehensif menjadi sulit.
 
     \item Sistem pencarian akademik konvensional mengandalkan pencocokan kata kunci atau kemiripan teks, sehingga kurang mampu memodelkan konteks semantik dan relasi antar entitas akademik yang dibutuhkan untuk penelusuran literatur.
 
-    \item Pemanfaatan \textit{Large Language Model} secara mandiri berisiko menghasilkan halusinasi dan jawaban yang tidak dapat ditelusuri sumbernya, sehingga kurang aman untuk kebutuhan akademik yang menuntut akurasi dan keterlacakan.
+    \item Pemanfaatan \textit{Large Language Model} secara mandiri berisiko menghasilkan halusinasi dan jawaban yang tidak akurat, sehingga kurang aman untuk kebutuhan akademik yang menuntut kredibilitas.
 
-    \item Implementasi \textit{Retrieval-Augmented Generation} (\textit{RAG}) berbasis \textit{vector similarity} cenderung mengambil potongan teks semata, sehingga kurang optimal untuk pertanyaan yang membutuhkan pemahaman relasional dan pencocokan konteks lintas entitas seperti pencarian literatur.
+    \item Implementasi \textit{Retrieval-Augmented Generation} (\textit{RAG}) berbasis \textit{vector similarity} cenderung mengambil potongan teks, sehingga kurang optimal untuk pertanyaan yang membutuhkan pemahaman relasional dan menghubungkan konteks lintas entitas seperti pencarian literatur akademik.
 
     \item Belum tersedia sistem penelusuran literatur di lingkungan Infokom UNESA yang mengimplementasikan \textit{Knowledge Graph} untuk mendukung generasi jawaban model bahasa besar.
 \end{enumerate}
@@ -35,9 +35,9 @@ Berdasarkan permasalahan tersebut, penelitian ini mengusulkan pengembangan siste
 \section{Rumusan Masalah}
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm]
-    \item Bagaimana merancang \textit{pipeline} konstruksi \textit{Knowledge Graph} yang mampu mengekstraksi dan menstandarisasi entitas serta relasi dari korpus literatur akademik secara otomatis untuk mendukung representasi pengetahuan yang komprehensif?
+    \item Bagaimana merancang \textit{pipeline} konstruksi \textit{Knowledge Graph} yang mampu mengekstraksi \textit{metadata} dan mengekstrak konsep dari korpus literatur akademik dosen Infokom UNESA untuk mendukung representasi pengetahuan domain akademik?
 
-    \item Bagaimana merancang mekanisme \textit{Hybrid Vector-Graph Retrieval} yang mengintegrasikan pencarian vektor dan graf secara sinergis dalam arsitektur \textit{Knowledge Graph Based RAG} pada sistem \textit{Question Answering} untuk meningkatkan relevansi dan kontekstualitas pencarian?
+    \item Bagaimana merancang mekanisme \textit{Hybrid Vector-Graph Retrieval} yang mengintegrasikan pencarian vektor dan graf pada \textit{Knowledge Graph Based RAG} untuk meningkatkan kualitas jawaban model bahasa besar (\textit{LLM}) dalam pencarian literatur akademik?
 
     \item Bagaimana efektivitas integrasi \textit{Knowledge Graph} dalam mengurangi halusinasi pada model bahasa besar (\textit{LLM}) dan meningkatkan keterlacakan (\textit{traceability}) referensi dalam jawaban yang dihasilkan?
 \end{enumerate}
@@ -45,21 +45,21 @@ Berdasarkan permasalahan tersebut, penelitian ini mengusulkan pengembangan siste
 \section{Tujuan Penelitian}
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm]
-    \item Merancang \textit{pipeline} konstruksi \textit{Knowledge Graph} yang mampu mengekstraksi dan menstandarisasi entitas serta relasi dari korpus literatur akademik secara otomatis untuk mendukung representasi pengetahuan yang komprehensif.
+    \item Merancang \textit{pipeline} konstruksi \textit{Knowledge Graph} yang mampu mengekstraksi korpus literatur akademik secara otomatis untuk mendukung representasi pengetahuan domain akademik.
 
-    \item Merancang mekanisme \textit{Hybrid Vector-Graph Retrieval} dalam arsitektur \textit{Knowledge Graph Based RAG} pada sistem \textit{Question Answering} secara sinergis untuk meningkatkan relevansi dan kontekstualitas pencarian.
+    \item Merancang mekanisme \textit{Hybrid Vector-Graph Retrieval} dalam arsitektur \textit{Knowledge Graph Based RAG} untuk meningkatkan kualitas jawaban model bahasa besar (\textit{LLM}) dalam pencarian literatur akademik.
 
-    \item Menganalisis efektivitas integrasi \textit{Knowledge Graph} dalam meminimalkan tingkat halusinasi model bahasa besar (\textit{LLM}) serta meningkatkan keterlacakan (\textit{traceability}) sumber referensi dalam jawaban yang dihasilkan.
+    \item Mengevaluasi efektivitas integrasi \textit{Knowledge Graph} dalam meminimalkan tingkat halusinasi model bahasa besar (\textit{LLM}) serta meningkatkan keterlacakan sumber referensi dalam jawaban yang dihasilkan.
 \end{enumerate}
 
 \section{Manfaat Penelitian}
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm]
-    \item Berkontribusi pada kajian \textit{Knowledge Graph} dalam \textit{retrieval-augmented generation} dengan menguji efektivitas pendekatan \textit{hybrid vector-graph retrieval} untuk pencarian literatur akademik institusional.
+    \item Berkontribusi pada kajian \textit{Knowledge Graph} dalam \textit{retrieval-augmented generation} dengan menguji efektivitas pendekatan \textit{hybrid vector-graph retrieval} untuk pencarian literatur akademik.
 
-    \item Menyajikan kajian empiris mengenai efektivitas pendekatan hibrida (\textit{Hybrid Vector-Graph}) dalam mengatasi kelemahan metode \textit{RAG} konvensional, khususnya pada domain data berstruktur relasional padat seperti literatur ilmiah.
+    \item Menyajikan kajian empiris mengenai efektivitas pendekatan \textit{Hybrid Vector-Graph} dalam mengatasi kelemahan metode \textit{RAG} konvensional pada domain data berstruktur relasional padat seperti literatur ilmiah.
 
-    \item Memperkaya literatur mengenai pemanfaatan \textit{Knowledge Graph} untuk meningkatkan kemampuan penalaran pada \textit{Large Language Models} (LLM).
+    \item Memberikan kontribusi bagi sivitas akademika rumpun Informatika dan Komputer UNESA sebagai sistem informasi yang menyajikan pengetahuan domain akademik secara terintegrasi dan interaktif.
 \end{enumerate}
 
 \section{Batasan Masalah}
@@ -67,13 +67,11 @@ Berdasarkan permasalahan tersebut, penelitian ini mengusulkan pengembangan siste
 Mengingat luasnya ruang lingkup permasalahan, penelitian ini dibatasi pada aspek-aspek berikut agar pembahasan lebih terfokus:
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm]
-    \item Sumber data yang diproses terbatas pada data tekstual. Elemen non-teks seperti gambar, diagram, dan tabel di dalam dokumen tidak termasuk dalam lingkup pemrosesan.
+    \item Sumber data yang diproses terbatas pada data \textit{metadata} publikasi (judul, penulis, tahun, afiliasi) dan teks abstrak.
 
-    \item \textit{Input} data utama dibatasi pada metadata publikasi (judul, penulis, tahun, afiliasi) dan teks abstrak, tanpa melakukan pengunduhan isi dokumen PDF.
+    \item Pengembangan sistem difokuskan pada ekstraksi informasi dari teks terstruktur dan tidak terstruktur menjadi \textit{Knowledge Graph}, serta pemanfaatannya sebagai konteks eksternal bagi LLM untuk meminimalkan halusinasi.
 
-    \item Pengembangan sistem difokuskan pada ekstraksi informasi dari teks tidak terstruktur menjadi \textit{Knowledge Graph}, serta pemanfaatannya sebagai konteks eksternal bagi LLM untuk meminimalkan halusinasi.
+    \item Pengembangan sistem difokuskan pada penemuan publikasi relevan berbasis topik (\textit{paper discovery}) dan informasi dosen beserta bukti pendukung berbasis relasi pada \textit{Knowledge Graph}.
 
-    \item Pengembangan sistem difokuskan pada penemuan publikasi relevan berbasis topik (\textit{paper discovery}) dan informasi penulis (dosen) beserta bukti pendukung berbasis relasi pada \textit{Knowledge Graph}. Sistem tidak ditujukan sebagai sistem penilaian kinerja dosen atau pemantauan aktivitas akademik secara menyeluruh.
-
-    \item Evaluasi sistem dilakukan menggunakan studi kasus data publikasi akademik rumpun Informatika dan Komputer di Universitas Negeri Surabaya (UNESA).
+    \item Evaluasi sistem dilakukan menggunakan studi kasus data publikasi akademik rumpun Informatika dan Komputer Universitas Negeri Surabaya (UNESA).
 \end{enumerate}

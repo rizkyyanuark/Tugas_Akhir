@@ -6,44 +6,27 @@
 \section{Simpulan}
 \label{sec:simpulan-bab5}
 
-Berdasarkan hasil analisis, pengujian, dan pembahasan yang telah dilakukan, simpulan penelitian ini adalah sebagai berikut:
+Berdasarkan hasil penelitian yang telah dilakukan, diperoleh beberapa kesimpulan sebagai berikut:
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=8pt]
-      \item Konstruksi \textit{Knowledge Graph} berhasil mengubah data publikasi dosen Infokom UNESA menjadi jaringan pengetahuan akademik yang terhubung. Graf yang dihasilkan memuat 45.812 simpul dan 122.675 relasi, meliputi publikasi, dosen, venue, tahun, afiliasi, kata kunci, dan konsep penelitian. Proses pemetaan konsep ke \textit{IEEE Thesaurus} melalui struktur SKOS juga menghasilkan tingkat keberhasilan 81,23\%, sehingga graf tidak hanya menyimpan metadata publikasi, tetapi juga membentuk representasi semantik yang dapat ditelusuri.
+      \item Hasil dari Konstruksi \textit{Knowledge Graph} akademik UNESA berhasil dibangun dengan data profil dosen dan data publikasi dosen. Hasil konstruksi menghasilkan 45.685 simpul dan 122.675 relasi dengan distribusi simpul dan relasi sesuai dengan schema yang telah dirancang untuk merepresentasikan domain riset akademik.
 
-      \item Integrasi indeks vektor dan graf terbukti menjadi langkah yang tepat untuk data akademik yang memiliki keterkaitan kuat. Pada pertanyaan faktual (Kategori A), metode \textit{Hybrid} memimpin secara mutlak dengan A-MRR sebesar 0,9233 dan A-Hit@5 sebesar 96,67\% (mengungguli \textit{Naive} yang memperoleh A-MRR 0,7889 dan A-Hit@5 90,00\%). Pada pertanyaan relasional (Kategori B), metode \textit{Hybrid} juga unggul pada B-Hit@5 dengan skor 46,67\% dibandingkan \textit{Naive} yang memperoleh 33,33\%, menunjukkan kemampuan graf dalam menjangkau entitas relasional secara presisi setelah ditapis oleh pemeringkat ulang. Secara agregat keseluruhan, metode \textit{Hybrid} kini memperoleh MRR tertinggi (0,4983) dibandingkan \textit{Naive} (0,4115).
+      \item Integrasi indeks ganda pada arsitektur \textit{Hybrid Retrieval} terbukti meningkatkan kualitas pencarian secara signifikan. Pada 3 kategori kueri \textit{factual}, \textit{relational}, dan \textit{multi-hop}, metode \textit{Hybrid} unggul secara signifikan dengan pencapaian \textit{MRR} keseluruhan sebesar 0,4983, mengungguli metode lainnya walaupun ada biaya latensi yang dibayar karena sistem melakukan \textit{retrieval} lebih kompleks.
 
-      \item Keunggulan pendekatan berbasis \textit{Knowledge Graph} sangat dipengaruhi oleh karakteristik tipe kueri. Evaluasi berpasangan menggunakan model \textit{DeepSeek v4-flash} menunjukkan bahwa metode \textit{Subgraph} memperoleh \textit{win rate Overall} sebesar 55,0\% dan \textit{Traceability} 52,5\% pada Kategori A (Faktual). Namun, pada Kategori C (Multi-hop), kedua metode berbasis graf berada di bawah batas 50\% (Subgraph 23,3\% dan Hybrid 39,2\%), yang menegaskan bahwa pada skala KG penuh, traversal subgraf yang terlalu kompleks berpotensi memicu masuknya entitas sekunder yang berlebihan sehingga menyulitkan perumusan jawaban dibandingkan model \textit{Naive} yang ringkas.
+      \item Pengujian hasil evaluasi menggunakan metode \textit{LLM as Judge} dan framework \textit{Ragas} menunjukkan bahwa metode \textit{Hybrid} memperoleh preferensi keseluruhan \textit{Win Rate Overall} tertinggi sebesar 53,9\% terhadap \textit{Naive}. Meskipun demikian, perlu di cermati bahwa pada kueri \textit{multi-hop} model \textit{hybrid} cenderung mengembalikan konteks terlalu luas yang berpotensi memicu penumpukan entitas yang tidak relevan pada model bahasa besar.
 
-      \item Metode \textit{Hybrid} memperoleh MRR keseluruhan tertinggi sebesar 0,4983 dengan latensi 10,85 detik, disusul oleh \textit{Subgraph} dengan MRR 0,4260 dan latensi 5,12 detik, serta \textit{Naive} dengan MRR 0,4115 dan latensi 2,37 detik. Peningkatan MRR yang signifikan pada metode berbasis graf membuktikan efisiensi kontribusi \textit{Cross-Encoder Reranker} dalam menyaring bias simpul hub pada graf, meskipun diiringi peningkatan latensi yang masih dalam batas toleransi operasional.
-
-      \item Panel bukti akademik yang menampilkan \textit{graph triples} dan dokumen rujukan membantu meningkatkan keterlacakan jawaban. Meski demikian, risiko halusinasi belum sepenuhnya hilang. Kasus A01, B08, dan B27 menunjukkan bahwa traversal graf yang terlalu luas dapat menimbulkan kontaminasi metode dan kebocoran konteks. Oleh karena itu, AcademicRAG paling efektif diposisikan sebagai pelengkap RAG berbasis vektor: pencarian vektor tetap menjadi pilihan utama untuk pertanyaan faktual langsung dan kueri relasional berjalur panjang (multi-hop) guna menghindari kelebihan konteks, sedangkan \textit{Knowledge Graph} sangat efektif dimanfaatkan secara selektif untuk pertanyaan relasional terfokus pada data yang relasinya padat seperti kolaborasi dosen Infokom UNESA.
-\end{enumerate}
-
-\section{Implikasi Penelitian}
-\label{sec:implikasi-bab5}
-
-Penelitian ini memberikan dua implikasi, praktis dan teoretis, bagi pengembangan sistem kecerdasan buatan di lingkungan akademik:
-
-\begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=8pt]
-      \item Penelitian ini memberikan implikasi praktis bagi pengembangan sistem kecerdasan buatan di lingkungan akademik. Sistem ini mempermudah identifikasi kepakaran spesifik dosen, visualisasi peta kolaborasi dosen, dan penemuan publikasi relevan berbasis bahasa alami yang didukung bukti akademik terpercaya.
-
-      \item Penelitian ini memberikan implikasi teoretis bagi pengembangan sistem kecerdasan buatan di lingkungan akademik. Penelitian ini memberikan kontribusi empiris pada literatur \textit{Retrieval-Augmented Generation} (\textit{RAG}), menyajikan informasi relasional secara berlebihan (\textit{over-contextualization}) tidak berkorelasi positif dengan kualitas jawaban model bahasa besar. Temuan ini mendorong peninjauan ulang strategi penyusunan prompt \textit{RAG} akademik, karena kurasi subgraf lokal yang presisi dan ringkas terbukti lebih efektif dalam mengurangi efek \textit{lost in the middle} dan menjaga ketertelusuran informasi, dibandingkan membanjiri model dengan seluruh jalur relasional taksonomi graf.
+      \item Sistem antarmuka yang dilengkapi dengan panel bukti akademik dalam bentuk visualisasi graf terbukti secara visual meningkatkan keterjelasan (\textit{explainability}) dan ketertelusuran (\textit{traceability}) referensi jawaban \textit{LLM}.
 \end{enumerate}
 
 \section{Saran}
 \label{sec:saran-bab5}
 
-Berdasarkan batasan penelitian dan temuan kegagalan sistem yang telah dianalisis, terdapat beberapa saran taktis yang dapat dipertimbangkan untuk pengembangan penelitian selanjutnya:
+Berdasarkan hasil penelitian yang telah dilakukan, terdapat beberapa saran yang dapat dipertimbangkan untuk pengembangan penelitian selanjutnya:
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=8pt]
-      \item Penelitian berikutnya dapat memperluas cakupan data publikasi di luar rumpun Infokom UNESA, meningkatkan jumlah dokumen masukan, serta mengaktifkan relasi sitasi (\texttt{CITES}) antar-publikasi guna membangun representasi graf bibliometrik yang lebih utuh dan dinamis.
+      \item Penelitian selanjutnya dapat memperluas cakupan data publikasi di luar rumpun Infokom UNESA serta menambahkan relasi sitasi (\texttt{CITES}) antar-publikasi guna membangun representasi graf bibliometrik yang lebih beragam.
 
-      \item Perlu dilakukan validasi dan audit manual secara berkala oleh pakar domain (\textit{domain experts}) terhadap hasil ekstraksi konsep hierarkis dari IEEE SKOS untuk mengidentifikasi dan memitigasi risiko pergeseran makna semantik yang dapat merusak kualitas representasi pengetahuan.
+      \item Penelitian selanjutnya dapat mengintegrasikan modularitas graf dengan teknik seperti algoritma \textit{Louvain} atau \textit{Leiden} untuk membagi graf menjadi komunitas berdasarkan densitas koneksi internal, untuk meningkatkan akurasi sistem dalam menemukan informasi yang relevan.
 
-      \item Penelitian selanjutnya dapat mengintegrasikan modul \textit{reranker} (seperti Cohere Rerank atau Cross-Encoder) serta menerapkan algoritma pemangkasan jalur graf (\textit{path pruning}) yang dinamis untuk menyaring dan membatasi jumlah \textit{context token} sebelum diserahkan ke model generator.
-
-      \item Penelitian selanjutnya sebaiknya membangun kumpulan pertanyaan uji akademik dan jawaban acuan (\textit{ground truth}) yang disusun secara komprehensif guna menghasilkan pengukuran metrik evaluasi \textit{RAGAS} yang lebih akurat dan tepat.
-
-      \item Disarankan untuk mengimplementasikan \textit{tracing agent} terintegrasi guna merekam dan memantau alur penalaran LLM, query Neo4j, dan dokumen Qdrant secara real-time guna mendeteksi kegagalan kontaminasi metode secara dini.
+      \item Penelitian selanjutnya dapat mengembangkan proses evaluasi yang lebih komprehensif dengan memperluas cakupan kueri dan kriteria penilaian sehingga menghasilkan pengukuran metrik evaluasi yang holistik.
 \end{enumerate}

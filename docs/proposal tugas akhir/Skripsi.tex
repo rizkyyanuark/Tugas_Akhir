@@ -15,7 +15,7 @@
 %Abstrak
 \begin{Abstrak}
 
-    Pencarian literatur di repositori institusi masih sering terganjal oleh keterbatasan mendasar, yaitu sistem berbasis kata kunci tidak menangkap makna, sedangkan \textit{Retrieval-Augmented Generation} (RAG) konvensional berbasis vektor cenderung kehilangan konteks hubungan antar-dokumen. Penelitian ini membangun sistem pencarian akademik yang memanfaatkan \textit{Knowledge Graph} sebagai tulang punggung konteks, dengan arsitektur \textit{dual-indexing} yang mengintegrasikan \textit{vector database} dan \textit{graph database}. Dari data publikasi dosen rumpun Infokom UNESA, \textit{pipeline} yang dikembangkan berhasil menyusun graf heterogen berisi 1.253 simpul dan 1.970 relasi secara otomatis. Untuk mengukur kualitas jawaban, digunakan paradigma \textit{LLM-as-a-Judge} secara berpasangan (\textit{pairwise}) terhadap tiga mode pencarian, yaitu \textit{Naive} (vektor murni), \textit{Subgraph} (navigasi graf lokal), dan \textit{Hybrid} (gabungan keduanya). Dari 336 skenario perbandingan, mode \textit{Subgraph} justru tampil paling konsisten dengan \textit{win rate} keseluruhan 48,7\%, lebih tinggi dibanding \textit{Hybrid}. Temuan yang agak mengejutkan adalah mode \textit{Hybrid}, meski menyediakan konteks paling kaya, malah memperburuk metrik keterlacakan (\textit{Traceability}) hingga 44,2\% akibat kelebihan informasi yang membuat model bahasa kehilangan fokus. Hasil ini menunjukkan bahwa dalam domain akademik, menyuntikkan konteks graf yang terarah dan ringkas lebih berguna daripada membanjiri model dengan seluruh informasi relasional yang tersedia.
+    Pencarian literatur di repositori institusi masih sering terkendala oleh keterbatasan sistem berbasis kata kunci yang tidak menangkap makna, sedangkan \textit{Retrieval-Augmented Generation} konvensional berbasis vektor cenderung kehilangan konteks hubungan antar-dokumen. Penelitian ini membangun sistem pencarian akademik yang memanfaatkan \textit{Knowledge Graph} sebagai penyedia konteks, dengan arsitektur \textit{dual-indexing} yang mengintegrasikan representasi data berupa vektor dan \textit{graph database}. Dari data publikasi dosen rumpun Infokom UNESA, \textit{pipeline} yang dikembangkan berhasil menyusun graf heterogen berisi simpul dan  relasi secara terintegrasi. Untuk mengukur kualitas jawaban, digunakan paradigma \textit{LLM-as-a-Judge} secara berpasangan dan \textit{framework RAGAS} terhadap 90 kueri pengujian pada tiga mode pencarian, yaitu \textit{Naive} , \textit{Subgraph} , dan \textit{Hybrid}. Hasil pengujian menunjukkan bahwa metode \textit{Hybrid} yang diintegrasikan dengan \textit{Cross-Encoder Reranker} memperoleh kinerja \textit{retrieval} terbaik dengan \textit{Mean Reciprocal Rank} (\textit{MRR}) sebesar 0,50 dan \textit{win rate} keseluruhan mencapai 53,9\% terhadap \textit{Naive}. Selain itu, integrasi graf meningkatkan ketertelusuran jawaban hingga 54,7\% karena melakukan bukti relasional terstruktur berupa \textit{graph triples}. Temuan riset menunjukkan bahwa penggabungan representasi vektor semantik dan traversal graf relasional mampu meningkatkan kualitas dan keterlacakan jawaban sistem \textit{RAG} dalam domain pencarian literatur akademik.
 
     \katakunci{\textit{Knowledge Graph, Retrieval-Augmented Generation, GraphRAG, Dual-Indexing, LLM-as-a-Judge}}
 \end{Abstrak}
@@ -24,7 +24,7 @@
 %Abstrak dalam Bahasa Inggris
 \begin{Abstract}
 
-    Literature search in institutional repositories remains constrained by a fundamental gap. Keyword-based systems miss semantic meaning, while conventional vector-based Retrieval-Augmented Generation (RAG) tends to lose inter-document relational context. This study builds an academic search system that leverages a Knowledge Graph as its contextual backbone, using a dual-indexing architecture that integrates a vector database and a graph database. From publication data of Infokom faculty members at UNESA, the developed pipeline automatically constructed a heterogeneous graph containing 1,253 nodes and 1,970 relationships. Answer quality was measured through a pairwise LLM-as-a-Judge evaluation across three retrieval modes, namely Naive (pure vector), Subgraph (local graph navigation), and Hybrid (combined). Across 336 comparison scenarios, the Subgraph mode proved the most consistent, achieving an overall win rate of 48.7\%, higher than Hybrid. A somewhat surprising finding was that the Hybrid mode, despite providing the richest context, actually degraded Traceability to 44.2\% due to information overload that caused the language model to lose focus. These results suggest that in the academic domain, injecting targeted and concise graph context is more useful than flooding the model with all available relational information.
+    Literature search in institutional repositories remains constrained by a fundamental gap: keyword-based systems fail to capture semantic meaning, while conventional vector-based Retrieval-Augmented Generation (RAG) tends to lose inter-document relational context. This study builds an academic search system that leverages a Knowledge Graph as its contextual backbone, using a dual-indexing architecture that integrates a vector database (Zilliz Cloud) and a graph database (Neo4j AuraDB). From publication data of Infokom faculty members at UNESA, the developed pipeline automatically constructed a heterogeneous graph containing 45,685 nodes and 122,675 relationships. Answer quality was measured through a pairwise LLM-as-a-Judge evaluation and automated RAGAS metrics across 90 test queries for three retrieval modes, namely Naive (pure vector), Subgraph (local graph navigation), and Hybrid (combined). The results show that the Hybrid mode, integrated with a Cross-Encoder Reranker, achieved the best retrieval performance with a Mean Reciprocal Rank (MRR) of 0.4983 and an overall win rate of 53.9\% against the Naive baseline. Furthermore, the graph integration enhanced answer Traceability to 54.7\% by providing structured relational evidence in the form of graph triples. These findings suggest that combining semantic vector representations with relational graph traversal effectively improves the quality and explainability of RAG systems in the academic literature search domain.
 
     \keywords{Knowledge Graph, Retrieval-Augmented Generation, GraphRAG, Dual-Indexing, LLM-as-a-Judge}
 \end{Abstract}
@@ -36,7 +36,22 @@
 
 \Prakata
 
-Proses penciptaan karya ini merupakan kolaborasi tak kasat mata. Ada sumber-sumber yang menjadi pijakan, namun ide yang dihasilkan merupakan akumulasi dari berbagai perspektif yang bersinggungan. Ada berbagai sumber inspirasi yang tak terhitung dan karya ini adalah output dari sintesis tersebut. Oleh karena itu, terima kasih pada semua yang sudah membersamai penulis dalam penciptaan karya ini. karya ini disajikan dengan semangat apa adanya. Ia tak berpretensi menjadi sumber kebenaran tunggal, namun lebih sebagai jembatan untuk memicu pemikiran kritis. Terkadang, penemuan terbesar muncul dari interpretasi yang tak terduga.
+Puji syukur kehadirat Allah Swt. atas segala rahmat, nikmat, dan pertolongan-Nya sehingga penulis dapat menyelesaikan skripsi ini. Dalam proses penyusunannya, penulis menyadari bahwa banyak pihak yang telah memberikan dukungan, bantuan, dan semangat. Oleh karena itu, penulis menyampaikan terima kasih kepada:
+
+\begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=6pt]
+    \item Bapak Ibnu Febry K., S.Kom., M.Sc., Ph.D. dan Bapak Hasanuddin Al-Habib, M.Si. selaku dosen pembimbing yang telah memberikan arahan, bimbingan, masukan, dan kesabaran selama proses penyusunan skripsi ini.
+    \item Ibu Dr. Atik Wintarti, M.Kom. dan Ibu Yuni Rosita Dewi, M.Si. selaku dosen penguji yang telah memberikan kritik, saran, dan masukan yang membangun untuk penyempurnaan skripsi ini.
+    \item Seluruh teman angkatan 2022 Program Studi Sarjana Sains Data Universitas Negeri Surabaya yang tidak dapat disebutkan satu per satu, terima kasih atas dukungan, bantuan, dan kebersamaan selama masa perkuliahan.
+\end{enumerate}
+
+Akhir kata, penulis berharap skripsi ini dapat memberikan manfaat bagi perkembangan ilmu pengetahuan, khususnya di bidang Sains Data.
+
+\vspace{1cm}
+\begin{flushright}
+    Surabaya, Juni 2025\\
+    \vspace{1.5cm}
+    Penulis
+\end{flushright}
 
 \DaftarIsi
 \DaftarTabel

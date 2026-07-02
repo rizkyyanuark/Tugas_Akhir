@@ -52,6 +52,9 @@ ACADEMIC_RELATION_TYPES = [
     "PUBLISHED_IN_YEAR",
     "HAS_KEYWORD",
     "HAS_TOPIC",
+    "SOLVES_PROBLEM",
+    "WORKS_ON_TASK",
+    "PROPOSES_INNOVATION",
     "USES_METHOD",
     "USES_MODEL",
     "BELONGS_TO_DOMAIN",
@@ -1256,7 +1259,7 @@ class AcademicGraphRAGService:
                        author.name
                      )) AS connected_authors
                 OPTIONAL MATCH (paper)-[
-                  relation:HAS_KEYWORD|HAS_TOPIC|USES_METHOD|USES_MODEL|
+                  relation:HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|
                   USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN|HAS_RESULT
                 ]->(concept)
                 WITH paper, connected_authors,
@@ -1321,7 +1324,7 @@ class AcademicGraphRAGService:
             resolved_graph_name = cls._academic_graph_name(graph_name)
             cypher = """
                 MATCH (paper:Publication)-[
-                  relation:HAS_TOPIC|HAS_KEYWORD|BELONGS_TO_DOMAIN|
+                  relation:HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|HAS_KEYWORD|BELONGS_TO_DOMAIN|
                   USES_METHOD|USES_MODEL|USES_DATASET
                 ]->(concept)
                 WHERE paper.graph_name = $graph_name
@@ -1388,8 +1391,8 @@ class AcademicGraphRAGService:
                 OPTIONAL MATCH (lecturer)-[:HAS_AFFILIATION]->(affiliation:Institution)
                 WITH lecturer, paper, collect(DISTINCT affiliation) AS affiliations
                 OPTIONAL MATCH (paper)-[
-                  :HAS_KEYWORD|HAS_TOPIC|USES_METHOD|USES_MODEL|USES_DATASET
-                  |EVALUATED_WITH|BELONGS_TO_DOMAIN
+                  :HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|
+                  USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN
                 ]->(concept)
                 WITH lecturer, paper, affiliations, collect(DISTINCT concept) AS concepts
                 WITH

@@ -1,9 +1,9 @@
 \chapter{METODE PENELITIAN}
 \section{Dataset}
 
-Penelitian ini menggunakan dataset primer yang disusun secara mandiri untuk merepresentasikan entitas dan aktivitas akademik pada domain Infokom di Universitas Negeri Surabaya (UNESA). Pengembangan dataset ini dilakukan untuk mengatasi keterbatasan ketersediaan basis data publik yang terintegrasi secara komprehensif. Perancangan atribut data difokuskan untuk mengoptimalisasi mekanisme \textit{Question-Answering} berbasis graf (\textit{GraphRAG}), yang mensyaratkan pelacakan asal-usul informasi (\textit{provenance tracking}) hingga ke dokumen asli guna memitigasi halusinasi \textit{LLM} \cite{zheng2024medsumgraph}.
+Penelitian ini menggunakan dataset primer yang disusun secara mandiri untuk merepresentasikan entitas dan aktivitas publikasi akademik pada domain akademik Universitas Negeri Surabaya (UNESA). Pengembangan dataset ini dilakukan untuk mengatasi keterbatasan ketersediaan basis data publik yang terintegrasi secara komprehensif. Perancangan atribut data difokuskan untuk mendukung alur kerja sistem tanya jawab berbasis \textit{knowledge graph} untuk memitigasi halusinasi \textit{LLM} berdasarkan domain akademik.
 
-Dataset dihimpun melalui integrasi data dari tiga sumber utama: (1) profil akademik dosen pada pangkalan data PDDIKTI , (2) riwayat publikasi \textit{Google Scholar}, dan (3) metadata artikel ilmiah dari \textit{Scopus}. Data yang terkumpul mencakup informasi dari dosen di berbagai program studi di bawah rumpun Infokom UNESA, di antaranya, S1 Sains Data (13 dosen), S1 Kecerdasan Artifisial (5), S1 Teknik Informatika (9), S1 Sistem Informasi (10), S2 Informatika (6), dan S1 Teknik Elektro (24). Selain itu, dataset ini juga mencakup data dari program studi terkait seperti S1 Bisnis Digital dan kependidikan teknik lainnya untuk memperkaya cakupan \textit{knowledge base}. Rincian struktur atribut disajikan pada \ref{tab:deskripsi-dataset}.
+Dataset dihimpun melalui beberapa sumber utama: (1) profil akademik dosen pada pangkalan data PDDIKTI, (2) publikasi \textit{Google Scholar}, \textit{Scopus}, dan tambahan penggunaan kamus istilah standar \textit{IEEE}. Seluruh data tersebut mencakup informasi dosen di beberapa program studi rumpun Infokom UNESA, di antaranya, S1 Sains Data, S1 Kecerdasan Artifisial, S1 Teknik Informatika, S1 Sistem Informasi, S2 Informatika, dan S1 Teknik Elektro. Selain itu, dataset ini juga mencakup data dari program studi serumpun lainnya untuk memperkaya cakupan \textit{knowledge base}. Rincian struktur atribut disajikan pada \ref{tab:deskripsi-dataset}.
 
 \begin{table}[htbp]
     \centering
@@ -45,7 +45,7 @@ Dataset dihimpun melalui integrasi data dari tiga sumber utama: (1) profil akade
 
 \section{Alur Penelitian}
 
-Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapkan \textit{Hybrid Vector-Graph Retrieval} pada pencarian literatur Infokom UNESA. Alur ini membagi pekerjaan ke dalam tahap pengumpulan data, persiapan data, konstruksi graf, retrieval, evaluasi, dan antarmuka pengguna. Gambaran umum alur ditunjukkan pada \ref{fig:flowchart-utama}.
+Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapkan \textit{Hybrid Vector-Graph Retrieval} pada pencarian literatur Infokom UNESA. Alur ini dilakukan dengan melalui pengumpulan data, persiapan data, konstruksi graf, retrieval, evaluasi, dan antarmuka pengguna. Gambaran umum alur ditunjukkan pada \ref{fig:flowchart-utama}.
 
 % ============================================
 % FLOWCHART METODOLOGI TUGAS AKHIR
@@ -106,11 +106,11 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
             \node (refC) [offpage, right=1.0cm of kgconst] {C};
             \node (refD) [offpage, right=1.0cm of ragsys] {D};
 
-            % Garis putus-putus: proses → connector (rujukan ke diagram detail)
-            \draw [densely dashed, ->] (datacoll) -- (refA);
-            \draw [densely dashed, ->] (dataprep) -- (refB);
-            \draw [densely dashed, ->] (kgconst) -- (refC);
-            \draw [densely dashed, ->] (ragsys) -- (refD);
+            % Garis putus-putus: connector → proses (rujukan detail)
+            \draw [densely dashed, ->] (refA) -- (datacoll);
+            \draw [densely dashed, ->] (refB) -- (dataprep);
+            \draw [densely dashed, ->] (refC) -- (kgconst);
+            \draw [densely dashed, ->] (refD) -- (ragsys);
 
             % === ALUR UTAMA (Panah solid ke bawah) ===
             \draw [arrow] (start) -- (datacoll);
@@ -142,7 +142,7 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
     % 1. Data Collection
     \item \textbf{Pengumpulan Data}
 
-          Tahap pengumpulan data dilakukan melalui dua jalur utama, yaitu pengumpulan profil dosen beserta identitas indeksasi akademiknya dan pengumpulan publikasi ilmiah dosen beserta metadata pendukungnya. Data profil dosen diperoleh dari laman resmi program studi, PDDIKTI, SIAKADU, SimCV UNESA, SINTA, SciVal, dan Google Scholar untuk memvalidasi nama, NIP, NIDN, program studi, serta ID indeksasi dosen. Berdasarkan identitas yang telah tervalidasi tersebut, data publikasi kemudian diakuisisi dari \textit{SciVal} dan \textit{Google Scholar}, lalu diperkaya dengan metadata tambahan seperti abstrak, DOI, kata kunci, tautan dokumen, dan ringkasan TLDR. Seluruh data hasil akuisisi menjadi fondasi untuk membangun \textit{Knowledge Graph} yang merepresentasikan ekosistem publikasi Infokom UNESA.
+          Tahap pengumpulan data dilakukan melalui dua proses, yaitu pengumpulan profil akademik dosen dan pengumpulan publikasi ilmiah dosen. Data profil akademik dosen diperoleh dari laman resmi program studi, PDDIKTI, SIAKADU, SimCV UNESA, SINTA, \textit{SciVal}, dan \textit{Google Scholar} untuk memvalidasi data diri dosen. Berdasarkan data diri yang telah tervalidasi tersebut, data publikasi kemudian dikumpulkan dari \textit{SciVal} dan \textit{Google Scholar}, lalu dilengkapi dengan metadata tambahan seperti abstrak, DOI, kata kunci, tautan dokumen, dan ringkasan TLDR. Hasil pengumpulan menjadi fondasi untuk membangun \textit{Knowledge Graph} guna memfasilitasi pencarian literatur berbasis \textit{Knowledge Graph}.
 
           \begin{figure}[htbp]
               \centering
@@ -173,16 +173,17 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt, listparindent=0.75cm]
               \item \textbf{Data Profil Dosen}
 
-                    Pengumpulan data profil dosen dilakukan untuk memperoleh identitas dasar dosen yang akan menjadi entitas utama dalam graf akademik. Data awal diambil dari laman resmi program studi di lingkungan UNESA dan profil resmi PDDikti \citep{pddikti_db}. Informasi yang dikumpulkan meliputi nama dosen, NIP, NIDN, program studi, gelar akademik, serta identitas awal yang dapat menghubungkan dosen dengan publikasi ilmiah.
+                    Data profil dosen dikumpulkan untuk memperoleh data profil dosen yang akan menjadi entitas utama dalam graf akademik. Data awal didapatkan dari laman resmi program studi di lingkungan UNESA dan profil resmi PDDikti \citep{pddikti_db}. Informasi yang didapatkan meliputi nama dosen, NIP, NIDN, program studi, gelar akademik, serta identitas awal yang dapat menghubungkan dosen dengan publikasi akademik dosen. Data profil dosen kemudian diperkaya menggunakan sumber pendukung seperti SIAKADU, \textit{SimCV UNESA}, SINTA, SciVal, dan Google Scholar. Pelengkapan atribut indeksasi akademik, seperti \textit{SINTA ID}, \textit{Scopus ID}, dan \textit{Scholar ID} dilakukan untuk meningkatkan akurasi pencarian data publikasi setiap dosen nantinya. Data profil dosen kemudian disimpan ke dalam \textit{database} sebagai dasar pembentukan simpul dosen dan relasi dosen--publikasi.
 
-                    Setelah identitas dasar tersedia, data profil diperkaya menggunakan sumber pendukung seperti SIAKADU, \textit{SimCV UNESA}, SINTA, SciVal, dan Google Scholar \citep{sinta_database,scopus_db,google_scholar}. Pengayaan ini difokuskan pada pelengkapan atribut indeksasi akademik, seperti \textit{SINTA ID}, \textit{Scopus ID}, dan \textit{Scholar ID}. Seluruh data kemudian dinormalisasi, digabungkan, diperiksa duplikasinya, dan disimpan ke dalam \textit{database} sebagai dasar pembentukan simpul dosen dan relasi dosen--publikasi.
+              \item \textbf{Data Publikasi Dosen}
+                    Data publikasi dosen dikumpulkan untuk memperoleh data publikasi akademik dosen yang akan menjadi pelengkap dari simpul dosen. Data ini diperoleh dari SciVal dan Google Scholar dengan menggunakan SciVal ID dan Scholar ID yang telah diperoleh dari data profil dosen. Data publikasi dosen yang diperoleh kemudian disimpan ke dalam \textit{database} sebagai dasar pembentukan simpul publikasi dan relasi publikasi--penulis.
 
           \end{enumerate}
 
           % 2. Data preparation
     \item \textbf{Persiapan Data (\textit{Data Preparation})}
 
-          Data mentah dari tahap sebelumnya diproses untuk menjamin kualitas \textit{retrieval}. Fokus tahap ini adalah membersihkan data, memotong teks, dan membentuk representasi vektor. Detail proses ditunjukkan pada Gambar \ref{fig:detail-data-preparation}.
+          Data mentah dari tahap sebelumnya diproses menjadi data yang digunakan dalam tahap selanjutnya. Tahap ini dilakukan dengan membersihkan data, memotong teks, dan membentuk representasi vektor. Detail proses ditunjukkan pada \ref{fig:detail-data-preparation}.
 
           \begin{figure}[htbp]
               \centering
@@ -208,16 +209,16 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=4pt, listparindent=0.75cm]
               \item \textbf{\textit{Data Cleaning} \& \textit{Normalization}:} \textit{Missing values} ditangani agar data tidak kosong pada atribut penting. Variasi penulisan nama institusi dan singkatan gelar diseragamkan. Langkah ini mencegah duplikasi entitas dalam graf.
 
-              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Judul, TLDR, abstrak, dan kata kunci digabungkan sebagai representasi tekstual publikasi. Teks kemudian dipotong secara sadar kalimat dengan batas maksimum 2.024 karakter dan \textit{overlap} 50 karakter. Strategi ini menjaga keutuhan informasi sekaligus membatasi \textit{noise} dan penggunaan token.
+              \item \textbf{\textit{Text Chunking} (Pemotongan Teks):} Judul, TLDR, abstrak, dan kata kunci digabungkan sebagai representasi tekstual publikasi. Teks kemudian dipotong menjadi beberapa bagian dengan batas maksimum 2.024 karakter. Strategi ini menjaga keutuhan informasi sekaligus membatasi \textit{noise}.
 
-              \item \textbf{\textit{Embedding Generation}:} Setiap \textit{chunk}, entitas, relasi, dan himpunan kata kunci dikonversi menjadi vektor 1.024 dimensi menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B}. Representasi tersebut disimpan sebagai dasar pencarian semantik. Pencarian menjadi berbasis makna, bukan sekadar pencocokan kata kunci leksikal.
+              \item \textbf{\textit{Embedding Generation}:} Vektor representasi setiap \textit{chunk}, entitas, relasi, dan himpunan kata kunci dibuat menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B}. Representasi tersebut digunakan sebagai dasar pencarian semantik. Pencarian menjadi berbasis kemiripan makna, bukan sekadar pencocokan kata.
           \end{enumerate}
 
 
           % 3. Construction of the Knowledge Graph
     \item \textbf{Konstruksi \textit{Knowledge Graph}}
 
-          \hspace*{0.75cm}Tahap konstruksi \textit{Knowledge Graph} mengubah data hasil persiapan menjadi basis pengetahuan terstruktur. Struktur ini mendukung penalaran relasional antar dosen, publikasi, topik, dan metadata ilmiah. Alur konstruksi ditunjukkan pada \ref{fig:detail-kg-construction}, mulai dari pemodelan ontologi hingga penyimpanan pada indeks graf dan vektor.
+          \hspace*{0.75cm}Tahap konstruksi \textit{Knowledge Graph} mengubah data hasil persiapan menjadi basis pengetahuan akademik yang terstruktur. Struktur ini merepresentasikan hubungan antar entitas akademik seperti dosen, publikasi, topik, dan metadata ilmiah. Alur kerja konstruksi \textit{Knowledge Graph} ditunjukkan pada \ref{fig:detail-kg-construction}.
 
           \begin{figure}[htbp]
               \centering
@@ -284,7 +285,7 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
           \end{figure}
 
           \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=0.75cm, itemsep=5pt, listparindent=0.75cm]
-              \item \textbf{Pemodelan Ontologi (\textit{Ontology Modeling})}
+              \item \textbf{Pemodelan Ontologi}
 
                     \begin{figure}[htbp]
                         \centering
@@ -333,12 +334,12 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
 
                                 % Middle Row (Concepts) - Compacted Layout
                                 \node[problemnode] (Prob) at (-6.0, -2.5) {Problem};
-                                \node[methodnode] (Method) at (-2.5, -2.5) {Method};
-                                \node[metricnode] (Metric) at (3.0, -2.5) {Metric};
+                                \node[methodnode] (Method) at (-4, -3.5) {Method};
+                                \node[metricnode] (Metric) at (4, -3.5) {Metric};
                                 \node[datasetnode] (Dataset) at (6.0, -2.5) {Dataset};
 
                                 % Bottom Row (Outputs) - Compacted & Aligned for Straight Lines
-                                \node[tasknode] (Task) at (-4.5, -6.0) {Task};
+                                \node[tasknode] (Task) at (-4.1, -6.0) {Task};
                                 \node[modelnode] (Model) at (-1.5, -6.0) {Model};
                                 \node[resultsnode] (Results) at (1.5, -6.0) {Results};
                                 \node[innovnode] (Innov) at (4.5, -6.0) {Innovation};
@@ -349,51 +350,25 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
 
                                 % --- Connections that need to be behind nodes ---
                                 \begin{scope}[on background layer]
-                                    \draw[arrow] (Title) -- node[labelstyle, sloped, near end] {works on} (Task);
-                                    \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {innovates} (Innov);
+                                    \draw[arrow] (Title) -- node[labelstyle, sloped, near end] {WORKS\_ON\_TASK} (Task);
+                                    \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {PROPOSES\_INNOVATION} (Innov);
                                 \end{scope}
 
                                 % --- Metadata Connections ---
-                                \draw[arrow] (Author.north) -- node[labelstyle, sloped, pos=0.5] {works for} (Inst.west);
-                                \draw[arrow] (Author) -- node[labelstyle, sloped] {writes} (Title);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped] {writes on} (Date);
-                                \draw[arrow] (Conf) -- node[labelstyle, sloped] {publishes} (Title);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped] {keywords} (Key);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped] {belongs to} (ResearchTopic);
+                                \draw[arrow] (Author.north) -- node[labelstyle, sloped, pos=0.5] {HAS\_AFFILIATION} (Inst.west);
+                                \draw[arrow] (Author) -- node[labelstyle, sloped] {HAS\_AUTHOR} (Title);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped] {PUBLISHED\_IN\_YEAR} (Date);
+                                \draw[arrow] (Conf) -- node[labelstyle, sloped] {PUBLISHES} (Title);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped] {HAS\_KEYWORD} (Key);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped] {HAS\_TOPIC} (ResearchTopic);
 
                                 % --- Title to Concepts ---
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {solves} (Prob);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {adopts} (Method);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {uses} (Metric);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {experiments on} (Dataset);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.3] {proposes} (Model);
-                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.4] {has} (Results);
-
-                                % --- Inter-concept Connections ---
-
-                                % Method relations
-                                \draw[arrow] (Method) -- node[labelstyle, pos=0.5] {solves} (Prob);
-                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.5] {works on} (Task);
-                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.6] {proposes} (Model);
-                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.25] {innovates} (Innov);
-                                \draw[arrow] (Method) -- node[labelstyle, sloped, pos=0.25] {has} (Results);
-
-                                % Task relations
-                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.25] {faces} (Prob);
-                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.55] {uses} (Metric);
-                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.5] {works\\for} (Model);
-                                \draw[arrow] (Task) -- node[labelstyle, sloped, pos=0.5] {experiments on} (Dataset);
-
-                                % Model relations
-                                \draw[arrow] (Model) -- node[labelstyle, pos=0.50] {has} (Results);
-                                \draw[arrow] (Model) -- node[labelstyle, sloped, pos=0.7] {solves} (Prob);
-                                \draw[arrow] (Model) -- node[labelstyle, sloped, pos=0.25] {uses} (Dataset);
-
-                                % Results relations
-                                \draw[arrow] (Results) -- node[labelstyle, sloped, pos=0.25] {uses} (Metric);
-
-                                % Innovation relations
-                                \draw[arrow] (Innov) -- node[labelstyle, sloped, pos=0.5] {uses} (Dataset);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {SOLVES\_PROBLEM} (Prob);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {USES\_METHOD} (Method);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.5] {EVALUATED\_WITH} (Metric);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.25] {USES\_DATASET} (Dataset);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.3] {USES\_MODEL} (Model);
+                                \draw[arrow] (Title) -- node[labelstyle, sloped, pos=0.4] {HAS\_RESULT} (Results);
 
                             \end{tikzpicture}
                         \end{adjustbox}
@@ -401,7 +376,7 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
                         \label{fig:ontology-design}
                     \end{figure}
 
-                    Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi dimulai (\ref{fig:ontology-design}). Relasi pada graf direpresentasikan sebagai pola \textit{Head--Relation--Tail} sehingga pembentukan \textit{edge} dilakukan secara deterministik berdasarkan pasangan kelas entitas yang telah ditentukan. Pola yang digunakan pada penelitian ini dideskripsikan pada \ref{tab:relasi-hrt-ontology}.
+                    Skema ontologi dirancang sebagai \textit{blueprint} \textit{Knowledge Graph} sebelum proses ekstraksi (\ref{fig:ontology-design}). Relasi pada graf direpresentasikan sebagai \textit{triplet} (\textit{Head--Relation--Tail}) sehingga pembentukan relasi dilakukan secara \textit{deterministik} berdasarkan pasangan entitas. Pola yang digunakan pada penelitian ini dideskripsikan pada \ref{tab:relasi-hrt-ontology}.
 
                     \begingroup
                     \small
@@ -409,73 +384,67 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
                     \renewcommand{\arraystretch}{1.12}
                     \setlength{\LTleft}{0pt}
                     \setlength{\LTright}{0pt}
-                    \begin{longtable}{|>{\raggedright\arraybackslash}p{0.15\linewidth}|>{\raggedright\arraybackslash}p{0.24\linewidth}|>{\raggedright\arraybackslash}p{0.15\linewidth}|>{\raggedright\arraybackslash}p{0.45\linewidth}|}
-                        \caption{Deskripsi relasi pada skema ontologi}\label{tab:relasi-hrt-ontology}                                                                               \\
+                    \begin{longtable}{|>{\raggedright\arraybackslash}p{0.18\linewidth}|>{\raggedright\arraybackslash}p{0.24\linewidth}|>{\raggedright\arraybackslash}p{0.18\linewidth}|>{\raggedright\arraybackslash}p{0.39\linewidth}|}
+                        \caption{Deskripsi skema ontologi}\label{tab:relasi-hrt-ontology}                                                                                              \\
                         \hline
-                        \textbf{Head (H)}   & \textbf{Relation (R)}    & \textbf{Tail (T)}      & \textbf{Deskripsi}                                                                \\ \hline
+                        \textbf{Head}       & \textbf{Relation}              & \textbf{Tail}          & \textbf{Deskripsi}                                                             \\ \hline
                         \endfirsthead
-                        \caption[]{Deskripsi relasi pada skema ontologi (lanjutan)}                                                                                                 \\
+                        \caption[]{Deskripsi relasi pada skema ontologi (lanjutan)}                                                                                                    \\
                         \hline
-                        \textbf{Head}       & \textbf{Relation}        & \textbf{Tail}          & \textbf{Deskripsi}                                                                \\ \hline
+                        \textbf{Head}       & \textbf{Relation}              & \textbf{Tail}          & \textbf{Deskripsi}                                                             \\ \hline
                         \endhead
-                        \textit{Author}     & \texttt{works\_for}      & \textit{Institution}   & Menghubungkan penulis dengan institusi atau afiliasi akademiknya                  \\ \hline
-                        \textit{Author}     & \texttt{writes}          & \textit{Title}         & Menunjukkan kontribusi penulis terhadap publikasi ilmiah                          \\ \hline
-                        \textit{Conference} & \texttt{publishes}       & \textit{Title}         & Mengaitkan publikasi dengan jurnal, konferensi, atau prosiding penerbit           \\ \hline
-                        \textit{Title}      & \texttt{has\_date}       & \textit{Date}          & Menyimpan informasi waktu atau tahun terbit publikasi                             \\ \hline
-                        \textit{Title}      & \texttt{has\_keyword}    & \textit{Keywords}      & Menghubungkan publikasi dengan kata kunci penulis atau kata kunci hasil ekstraksi \\ \hline
-                        \textit{Title}      & \texttt{belongs\_to}     & \textit{ResearchTopic} & Memetakan publikasi ke bidang atau domain riset yang relevan                      \\ \hline
-                        \textit{Title}      & \texttt{solves}          & \textit{Problem}       & Menjelaskan permasalahan utama yang ditangani oleh publikasi                      \\ \hline
-                        \textit{Title}      & \texttt{adopts}          & \textit{Method}        & Menunjukkan metode atau pendekatan yang digunakan dalam publikasi                 \\ \hline
-                        \textit{Title}      & \texttt{uses\_metric}    & \textit{Metric}        & Mengaitkan publikasi dengan metrik evaluasi yang digunakan                        \\ \hline
-                        \textit{Title}      & \texttt{experiments\_on} & \textit{Dataset}       & Menunjukkan dataset atau data eksperimen yang digunakan                           \\ \hline
-                        \textit{Title}      & \texttt{proposes}        & \textit{Model}         & Menandai model, sistem, atau arsitektur yang diusulkan                            \\ \hline
-                        \textit{Title}      & \texttt{has\_result}     & \textit{Results}       & Menghubungkan publikasi dengan hasil utama penelitian                             \\ \hline
-                        \textit{Title}      & \texttt{has\_innovation} & \textit{Innovation}    & Menjelaskan kontribusi baru atau kebaruan yang ditawarkan                         \\ \hline
-                        \textit{Method}     & \texttt{solves}          & \textit{Problem}       & Menunjukkan permasalahan yang diselesaikan oleh metode tertentu                   \\ \hline
-                        \textit{Method}     & \texttt{works\_on}       & \textit{Task}          & Mengaitkan metode dengan tugas komputasional atau analitis                        \\ \hline
-                        \textit{Method}     & \texttt{proposes}        & \textit{Model}         & Menunjukkan model yang dibangun atau diturunkan dari metode tertentu              \\ \hline
-                        \textit{Task}       & \texttt{faces}           & \textit{Problem}       & Menjelaskan tantangan yang muncul pada suatu tugas penelitian                     \\ \hline
-                        \textit{Task}       & \texttt{evaluated\_by}   & \textit{Metric}        & Menghubungkan tugas dengan metrik yang digunakan untuk evaluasi                   \\ \hline
-                        \textit{Task}       & \texttt{experiments\_on} & \textit{Dataset}       & Mengaitkan tugas dengan dataset yang menjadi objek eksperimen                     \\ \hline
-                        \textit{Model}      & \texttt{solves}          & \textit{Problem}       & Menunjukkan permasalahan yang ditangani oleh model                                \\ \hline
-                        \textit{Model}      & \texttt{uses}            & \textit{Dataset}       & Menunjukkan dataset yang digunakan untuk melatih atau menguji model               \\ \hline
-                        \textit{Model}      & \texttt{has\_result}     & \textit{Results}       & Menghubungkan model dengan capaian atau luaran eksperimen                         \\ \hline
-                        \textit{Results}    & \texttt{measured\_by}    & \textit{Metric}        & Menjelaskan metrik yang digunakan untuk mengukur hasil penelitian                 \\ \hline
-                        \textit{Innovation} & \texttt{uses}            & \textit{Dataset}       & Menunjukkan data atau sumber eksperimen yang mendukung kebaruan penelitian        \\ \hline
+                        \textit{Title}      & \texttt{HAS\_AUTHOR}           & \textit{Author}        & Menghubungkan judul publikasi ilmiah dengan dosen penulisnya                   \\ \hline
+                        \textit{Conference} & \texttt{PUBLISHES}             & \textit{Title}         & Menunjukkan jurnal/konferensi menerbitkan publikasi ilmiah                     \\ \hline
+                        \textit{Title}      & \texttt{PUBLISHED\_IN\_ YEAR}  & \textit{Date}          & Menyimpan informasi tahun terbit publikasi ilmiah                              \\ \hline
+                        \textit{Title}      & \texttt{HAS\_KEYWORD}          & \textit{Keywords}      & Menghubungkan publikasi dengan kata kunci penulisan                            \\ \hline
+                        \textit{Title}      & \texttt{HAS\_TOPIC}            & \textit{ResearchTopic} & Menghubungkan publikasi dengan topik penelitian yang diulas                    \\ \hline
+                        \textit{Title}      & \texttt{SOLVES\_PROBLEM}       & \textit{Problem}       & Menghubungkan judul publikasi dengan permasalahan penelitian yang diselesaikan \\ \hline
+                        \textit{Title}      & \texttt{WORKS\_ON\_TASK}       & \textit{Task}          & Menghubungkan publikasi dengan tugas komputasional/riset                       \\ \hline
+                        \textit{Title}      & \texttt{PROPOSES\_ INNOVATION} & \textit{Innovation}    & Menghubungkan publikasi dengan kebaruan/inovasi yang ditawarkan                \\ \hline
+                        \textit{Title}      & \texttt{USES\_METHOD}          & \textit{Method}        & Menghubungkan publikasi dengan metode penelitian yang digunakan                \\ \hline
+                        \textit{Title}      & \texttt{USES\_MODEL}           & \textit{Model}         & Menghubungkan publikasi dengan model atau arsitektur yang digunakan            \\ \hline
+                        \textit{Title}      & \texttt{EVALUATED\_WITH}       & \textit{Metric}        & Menghubungkan publikasi dengan metrik evaluasi yang digunakan                  \\ \hline
+                        \textit{Title}      & \texttt{USES\_DATASET}         & \textit{Dataset}       & Menghubungkan publikasi dengan dataset yang diuji dalam penelitian             \\ \hline
+                        \textit{Title}      & \texttt{HAS\_RESULT}           & \textit{Results}       & Menghubungkan publikasi dengan capaian atau hasil penelitian                   \\ \hline
+                        \textit{Author}     & \texttt{HAS\_ AFFILIATION}     & \textit{Institution}   & Menghubungkan dosen penulis dengan afiliasi institusinya                       \\ \hline
                     \end{longtable}
                     \endgroup
 
-              \item \textbf{Pipeline Pemrosesan Paralel}
+                    Di luar hubungan langsung antar-dokumen akademik tersebut, kata kunci dan topik penelitian di dalam graf diselaraskan menggunakan kamus istilah standar \textit{IEEE Thesaurus}. Proses ini berfungsi untuk menghubungkan istilah-istilah sejenis serta memetakan hubungan dari konsep yang umum ke konsep yang lebih spesifik. Hubungan antar-istilah ini dikelola secara terpisah dari relasi antar-dokumen akademik sehingga tidak digambarkan langsung pada bagan skema \ref{fig:ontology-design} untuk menjaga kesederhanaan visualisasi.
 
-                    Data akademik diproses melalui dua jalur paralel sesuai karakteristik sumbernya. Jalur pertama menangani data terstruktur, sedangkan jalur kedua menangani data tekstual tidak terstruktur. Kedua jalur ini menghasilkan keluaran yang saling melengkapi sebelum digabungkan pada tahap \textit{entity linking}\ref{fig:detail-kg-construction}.
+              \item \textbf{Pemrosesan Data}
+
+                    Data akademik diproses melalui jalur paralel sesuai karakteristik jenis datanya. Jalur pertama menangani data terstruktur yang mencakup profil dosen, afiliasi, dan metadata publikasi, sedangkan jalur kedua menangani data tekstual tidak terstruktur yang mencakup abstrak dan ringkasan publikasi. Kedua jalur ini menghasilkan keluaran yang saling melengkapi seperti pada \ref{fig:detail-kg-construction}.
 
                     \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=5pt, listparindent=0.75cm]
 
                         \item \textbf{Jalur Data Terstruktur}
 
-                              Data terstruktur, seperti profil dosen, afiliasi, identitas indeksasi, dan metadata publikasi, diproses melalui \textit{entity resolution}. Proses ini menyatukan referensi yang merujuk pada entitas yang sama. Variasi nama, misalnya ``Aditya Prapanca'' dan ``A. Prapanca'', diselaraskan menjadi satu \textit{canonical node} agar relasi akademik tetap konsisten.
+                              Data terstruktur yang telah bersih di dalam basis data (seperti profil dosen, afiliasi, dan metadata publikasi) dipetakan secara langsung (\textit{direct mapping}) ke dalam struktur graf. Proses ini mentransformasikan baris-baris tabel relasional menjadi simpul (\textit{node}) dan hubungan (\textit{edge}) sesuai dengan rancangan ontologi, seperti menghubungkan dosen ke publikasinya berdasarkan relasi kepengarangan yang telah tervalidasi.
 
                         \item \textbf{Jalur Data Tidak Terstruktur}
 
-                              Pada jalur tidak terstruktur, abstrak dan ringkasan publikasi diproses melalui \textit{text processing}. Teks dibersihkan dari \textit{noise} dan diselaraskan formatnya. Hasilnya menjadi unit informasi yang siap digunakan untuk ekstraksi entitas dan pemetaan relasi.
-
-                              Ekstraksi entitas dan pemetaan relasi dilakukan dalam dua tahap. Pertama, \textit{GLiNER} \cite{zaratiana2023gliner} digunakan untuk \textit{Named Entity Recognition} secara \textit{zero-shot}. Kedua, relasi dipetakan secara deterministik berdasarkan pola triplet pada  \ref{tab:relasi-hrt-ontology}. Dengan demikian, keluaran tahap ini berupa \textit{Lexical Graph} berisi triplet kandidat yang konsisten dengan skema ontologi.
+                              Ringkasan publikasi (TLDR) yang di generate dari gabungan abstrak dan judul digunakan untuk diekstraksi entitas dan relasinya. Ekstraksi entitas dan pemetaan relasi dilakukan dalam dua tahap. Pertama, \textit{GLiNER} \cite{zaratiana2023gliner} digunakan untuk \textit{Named Entity Recognition} secara \textit{zero-shot}, kemudian relasi dipetakan secara \textit{deterministik} berdasarkan pola triplet pada \ref{tab:relasi-hrt-ontology}. Hasil akhir tahap ini berupa \textit{Lexical Graph} berisi triplet yang konsisten dengan skema ontologi.
 
                     \end{enumerate}
 
               \item \textbf{\textit{Entity Linking}}
 
-                    Tahap ini menghubungkan keluaran dari jalur terstruktur dan tidak terstruktur dengan memetakan entitas hasil ekstraksi teks ke entitas kanonikal yang telah tersedia. Sebagai contoh, penyebutan ``Deep Learning'' dalam abstrak dihubungkan ke simpul topik yang sudah ada, bukan membentuk simpul baru yang duplikatif. Hasil akhirnya adalah \textit{Knowledge Graph} domain akademik yang mengintegrasikan entitas dan relasi hasil pemetaan ontologi secara konsisten.
+                    Tahap ini menghubungkan entitas hasil ekstraksi teks (dari jalur tidak terstruktur) dengan entitas (dari jalur terstruktur). Hal ini dilakukan dengan membandingkan entitas hasil ekstraksi dengan entitas yang sudah ada di dalam knowledge graph, dan mengkategorikan entitas baru berdasarkan taksonomi yang telah ditentukan melalui kamus istilah standar \textit{IEEE}. Hasil akhirnya adalah \textit{Knowledge Graph} domain akademik yang mengintegrasikan entitas dan relasi hasil pemetaan ontologi secara konsisten.
+
               \item \textbf{\textit{Dual Indexing}}
 
-                    Pada segmen teks seperti abstrak dan TLDR, simpul entitas, relasi, serta kata kunci dokumen dikonversi menjadi vektor \textit{embedding} berdimensi 1.024 menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B}. Representasi vektor tersebut disimpan dalam basis data vektor. Indeks ini mendukung pencarian berbasis kemiripan semantik.
-
-                    Simpul dan relasi graf akademik dimuat ke basis data graf melalui \textit{Cypher queries}. Penyimpanan ini memungkinkan pencarian berbasis struktur relasional dan penelusuran jalur (\textit{graph traversal}). Jalur ini melengkapi indeks vektor untuk eksplorasi keterhubungan antarentitas Infokom UNESA.
+                    Proses indeksasi ganda (\textit{dual indexing}) dilakukan untuk menyimpan representasi pengetahuan ke dalam dua basis data yang berbeda untuk memfasilitasi dua mode pencarian:
+                    \begin{enumerate}[label=\arabic*, leftmargin=0.75cm, itemsep=5pt, listparindent=0.75cm]
+                        \item \textbf{Indeks Vektor (\textit{Vector Indexing}):} Segmen tekstual seperti dokumen publikasi (gabungan abstrak dan TLDR), simpul entitas, relasi, serta kata kunci dikonversi menjadi vektor \textit{embedding} berdimensi 1.024 menggunakan model \texttt{Qwen/Qwen3-Embedding-0.6B}. Representasi vektor ini disimpan ke dalam basis data vektor untuk mendukung kueri pencarian berbasis kemiripan semantik (\textit{semantic similarity search}).
+                        \item \textbf{Indeks Graf (\textit{Graph Indexing}):} Simpul-simpul entitas akademik beserta relasi penghubungnya dimuat ke dalam basis data graf. Penyimpanan terstruktur ini memungkinkan penelusuran jalur (\textit{graph traversal}) dan eksekusi kueri relasional untuk menangkap keterhubungan struktural antar-entitas.
+                    \end{enumerate}
+                    Kombinasi kedua indeks ini menjadi fondasi bagi model \textit{hybrid retrieval} dalam melakukan pencarian informasi akademik yang komprehensif.
           \end{enumerate}
 
-    \item \textit{\textbf{Hybrid Retrieval pada GraphRAG Model}}
+    \item \textit{\textbf{Hybrid Retrieval pada Model Penelitian}}
 
-          Berbeda dengan \textit{RAG} konvensional yang hanya mengandalkan pencarian vektor, pendekatan ini menambahkan struktur \textit{Knowledge Graph} (\ref{fig:detail-hybrid-rag}). Struktur graf digunakan untuk menangkap hubungan antarentitas yang tidak selalu terlihat dari kemiripan teks. Kueri pengguna diproses melalui beberapa tahap optimasi sebelum pengambilan data.
+          Pada penelitian ini, digunakan pendekatan \textit{GraphRAG}. Pendekatan ini menambahkan struktur \textit{Knowledge Graph} pada model hybrid retrieval seperti pada \ref{fig:detail-hybrid-rag}. Struktur graf digunakan untuk menangkap hubungan antarentitas yang tidak selalu terlihat dari kemiripan teks.
 
           \begin{figure}[htbp]
               \centering
@@ -611,7 +580,7 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
                         \label{fig:contoh_ekstraksi_kata_kunci}
                     \end{figure}
 
-                    \ref{fig:contoh_ekstraksi_kata_kunci} mengilustrasikan ekstraksi kata kunci hierarkis. Pada proses ini, \textit{LLM} menyintesis pertanyaan asli dengan petunjuk semantik. Hasilnya adalah komponen pencarian yang lebih relevan secara leksikal dan kontekstual.
+                    \ref{fig:contoh_ekstraksi_kata_kunci} mengilustrasikan ekstraksi kata kunci dengan bantuan \textit{LLM}. Pada proses ini, \textit{LLM} akan memproses input pertanyaan yang diperoleh dari user dan melakukan sintesis dengan petunjuk semantik yang diperoleh. Hal ini bertujuan untuk mendapatkan kata kunci yang lebih relevan secara leksikal dan kontekstual.
 
               \item \textbf{Ekstraksi Informasi Lokal Berbasis Subgraf (\textit{Local Retrieval})}
                     % Diagram Tahapan Pembentukan Subgraf (TikZ) - Academic Style
@@ -741,21 +710,21 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
                         \label{fig:pembentukan-subgraf}
                     \end{figure}
 
-                    Tahap ini menjawab pertanyaan yang membutuhkan ketepatan tinggi terhadap entitas tertentu. Sistem melakukan \textit{anchor node matching}, lalu menelusuri graf sejauh 1--2 hop untuk mengambil konteks tetangga. Ekstraksi subgraf diarahkan oleh kata kunci \textit{low-level} $\mathcal{K}_l$ melalui tahapan berikut.
+                    Tahap ini menjawab pertanyaan yang membutuhkan ketepatan tinggi terhadap entitas tertentu. Sistem melakukan \textit{anchor node matching}, lalu menelusuri graf sejauh 1--2 hop untuk mengambil konteks tetangga terdekat. Ekstraksi subgraf diarahkan oleh kata kunci \textit{low-level} $\mathcal{K}_l$ melalui tahapan berikut.
 
                     \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=6pt, listparindent=0.75cm]
 
-                        \item \textbf{\textit{Node Matching} (Pencocokan Entitas):} \textit{Graph nodes} dicocokkan dengan kata kunci \textit{low-level} ($\mathcal{K}_l$) menggunakan metrik \textit{vector similarity}. Simpul dengan nilai \textit{cosine similarity} tertinggi dipilih sebagai jangkar awal. Jangkar ini menjadi titik masuk untuk penelusuran subgraf.
+                        \item \textbf{\textit{Node Matching} (Pencocokan Entitas):} Simpul graf dicocokkan dengan kata kunci $\mathcal{K}_l$ menggunakan pencarian vektor kemiripan pada indeks \textit{EntityEmbedding}. Simpul yang ditemukan kemudian diperingkat ulang berdasarkan jaraknya dengan mempertimbangkan derajat keterhubungannya (\textit{degree centrality}) di dalam graf.
 
-                        \item \textbf{\textit{Subgraph Construction}:} Simpul jangkar dihubungkan menggunakan \textit{shortest path algorithms}. Jalur yang terbentuk menjadi struktur awal antarentitas terkait.
+                        \item \textbf{\textit{Subgraph Construction}:} Simpul jangkar (\textit{anchor nodes}) teratas dihubungkan menggunakan algoritma pencarian jalur terpendek (\textit{shortest path}). Jalur yang terbentuk menyusun struktur subgraf lokal yang merepresentasikan hubungan erat antar-entitas terkait.
 
-                        \item \textbf{\textit{Pruning}:} \textit{Node} atau \textit{edge} dengan relevansi rendah dieliminasi. Langkah ini menjaga subgraf tetap padat dan bermakna.
+                        \item \textbf{\textit{Pruning}:} Simpul atau relasi yang memiliki nilai relevansi rendah atau terisolasi dari komponen utama subgraf dieliminasi. Pemangkasan ini bertujuan untuk menjaga agar konteks subgraf lokal tetap padat, relevan, dan bebas dari \textit{noise}.
 
-                        \item \textbf{\textit{Text Unit Extraction}:} \textit{Textual chunks} yang terasosiasi dengan \textit{retained edges} dalam lingkup \textit{one-hop ego-graph} diperingkat berdasarkan frekuensi kemunculannya. Segmen teratas diprioritaskan sebagai konteks \textit{retrieval}.
+                        \item \textbf{\textit{Text Unit Extraction}:} Unit teks (\textit{paper chunks}) yang relevan diekstraksi dari basis data vektor. Hasil ekstraksi diperingkat menggunakan algoritma \textit{Reciprocal Rank Fusion} (RRF) untuk menggabungkan peringkat kemiripan vektor dengan peringkat keterhubungan graf.
 
-                        \item \textbf{\textit{Edge Expansion}:} Subgraf diperluas dengan menggabungkan \textit{one-hop neighbors} dari \textit{matched nodes}. Hanya \textit{edges} yang memenuhi kriteria relevansi yang dipertahankan.
+                        \item \textbf{\textit{Edge Expansion}:} Subgraf diperluas dengan menyertakan simpul tetangga satu hop (\textit{one-hop neighbors}) dari entitas jangkar yang terbukti memiliki relevansi tinggi, guna memperkaya informasi.
 
-                        \item \textbf{\textit{Data Truncation}:} Data yang diekstraksi (\textit{nodes}, \textit{edges}, \textit{text units}) dipangkas hingga memenuhi ambang batas token. Pembatasan ini menjaga proses pencarian tetap efisien.
+                        \item \textbf{\textit{Data Truncation}:} Seluruh data lokal yang diekstraksi (simpul graf, relasi, dan unit teks hasil pemeringkatan) dipotong hingga memenuhi batas anggaran token (\textit{token budget}) LLM untuk mencegah terjadinya ledakan konteks (\textit{context overflow}).
 
                     \end{enumerate}
 
@@ -764,84 +733,101 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
                         \mathcal{L}_{\text{local}} = (\mathcal{E}_{\text{local}}, \mathcal{R}_{\text{local}}, \mathcal{T}_{\text{local}})
                         = \text{pipeline}_{\text{local}}(\mathcal{K}_l, G),
                     \end{equation}
-                    Pada rumus tersebut, $\mathcal{L}_{\text{local}}$ adalah konteks hasil reduksi dari kata kunci spesifik dan struktur graf. Konteks ini memuat subset informasi paling signifikan untuk menjawab kueri. Dengan demikian, jalur lokal difokuskan pada bukti yang dekat dengan entitas target.
+                    Pada rumus tersebut, $\mathcal{L}_{\text{local}}$ adalah konteks hasil reduksi dari kata kunci spesifik dan struktur graf. Konteks ini memuat informasi untuk menjawab kueri. Dengan demikian, jalur lokal difokuskan pada informasi yang dekat dengan entitas target.
 
 
               \item \textbf{Ekstraksi Jejaring Global (\textit{Global Edge Network Retrieval})}
 
-                    Jalur ini menjawab pertanyaan eksploratif yang membutuhkan pemahaman tematik luas (\textit{sensemaking}). Sistem menggunakan \textit{high-level keywords} $\mathcal{K}_h$ untuk mengekstraksi \textit{Global Edge Network} berbasis vektor. Proses ini tidak dibatasi jarak topologi antar \textit{nodes} dan dilakukan melalui tahapan berikut.
+                    Jalur ini dirancang untuk menjawab pertanyaan eksploratif yang membutuhkan pemahaman tematik luas (\textit{sensemaking}). Sistem menggunakan \textit{high-level keywords} $\mathcal{K}_h$ yang diperoleh dari proses sebelumnya, untuk mengekstraksi \textit{Global Edge Network} berbasis vektor. Proses ini tidak dibatasi jarak antar \textit{nodes}. Ekstraksi ini dilakukan melalui tahapan berikut.
 
                     \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=6pt, listparindent=0.75cm]
 
-                        \item \textbf{\textit{Edge Retrieval}:} Basis data vektor dikueri untuk mengidentifikasi \textit{edges} yang relevan dengan kata kunci tingkat tinggi. Prioritas diberikan pada \textit{edges} yang merangkum hubungan konseptual makro.
+                        \item \textbf{\textit{Edge Retrieval}:} Basis data vektor dikueri untuk mencari relasi yang relevan dengan kata kunci $\mathcal{K}_h$ pada indeks \textit{RelationshipEmbedding}, guna mendapatkan deskripsi hubungan antarentitas.
 
-                        \item \textbf{\textit{Nodes Retrieval}:} \textit{Nodes} yang terkait dengan \textit{edges} terpilih diekstraksi. Simpul tersebut kemudian diurutkan berdasarkan derajat keterhubungannya (\textit{degree}).
+                        \item \textbf{\textit{Nodes Retrieval}:} Simpul-simpul yang terhubung pada relasi terpilih diekstraksi dari basis data graf untuk mengidentifikasi topik-topik yang saling berkaitan.
 
-                        \item \textbf{\textit{Edge Data Processing}:} Metadata \textit{edges} diekstraksi, meliputi \textit{degree} dan \textit{weight}. Nilai tersebut digunakan untuk mengukur signifikansi hubungan semantik.
+                        \item \textbf{\textit{Edge Data Processing}:} Nilai jarak semantik relasi disesuaikan secara dinamis dengan mengalkulasi derajat keterhubungan (\textit{degree}) dari simpul asal dan simpul tujuan.
 
-                        \item \textbf{\textit{Integration and Ranking}:} \textit{Edges} diperingkat menggunakan metrik komposit. Metrik ini menggabungkan skor relevansi dan bobot koneksi untuk memilih tautan konseptual dominan.
+                        \item \textbf{\textit{Integration and Ranking}:} Seluruh relasi diurutkan ulang berdasarkan metrik gabungan antara kemiripan semantik vektor dan derajat keterhubungan graf, untuk menyeleksi relasi global yang paling representatif.
 
-                        \item \textbf{\textit{Text Unit Extraction}:} \textit{Text chunks} yang terasosiasi dengan \textit{edges} diperingkat berdasarkan kemiripan dengan kata kunci \textit{global}. Segmen teratas diambil sebagai konteks pendukung.
+                        \item \textbf{\textit{Text Unit Extraction}:} Sistem memicu kueri khusus di basis data graf untuk mengambil ikhtisar publikasi beserta keterkaitannya dengan konsep-konsep taksonomi penting.
 
-                        \item \textbf{\textit{Data Truncation}:} Data dipangkas hingga total token memenuhi ambang batas komputasi. Tahap ini menjaga konteks tetap ringkas dan dapat diproses oleh model.
+                        \item \textbf{\textit{Data Truncation}:} Relasi, entitas, dan dokumen hasil ekstraksi global dipangkas sesuai dengan batas token global guna menjaga efisiensi komputasi model bahasa saat proses sintesis jawaban.
 
                     \end{enumerate}
 
                     \indent
-                    Mekanisme ini menghasilkan konteks global yang memuat informasi hubungan lintas entitas. Komponennya tetap terdiri atas entitas, relasi, dan unit teks. Konteks tersebut diformulasikan sebagai berikut.
+                    Mekanisme ini menghasilkan konteks global yang memuat informasi hubungan lintas entitas. isinya terdiri atas entitas, relasi, dan unit teks. Konteks tersebut diformulasikan sebagai berikut.
                     \begin{equation}
                         \mathcal{L}_{\text{global}} = (\mathcal{E}_{\text{global}}, \mathcal{R}_{\text{global}}, \mathcal{T}_{\text{global}})
                         = \text{pipeline}_{\text{global}}(\mathcal{K}_h, G).
                     \end{equation}
-                    Sinergi antara presisi \textit{Local Retrieval} dan cakupan \textit{Global Retrieval} menjadi keunggulan utama \textit{GraphRAG}. Jalur lokal menangani pertanyaan yang spesifik terhadap entitas. Jalur global membantu menjawab pertanyaan eksploratif lintas tema.
+                    Penggabungan antara \textit{Local Retrieval} dan \textit{Global Retrieval} menjadi keunggulan utama \textit{GraphRAG}. Jalur \textit{Local Retrieval} menangani pertanyaan yang spesifik terhadap sebuah entitas, sedangkan \textit{Global Retrieval} membantu menjawab pertanyaan yang mencakup domain yang lebih luas.
 
               \item \textbf{\textit{LLM Generation} \& \textit{Response}}
 
-                    Tahap ini menyintesis informasi dari jalur \textit{local} dan \textit{global}. Konteks terintegrasi digabungkan dengan kueri pengguna sebagai \textit{augmented prompt}. Prompt tersebut dikirimkan ke \textit{LLM} untuk menghasilkan jawaban akhir.
+                    Tahap ini menyintesis informasi dari jalur \textit{local} dan \textit{global}. Konteks yang telah disiapkan digabungkan dengan kueri pengguna. Prompt tersebut kemudian dikirimkan ke \textit{LLM} untuk menghasilkan jawaban akhir.
           \end{enumerate}
 
     \item \textbf{Evaluasi Sistem}
           \label{subsec:system-evaluation}
 
-          Evaluasi sistem dirancang untuk menilai kualitas pencarian dokumen referensi (\textit{retrieval quality}) dan kualitas sintesis jawaban (\textit{generation quality}). Data uji disusun secara mandiri berdasarkan karakteristik domain Infokom UNESA agar pertanyaan, jawaban acuan, dan referensi pendukung tetap sesuai dengan cakupan graf akademik. Dengan rancangan ini, evaluasi tidak hanya mengukur apakah sistem menemukan dokumen yang benar, tetapi juga apakah jawaban yang dihasilkan relevan dan dapat ditelusuri.
+          Evaluasi sistem dirancang untuk menilai kualitas pencarian dokumen referensi (\textit{retrieval quality}) dan kualitas sintesis jawaban (\textit{generation quality}). Data uji disusun secara mandiri berdasarkan karakteristik domain Infokom UNESA agar pertanyaan, jawaban acuan, dan referensi pendukung tetap sesuai dengan cakupan graf yang telah di buat.
 
-          Kerangka evaluasi menggunakan 94 pertanyaan uji yang terdiri atas 90 \textit{ranked cases} dan 4 \textit{guardrail cases}. \textit{Ranked cases} digunakan untuk mengukur performa pencarian dan kualitas jawaban pada tiga kategori, yaitu Kategori A (faktual, $n=30$), Kategori B (relasional, $n=30$), dan Kategori C (\textit{multi-hop}/sintesis, $n=30$). \textit{Guardrail cases} digunakan untuk menguji kemampuan sistem menolak pertanyaan di luar cakupan data sehingga sistem tidak dipaksa menjawab tanpa bukti.
+          Data \textit{evaluation} terdiri dari 90 pertanyaan uji yang terbagi menjadi tiga kategori, yaitu Kategori A (faktual), Kategori B (relasional), dan Kategori C (\textit{multi-hop}/sintesis), masing-masing 30 pertanyaan. Karakteristik dan contoh kueri untuk setiap kategori pertanyaan dirangkum pada \ref{tab:deskripsi setiap kategori pertanyaan}.
 
-          Evaluasi dilakukan melalui tiga lapisan agar hasil pengujian tidak bergantung pada satu metrik tunggal. Lapisan pertama menilai akurasi \textit{retrieval} melalui posisi dokumen relevan pada daftar hasil. Lapisan kedua dan ketiga menilai kualitas jawaban melalui RAGAS serta perbandingan berpasangan menggunakan \textit{LLM-as-a-Judge}.
+          \begin{table}[htbp]
+              \centering
+              \caption{Deskripsi Karakteristik Kategori Pertanyaan Evaluasi}
+              \label{tab:deskripsi setiap kategori pertanyaan}
+              \begingroup
+              \renewcommand{\arraystretch}{1.2}
+              \fontsize{8.5pt}{10.5pt}\selectfont
+              \begin{tabular}{|c|p{0.18\textwidth}|>{\raggedright\arraybackslash}p{0.32\textwidth}|>{\raggedright\arraybackslash}p{0.38\textwidth}|}
+                  \hline
+                  \textbf{Kat.} & \textbf{Jenis Kueri}          & \textbf{Karakteristik Pertanyaan}                                                                                                              & \textbf{Contoh Pertanyaan Uji}                                                                                                   \\ \hline
+                  \textbf{A}    & Faktual                       & Menanyakan fakta spesifik dari satu dokumen publikasi (seperti nama metode, dataset, atau nilai metrik akurasi) tanpa penelusuran relasi graf. & Metode klasifikasi apa yang digunakan untuk mendeteksi gaya belajar visual, auditory, kinesthetic melalui aplikasi pesan instan? \\ \hline
+                  \textbf{B}    & Relasional                    & Menanyakan hubungan langsung antar-entitas, seperti kolaborator dosen atau daftar publikasi dari penulis.                                      & Sebutkan semua publikasi yang ditulis oleh Ricky Eka Putra.                                                                      \\ \hline
+                  \textbf{C}    & \textit{Multi-hop} / Sintesis & Menanyakan hubungan lintas entitas dari beberapa dokumen publikasi.                                                                            & Dosen mana dari prodi S2 Informatika yang memiliki penelitian di bidang machine learning untuk pendidikan?                       \\ \hline
+              \end{tabular}
+              \endgroup
+          \end{table}
+
+          Evaluasi dilakukan melalui tiga aspek agar hasil pengujian tidak bergantung pada satu aspek pengukuran saja. Aspek pertama menilai akurasi \textit{retrieval} melalui posisi dokumen relevan pada daftar hasil \citep{manning2008introduction}. Aspek kedua menilai kualitas jawaban melalui RAGAS \citep{es-etal-2024-ragas} dan perbandingan berpasangan menggunakan \textit{LLM-as-a-Judge} \citep{zheng2023judging}.
 
           \begin{enumerate}[label=\textbf{\alph*.}, leftmargin=0.75cm, itemsep=4pt, listparindent=0.75cm]
 
               \item \textbf{Evaluasi Akurasi \textit{Retrieval}}
 
-                    Evaluasi akurasi \textit{retrieval} digunakan untuk melihat kemampuan sistem menemukan dokumen ilmiah yang relevan dan menempatkannya pada peringkat atas. Metrik yang digunakan adalah \textit{Mean Reciprocal Rank} (MRR) dan \textit{Hit@K} untuk $K = 1, 5, 10$ \citep{manning2008introduction}. MRR menilai posisi dokumen relevan pertama, sedangkan \textit{Hit@K} menilai apakah dokumen relevan muncul dalam $K$ hasil teratas.
+                    Evaluasi akurasi \textit{retrieval} digunakan untuk melihat kemampuan sistem menemukan dokumen yang relevan dan menempatkannya pada peringkat atas. Metrik yang digunakan adalah \textit{Mean Reciprocal Rank} (\textit{MRR}) dan \textit{Hit@K} untuk $K = 1, 5, 10$. \textit{MRR} menilai posisi dokumen relevan pertama, sedangkan \textit{Hit@K} menilai apakah dokumen relevan muncul dalam $K$ hasil teratas.
 
-                    MRR dihitung sebagai rata-rata kebalikan dari peringkat dokumen relevan pertama pada setiap kueri. Semakin tinggi nilai MRR, semakin cepat sistem menempatkan dokumen yang benar pada urutan atas. Pada rumus berikut, $|Q|$ adalah jumlah kueri dan $\text{rank}_i$ adalah posisi dokumen relevan pertama pada kueri ke-$i$.
+                    \textit{MRR} dihitung sebagai rata-rata kebalikan dari peringkat dokumen relevan pertama pada setiap kueri. Semakin tinggi nilai \textit{MRR}, semakin cepat sistem menempatkan dokumen yang benar pada urutan atas. Pada rumus berikut, $|Q|$ adalah jumlah kueri dan $\text{rank}_i$ adalah posisi dokumen relevan pertama pada kueri ke-$i$.
                     \begin{equation}
                         \textit{MRR} = \frac{1}{|Q|} \sum_{i=1}^{|Q|} \frac{1}{\text{rank}_i}
                     \end{equation}
 
-                    \textit{Hit@K} digunakan untuk mengukur proporsi kueri yang berhasil menemukan minimal satu dokumen relevan dalam $K$ peringkat teratas. Metrik ini penting karena pengguna biasanya hanya melihat sejumlah kecil hasil pertama. Pada rumus berikut, $Q_{\text{relevan@}K}$ adalah himpunan kueri yang memiliki dokumen relevan pada $K$ peringkat teratas.
+                    \textit{Hit@K} digunakan untuk mengukur proporsi kueri yang berhasil menemukan paling tidak satu dokumen relevan dalam $K$ peringkat teratas. Metrik ini penting karena pengguna biasanya hanya melihat sejumlah kecil hasil pertama. Pada rumus berikut, $Q_{\text{relevan@}K}$ adalah himpunan kueri yang memiliki dokumen relevan pada $K$ peringkat teratas.
                     \begin{equation}
                         \textit{Hit@K} = \frac{|Q_{\text{relevan@}K}|}{|Q|}
                     \end{equation}
 
               \item \textbf{Evaluasi Kualitas Jawaban Berbasis \textit{RAGAS}}
 
-                    Evaluasi RAGAS digunakan untuk memperoleh indikasi awal mengenai kualitas jawaban yang dihasilkan sistem secara otomatis \citep{es-etal-2024-ragas}. Evaluasi ini diterapkan pada 90 \textit{ranked cases} dari Kategori A, B, dan C tanpa menggunakan referensi \textit{ground truth} eksternal. Oleh karena itu, metrik difokuskan pada \textit{Faithfulness} untuk konsistensi terhadap konteks dan \textit{Answer Relevancy} untuk kesesuaian jawaban terhadap kueri.
+                    Evaluasi RAGAS digunakan untuk mengukur kualitas jawaban yang dihasilkan. Evaluasi ini diterapkan pada 90 jawaban dari Kategori A, B, dan C. Metrik yang digunakan adalah \textit{Faithfulness} untuk konsistensi terhadap konteks dan \textit{Answer Relevancy} untuk kesesuaian jawaban terhadap kueri.
 
-                    \textit{Faithfulness} menilai sejauh mana klaim dalam jawaban dapat diverifikasi oleh konteks yang diberikan. Metrik ini digunakan untuk mendeteksi risiko klaim yang tidak didukung bukti. Pada rumus berikut, $V$ adalah jumlah klaim yang terverifikasi dan $S$ adalah seluruh klaim yang diekstraksi dari jawaban.
+                    \textit{Faithfulness} menilai sejauh mana klaim dalam jawaban dapat diverifikasi oleh konteks yang diberikan. Metrik ini digunakan untuk mendeteksi risiko klaim yang tidak mendasar (halusinasi). Penilaian ini dilakukan dengan mengekstrak seluruh klaim dari jawaban, kemudian memverifikasi setiap klaim berdasarkan konteks yang diberikan. Pada rumus berikut, $V$ adalah jumlah klaim yang terverifikasi dan $S$ adalah seluruh klaim yang diekstraksi dari jawaban.
                     \begin{equation}
                         \textit{Faithfulness} = \frac{|V|}{|S|}
                     \end{equation}
 
-                    \textit{Answer Relevancy} mengukur kesesuaian semantik antara jawaban dan kueri pengguna. Perhitungan dilakukan melalui rata-rata kemiripan kosinus antara representasi vektor kueri asli dan pertanyaan sintetis yang dibangkitkan dari jawaban. Pada rumus berikut, $E_q$ adalah representasi vektor kueri asli, $E_{q_i}$ adalah representasi vektor pertanyaan sintetis ke-$i$, dan $m$ adalah jumlah pertanyaan sintetis.
+                    \textit{Answer Relevancy} mengukur kesesuaian antara jawaban dan kueri. Metrik ini digunakan untuk mendeteksi apakah jawaban relevan dengan pertanyaan. Penilaian ini dilakukan untuk membandingkan jawaban dan kueri, kemudian menghasilkan skor relevansi, dengan persamaan sebagai berikut
                     \begin{equation}
                         \textit{Answer Relevancy} = \frac{1}{m} \sum_{i=1}^{m} \cos(E_{q_i}, E_q)
                     \end{equation}
 
               \item \textbf{Evaluasi \textit{Pairwise LLM as Judge}}
 
-                    Evaluasi \textit{Pairwise LLM-as-a-Judge} digunakan untuk membandingkan kualitas jawaban antar metode secara langsung. Model \textit{DeepSeek v4-flash} berperan sebagai hakim otomatis yang membandingkan jawaban \textit{Subgraph} dan \textit{Hybrid} terhadap baseline \textit{Naive} \citep{zheng2023judging}. Penilaian dilakukan pada empat dimensi, yaitu \textit{Faithfulness}, \textit{Traceability}, \textit{Comprehensiveness}, dan \textit{Overall}.
+                    Evaluasi \textit{Pairwise LLM-as-a-Judge} digunakan untuk membandingkan kualitas jawaban antar metode. Model \textit{DeepSeek v4-flash} berperan sebagai hakim yang membandingkan jawaban \textit{Subgraph} dan \textit{Hybrid} terhadap baseline \textit{Naive}. Penilaian dilakukan pada empat dimensi, yaitu \textit{Faithfulness}, \textit{Traceability}, \textit{Comprehensiveness}, dan \textit{Overall}.
 
                     Hasil penilaian dinyatakan dalam bentuk \textit{Win Rate}. Nilai ini menunjukkan persentase kasus ketika suatu metode dinilai lebih baik daripada baseline. Pada rumus berikut, $Q_{\text{menang}, M}$ adalah jumlah kueri yang dimenangkan oleh metode $M$, sedangkan $|Q|$ adalah jumlah kueri yang dievaluasi.
                     \begin{equation}
@@ -850,11 +836,11 @@ Alur penelitian dirancang untuk membangun \textit{Knowledge Graph} dan menerapka
 
           \end{enumerate}
 
-          Skenario evaluasi multi-lapis ini digunakan untuk membaca kelebihan dan kelemahan setiap mode pencarian secara lebih seimbang. Metode \textit{Naive}, \textit{Subgraph}, dan \textit{Hybrid} dibandingkan dari sisi akurasi pencarian, relevansi jawaban, keterlacakan, dan kualitas keseluruhan. Dengan demikian, efektivitas sistem \textit{Hybrid GraphRAG} dapat dinilai melalui \textit{benchmarking} terhadap baseline \textit{Standard Vector RAG} tanpa bergantung pada satu indikator saja.
+          Evaluasi ini digunakan untuk membaca kelebihan dan kelemahan setiap metode pencarian yang digunakan. Metode \textit{Naive}, \textit{Subgraph}, dan \textit{Hybrid} dibandingkan dari sisi akurasi pencarian, relevansi jawaban, keterlacakan, dan kualitas jawaban. Dengan demikian, efektivitas sistem \textit{Hybrid GraphRAG} dapat dinilai melalui \textit{benchmarking} terhadap baseline \textit{Naive RAG} tanpa bergantung pada satu indikator saja.
 
 
           % 6. GUI Implementation
     \item \textbf{Implementasi GUI (\textit{GUI Implementation})}
 
-          Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan sebagai aplikasi berbasis web. Antarmuka ini memfasilitasi interaksi pengguna dengan sistem pencarian. Jawaban, referensi sumber, dan visualisasi subgraf ditampilkan secara \textit{real-time} agar proses perolehan jawaban lebih transparan.
+          Antarmuka pengguna (\textit{Graphical User Interface}) dikembangkan sebagai aplikasi berbasis web. Antarmuka ini memfasilitasi interaksi pengguna dengan sistem pencarian berbasis teks dan graf. Jawaban, referensi sumber, dan visualisasi subgraf ditampilkan secara \textit{real-time} agar proses perolehan jawaban lebih transparan dan memudahkan pengguna dalam memahami jawaban yang dihasilkan.
 \end{enumerate}

@@ -79,16 +79,16 @@ CONCEPT_TYPES = {
 }
 
 CONCEPT_EDGE_BY_TYPE = {
-    "Problem": "HAS_TOPIC",
+    "Problem": "SOLVES_PROBLEM",
     "ResearchTopic": "HAS_TOPIC",
-    "Task": "HAS_TOPIC",
+    "Task": "WORKS_ON_TASK",
     "Method": "USES_METHOD",
     "Model": "USES_MODEL",
     "Dataset": "USES_DATASET",
     "Metric": "EVALUATED_WITH",
     "Result": "HAS_RESULT",
     "Results": "HAS_RESULT",
-    "Innovation": "HAS_TOPIC",
+    "Innovation": "PROPOSES_INNOVATION",
     "Domain": "BELONGS_TO_DOMAIN",
     "Field": "BELONGS_TO_DOMAIN",
 }
@@ -99,6 +99,9 @@ ONTOLOGY_RELATIONS = {
     "PUBLISHES",
     "HAS_AUTHOR",
     "HAS_TOPIC",
+    "SOLVES_PROBLEM",
+    "WORKS_ON_TASK",
+    "PROPOSES_INNOVATION",
     "USES_METHOD",
     "USES_MODEL",
     "USES_DATASET",
@@ -119,13 +122,13 @@ ONTOLOGY_RELATIONS = {
 
 RELATION_ALIASES = {
     "WRITES": "PUBLISHES",
-    "WORKS_ON": "HAS_TOPIC",
-    "SOLVES": "HAS_TOPIC",
+    "WORKS_ON": "WORKS_ON_TASK",
+    "SOLVES": "SOLVES_PROBLEM",
     "EVALUATED_BY": "EVALUATED_WITH",
     "IN_FIELD": "BELONGS_TO_DOMAIN",
     "AFFILIATED_WITH": "HAS_AFFILIATION",
     "USES": "USES_METHOD",
-    "PROPOSED": "HAS_TOPIC",
+    "PROPOSED": "PROPOSES_INNOVATION",
 }
 
 GLINER_LABEL_TO_CONCEPT_TYPE = {
@@ -178,15 +181,15 @@ ACADEMIC_RELATION_LABELS = [
 ]
 
 GLIREL_RELATION_TO_EDGE = {
-    "works on": "HAS_TOPIC",
-    "solves": "HAS_TOPIC",
+    "works on": "WORKS_ON_TASK",
+    "solves": "SOLVES_PROBLEM",
     "uses method": "USES_METHOD",
     "uses model": "USES_MODEL",
     "uses dataset": "USES_DATASET",
     "evaluated by": "EVALUATED_WITH",
     "has result": "HAS_RESULT",
     "belongs to domain": "BELONGS_TO_DOMAIN",
-    "innovates": "HAS_TOPIC",
+    "innovates": "PROPOSES_INNOVATION",
 }
 
 DEFAULT_MILVUS_COLLECTIONS = {

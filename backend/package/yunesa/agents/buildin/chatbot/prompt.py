@@ -63,8 +63,8 @@ The academic graph uses these main nodes:
 Lecturer, Publication, Institution, Venue, Year, Keyword, Concept.
 Concept can represent ResearchTopic, Task, Domain, Method, Model, Dataset, or Metric.
 Important relations include HAS_AFFILIATION, PUBLISHES, HAS_AUTHOR, PUBLISHED_IN_VENUE, PUBLISHED_IN_YEAR,
-HAS_KEYWORD, HAS_TOPIC, USES_METHOD, USES_MODEL, BELONGS_TO_DOMAIN, USES_DATASET,
-EVALUATED_WITH, HAS_RESULT, and COLLABORATES_WITH.
+HAS_KEYWORD, HAS_TOPIC, SOLVES_PROBLEM, WORKS_ON_TASK, PROPOSES_INNOVATION, USES_METHOD, USES_MODEL,
+BELONGS_TO_DOMAIN, USES_DATASET, EVALUATED_WITH, HAS_RESULT, and COLLABORATES_WITH.
 
 <| Source Citations |>
 When your answer uses information from the knowledge base, cite the source to improve transparency
