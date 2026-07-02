@@ -414,23 +414,6 @@ Berdasarkan \ref{tab:contoh-retrieval-kueri}, perbedaan utama kedua metode terli
 
           \hspace*{0.75cm} Berdasarkan \ref{tab:ragas-quality}, metode \textit{Hybrid} menunjukkan kualitas jawaban paling baik pada dua metrik RAGAS yang diuji. Pada metrik \textit{Faithfulness} dan \textit{Answer Relevancy}, kedua metode relatif berdekatan, tetapi \textit{Hybrid} tetap unggul tipis dibandingkan dengan metode \textit{Subgraph}.
 
-          \begin{table}[htbp]
-              \centering
-              \small
-              \caption{\textit{Win Rate} agregat metode berbasis graf terhadap \textit{Naive} ($n = 90$)}
-              \label{tab:pairwise-overall}
-              \begin{adjustbox}{max width=\linewidth}
-                  \begin{tabular}{@{}lrrrrr@{}}
-                      \noalign{\hrule height 0.8pt}
-                      Metode vs.\ \textit{Naive} & $n$ & \textit{Faithfulness} & \textit{Traceability} & \textit{Comprehensiveness} & \textit{Overall} \\
-                      \noalign{\hrule height 0.6pt}
-                      \texttt{Subgraph}          & 90  & 43,9\%                & 43,9\%                & 45,6\%                     & 45,3\%           \\
-                      \texttt{Hybrid}            & 90  & 50,6\%                & 54,7\%                & 53,1\%                     & 53,9\%           \\
-                      \noalign{\hrule height 0.4pt}
-                  \end{tabular}
-              \end{adjustbox}
-          \end{table}
-
           \hspace*{0.75cm} Hasil evaluasi generasi jawaban juga dilakukan dengan menggunakan \textit{LLM as Judge}. Evaluasi ini bertujuan untuk membandingkan kualitas jawaban yang dihasilkan oleh metode berbasis graf dengan metode baseline \textit{Naive}. Hasil pengujian dengan metrik \textit{Win Rate} agregat metode berbasis graf terhadap \textit{Naive} disajikan pada \ref{tab:pairwise-overall}.
 
           \begin{table}[htbp]
@@ -450,7 +433,7 @@ Berdasarkan \ref{tab:contoh-retrieval-kueri}, perbedaan utama kedua metode terli
               \end{adjustbox}
           \end{table}
 
-          \hspace*{0.75cm} Hasil evaluasi generasi jawaban pada \ref{tab:pairwise-overall} memperlihatkan peningkatan signifikan pada metode berbasis graf, khususnya metode \textit{Hybrid}. Metode \textit{Hybrid} memperoleh \textit{Win Rate Overall} sebesar 53,9\%, yang berarti secara agregat lebih unggul dalam menilai kualitas jawaban dibandingkan dengan metode \textit{Naive}. Peningkatan ini juga merata pada dimensi lain seperti \textit{Faithfulness}, \textit{Traceability}, dan \textit{Comprehensiveness} seperti pada visualisasi \ref{fig:eval-winrate}.
+          \hspace*{0.75cm} Hasil evaluasi generasi jawaban pada \ref{tab:pairwise-overall} memperlihatkan peningkatan signifikan pada metode berbasis graf, khususnya metode \textit{Hybrid}. Metode \textit{Hybrid} memperoleh \textit{Win Rate Overall} sebesar 53,9\%, yang berarti secara agregat lebih unggul dalam menilai kualitas jawaban dibandingkan dengan metode \textit{Naive}. Peningkatan ini juga merata pada dimensi lain seperti \textit{Faithfulness}, \textit{Traceability}, dan \textit{Comprehensiveness} seperti pada visualisasi \ref{fig:eval-radar}.
 
           \begin{figure}[!htbp]
               \centering
