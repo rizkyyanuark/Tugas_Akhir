@@ -184,6 +184,19 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
             "moonshotai/Kimi-K2.5",
         ],
     ),
+    "gemini": ChatModelProvider(
+        name="Google Gemini (AI Studio)",
+        url="https://ai.google.dev/gemini-api/docs",
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        default="gemini-2.5-flash",
+        env="GEMINI_API_KEY",
+        models=[
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-2.0-flash",
+            "gemini-2.0-pro-exp-02-05",
+        ],
+    ),
 }
 
 
@@ -192,6 +205,13 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
 # ============================================================
 
 DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
+    "gemini/text-embedding-004": EmbedModelInfo(
+        model_id="gemini/text-embedding-004",
+        name="text-embedding-004",
+        dimension=768,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/embeddings",
+        api_key="GEMINI_API_KEY",
+    ),
     "siliconflow/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
         model_id="siliconflow/Qwen/Qwen3-Embedding-0.6B",
         name="Qwen/Qwen3-Embedding-0.6B",
