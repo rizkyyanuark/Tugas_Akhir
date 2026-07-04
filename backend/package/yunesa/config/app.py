@@ -274,6 +274,9 @@ class Config(BaseModel):
                 provider_info.models = [
                     model.removeprefix("Pro/") for model in provider_info.models
                 ]
+            elif provider == "gemini":
+                if provider_info.base_url == "https://generativelanguage.googleapis.com/v1beta/openai":
+                    provider_info.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
     @staticmethod
     def _normalize_provider_env_name(env_value: str) -> str:
