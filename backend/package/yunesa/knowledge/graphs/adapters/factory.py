@@ -1,4 +1,4 @@
-﻿from .base import GraphAdapter
+from .base import GraphAdapter
 from .core import CoreGraphAdapter
 from .lightrag import LightRAGGraphAdapter
 
@@ -48,7 +48,7 @@ class GraphAdapterFactory:
         # 1. First check whether this is a LightRAG database (via knowledge base manager)
         if knowledge_base_manager:
             db_info = await knowledge_base_manager.get_database_info(db_id)
-            if db_info:  # Existing metadata indicates LightRAG database
+            if db_info and db_info.get("kb_type") == "lightrag":  # Existing metadata indicates LightRAG database
                 return "lightrag"
 
         # 2. Fallback check: kb_ prefix

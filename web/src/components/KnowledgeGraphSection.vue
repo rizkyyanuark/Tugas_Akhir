@@ -135,7 +135,7 @@ const graph = reactive(useGraph(graphRef))
 // Whether current KB type supports knowledge graph.
 const isGraphSupported = computed(() => {
   const type = kbType.value?.toLowerCase()
-  return type === 'lightrag'
+  return type === 'lightrag' || type === 'milvus'
 })
 
 let pendingLoadTimer = null

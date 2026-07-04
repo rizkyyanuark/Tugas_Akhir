@@ -451,6 +451,14 @@ async def get_chat_models(model_provider: str, current_user: User = Depends(get_
     """Get model list for the specified model provider (login required)."""
     model = select_model(model_provider=model_provider)
     models = await model.get_models()
+    
+    # If the provider API returned no models (or failed), fallback to static list in config.
+    raw_models = getattr(models, "data", models)
+    if not raw_models:
+        provider_info = conf.model_names.get(model_provider)
+        if provider_info and provider_info.models:
+            return {"models": provider_info.models}
+            
     return {"models": models}
 
 
