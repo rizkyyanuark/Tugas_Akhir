@@ -126,7 +126,7 @@ const kbTypeLabel = computed(() => getKbTypeLabel(kbType.value || 'lightrag'))
 
 const graphRef = ref(null)
 const showSettings = ref(false)
-const graphLimit = ref(50)
+const graphLimit = ref(30)
 const graphDepth = ref(2)
 const searchInput = ref('')
 

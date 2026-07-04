@@ -133,7 +133,7 @@ const modelMatched = computed(
 
 const graphRef = ref(null)
 const graphInfo = ref(null)
-const sampleNodeCount = ref(150)
+const sampleNodeCount = ref(30)
 
 const graph = reactive(useGraph(graphRef))
 
