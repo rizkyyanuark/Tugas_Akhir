@@ -158,6 +158,8 @@ def _resolve_provider_api_key(model_provider: str, model_info) -> str:
 
 
 def _validate_registered_model(model_provider: str, model_info, model_name: str) -> None:
+    if model_provider == "openrouter":
+        return
     if model_info.models and model_name not in model_info.models:
         supported = ", ".join(model_info.models[:8])
         if len(model_info.models) > 8:
