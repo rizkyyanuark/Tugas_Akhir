@@ -3064,25 +3064,33 @@ class AcademicGraphRAGService:
             if not graph_base.is_running():
                 return {"nodes": [], "edges": [], "triples": [], "status": "unavailable"}
 
+            from yunesa.knowledge.graphrag.query_planner import GRAPH_STOPWORDS
             terms = self._dedupe_terms(
-                list(seed_terms or []),
-                max_terms=5,
+                [
+                    term
+                    for term in (seed_terms or [])
+                    if str(term).strip().lower() not in GRAPH_STOPWORDS
+                ],
+                max_terms=3,
             )
             if not terms:
-                terms = [query_text]
+                # Filter query_text too if it's just a stopword
+                clean_query = query_text
+                if str(query_text).strip().lower() in GRAPH_STOPWORDS:
+                    clean_query = ""
+                terms = [clean_query] if clean_query else []
 
-            graph_results = await asyncio.gather(
-                *[
-                    asyncio.to_thread(
-                        graph_base.query_subgraph,
-                        keyword=term,
-                        max_depth=max_depth,
-                        max_nodes=max_nodes,
-                        graph_name=graph_name,
-                    )
-                    for term in terms
-                ]
-            )
+            graph_results = []
+            for term in terms:
+                res = await asyncio.to_thread(
+                    graph_base.query_subgraph,
+                    keyword=term,
+                    max_depth=max_depth,
+                    max_nodes=max_nodes,
+                    graph_name=graph_name,
+                )
+                graph_results.append(res)
+                
             graph = self._merge_graph_results(graph_results, max_nodes=max_nodes)
             if not graph.get("nodes") and terms != [query_text]:
                 graph = await asyncio.to_thread(
@@ -3093,18 +3101,16 @@ class AcademicGraphRAGService:
                     graph_name=graph_name,
                 )
             if not graph.get("nodes"):
-                fallback_results = await asyncio.gather(
-                    *[
-                        asyncio.to_thread(
-                            graph_base.query_subgraph,
-                            keyword=term,
-                            max_depth=max_depth,
-                            max_nodes=max_nodes,
-                            graph_name=graph_name,
-                        )
-                        for term in self._fallback_graph_terms(query_text)
-                    ]
-                )
+                fallback_results = []
+                for term in self._fallback_graph_terms(query_text):
+                    res = await asyncio.to_thread(
+                        graph_base.query_subgraph,
+                        keyword=term,
+                        max_depth=max_depth,
+                        max_nodes=max_nodes,
+                        graph_name=graph_name,
+                    )
+                    fallback_results.append(res)
                 graph = self._merge_graph_results(
                     fallback_results,
                     max_nodes=max_nodes,

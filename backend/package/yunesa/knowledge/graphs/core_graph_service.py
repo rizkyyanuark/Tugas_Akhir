@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import os
 import traceback
@@ -323,27 +323,89 @@ class CoreGraphService:
                 )
             """
 
-        query_text = f"""
-            MATCH (seed)
-            WHERE {seed_where}
-            WITH seed, COUNT {{ (seed)--() }} AS degree
-            ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
-            LIMIT $seed_limit
-            OPTIONAL MATCH path = (seed)-[*1..{depth}]-(neighbor)
-            WHERE $graph_name IS NULL OR neighbor.graph_name = $graph_name
-            WITH collect(DISTINCT seed) AS seeds, collect(DISTINCT path) AS paths
-            WITH seeds, [p IN paths WHERE p IS NOT NULL] AS paths
-            WITH seeds + reduce(acc = [], p IN paths | acc + nodes(p)) AS raw_nodes,
-                 reduce(acc = [], p IN paths | acc + relationships(p)) AS raw_rels
-            UNWIND raw_nodes AS n
-            WITH collect(DISTINCT n)[0..toInteger($node_limit)] AS nodes, raw_rels
-            UNWIND raw_rels AS r
-            WITH nodes, collect(DISTINCT r) AS candidate_rels
-            UNWIND candidate_rels AS r
-            WITH nodes, r
-            WHERE r IS NOT NULL AND startNode(r) IN nodes AND endNode(r) IN nodes
-            RETURN nodes, collect(DISTINCT r)[0..toInteger($edge_limit)] AS rels
-        """
+        if depth == 1:
+            query_text = f"""
+                MATCH (seed)
+                WHERE {seed_where}
+                WITH seed, COUNT {{ (seed)--() }} AS degree
+                ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
+                LIMIT $seed_limit
+                
+                OPTIONAL MATCH (seed)-[r1]-(n1)
+                WHERE $graph_name IS NULL OR n1.graph_name = $graph_name
+                WITH seed, collect({{rel: r1, node: n1}})[0..30] AS depth1_items
+                
+                UNWIND (case when depth1_items = [] then [null] else depth1_items end) AS d1
+                WITH seed, d1.node AS n1, d1.rel AS r1
+                
+                WITH collect(DISTINCT seed) AS seeds,
+                     collect(DISTINCT n1) AS n1_nodes,
+                     collect(DISTINCT r1) AS r1_rels
+                     
+                WITH seeds, 
+                     [n IN n1_nodes WHERE n IS NOT NULL] AS n1_nodes,
+                     [r IN r1_rels WHERE r IS NOT NULL] AS r1_rels
+                     
+                WITH seeds + n1_nodes AS raw_nodes,
+                     r1_rels AS raw_rels
+                     
+                UNWIND raw_nodes AS n
+                WITH collect(DISTINCT n)[0..toInteger($node_limit)] AS nodes, raw_rels
+                
+                UNWIND raw_rels AS r
+                WITH nodes, collect(DISTINCT r) AS candidate_rels
+                UNWIND candidate_rels AS r
+                WITH nodes, r
+                WHERE r IS NOT NULL AND startNode(r) IN nodes AND endNode(r) IN nodes
+                RETURN nodes, collect(DISTINCT r)[0..toInteger($edge_limit)] AS rels
+            """
+        else:
+            query_text = f"""
+                MATCH (seed)
+                WHERE {seed_where}
+                WITH seed, COUNT {{ (seed)--() }} AS degree
+                ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
+                LIMIT $seed_limit
+                
+                OPTIONAL MATCH (seed)-[r1]-(n1)
+                WHERE $graph_name IS NULL OR n1.graph_name = $graph_name
+                WITH seed, collect({{rel: r1, node: n1}})[0..30] AS depth1_items
+                
+                UNWIND (case when depth1_items = [] then [null] else depth1_items end) AS d1
+                WITH seed, d1.node AS n1, d1.rel AS r1
+                
+                OPTIONAL MATCH (n1)-[r2]-(n2)
+                WHERE n1 IS NOT NULL AND ($graph_name IS NULL OR n2.graph_name = $graph_name) AND n2 <> seed
+                WITH seed, n1, r1, collect({{rel: r2, node: n2}})[0..5] AS depth2_items
+                
+                UNWIND (case when depth2_items = [] then [null] else depth2_items end) AS d2
+                WITH seed, n1, r1, d2.node AS n2, d2.rel AS r2
+                
+                WITH collect(DISTINCT seed) AS seeds,
+                     collect(DISTINCT n1) AS n1_nodes,
+                     collect(DISTINCT n2) AS n2_nodes,
+                     collect(DISTINCT r1) AS r1_rels,
+                     collect(DISTINCT r2) AS r2_rels
+                     
+                WITH seeds, 
+                     [n IN n1_nodes WHERE n IS NOT NULL] AS n1_nodes,
+                     [n IN n2_nodes WHERE n IS NOT NULL] AS n2_nodes,
+                     [r IN r1_rels WHERE r IS NOT NULL] AS r1_rels,
+                     [r IN r2_rels WHERE r IS NOT NULL] AS r2_rels
+                     
+                WITH seeds + n1_nodes + n2_nodes AS raw_nodes,
+                     r1_rels + r2_rels AS raw_rels
+                     
+                UNWIND raw_nodes AS n
+                WITH collect(DISTINCT n)[0..toInteger($node_limit)] AS nodes, raw_rels
+                
+                UNWIND raw_rels AS r
+                WITH nodes, collect(DISTINCT r) AS candidate_rels
+                UNWIND candidate_rels AS r
+                WITH nodes, r
+                WHERE r IS NOT NULL AND startNode(r) IN nodes AND endNode(r) IN nodes
+                RETURN nodes, collect(DISTINCT r)[0..toInteger($edge_limit)] AS rels
+            """
 
         isolated_query = f"""
             MATCH (seed)
