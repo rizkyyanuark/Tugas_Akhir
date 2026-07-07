@@ -12,6 +12,7 @@ from yunesa.agents.middlewares import (
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
     TextualToolCallMiddleware,
+    IntentRoutingMiddleware,
 )
 from yunesa.agents.middlewares.knowledge_base_middleware import KnowledgeBaseMiddleware
 from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
@@ -90,6 +91,7 @@ class DeepAgent(BaseAgent):
 
         # Create deep agent graph using create_agent.
         middlewares = [
+                IntentRoutingMiddleware(router_model=context.subagents_model),  # Intent Routing Middleware (NEW)
                 RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
                 # Skills middleware (prompt injection, dependency expansion, dynamic activation)
                 SkillsMiddleware(),

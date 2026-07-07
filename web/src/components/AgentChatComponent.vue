@@ -103,6 +103,7 @@
                   v-else
                   :tool-calls="displayItem.toolCalls"
                   :is-active="isToolGroupActive(row.conv, displayItem)"
+                  :conv="row.conv"
                 />
               </template>
               <!-- Show the model used by the last message in the conversation -->
@@ -205,7 +206,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, nextTick, computed, onUnmounted, h } from 'vue'
+import { ref, reactive, onMounted, watch, nextTick, computed, onUnmounted, h, provide } from 'vue'
 import { message } from 'ant-design-vue'
 import AgentInputArea from '@/components/AgentInputArea.vue'
 import AgentMessageComponent from '@/components/AgentMessageComponent.vue'
@@ -363,6 +364,14 @@ const currentThreadAgentName = computed(() => {
 const currentAgentState = computed(() => {
   return currentChatId.value ? getThreadState(currentChatId.value)?.agentState || null : null
 })
+const currentAgentStateFiles = computed(() => {
+  return currentAgentState.value?.files || {}
+})
+provide('agentStateFiles', currentAgentStateFiles)
+const currentRoutingMetadata = computed(() => {
+  return currentAgentState.value?.routing_metadata || {}
+})
+provide('routingMetadata', currentRoutingMetadata)
 const currentTodos = computed(() => {
   const todos = currentAgentState.value?.todos
   return Array.isArray(todos) ? todos : []
@@ -558,6 +567,11 @@ const getToolNameFromCall = (toolCall) =>
   String(toolCall?.name || toolCall?.function?.name || '').trim()
 
 const activeProgressText = computed(() => {
+  const threadState = currentThreadState.value
+  if (threadState?.routingStatus) {
+    return threadState.routingStatus
+  }
+
   const activeConv = [...conversations.value].reverse().find((conv) => conv?.status === 'streaming')
   const messages = Array.isArray(activeConv?.messages) ? activeConv.messages : []
   const toolCalls = messages.flatMap((msg) => (Array.isArray(msg?.tool_calls) ? msg.tool_calls : []))

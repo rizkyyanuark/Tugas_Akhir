@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onMounted, onUpdated } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUpdated, inject } from 'vue'
 import BaseToolCall from '../BaseToolCall.vue'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import GraphCanvas from '@/components/GraphCanvas.vue'
@@ -52,15 +52,48 @@ const props = defineProps({
   }
 })
 
+const agentStateFiles = inject('agentStateFiles', ref({}))
+
+const getRealContent = (content) => {
+  if (typeof content === 'string' && content.includes('[ToolResultOffloaded]')) {
+    const match = content.match(/File path:\s*([^\s\n\r]+)/)
+    if (match && match[1]) {
+      const filePath = match[1].trim()
+      const fileData = agentStateFiles.value[filePath]
+      if (fileData) {
+        const rawText = Array.isArray(fileData.content)
+          ? fileData.content.join('')
+          : (fileData.content || '')
+        
+        const braceIndex = rawText.indexOf('{')
+        const bracketIndex = rawText.indexOf('[')
+        let startIndex = -1
+        if (braceIndex !== -1 && bracketIndex !== -1) {
+          startIndex = Math.min(braceIndex, bracketIndex)
+        } else {
+          startIndex = braceIndex !== -1 ? braceIndex : bracketIndex
+        }
+        
+        if (startIndex !== -1) {
+          return rawText.substring(startIndex)
+        }
+        return rawText
+      }
+    }
+  }
+  return content
+}
+
 const parseData = (content) => {
-  if (typeof content === 'string') {
+  const realContent = getRealContent(content)
+  if (typeof realContent === 'string') {
     try {
-      return JSON.parse(content)
+      return JSON.parse(realContent)
     } catch {
       return { triples: [] }
     }
   }
-  return content || { triples: [] }
+  return realContent || { triples: [] }
 }
 
 const graphContainer = ref(null)

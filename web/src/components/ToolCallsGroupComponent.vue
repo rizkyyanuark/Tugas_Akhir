@@ -19,6 +19,15 @@
           toolCallsNamesMeta
         }}</span>
         <span class="summary-status-tag" v-if="statusSummary">{{ statusSummary }}</span>
+        <span class="summary-intent-badge" v-if="detectedIntent">
+          📍 Intent: {{ formatIntent(detectedIntent) }}
+        </span>
+        <span class="summary-sub-intents-badge" v-if="subIntents && subIntents.length">
+          📊 Sub: {{ subIntents.join(', ') }}
+        </span>
+        <span class="summary-entities-summary" v-if="entitiesSummary" :title="entitiesSummary">
+          {{ entitiesSummary }}
+        </span>
       </span>
       <span class="summary-trailing">
         <component :is="areToolCallsExpanded ? ChevronDown : ChevronRight" size="14" />
@@ -38,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, inject } from 'vue'
 import { ChevronDown, ChevronRight, Wrench } from 'lucide-vue-next'
 import { ToolCallRenderer } from '@/components/ToolCallingResult'
 import { getToolCallId, normalizeToolCalls } from '@/components/ToolCallingResult/toolRegistry'
@@ -51,8 +60,75 @@ const props = defineProps({
   isActive: {
     type: Boolean,
     default: false
+  },
+  conv: {
+    type: Object,
+    default: null
   }
 })
+
+const liveMetadata = inject('routingMetadata', ref({}))
+
+const detectedIntent = computed(() => {
+  if (props.conv && Array.isArray(props.conv.messages)) {
+    const aiMsg = props.conv.messages.find((msg) => msg.type === 'ai' || msg.role === 'assistant')
+    if (aiMsg?.extra_metadata?.routing_metadata?.detected_intent) {
+      return aiMsg.extra_metadata.routing_metadata.detected_intent
+    }
+  }
+  return liveMetadata.value?.detected_intent || null
+})
+
+const subIntents = computed(() => {
+  if (props.conv && Array.isArray(props.conv.messages)) {
+    const aiMsg = props.conv.messages.find((msg) => msg.type === 'ai' || msg.role === 'assistant')
+    if (aiMsg?.extra_metadata?.routing_metadata?.sub_intents) {
+      return aiMsg.extra_metadata.routing_metadata.sub_intents
+    }
+  }
+  return liveMetadata.value?.sub_intents || []
+})
+
+const extractedEntities = computed(() => {
+  if (props.conv && Array.isArray(props.conv.messages)) {
+    const aiMsg = props.conv.messages.find((msg) => msg.type === 'ai' || msg.role === 'assistant')
+    if (aiMsg?.extra_metadata?.routing_metadata?.entities) {
+      return aiMsg.extra_metadata.routing_metadata.entities
+    }
+  }
+  return liveMetadata.value?.entities || {}
+})
+
+const entitiesSummary = computed(() => {
+  const ent = extractedEntities.value
+  if (!ent) return ''
+  const summary = []
+  if (Array.isArray(ent.author_names) && ent.author_names.length) {
+    summary.push(`👤 ${ent.author_names.join(', ')}`)
+  }
+  if (ent.department) {
+    summary.push(`🏫 ${ent.department}`)
+  }
+  if (Array.isArray(ent.topics) && ent.topics.length) {
+    const topicsToShow = ent.topics.map(t => t.length > 20 ? t.slice(0, 17) + '...' : t)
+    summary.push(`📚 ${topicsToShow.join(', ')}`)
+  }
+  if (ent.publication_title) {
+    const title = ent.publication_title
+    summary.push(`📄 ${title.length > 25 ? title.slice(0, 22) + '...' : title}`)
+  }
+  return summary.join(' | ')
+})
+
+const formatIntent = (intent) => {
+  if (!intent) return ''
+  const mapping = {
+    graph_search: 'Graph Search',
+    vector_search: 'Vector Search',
+    hybrid_search: 'Hybrid Search'
+  }
+  return mapping[intent] || intent
+}
 
 const normalizedToolCalls = computed(() => normalizeToolCalls(props.toolCalls))
 const areToolCallsExpanded = ref(false)
@@ -172,6 +248,8 @@ const toggleToolCallsExpanded = () => {
     gap: 6px;
     flex: 1;
     font-size: 13px;
+    flex-wrap: wrap;
+    row-gap: 4px;
   }
 
   .summary-title {
@@ -200,6 +278,44 @@ const toggleToolCallsExpanded = () => {
     border-radius: 4px;
     white-space: nowrap;
     font-weight: normal;
+  }
+
+  .summary-intent-badge {
+    margin-left: 8px;
+    font-size: 11px;
+    padding: 1px 6px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--main-600, #2563eb);
+    border: 1px solid rgba(37, 99, 235, 0.15);
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .summary-sub-intents-badge {
+    margin-left: 4px;
+    font-size: 11px;
+    padding: 1px 6px;
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .summary-entities-summary {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--gray-600);
+    background: var(--gray-25);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--gray-100);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
   }
 
   .tool-calls-panel {

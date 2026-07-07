@@ -138,13 +138,13 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
         name="OpenRouter",
         url="https://openrouter.ai/models",
         base_url="https://openrouter.ai/api/v1",
-        default="x-ai/grok-4.1-fast",
+        default="google/gemma-2-9b-it:free",
         env="OPENROUTER_API_KEY",
         models=[
-            "anthropic/claude-opus-4.6",
-            "anthropic/claude-sonnet-4.5",
-            "x-ai/grok-4.1-fast",
-            "x-ai/grok-4",
+            "google/gemma-2-9b-it:free",
+            "meta-llama/llama-3-8b-instruct:free",
+            "qwen/qwen-2-7b-instruct:free",
+            "microsoft/phi-3-medium-128k-instruct:free",
         ],
     ),
     "groq": ChatModelProvider(

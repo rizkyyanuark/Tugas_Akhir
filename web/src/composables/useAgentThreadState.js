@@ -26,7 +26,8 @@ export function useAgentThreadState({
         runLastSeq: '0',
         lastRetryableJobTry: null,
         onGoingConv: createOnGoingConvState(),
-        agentState: null
+        agentState: null,
+        routingStatus: null
       }
     }
     return chatState.threadStates[threadId]

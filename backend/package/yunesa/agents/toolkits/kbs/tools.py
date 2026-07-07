@@ -714,6 +714,7 @@ async def _build_academic_graphrag_context(
     include_graph: bool,
     kwargs: dict[str, Any],
     trace_metadata: dict[str, Any] | None = None,
+    routing_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Retrieve AcademicRAG-style context from Milvus/Zilliz and Neo4j/AuraDB."""
     from yunesa.knowledge.graphrag import AcademicGraphRAGService
@@ -731,6 +732,7 @@ async def _build_academic_graphrag_context(
         graph_max_nodes=int(kwargs.get("graph_max_nodes", 80)),
         graph_name=kwargs.get("graph_name"),
         trace_metadata=trace_metadata,
+        routing_metadata=routing_metadata,
     )
 
 
@@ -765,6 +767,10 @@ async def query_kb(
     original_query_text = _original_user_query(runtime, query_text)
     trace_metadata = _runtime_trace_metadata(runtime, tool_call_id)
 
+    # Get routing metadata from runtime state
+    state = getattr(runtime, "state", None) if runtime is not None else None
+    routing_metadata = state.get("routing_metadata") if isinstance(state, dict) else {}
+
     # Get all retrievers.
     retrievers = knowledge_base.get_retrievers()
 
@@ -798,6 +804,7 @@ async def query_kb(
             ),
             kwargs={},
             trace_metadata=trace_metadata,
+            routing_metadata=routing_metadata,
         )
         return _academic_tool_response(
             payload=payload,
@@ -866,6 +873,7 @@ async def query_kb(
                 ),
                 kwargs=kwargs,
                 trace_metadata=trace_metadata,
+                routing_metadata=routing_metadata,
             )
             return _academic_tool_response(
                 payload=payload,
@@ -885,9 +893,26 @@ async def query_kb(
 def get_common_kb_tools() -> list:
     """Get common knowledge base tool list.
 
-    Returns three common tools:
+    Returns three common tools and specialized academic graph tools:
     - list_kbs: list user-accessible knowledge bases
     - get_mindmap: get mindmap for a specified knowledge base
     - query_kb: retrieve from a specified knowledge base
     """
-    return [list_kbs, get_mindmap, query_kb]
+    from .academic_kg_tools import (
+        search_lecturer_publications,
+        search_lecturers_by_topic,
+        search_topic_statistics,
+        search_collaboration_network,
+        search_papers_by_topic,
+    )
+    return [
+        list_kbs,
+        get_mindmap,
+        query_kb,
+        search_lecturer_publications,
+        search_lecturers_by_topic,
+        search_topic_statistics,
+        search_collaboration_network,
+        search_papers_by_topic,
+    ]
+

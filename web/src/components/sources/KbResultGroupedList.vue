@@ -191,6 +191,10 @@ const graphRef = ref(null)
 const graphController = reactive(useGraph(graphRef))
 const activeTab = ref('visual')
 
+const graphTriples = computed(() =>
+  Array.isArray(props.graph?.triples) ? props.graph.triples.filter((item) => item) : []
+)
+
 const computedGraph = computed(() => {
   const hasNodesOrEdges = (props.graph?.nodes?.length > 0) || (props.graph?.edges?.length > 0)
   if (hasNodesOrEdges) {
@@ -325,10 +329,6 @@ const academicCounts = computed(() => ({
     ? props.academicRetrieval.relationships.length
     : 0
 }))
-
-const graphTriples = computed(() =>
-  Array.isArray(props.graph?.triples) ? props.graph.triples.filter((item) => item) : []
-)
 
 const graphCounts = computed(() => ({
   nodes: computedGraph.value.nodes.length,

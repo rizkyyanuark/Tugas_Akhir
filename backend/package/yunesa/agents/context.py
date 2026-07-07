@@ -4,7 +4,7 @@ import uuid
 from dataclasses import MISSING, dataclass, field, fields
 from typing import Annotated, get_args, get_origin
 
-from yunesa import config as sys_config
+from yunesa.config import config as sys_config
 
 
 @dataclass(kw_only=True)

@@ -144,64 +144,17 @@ class AcademicGraphRAGService:
     ) -> dict[str, Any]:
         """Choose an effective retrieval mode for default academic UI queries.
 
-        The public API still exposes the AcademicRAG modes directly. This router
-        only intervenes when callers use the broad default (`mix`). Explicit
-        modes stay untouched so evaluation scripts can compare modes cleanly.
+        LLM router is active, so we disable heuristic overrides.
         """
         normalized_mode = cls.normalize_mode(requested_mode, include_graph=include_graph)
-        if normalized_mode not in {"hybrid"}:
-            return {
-                "requested_mode": normalized_mode,
-                "effective_mode": normalized_mode,
-                "auto_routed": False,
-                "reason": "explicit_mode",
-                "intents": AcademicQueryPlanner.classify_intents(query_text),
-            }
-
-        intents = AcademicQueryPlanner.classify_intents(query_text)
-        text = str(query_text or "").casefold()
-        reasons: list[str] = []
-        effective_mode = normalized_mode
-
-        if cls._is_topic_frequency_query(query_text):
-            effective_mode = "subgraph"
-            reasons.append("topic_frequency_structured_query")
-        elif cls._is_collaboration_query(query_text):
-            effective_mode = "subgraph"
-            reasons.append("collaboration_structured_query")
-        elif cls._is_author_publication_query(query_text):
-            effective_mode = "subgraph"
-            reasons.append("author_publication_structured_query")
-        elif cls._has_specific_publication_reference(query_text):
-            effective_mode = "subgraph"
-            reasons.append("publication_detail_structured_query")
-        elif cls._is_lecturer_topic_query(query_text):
-            effective_mode = "subgraph"
-            reasons.append("lecturer_topic_structured_query")
-        elif any(
-            marker in text
-            for marker in (
-                "terhubung",
-                "hubungan",
-                "relasi",
-                "path",
-                "jalur",
-                "multi-hop",
-                "multihop",
-                "antara dosen",
-                "dosen dan",
-            )
-        ):
-            effective_mode = "hybrid"
-            reasons.append("multi_hop_or_relationship_query")
-
         return {
             "requested_mode": normalized_mode,
-            "effective_mode": effective_mode,
-            "auto_routed": effective_mode != normalized_mode,
-            "reason": ",".join(reasons) if reasons else "default_hybrid",
-            "intents": intents,
+            "effective_mode": normalized_mode,
+            "auto_routed": False,
+            "reason": "llm_router_active",
+            "intents": AcademicQueryPlanner.classify_intents(query_text),
         }
+
 
     @staticmethod
     def storage_layer() -> dict[str, Any]:
@@ -671,6 +624,8 @@ class AcademicGraphRAGService:
         values: list[str] = []
         if "s2 informatika" in text:
             values.extend(["s2 informatika", "informatika"])
+        elif "infokom" in text:
+            values.extend(["infokom", "teknik informatika", "sistem informasi", "pendidikan teknologi informasi"])
         elif "informatika" in text:
             values.append("informatika")
         return cls._dedupe_terms(values, max_terms=4)
@@ -1036,15 +991,24 @@ class AcademicGraphRAGService:
         *,
         graph_name: str | None = None,
         limit: int = 40,
+        skip_intent_check: bool = False,
+        extracted_entities: dict[str, Any] | None = None,
+        sub_intents: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        if not cls._is_collaboration_query(query_text):
-            return []
-
-        lecturer_candidates = cls._extract_author_name_candidates(query_text)
-        if not lecturer_candidates:
-            return []
-
-        topic_terms = cls._topic_terms_for_neo4j(query_text)
+        if extracted_entities is not None:
+            if "collaboration" not in (sub_intents or []):
+                return []
+            lecturer_candidates = extracted_entities.get("author_names") or []
+            if not lecturer_candidates:
+                return []
+            topic_terms = extracted_entities.get("topics") or []
+        else:
+            if not skip_intent_check and not cls._is_collaboration_query(query_text):
+                return []
+            lecturer_candidates = cls._extract_author_name_candidates(query_text)
+            if not lecturer_candidates:
+                return []
+            topic_terms = cls._topic_terms_for_neo4j(query_text)
 
         try:
             from yunesa import graph_base
@@ -1147,8 +1111,11 @@ class AcademicGraphRAGService:
         *,
         graph_name: str | None = None,
         limit: int = 60,
+        skip_intent_check: bool = False,
+        extracted_entities: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        if not cls._is_author_publication_query(query_text):
+        if not skip_intent_check and not cls._is_author_publication_query(query_text):
             return []
 
         author_candidates = cls._extract_author_name_candidates(query_text)
@@ -1229,6 +1196,8 @@ class AcademicGraphRAGService:
         *,
         graph_name: str | None = None,
         limit: int = 12,
+        extracted_entities: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> list[dict[str, Any]]:
         title_candidates = cls._extract_publication_title_candidates(query_text)
         if not title_candidates:
@@ -1309,8 +1278,11 @@ class AcademicGraphRAGService:
         *,
         graph_name: str | None = None,
         limit: int = 15,
+        skip_intent_check: bool = False,
+        extracted_entities: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        if not cls._is_topic_frequency_query(query_text):
+        if not skip_intent_check and not cls._is_topic_frequency_query(query_text):
             return []
 
         try:
@@ -1364,15 +1336,25 @@ class AcademicGraphRAGService:
         *,
         graph_name: str | None = None,
         limit: int = 40,
+        skip_intent_check: bool = False,
+        extracted_entities: dict[str, Any] | None = None,
+        sub_intents: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        if not cls._is_lecturer_topic_query(query_text):
-            return []
-
-        topic_terms = cls._topic_terms_for_neo4j(query_text)
-        if not topic_terms:
-            return []
-
-        department_terms = cls._department_terms(query_text)
+        if extracted_entities is not None:
+            if "lecturer_topic" not in (sub_intents or []):
+                return []
+            topic_terms = extracted_entities.get("topics") or []
+            if not topic_terms:
+                return []
+            dept = extracted_entities.get("department")
+            department_terms = [dept] if dept else []
+        else:
+            if not skip_intent_check and not cls._is_lecturer_topic_query(query_text):
+                return []
+            topic_terms = cls._topic_terms_for_neo4j(query_text)
+            if not topic_terms:
+                return []
+            department_terms = cls._department_terms(query_text)
         min_match_count = min(2, len(topic_terms))
 
         try:
@@ -1439,6 +1421,9 @@ class AcademicGraphRAGService:
                     coalesce(lecturer.name, '') + ' ' +
                     coalesce(lecturer.nama_dosen, '') + ' ' +
                     coalesce(lecturer.nama_norm, '') + ' ' +
+                    coalesce(lecturer.prodi, '') + ' ' +
+                    coalesce(lecturer.jurusan, '') + ' ' +
+                    coalesce(lecturer.fakultas, '') + ' ' +
                     reduce(s = '', a IN affiliations | s + ' ' + coalesce(a.label, a.name, a.id, ''))
                   ) AS lecturer_text
                 WHERE size($department_terms) = 0
@@ -1512,6 +1497,111 @@ class AcademicGraphRAGService:
             return []
 
     @classmethod
+    async def query_papers_by_topic(
+        cls,
+        query_text: str,
+        *,
+        graph_name: str | None = None,
+        limit: int = 40,
+        start_year: int | None = None,
+        end_year: int | None = None,
+        skip_intent_check: bool = False,
+    ) -> list[dict[str, Any]]:
+        topic_terms = cls._topic_terms_for_neo4j(query_text)
+        if not topic_terms:
+            return []
+
+        try:
+            from yunesa import graph_base
+
+            if hasattr(graph_base, "start") and not graph_base.is_running():
+                graph_base.start()
+            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
+                return []
+
+            resolved_graph_name = cls._academic_graph_name(graph_name)
+            
+            cypher = """
+                MATCH (paper:Publication)
+                WHERE paper.graph_name = $graph_name
+                  AND (
+                    any(term IN $topic_terms WHERE toLower(coalesce(paper.title, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.label, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.abstract, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.tldr, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.keywords, '')) CONTAINS toLower(term))
+                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.authors, '')) CONTAINS toLower(term))
+                    OR EXISTS {
+                        MATCH (paper)-[:HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN]->(concept)
+                        WHERE any(term IN $topic_terms WHERE toLower(coalesce(concept.label, '')) CONTAINS toLower(term) OR toLower(coalesce(concept.name, '')) CONTAINS toLower(term))
+                    }
+                  )
+            """
+            
+            if start_year is not None:
+                cypher += "\n                  AND toInteger(toString(coalesce(paper.year, '0'))) >= $start_year"
+            if end_year is not None:
+                cypher += "\n                  AND toInteger(toString(coalesce(paper.year, '0'))) <= $end_year"
+                
+            cypher += """
+                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(coauthor:Lecturer)
+                WHERE coauthor.graph_name = $graph_name
+                WITH paper,
+                     collect(DISTINCT coalesce(
+                       coauthor.label,
+                       coauthor.nama_norm,
+                       coauthor.nama_dosen,
+                       coauthor.name
+                     )) AS connected_authors,
+                     [
+                       term IN $topic_terms
+                       WHERE toLower(coalesce(paper.title, '')) CONTAINS toLower(term)
+                          OR toLower(coalesce(paper.label, '')) CONTAINS toLower(term)
+                          OR toLower(coalesce(paper.abstract, '')) CONTAINS toLower(term)
+                     ] AS matched_terms
+                RETURN
+                  paper.paper_id AS paper_id,
+                  coalesce(paper.title, paper.label, paper.name) AS title,
+                  paper.year AS year,
+                  CASE
+                    WHEN size(connected_authors) > 0 THEN connected_authors
+                    ELSE paper.authors
+                  END AS authors,
+                  paper.doi AS doi,
+                  paper.venue AS venue,
+                  paper.tldr AS tldr,
+                  paper.abstract AS abstract,
+                  paper.link AS link,
+                  matched_terms AS matched_terms,
+                  size(matched_terms) AS score
+                ORDER BY score DESC, toInteger(toString(coalesce(paper.year, '0'))) DESC, title ASC
+                LIMIT $limit
+            """
+
+            def run_query() -> list[dict[str, Any]]:
+                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
+                    params = {
+                        "graph_name": resolved_graph_name,
+                        "topic_terms": topic_terms,
+                        "limit": limit,
+                    }
+                    if start_year is not None:
+                        params["start_year"] = int(start_year)
+                    if end_year is not None:
+                        params["end_year"] = int(end_year)
+                        
+                    rows = session.run(cypher, **params)
+                    return [dict(row) for row in rows]
+
+            return await asyncio.to_thread(run_query)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                f"Academic GraphRAG paper-topic query failed: {type(exc).__name__}: {exc}"
+            )
+            return []
+
+    @classmethod
+
     def _content_keyword_terms(
         cls,
         rows: list[dict[str, Any]] | None,
@@ -3143,6 +3233,7 @@ class AcademicGraphRAGService:
         graph_max_nodes: int = 80,
         graph_name: str | None = None,
         trace_metadata: dict[str, Any] | None = None,
+        routing_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         started_at = time.perf_counter()
         intent_query = str(original_query_text or query_text).strip()
@@ -3194,53 +3285,122 @@ class AcademicGraphRAGService:
                 if author_publication_enumeration_query
                 else author_publication_context_limit
             )
-            academic = await self.query_academic_indexes(
-                semantic_query,
-                retrieval_mode=mode,
-                graph_name=resolved_graph_name,
-                top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_TOP_K", "8")),
-                keyword_top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_KEYWORD_TOP_K", "8")),
-            )
-            academic = dict(academic or {})
-            academic["route_decision"] = route_decision
-            author_publications_raw = await self.query_author_publications(
-                intent_query,
-                graph_name=resolved_graph_name,
-                limit=author_publication_window + 1,
-            )
-            author_publications_capped = len(author_publications_raw) > author_publication_window
-            author_publications = author_publications_raw[:author_publication_window]
-            academic["author_publications"] = author_publications
-            academic.setdefault("structured_counts", {})["author_publications"] = {
-                "returned": len(author_publications),
-                "limit": author_publication_window,
-                "complete": not author_publications_capped,
-                "enumeration_query": author_publication_enumeration_query,
-            }
-            publication_details = await self.query_publication_details(
-                intent_query,
-                graph_name=resolved_graph_name,
-                limit=int(os.getenv("YUNESA_PUBLICATION_DETAIL_QUERY_LIMIT", "12")),
-            )
-            academic["publication_details"] = publication_details
-            lecturer_topic_publications = await self.query_lecturer_topic_publications(
-                intent_query,
-                graph_name=resolved_graph_name,
-                limit=int(os.getenv("YUNESA_LECTURER_TOPIC_QUERY_LIMIT", "60")),
-            )
-            academic["lecturer_topic_publications"] = lecturer_topic_publications
-            topic_frequencies = await self.query_topic_frequencies(
-                intent_query,
-                graph_name=resolved_graph_name,
-                limit=int(os.getenv("YUNESA_TOPIC_FREQUENCY_QUERY_LIMIT", "15")),
-            )
-            academic["topic_frequencies"] = topic_frequencies
-            collaborations = await self.query_collaborations(
-                intent_query,
-                graph_name=resolved_graph_name,
-                limit=int(os.getenv("YUNESA_COLLABORATION_QUERY_LIMIT", "40")),
-            )
-            academic["collaborations"] = collaborations
+
+            # Extract entities and sub-intents from routing_metadata
+            routing_metadata = routing_metadata or {}
+            extracted_entities = routing_metadata.get("entities")
+            sub_intents = routing_metadata.get("sub_intents") or []
+
+            # Graceful fallback: skip structured queries if intent is vector_search
+            # or if routing_metadata is empty/lacks valid entities.
+            skip_structured_queries = False
+            if routing_metadata:
+                detected_intent = routing_metadata.get("detected_intent", "hybrid_search")
+                if detected_intent == "vector_search":
+                    skip_structured_queries = True
+                elif not extracted_entities or (
+                    not extracted_entities.get("author_names") and
+                    not extracted_entities.get("topics") and
+                    not extracted_entities.get("publication_title")
+                ):
+                    skip_structured_queries = True
+
+            if skip_structured_queries:
+                mode = "vector"
+
+            if not skip_structured_queries:
+                # Run all queries in parallel using asyncio.gather to reduce latency
+                (
+                    academic_raw,
+                    author_publications_raw,
+                    publication_details,
+                    lecturer_topic_publications,
+                    topic_frequencies,
+                    collaborations,
+                ) = await asyncio.gather(
+                    self.query_academic_indexes(
+                        semantic_query,
+                        retrieval_mode=mode,
+                        graph_name=resolved_graph_name,
+                        top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_TOP_K", "8")),
+                        keyword_top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_KEYWORD_TOP_K", "8")),
+                    ),
+                    self.query_author_publications(
+                        intent_query,
+                        graph_name=resolved_graph_name,
+                        limit=author_publication_window + 1,
+                        extracted_entities=extracted_entities,
+                    ),
+                    self.query_publication_details(
+                        intent_query,
+                        graph_name=resolved_graph_name,
+                        limit=int(os.getenv("YUNESA_PUBLICATION_DETAIL_QUERY_LIMIT", "12")),
+                        extracted_entities=extracted_entities,
+                    ),
+                    self.query_lecturer_topic_publications(
+                        intent_query,
+                        graph_name=resolved_graph_name,
+                        limit=int(os.getenv("YUNESA_LECTURER_TOP_QUERY_LIMIT", "60")),
+                        extracted_entities=extracted_entities,
+                        sub_intents=sub_intents,
+                    ),
+                    self.query_topic_frequencies(
+                        intent_query,
+                        graph_name=resolved_graph_name,
+                        limit=int(os.getenv("YUNESA_TOPIC_FREQUENCY_QUERY_LIMIT", "15")),
+                        extracted_entities=extracted_entities,
+                    ),
+                    self.query_collaborations(
+                        intent_query,
+                        graph_name=resolved_graph_name,
+                        limit=int(os.getenv("YUNESA_COLLABORATION_QUERY_LIMIT", "40")),
+                        extracted_entities=extracted_entities,
+                        sub_intents=sub_intents,
+                    ),
+                )
+                academic = dict(academic_raw or {})
+                academic["route_decision"] = route_decision
+                author_publications_capped = len(author_publications_raw) > author_publication_window
+                author_publications = author_publications_raw[:author_publication_window]
+                academic["author_publications"] = author_publications
+                academic.setdefault("structured_counts", {})["author_publications"] = {
+                    "returned": len(author_publications),
+                    "limit": author_publication_window,
+                    "complete": not author_publications_capped,
+                    "enumeration_query": author_publication_enumeration_query,
+                }
+            else:
+                academic = {
+                    "paper_chunks": [],
+                    "entities": [],
+                    "keyword_decomposition": {},
+                    "route_decision": route_decision,
+                }
+                # Even if structured queries are skipped, we still need to run vector search for vector mode!
+                if mode == "vector":
+                    academic_raw = await self.query_academic_indexes(
+                        semantic_query,
+                        retrieval_mode=mode,
+                        graph_name=resolved_graph_name,
+                        top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_TOP_K", "8")),
+                        keyword_top_k=int(os.getenv("YUNESA_ACADEMIC_GRAPHRAG_KEYWORD_TOP_K", "8")),
+                    )
+                    academic = dict(academic_raw or {})
+                    academic["route_decision"] = route_decision
+                author_publications_raw = []
+                author_publications_capped = False
+                author_publications = []
+                academic["author_publications"] = []
+                academic.setdefault("structured_counts", {})["author_publications"] = {
+                    "returned": 0,
+                    "limit": author_publication_window,
+                    "complete": True,
+                    "enumeration_query": author_publication_enumeration_query,
+                }
+                publication_details = []
+                lecturer_topic_publications = []
+                topic_frequencies = []
+                collaborations = []
             # Only clear individual publication evidence for general collaboration queries.
             # If the query is about a specific publication (title candidate extracted),
             # we must keep the publication details to allow the LLM to verify sole-authorship.
@@ -3308,7 +3468,10 @@ class AcademicGraphRAGService:
                 for row in (academic.get("entities") or [])[:5]
                 if str(row.get("entityName") or "").strip()
             ]
-            graph_terms.extend(self._extract_author_name_candidates(intent_query))
+            if extracted_entities:
+                graph_terms.extend(extracted_entities.get("author_names") or [])
+            else:
+                graph_terms.extend(self._extract_author_name_candidates(intent_query))
             keyword_decomposition = academic.get("keyword_decomposition") or {}
             graph_terms.extend(keyword_decomposition.get("low_level_keywords") or [])
             graph_terms = self._dedupe_terms(graph_terms, max_terms=5)
@@ -3360,6 +3523,25 @@ class AcademicGraphRAGService:
                 grounding=payload["grounding"],
                 mode=academic.get("academicrag_mode") or academic.get("mode") or mode,
             )
+
+            # Sub-intent context injection and logging for unknown intents
+            known_intents = {
+                "collaboration",
+                "lecturer_topic",
+                "author_publications",
+                "topic_frequency",
+                "publication_details",
+            }
+            unknown_intents = [intent for intent in sub_intents if intent not in known_intents]
+            if unknown_intents:
+                logger.info(f"Unknown sub-intents detected: {unknown_intents}")
+                unknown_str = ", ".join(unknown_intents)
+                prefix = (
+                    f"[UNKNOWN SUB-INTENTS DETECTED]\n"
+                    f"- The user query suggests specialized intents: {unknown_str}.\n"
+                    f"- If appropriate, handle these intents in your response.\n\n"
+                )
+                payload["evidence_text"] = prefix + (payload["evidence_text"] or "")
             set_observation_output(
                 span,
                 output=self._context_summary(payload, time.perf_counter() - started_at),

@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject, ref } from 'vue'
 import BaseToolCall from '../BaseToolCall.vue'
 import KbResultGroupedList from '@/components/sources/KbResultGroupedList.vue'
 
@@ -35,6 +35,8 @@ const props = defineProps({
     required: true
   }
 })
+
+const agentStateFiles = inject('agentStateFiles', ref({}))
 
 const args = computed(() => {
   const value = props.toolCall.args || props.toolCall.function?.arguments
@@ -56,15 +58,46 @@ const operationLabel = computed(() => `${toolName.value} Search`)
 const kbName = computed(() => args.value.kb_name || '')
 const queryText = computed(() => args.value.query_text || '')
 
-const parseData = (content) => {
-  if (typeof content === 'string') {
-    try {
-      return JSON.parse(content)
-    } catch {
-      return { rawText: content }
+const getRealContent = (content) => {
+  if (typeof content === 'string' && content.includes('[ToolResultOffloaded]')) {
+    const match = content.match(/File path:\s*([^\s\n\r]+)/)
+    if (match && match[1]) {
+      const filePath = match[1].trim()
+      const fileData = agentStateFiles.value[filePath]
+      if (fileData) {
+        const rawText = Array.isArray(fileData.content)
+          ? fileData.content.join('')
+          : (fileData.content || '')
+        
+        const braceIndex = rawText.indexOf('{')
+        const bracketIndex = rawText.indexOf('[')
+        let startIndex = -1
+        if (braceIndex !== -1 && bracketIndex !== -1) {
+          startIndex = Math.min(braceIndex, bracketIndex)
+        } else {
+          startIndex = braceIndex !== -1 ? braceIndex : bracketIndex
+        }
+        
+        if (startIndex !== -1) {
+          return rawText.substring(startIndex)
+        }
+        return rawText
+      }
     }
   }
-  return content || []
+  return content
+}
+
+const parseData = (content) => {
+  const realContent = getRealContent(content)
+  if (typeof realContent === 'string') {
+    try {
+      return JSON.parse(realContent)
+    } catch {
+      return { rawText: realContent }
+    }
+  }
+  return realContent || []
 }
 
 const extractChunks = (content) => {

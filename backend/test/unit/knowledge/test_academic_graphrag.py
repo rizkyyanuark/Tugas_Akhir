@@ -21,7 +21,7 @@ def test_academic_modes_preserve_reference_semantics() -> None:
     assert AcademicGraphRAGService.normalize_mode("subgraph") == "subgraph"
     assert AcademicGraphRAGService.normalize_mode("global") == "global"
     assert AcademicGraphRAGService.normalize_mode("hybrid") == "hybrid"
-    assert AcademicGraphRAGService.normalize_mode("academic") == "mix"
+    assert AcademicGraphRAGService.normalize_mode("academic") == "hybrid"
 
     assert AcademicGraphRAGService.uses_graph("subgraph")
     assert AcademicGraphRAGService.uses_graph("hybrid")
@@ -38,22 +38,22 @@ def test_default_mix_routes_structured_academic_queries() -> None:
         "Apa saja paper yang ditulis oleh Yuni Yamasari?",
         requested_mode="mix",
     )
-    assert author_route["effective_mode"] == "subgraph"
-    assert author_route["auto_routed"] is True
-    assert author_route["reason"] == "author_publication_structured_query"
+    assert author_route["effective_mode"] == "hybrid"
+    assert author_route["auto_routed"] is False
+    assert author_route["reason"] == "llm_router_active"
 
     lecturer_topic_route = AcademicGraphRAGService.route_retrieval_mode(
         "Dosen S2 Informatika mana yang menulis paper tentang machine learning di bidang pendidikan?",
         requested_mode="mix",
     )
-    assert lecturer_topic_route["effective_mode"] == "subgraph"
+    assert lecturer_topic_route["effective_mode"] == "hybrid"
     assert lecturer_topic_route["intents"]["lecturer_topic_publications"] is True
 
     factual_route = AcademicGraphRAGService.route_retrieval_mode(
         "Paper apa yang membahas retinopati diabetik dengan EfficientNet dan dataset APTOS?",
         requested_mode="mix",
     )
-    assert factual_route["effective_mode"] == "mix"
+    assert factual_route["effective_mode"] == "hybrid"
     assert factual_route["auto_routed"] is False
 
     explicit_vector_route = AcademicGraphRAGService.route_retrieval_mode(
@@ -84,6 +84,8 @@ def test_query_param_maps_yunesa_runtime_modes_to_academicrag_modes() -> None:
     assert vector_param.retrieval_layers()["clues"] is False
     assert vector_param.route_plan()["steps"] == [
         "naive_vector_query",
+        "rrf_fusion",
+        "cross_encoder_rerank",
         "naive_rag_response",
     ]
 
@@ -92,7 +94,7 @@ def test_query_param_maps_yunesa_runtime_modes_to_academicrag_modes() -> None:
         high_level_keywords=["machine learning"],
         low_level_keywords=["Yuni Yamasari"],
     )
-    assert mix_param.mode == "mix"
+    assert mix_param.mode == "hybrid"
     assert mix_param.resolved_kg_mode() == "hybrid"
     assert mix_param.retrieval_layers()["local"] is True
     assert mix_param.retrieval_layers()["global"] is True
@@ -102,7 +104,9 @@ def test_query_param_maps_yunesa_runtime_modes_to_academicrag_modes() -> None:
         "naive_vector_query",
         "subgraph_entity_query",
         "global_relationship_query",
-        "mix_rag_response",
+        "rrf_fusion",
+        "cross_encoder_rerank",
+        "rag_response",
     ]
 
     subgraph_fallback = AcademicQueryParam.from_runtime("subgraph", top_k=5, keyword_top_k=3)
@@ -115,6 +119,8 @@ def test_query_param_maps_yunesa_runtime_modes_to_academicrag_modes() -> None:
         "content_keyword_query",
         "keyword_extraction",
         "global_relationship_query",
+        "rrf_fusion",
+        "cross_encoder_rerank",
         "rag_response",
     ]
 
@@ -272,7 +278,7 @@ def test_mix_mode_batches_embeddings_and_queries_all_academic_layers(monkeypatch
         if collection_name == ACADEMIC_COLLECTIONS["paper_chunks"]:
             return [{"title": "Paper A", "content": "Evidence"}]
         if collection_name == ACADEMIC_COLLECTIONS["entities"]:
-            return [{"entityName": "EfficientNet", "entityType": "Model"}]
+            return [{"entityName": "EfficientNet", "entityType": "Model", "nodeId": "node-1"}]
         if collection_name == ACADEMIC_COLLECTIONS["relationships"]:
             return [{"srcId": "paper-1", "relType": "USES_MODEL", "tgtId": "EfficientNet"}]
         return []
@@ -307,10 +313,10 @@ def test_mix_mode_batches_embeddings_and_queries_all_academic_layers(monkeypatch
     )
 
     assert result["status"] == "ok"
-    assert result["mode"] == "mix"
-    assert result["academicrag_mode"] == "mix"
+    assert result["mode"] == "hybrid"
+    assert result["academicrag_mode"] == "hybrid"
     assert result["kg_mode"] == "hybrid"
-    assert result["route_plan"]["steps"][-1] == "mix_rag_response"
+    assert result["route_plan"]["steps"][-1] == "rag_response"
     assert "subgraph_entity_query" in result["route_plan"]["steps"]
     assert "global_relationship_query" in result["route_plan"]["steps"]
     assert result["paper_chunks"]
@@ -320,7 +326,7 @@ def test_mix_mode_batches_embeddings_and_queries_all_academic_layers(monkeypatch
     assert result["local_query"] != result["global_query"]
     assert result["diagnostics"]["embedding_batches"] == 2
     assert len(embedding_calls) == 2
-    assert {collection for collection, _ in search_calls} == set(ACADEMIC_COLLECTIONS.values())
+    assert {collection for collection, _ in search_calls} == set(ACADEMIC_COLLECTIONS.values()) | {"community_summaries"}
 
 
 def test_mix_mode_uses_entity_ids_for_shortest_path_and_pruning(monkeypatch) -> None:

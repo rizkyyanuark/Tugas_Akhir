@@ -325,7 +325,7 @@ class CoreGraphService:
 
         if depth == 1:
             query_text = f"""
-                MATCH (seed)
+                MATCH (seed:Lecturer|Publication|Concept|Department|Faculty|Institution)
                 WHERE {seed_where}
                 WITH seed, COUNT {{ (seed)--() }} AS degree
                 ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
@@ -361,7 +361,7 @@ class CoreGraphService:
             """
         else:
             query_text = f"""
-                MATCH (seed)
+                MATCH (seed:Lecturer|Publication|Concept|Department|Faculty|Institution)
                 WHERE {seed_where}
                 WITH seed, COUNT {{ (seed)--() }} AS degree
                 ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
@@ -729,7 +729,12 @@ class CoreGraphService:
         self.use_database(kgdb_name)
         def query_fuzzy(tx, kw):
             result = tx.run(
-                "MATCH (n:Entity) WHERE toLower(n.name) CONTAINS toLower($kw) RETURN DISTINCT n.name AS name",
+                """
+                MATCH (n:Entity|KGNode)
+                WHERE (n.label IS NOT NULL AND toLower(n.label) CONTAINS toLower($kw))
+                   OR (n.name IS NOT NULL AND toLower(n.name) CONTAINS toLower($kw))
+                RETURN DISTINCT coalesce(n.label, n.name) AS name
+                """,
                 kw=kw
             )
             return result.values()
@@ -766,10 +771,11 @@ class CoreGraphService:
 
         def query(tx, name, limit):
             query_str = """
-            MATCH (n:Entity {name: $name})
-            OPTIONAL MATCH (n)-[r]-(m:Entity)
+            MATCH (n:Entity|KGNode)
+            WHERE coalesce(n.label, n.name) = $name
+            OPTIONAL MATCH (n)-[r]-(m:Entity|KGNode)
             RETURN
-                {id: elementId(n), name: n.name, properties: properties(n)} as h,
+                {id: elementId(n), name: coalesce(n.label, n.name), properties: properties(n)} as h,
                 {
                     id: elementId(r),
                     type: type(r),
@@ -777,7 +783,7 @@ class CoreGraphService:
                     target_id: elementId(endNode(r)),
                     properties: properties(r)
                 } as r,
-                {id: elementId(m), name: m.name, properties: properties(m)} as t
+                {id: elementId(m), name: coalesce(m.label, m.name), properties: properties(m)} as t
             LIMIT $limit
             """
             results = tx.run(query_str, name=name, limit=limit)
