@@ -12,6 +12,10 @@
 # ══════════════════════════════════════════════════════════════
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
+COPY --from=node:24-slim /usr/local/bin /usr/local/bin
+COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node:24-slim /usr/local/include /usr/local/include
+COPY --from=node:24-slim /usr/local/share /usr/local/share
 
 # -- Working Directory --
 WORKDIR /app
