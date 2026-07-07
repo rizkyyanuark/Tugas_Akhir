@@ -73,7 +73,7 @@ class DeepAgent(BaseAgent):
             model=model,
             trigger=("tokens", 90000),
             trim_tokens_to_summarize=4000,
-            summary_offload_threshold=500,
+            summary_offload_threshold=30000,
             max_retention_ratio=0.5,
         )
 

@@ -232,7 +232,7 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         summary_prompt: str = DEFAULT_SUMMARY_PROMPT,
         trim_tokens_to_summarize: int | None = 4000,
         # Tool-result offload options.
-        summary_offload_threshold: int = 1000,
+        summary_offload_threshold: int = 30000,
         max_retention_ratio: float = 0.6,
         **deprecated_kwargs: Any,
     ) -> None:
@@ -723,7 +723,7 @@ def create_summary_offload_middleware(
     *,
     trigger: ContextSize | list[ContextSize] | None = None,
     keep: ContextSize = ("messages", _DEFAULT_MESSAGES_TO_KEEP),
-    summary_offload_threshold: int = 1000,
+    summary_offload_threshold: int = 30000,
     max_retention_ratio: float = 0.6,
 ) -> SummaryOffloadMiddleware:
     """Convenience function to create a SummaryOffloadMiddleware instance."""

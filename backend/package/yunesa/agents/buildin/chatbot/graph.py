@@ -30,7 +30,7 @@ async def _build_middlewares(context):
         model=load_chat_model(fully_specified_name=context.model),
         trigger=("tokens", getattr(context, "summary_threshold", 100) * 1024),
         trim_tokens_to_summarize=4000,
-        summary_offload_threshold=500,
+        summary_offload_threshold=30000,
         max_retention_ratio=0.5,
     )
 
