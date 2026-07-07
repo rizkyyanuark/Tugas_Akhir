@@ -26,11 +26,31 @@ def merge_citations(existing: list[dict] | None, new: list[dict] | None) -> list
     return existing + (new or [])
 
 
+def merge_files(existing: dict | None, new: dict | None) -> dict:
+    """Merge files dictionary."""
+    if existing is None:
+        return new or {}
+    if new is None:
+        return existing
+    return {**existing, **new}
+
+
+def merge_routing_metadata(existing: dict | None, new: dict | None) -> dict:
+    """Merge routing metadata dictionary."""
+    if existing is None:
+        return new or {}
+    if new is None:
+        return existing
+    return {**existing, **new}
+
+
 class BaseState(AgentState):
     """Shared state fields for YUNESA agents."""
 
     artifacts: Annotated[list[str], merge_artifacts]
     citations: Annotated[list[dict], merge_citations]
+    files: Annotated[dict, merge_files]
+    routing_metadata: Annotated[dict, merge_routing_metadata]
 
 
 class AgentStatePayload(TypedDict):
@@ -40,3 +60,5 @@ class AgentStatePayload(TypedDict):
     files: dict
     artifacts: list[str]
     citations: list[dict]
+    routing_metadata: dict
+

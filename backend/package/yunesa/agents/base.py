@@ -8,7 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver, aiosqlite
 from langgraph.graph.state import CompiledStateGraph
 
-from yunesa import config as sys_config
+from yunesa.config import config as sys_config
 from yunesa.agents.context import BaseContext
 from yunesa.storage.postgres.manager import pg_manager
 from yunesa.utils import logger

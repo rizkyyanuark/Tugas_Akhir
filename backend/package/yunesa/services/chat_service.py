@@ -68,7 +68,7 @@ def _build_langfuse_run_context(
 def extract_agent_state(values: dict) -> AgentStatePayload:
     """Extract agent state from LangGraph state values."""
     if not isinstance(values, dict):
-        return {"todos": [], "files": {}, "artifacts": []}
+        return {"todos": [], "files": {}, "artifacts": [], "citations": [], "routing_metadata": {}}
 
     # Access directly and trust the state payload structure.
     todos = values.get("todos")
@@ -79,6 +79,7 @@ def extract_agent_state(values: dict) -> AgentStatePayload:
         "files": values.get("files") or {},
         "artifacts": list(artifacts) if artifacts else [],
         "citations": list(citations) if citations else [],
+        "routing_metadata": values.get("routing_metadata") or {},
     }
 
     return result
@@ -147,12 +148,50 @@ async def _save_ai_message(
             )
 
 
-async def _save_tool_message(conv_repo: ConversationRepository, msg_dict: dict) -> None:
+def _de_offload_content(content: str, files_dict: dict) -> str:
+    if not isinstance(content, str) or "[ToolResultOffloaded]" not in content:
+        return content
+
+    import re
+    match = re.search(r"File path:\s*([^\s\n\r]+)", content)
+    if not match:
+        return content
+
+    file_path = match.group(1).strip()
+    file_data = files_dict.get(file_path)
+    if not file_data or "content" not in file_data:
+        return content
+
+    raw_content = file_data["content"]
+    if isinstance(raw_content, list):
+        raw_text = "".join(raw_content)
+    else:
+        raw_text = str(raw_content)
+
+    marker = "========================================"
+    marker_idx = raw_text.find(marker)
+    if marker_idx != -1:
+        content_start = marker_idx + len(marker)
+        while content_start < len(raw_text) and raw_text[content_start] in ("\r", "\n"):
+            content_start += 1
+        return raw_text[content_start:]
+
+    return raw_text
+
+
+async def _save_tool_message(
+    conv_repo: ConversationRepository,
+    msg_dict: dict,
+    files_dict: dict | None = None,
+) -> None:
     tool_call_id = msg_dict.get("tool_call_id")
     content = msg_dict.get("content", "")
 
     if not tool_call_id:
         return
+
+    if files_dict and isinstance(content, str) and "[ToolResultOffloaded]" in content:
+        content = _de_offload_content(content, files_dict)
 
     if isinstance(content, list):
         tool_output = json.dumps(content) if content else ""
@@ -213,9 +252,14 @@ async def save_messages_from_langgraph_state(
     trace_info: dict[str, Any] | None = None,
 ) -> None:
     try:
-        messages = await _get_langgraph_messages(agent_instance, config_dict)
-        if messages is None:
+        graph = await agent_instance.get_graph()
+        state = await graph.aget_state(config_dict)
+        if not state or not state.values:
             return
+
+        messages = state.values.get("messages", [])
+        files_dict = state.values.get("files") or {}
+        routing_metadata = state.values.get("routing_metadata") or {}
 
         existing_ids = await _get_existing_message_ids(conv_repo, thread_id)
 
@@ -227,9 +271,13 @@ async def save_messages_from_langgraph_state(
                 continue
 
             if msg_type == "ai":
+                if routing_metadata:
+                    if "extra_metadata" not in msg_dict or msg_dict["extra_metadata"] is None:
+                        msg_dict["extra_metadata"] = {}
+                    msg_dict["extra_metadata"]["routing_metadata"] = routing_metadata
                 await _save_ai_message(conv_repo, thread_id, msg_dict, trace_info=trace_info)
             elif msg_type == "tool":
-                await _save_tool_message(conv_repo, msg_dict)
+                await _save_tool_message(conv_repo, msg_dict, files_dict=files_dict)
 
     except Exception as e:
         logger.error(f"Error saving messages from LangGraph state: {e}")
@@ -699,8 +747,11 @@ async def stream_agent_chat(
         )
         return
 
-    messages = [human_message]
     agent_config = (config_item.config_json or {}).get("context", {})
+    messages = [human_message]
+
+    if agent_config.get("subagents_model"):
+        yield make_chunk(status="routing", message="🔍 Menganalisis intent & mengekstrak entitas...", meta=meta)
 
     if not thread_id:
         thread_id = str(uuid.uuid4())

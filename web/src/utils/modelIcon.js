@@ -9,6 +9,8 @@ import openrouterIcon from '@/assets/providers/openrouter.svg'
 import defaultIcon from '@/assets/providers/default.png'
 import modelscopeIcon from '@/assets/providers/modelscope-color.svg'
 import minimaxIcon from '@/assets/providers/minimax-color.svg'
+import groqIcon from '@/assets/providers/groq.svg'
+import geminiIcon from '@/assets/providers/gemini.svg'
 
 export const modelIcons = {
   openai: openaiIcon,
@@ -21,5 +23,7 @@ export const modelIcons = {
   openrouter: openrouterIcon,
   modelscope: modelscopeIcon,
   minimax: minimaxIcon,
+  groq: groqIcon,
+  gemini: geminiIcon,
   default: defaultIcon // Add default icon
 }

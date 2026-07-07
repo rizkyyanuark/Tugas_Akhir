@@ -84,6 +84,7 @@ export function useAgentStreamHandler({
     switch (status) {
       case 'init':
         {
+          threadState.routingStatus = null
           const resolvedRequestId = request_id || threadState.pendingRequestId
           if (resolvedRequestId) {
             threadState.pendingRequestId = resolvedRequestId
@@ -104,7 +105,13 @@ export function useAgentStreamHandler({
         threadState.replyLoadingVisible = true
         return false
 
+      case 'routing':
+        threadState.routingStatus = chunkMessage || chunk.message || '🔍 Menganalisis intent query...'
+        threadState.replyLoadingVisible = true
+        return false
+
       case 'loading':
+        threadState.routingStatus = null
         if (msg.id) {
           if (streamSmoother) {
             streamSmoother.pushChunk(msg, threadId)
@@ -122,6 +129,7 @@ export function useAgentStreamHandler({
         handleChatError({ message: chunkMessage }, 'stream')
         // Stop the loading indicator
         if (threadState) {
+          threadState.routingStatus = null
           threadState.isStreaming = false
           threadState.pendingRequestId = null
           threadState.replyLoadingVisible = false
@@ -137,7 +145,10 @@ export function useAgentStreamHandler({
       case 'ask_user_question_required':
       case 'human_approval_required':
         streamSmoother?.flushThread(threadId)
-        threadState.replyLoadingVisible = false
+        if (threadState) {
+          threadState.routingStatus = null
+          threadState.replyLoadingVisible = false
+        }
         console.log(`${debugPrefix}[approval_required]`, {
           threadId,
           currentAgentId: unref(currentAgentId)
@@ -155,6 +166,9 @@ export function useAgentStreamHandler({
             ? chunk.agent_state.uploads.length
             : 0
         })
+        if (threadState) {
+          threadState.routingStatus = null
+        }
         if (chunk.agent_state) {
           console.log(`${debugPrefix}[agent_state_apply]`, {
             threadId,
@@ -175,6 +189,7 @@ export function useAgentStreamHandler({
       case 'finished':
         // Keep isStreaming active while the visual smoother drains the final buffered tokens.
         if (threadState) {
+          threadState.routingStatus = null
           threadState.pendingRequestId = null
           threadState.replyLoadingVisible = false
           console.log(`${debugPrefix}[finished]`, {
@@ -194,6 +209,7 @@ export function useAgentStreamHandler({
           currentAgentId: unref(currentAgentId)
         })
         if (threadState) {
+          threadState.routingStatus = null
           threadState.isStreaming = false
           threadState.pendingRequestId = null
           threadState.replyLoadingVisible = false

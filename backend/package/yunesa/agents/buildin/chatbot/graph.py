@@ -10,6 +10,7 @@ from yunesa.agents.middlewares import (
     RuntimeConfigMiddleware,
     SummaryOffloadMiddleware,
     TextualToolCallMiddleware,
+    IntentRoutingMiddleware,
 )
 from yunesa.agents.middlewares.knowledge_base_middleware import KnowledgeBaseMiddleware
 from yunesa.agents.middlewares.skills_middleware import SkillsMiddleware
@@ -43,6 +44,7 @@ async def _build_middlewares(context):
     # all middlewares
     middlewares = [
         QueryReformulationMiddleware(),  # Reformulate multi-turn queries
+        IntentRoutingMiddleware(router_model=context.subagents_model),  # Intent Routing Middleware (NEW)
         KnowledgeBaseMiddleware(),  # Knowledge-base tools
         # Apply runtime config (model/tools/MCP/prompt)
         RuntimeConfigMiddleware(extra_tools=all_mcp_tools),
