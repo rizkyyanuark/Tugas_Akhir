@@ -138,13 +138,15 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
         name="OpenRouter",
         url="https://openrouter.ai/models",
         base_url="https://openrouter.ai/api/v1",
-        default="google/gemma-2-9b-it:free",
+        default="google/gemma-4-31b-it:free",
         env="OPENROUTER_API_KEY",
         models=[
-            "google/gemma-2-9b-it:free",
-            "meta-llama/llama-3-8b-instruct:free",
-            "qwen/qwen-2-7b-instruct:free",
-            "microsoft/phi-3-medium-128k-instruct:free",
+            "google/gemma-4-31b-it:free",
+            "google/gemma-4-26b-a4b-it:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen3-coder:free",
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "openai/gpt-oss-120b:free",
         ],
     ),
     "groq": ChatModelProvider(
@@ -194,7 +196,6 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
             "gemini-2.5-flash",
             "gemini-2.5-pro",
             "gemini-2.0-flash",
-            "gemini-2.0-pro-exp-02-05",
         ],
     ),
 }
