@@ -359,6 +359,15 @@ class SummaryOffloadMiddleware(AgentMiddleware):
             messages_to_process, int(retention_limit))
         cutoff_index = system_msg_count + cutoff_relative
 
+        last_human_index = -1
+        for idx in range(len(messages) - 1, -1, -1):
+            msg = messages[idx]
+            if getattr(msg, "type", None) == "human" or getattr(msg, "role", None) == "user":
+                last_human_index = idx
+                break
+        if last_human_index != -1:
+            cutoff_index = min(cutoff_index, last_human_index)
+
         if cutoff_index <= system_msg_count:
             if files_update:
                 return {"files": files_update, "messages": modified_messages}
@@ -433,6 +442,15 @@ class SummaryOffloadMiddleware(AgentMiddleware):
         cutoff_relative = self._find_cutoff_by_token_limit(
             messages_to_process, int(retention_limit))
         cutoff_index = system_msg_count + cutoff_relative
+
+        last_human_index = -1
+        for idx in range(len(messages) - 1, -1, -1):
+            msg = messages[idx]
+            if getattr(msg, "type", None) == "human" or getattr(msg, "role", None) == "user":
+                last_human_index = idx
+                break
+        if last_human_index != -1:
+            cutoff_index = min(cutoff_index, last_human_index)
 
         if cutoff_index <= system_msg_count:
             if files_update:
