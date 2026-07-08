@@ -314,9 +314,9 @@ class CoreGraphService:
             cleaned_search = re.sub(r'[^\w\s]', '', search)
             fts_terms = [t for t in cleaned_search.split() if t]
             if fts_terms:
-                fts_query = " OR ".join(f"*{t}*" for t in fts_terms)
+                fts_query = " OR ".join(f"{t}*" for t in fts_terms)
             else:
-                fts_query = f"*{search}*"
+                fts_query = f"{search}*"
             match_clause = 'CALL db.index.fulltext.queryNodes("kgnode_fts_idx", $fts_query) YIELD node AS seed'
             where_clause = """
                 WHERE ($graph_name IS NULL OR seed.graph_name = $graph_name)
