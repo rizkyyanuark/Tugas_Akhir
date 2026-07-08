@@ -206,9 +206,9 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
 # ============================================================
 
 DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
-    "gemini/text-embedding-004": EmbedModelInfo(
-        model_id="gemini/text-embedding-004",
-        name="text-embedding-004",
+    "gemini/gemini-embedding-001": EmbedModelInfo(
+        model_id="gemini/gemini-embedding-001",
+        name="gemini-embedding-001",
         dimension=768,
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/embeddings",
         api_key="GEMINI_API_KEY",

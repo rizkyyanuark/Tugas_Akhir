@@ -186,7 +186,10 @@ class OtherEmbedding(BaseEmbeddingModel):
         self.headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def build_payload(self, message: list[str] | str) -> dict:
-        return {"model": self.model, "input": message}
+        payload = {"model": self.model, "input": message}
+        if "generativelanguage.googleapis.com" in self.base_url and self.dimension:
+            payload["dimensions"] = self.dimension
+        return payload
 
     def encode(self, message: list[str] | str) -> list[list[float]]:
         payload = self.build_payload(message)
