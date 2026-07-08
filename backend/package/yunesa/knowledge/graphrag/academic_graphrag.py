@@ -210,6 +210,8 @@ class AcademicGraphRAGService:
         uri = os.getenv("MILVUS_URI") or os.getenv("ZILLIZ_URI") or ""
         token = os.getenv("MILVUS_TOKEN") or os.getenv("ZILLIZ_TOKEN") or ""
         db_name = os.getenv("MILVUS_DB_NAME") or os.getenv("ZILLIZ_DB_NAME") or None
+        if db_name and db_name.strip().lower() in {"default", "none", "null"}:
+            db_name = None
         return (
             normalize_milvus_uri(uri),
             token.strip(),
@@ -3104,8 +3106,8 @@ class AcademicGraphRAGService:
         self,
         query_text: str,
         *,
-        max_depth: int = 2,
-        max_nodes: int = 80,
+        max_depth: int = 1,
+        max_nodes: int = 30,
         graph_name: str | None = None,
         seed_terms: list[str] | None = None,
     ) -> dict[str, Any]:
@@ -3141,8 +3143,8 @@ class AcademicGraphRAGService:
         self,
         query_text: str,
         *,
-        max_depth: int = 2,
-        max_nodes: int = 80,
+        max_depth: int = 1,
+        max_nodes: int = 30,
         graph_name: str | None = None,
         seed_terms: list[str] | None = None,
     ) -> dict[str, Any]:
@@ -3170,41 +3172,57 @@ class AcademicGraphRAGService:
                     clean_query = ""
                 terms = [clean_query] if clean_query else []
 
-            graph_results = []
-            for term in terms:
-                res = await asyncio.to_thread(
-                    graph_base.query_subgraph,
-                    keyword=term,
-                    max_depth=max_depth,
-                    max_nodes=max_nodes,
-                    graph_name=graph_name,
+            async def _query_with_timeout(term: str) -> dict[str, Any]:
+                try:
+                    return await asyncio.wait_for(
+                        asyncio.to_thread(
+                            graph_base.query_subgraph,
+                            keyword=term,
+                            max_depth=max_depth,
+                            max_nodes=max_nodes,
+                            graph_name=graph_name,
+                        ),
+                        timeout=15.0
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"Neo4j query timeout for term '{term}' (15s)")
+                    return {"nodes": [], "edges": []}
+                except Exception as e:
+                    logger.warning(f"Neo4j query failed for term '{term}': {e}")
+                    raise
+
+            try:
+                graph_results = await asyncio.gather(
+                    *[_query_with_timeout(term) for term in terms],
+                    return_exceptions=False
                 )
-                graph_results.append(res)
-                
+            except Exception as e:
+                logger.error(f"Circuit breaker triggered: Neo4j failure in batch query: {e}")
+                return {"nodes": [], "edges": [], "triples": [], "status": "error"}
+
             graph = self._merge_graph_results(graph_results, max_nodes=max_nodes)
             if not graph.get("nodes") and terms != [query_text]:
-                graph = await asyncio.to_thread(
-                    graph_base.query_subgraph,
-                    keyword=query_text,
-                    max_depth=max_depth,
-                    max_nodes=max_nodes,
-                    graph_name=graph_name,
-                )
+                try:
+                    graph = await _query_with_timeout(query_text)
+                except Exception as e:
+                    logger.error(f"Circuit breaker triggered on fallback query: {e}")
+                    return {"nodes": [], "edges": [], "triples": [], "status": "error"}
+
             if not graph.get("nodes"):
-                fallback_results = []
-                for term in self._fallback_graph_terms(query_text):
-                    res = await asyncio.to_thread(
-                        graph_base.query_subgraph,
-                        keyword=term,
-                        max_depth=max_depth,
-                        max_nodes=max_nodes,
-                        graph_name=graph_name,
-                    )
-                    fallback_results.append(res)
-                graph = self._merge_graph_results(
-                    fallback_results,
-                    max_nodes=max_nodes,
-                )
+                fallback_terms = self._fallback_graph_terms(query_text)
+                if fallback_terms:
+                    try:
+                        fallback_results = await asyncio.gather(
+                            *[_query_with_timeout(term) for term in fallback_terms],
+                            return_exceptions=False
+                        )
+                        graph = self._merge_graph_results(
+                            fallback_results,
+                            max_nodes=max_nodes,
+                        )
+                    except Exception as e:
+                        logger.error(f"Circuit breaker triggered on fallback terms: {e}")
+                        return {"nodes": [], "edges": [], "triples": [], "status": "error"}
 
             graph["triples"] = self._triples_from_graph(graph)
             graph["status"] = "ok"

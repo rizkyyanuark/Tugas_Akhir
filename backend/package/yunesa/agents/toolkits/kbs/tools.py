@@ -656,6 +656,7 @@ def _academic_tool_response(
         "kb_name": kb_name,
         "retrieval_mode": retrieval_mode,
         "summary": payload.get("evidence_text") or "",
+        "chunks": payload.get("chunks") or [],
         "answer_hints": answer_hints,
         "grounding": payload.get("grounding", {}),
         "academic_retrieval": llm_academic_retrieval,

@@ -55,6 +55,8 @@ class AcademicDashboardService:
         uri = os.getenv("MILVUS_URI") or os.getenv("ZILLIZ_URI") or ""
         token = os.getenv("MILVUS_TOKEN") or os.getenv("ZILLIZ_TOKEN") or ""
         db_name = os.getenv("MILVUS_DB_NAME") or os.getenv("ZILLIZ_DB_NAME") or None
+        if db_name and db_name.strip().lower() in {"default", "none", "null"}:
+            db_name = None
         return (
             normalize_milvus_uri(uri),
             token.strip(),
