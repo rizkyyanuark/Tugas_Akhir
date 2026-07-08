@@ -21,13 +21,12 @@ class IntentRoutingMiddleware(AgentMiddleware):
     Saves the analyzed payload into the state's routing_metadata.
     """
 
-    _cache: dict[str, tuple[dict[str, Any], float]] = {}  # Class-level cache: {query_hash: (analysis_dict, timestamp)}
-
     def __init__(self, router_model: str | None = None, cache_ttl: int = 300):
         super().__init__()
         self.router_model_name = router_model
         self.cache_ttl = cache_ttl
         self._router_model = None
+        self._cache: dict[str, tuple[dict[str, Any], float]] = {}  # Instance-level cache
         logger.info(f"Initialized IntentRoutingMiddleware with router model: {self.router_model_name}")
 
     def _get_router_model(self, fallback_model):

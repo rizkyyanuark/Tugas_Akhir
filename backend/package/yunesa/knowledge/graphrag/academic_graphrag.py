@@ -22,6 +22,10 @@ from yunesa.utils import logger
 from .base import BaseGraphStorage, BaseVectorStorage
 from .query_planner import AcademicQueryParam, AcademicQueryPlanner
 from .storage import MilvusVectorStorage, Neo4jGraphStorage, normalize_milvus_uri
+from .heuristics import AcademicHeuristics
+from .normalizers import AcademicNormalizers, _clip_text, _format_values
+from .neo4j_queries import AcademicNeo4jQueries
+from .evidence import AcademicEvidence
 from .reranker import rerank_documents
 from .fusion import (
     reciprocal_rank_fusion,
@@ -164,7 +168,7 @@ class AcademicGraphRAGService:
                 "stores": ["papers", "lecturers", "paper_lecturers"],
             },
             "vector": {
-                "backend": "zilliz_milvus",
+                "backend": "milvus_self_hosted",
                 "purpose": "semantic, BM25, and hybrid retrieval over text chunks",
                 "fields": [
                     "content",
@@ -177,7 +181,7 @@ class AcademicGraphRAGService:
                 ],
             },
             "graph": {
-                "backend": "neo4j_aura",
+                "backend": "neo4j_self_hosted",
                 "purpose": "structured academic ontology traversal",
                 "node_types": ACADEMIC_NODE_TYPES,
                 "relation_types": ACADEMIC_RELATION_TYPES,
@@ -304,16 +308,7 @@ class AcademicGraphRAGService:
 
     @staticmethod
     def _node_label(node: dict[str, Any]) -> str:
-        props = node.get("properties") if isinstance(node.get("properties"), dict) else {}
-        return str(
-            node.get("label")
-            or node.get("name")
-            or node.get("title")
-            or props.get("label")
-            or props.get("name")
-            or props.get("title")
-            or ""
-        ).strip()
+        return AcademicNormalizers._node_label(node)
 
     @classmethod
     def _publication_nodes_from_graph(
@@ -322,381 +317,51 @@ class AcademicGraphRAGService:
         *,
         max_nodes: int = 8,
     ) -> list[dict[str, Any]]:
-        publications: list[dict[str, Any]] = []
-        seen: set[str] = set()
-        for node in graph.get("nodes", []) or []:
-            labels = {str(label) for label in (node.get("labels") or [])}
-            props = node.get("properties") if isinstance(node.get("properties"), dict) else {}
-            node_type = str(node.get("node_type") or props.get("node_type") or node.get("type") or "")
-            if "Publication" not in labels and node_type != "Publication":
-                continue
-            title = str(
-                node.get("title")
-                or node.get("label")
-                or node.get("name")
-                or props.get("title")
-                or props.get("label")
-                or props.get("name")
-                or ""
-            ).strip()
-            key = str(node.get("id") or props.get("id") or props.get("paper_id") or title).casefold()
-            if not title or key in seen:
-                continue
-            seen.add(key)
-            publications.append(
-                {
-                    "title": title,
-                    "year": node.get("year") or props.get("year"),
-                    "authors": node.get("authors") or props.get("authors"),
-                    "doi": node.get("doi") or props.get("doi"),
-                    "venue": node.get("venue") or props.get("venue"),
-                    "tldr": node.get("tldr") or props.get("tldr"),
-                    "abstract": node.get("abstract") or props.get("abstract"),
-                    "paper_id": node.get("paper_id") or props.get("paper_id"),
-                    "source": "neo4j_graph_publication",
-                }
-            )
-            if len(publications) >= max_nodes:
-                break
-        return publications
+        return AcademicNormalizers._publication_nodes_from_graph(graph, max_nodes=max_nodes)
 
     @classmethod
     def _is_author_publication_query(cls, query_text: str) -> bool:
-        terms = set(cls._query_terms(query_text, max_terms=24))
-        text = str(query_text or "").casefold()
-        query_markers = (
-            "paper",
-            "papers",
-            "penelitian",
-            "publikasi",
-            "publication",
-            "publications",
-            "ditulis",
-            "menulis",
-            "penulis",
-            "author",
-            "authors",
-        )
-        has_marker = bool(terms & cls.AUTHOR_PUBLICATION_QUERY_MARKERS) or any(
-            marker in text for marker in query_markers
-        )
-        has_person_hint = bool(
-            re.search(r"\b[A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)+", query_text or "")
-            or cls._extract_author_name_candidates(query_text)
-        )
-        return has_marker and has_person_hint
+        return AcademicHeuristics._is_author_publication_query(query_text)
 
     @classmethod
     def _is_author_publication_enumeration_query(cls, query_text: str) -> bool:
-        if not cls._is_author_publication_query(query_text):
-            return False
-
-        text = re.sub(r"\s+", " ", str(query_text or "").casefold()).strip()
-        return any(
-            marker in text
-            for marker in (
-                "apa saja paper",
-                "paper apa saja",
-                "apa saja publikasi",
-                "publikasi apa saja",
-                "apa saja penelitian",
-                "daftar paper",
-                "daftar publikasi",
-                "daftar penelitian",
-                "list paper",
-                "list publikasi",
-                "papers by",
-                "publications by",
-                "papers written by",
-                "publications written by",
-            )
-        )
+        return AcademicHeuristics._is_author_publication_enumeration_query(query_text)
 
     @classmethod
     def _extract_author_name_candidates(cls, query_text: str) -> list[str]:
-        text = re.sub(r"\s+", " ", str(query_text or "")).strip()
-        candidates: list[str] = []
-        for match in re.finditer(
-            r"\b([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){1,4})\b",
-            text,
-        ):
-            value = match.group(1).strip()
-            if value.casefold() in cls.GRAPH_STOPWORDS:
-                continue
-            candidates.append(value)
-
-        # Indonesian queries often mention names in lowercase.
-        lowered = text.casefold()
-        for prefix in ("oleh ", "ditulis oleh ", "paper yang ditulis oleh ", "publikasi "):
-            if prefix in lowered:
-                raw = text[lowered.index(prefix) + len(prefix) :]
-                raw = re.split(
-                    r"[?.!,;()]| pada | tahun | dengan | tentang | yang | dkk\b| et al\b",
-                    raw,
-                    maxsplit=1,
-                    flags=re.IGNORECASE,
-                )[0]
-                if raw.strip():
-                    candidates.append(raw.strip())
-
-        # Suffix matching for lowercase name before collaboration keywords
-        for suffix in (" berkolaborasi", " kolaborasi", " co-author", " coauthor", " kerja sama"):
-            if suffix in lowered:
-                raw = text[: lowered.index(suffix)]
-                words = raw.strip().split()
-                if words:
-                    # Filter out common English academic terms from being part of name candidates
-                    academic_stopwords = {
-                        "using", "linear", "regression", "learning", "classification",
-                        "clustering", "network", "framework", "analysis", "system",
-                        "model", "algorithm", "prediction", "predicting", "performance",
-                        "student", "students", "education", "educational", "based",
-                        "method", "methods", "data", "mining", "validation", "sampling"
-                    }
-                    name_words = []
-                    for word in reversed(words):
-                        if word.lower() in academic_stopwords or word.lower() in cls.GRAPH_STOPWORDS:
-                            break
-                        name_words.insert(0, word)
-
-                    if name_words:
-                        candidates.append(name_words[-1])
-                        if len(name_words) >= 2:
-                            candidates.append(" ".join(name_words[-2:]))
-                        if len(name_words) >= 3:
-                            candidates.append(" ".join(name_words[-3:]))
-
-        # Prefix matching for lowercase name after collaboration keywords
-        for prefix in ("kolaborasi ", "kolaborator ", "kerja sama "):
-            if prefix in lowered:
-                raw = text[lowered.index(prefix) + len(prefix) :]
-                raw = re.split(
-                    r"[?.!,;()]| pada | tahun | dengan | tentang | yang | dkk\b| et al\b",
-                    raw,
-                    maxsplit=1,
-                    flags=re.IGNORECASE,
-                )[0]
-                words = raw.strip().split()
-                if words:
-                    # Filter out common English academic terms
-                    academic_stopwords = {
-                        "using", "linear", "regression", "learning", "classification",
-                        "clustering", "network", "framework", "analysis", "system",
-                        "model", "algorithm", "prediction", "predicting", "performance",
-                        "student", "students", "education", "educational", "based",
-                        "method", "methods", "data", "mining", "validation", "sampling"
-                    }
-                    name_words = []
-                    for word in words:
-                        if word.lower() in academic_stopwords or word.lower() in cls.GRAPH_STOPWORDS:
-                            break
-                        name_words.append(word)
-
-                    if name_words:
-                        candidates.append(name_words[0])
-                        if len(name_words) >= 2:
-                            candidates.append(" ".join(name_words[:2]))
-                        if len(name_words) >= 3:
-                            candidates.append(" ".join(name_words[:3]))
-
-        return cls._dedupe_terms(candidates, max_terms=5)
+        return AcademicHeuristics._extract_author_name_candidates(query_text)
 
     @classmethod
     def _is_lecturer_topic_query(cls, query_text: str) -> bool:
-        text = str(query_text or "").casefold()
-        terms = set(cls._query_terms(query_text, max_terms=32))
-        has_lecturer_intent = bool(terms & cls.LECTURER_TOPIC_QUERY_MARKERS) or any(
-            marker in text
-            for marker in (
-                "dosen",
-                "penulis",
-                "siapa",
-                "lecturer",
-                "author",
-                "researcher",
-            )
-        )
-        has_topic_intent = any(
-            marker in text
-            for marker in (
-                "tentang",
-                "membahas",
-                "topik",
-                "topic",
-                "using",
-                "menggunakan",
-                "machine learning",
-                "pendidikan",
-                "education",
-            )
-        )
-        return has_lecturer_intent and has_topic_intent
+        return AcademicHeuristics._is_lecturer_topic_query(query_text)
 
     @classmethod
     def _is_topic_frequency_query(cls, query_text: str) -> bool:
-        text = str(query_text or "").casefold()
-        has_topic = any(
-            marker in text
-            for marker in ("topik", "topic", "tema", "theme", "research area", "bidang riset")
-        )
-        has_frequency = any(
-            re.search(rf"(?<![a-z0-9]){re.escape(marker)}(?![a-z0-9])", text)
-            for marker in cls.TOPIC_FREQUENCY_QUERY_MARKERS
-        )
-        return has_topic and has_frequency
+        return AcademicHeuristics._is_topic_frequency_query(query_text)
 
     @classmethod
     def _extract_publication_title_candidates(cls, query_text: str) -> list[str]:
-        text = re.sub(r"\s+", " ", str(query_text or "")).strip()
-        candidates: list[str] = []
-        for match in re.finditer(r"""["“']([^"”']{12,240})["”']""", text):
-            candidates.append(match.group(1).strip())
-
-        # Fallback heuristic if no quoted title was found
-        if not candidates:
-            lowered = text.casefold()
-            author_names = cls._extract_author_name_candidates(query_text)
-            # Sort author names by length in descending order to avoid partial replacement of names
-            sorted_authors = sorted(author_names, key=len, reverse=True)
-            for kw in ("paper ", "publikasi ", "penelitian ", "artikel "):
-                if kw in lowered:
-                    idx = lowered.index(kw)
-                    raw = text[idx + len(kw) :]
-                    # Split on typical Indonesian/English conjunctions or punctuation
-                    title_split_pattern = (
-                        r"(?i)\b(?:oleh|ditulis|ditulis oleh|berkolaborasi|dengan|siapa|who|by|written by|"
-                        r"published|tahun|year|pada|in|at)\b|[?.!,;()]"
-                    )
-                    parts = re.split(title_split_pattern, raw, maxsplit=1)
-                    title_candidate = parts[0].strip()
-
-                    # Clean title candidate from any extracted author names
-                    for author in sorted_authors:
-                        pattern = re.compile(rf"\b{re.escape(author)}\b", re.IGNORECASE)
-                        title_candidate = pattern.sub("", title_candidate).strip()
-
-                    # Clean trailing/leading connector words that might be left after author cleaning
-                    title_candidate = re.sub(r"(?i)\b(?:oleh|ditulis|dan|and)\b", "", title_candidate).strip()
-                    title_candidate = re.sub(r"\s+", " ", title_candidate).strip()
-
-                    if len(title_candidate) >= 12:
-                        candidates.append(title_candidate)
-
-        return cls._dedupe_terms(candidates, max_terms=4)
+        return AcademicHeuristics._extract_publication_title_candidates(query_text)
 
     @classmethod
     def _has_specific_publication_reference(cls, query_text: str) -> bool:
-        """Detect a concrete publication reference, not a generic paper search."""
-        text = re.sub(r"\s+", " ", str(query_text or "")).strip()
-        lowered = text.casefold()
-        if re.search(r"""["â€œ'][^"â€']{12,240}["â€']""", text):
-            return True
-        if any(marker in lowered for marker in ("berjudul", "judul ", "entitled", "title ")):
-            return bool(cls._extract_publication_title_candidates(query_text))
-        if any(
-            marker in lowered
-            for marker in (
-                "paper apa",
-                "apa paper",
-                "publikasi apa",
-                "apa publikasi",
-                "penelitian apa",
-                "apa penelitian",
-                "membahas",
-                "tentang",
-                "carikan",
-                "cari ",
-                "find ",
-                "which paper",
-                "what paper",
-            )
-        ):
-            return False
-        return bool(cls._extract_publication_title_candidates(query_text))
+        return AcademicHeuristics._has_specific_publication_reference(query_text)
 
     @staticmethod
     def _format_values(value: Any) -> str:
-        if isinstance(value, (list, tuple, set)):
-            return ", ".join(str(item) for item in value if item)
-        return str(value or "")
+        return _format_values(value)
 
     @classmethod
     def _department_terms(cls, query_text: str) -> list[str]:
-        text = str(query_text or "").casefold()
-        values: list[str] = []
-        if "s2 informatika" in text:
-            values.extend(["s2 informatika", "informatika"])
-        elif "infokom" in text:
-            values.extend(["infokom", "teknik informatika", "sistem informasi", "pendidikan teknologi informasi"])
-        elif "informatika" in text:
-            values.append("informatika")
-        return cls._dedupe_terms(values, max_terms=4)
+        return AcademicHeuristics._department_terms(query_text)
 
     @classmethod
     def _topic_terms_for_neo4j(cls, query_text: str) -> list[str]:
-        text = str(query_text or "").casefold()
-        ignored = {
-            "apa",
-            "saja",
-            "siapa",
-            "mana",
-            "dosen",
-            "lecturer",
-            "lecturers",
-            "author",
-            "authors",
-            "penulis",
-            "paper",
-            "papers",
-            "publikasi",
-            "publication",
-            "publications",
-            "tentang",
-            "bidang",
-            "menulis",
-            "ditulis",
-            "s2",
-            "informatika",
-        }
-        terms: list[str] = []
-        phrase_map = {
-            "machine learning": ["machine learning"],
-            "deep learning": ["deep learning"],
-            "artificial intelligence": ["artificial intelligence", "ai"],
-            " ai ": ["artificial intelligence", "ai"],
-            "data mining": ["data mining"],
-            "pendidikan": ["education", "educational", "student", "students", "learning"],
-            "mahasiswa": ["student", "students", "student performance"],
-            "siswa": ["student", "students", "student performance"],
-            "education": ["education", "educational", "student", "students"],
-        }
-        for marker, mapped_terms in phrase_map.items():
-            if marker in text:
-                terms.extend(mapped_terms)
-
-        for term in cls._query_terms(query_text, max_terms=24):
-            if term in ignored or term in cls.GRAPH_STOPWORDS:
-                continue
-            terms.append(term)
-
-        return cls._dedupe_terms(terms, max_terms=12)
+        return AcademicHeuristics._topic_terms_for_neo4j(query_text)
 
     @classmethod
     def _is_collaboration_query(cls, query_text: str) -> bool:
-        text = str(query_text or "").casefold()
-        return any(
-            marker in text
-            for marker in (
-                "berkolaborasi",
-                "kolaborasi",
-                "kolaborator",
-                "collaborat",
-                "co-author",
-                "coauthor",
-                "co author",
-                "kerja sama",
-            )
-        )
+        return AcademicHeuristics._is_collaboration_query(query_text)
 
     @classmethod
     def normalize_author_publication_chunks(
@@ -707,79 +372,9 @@ class AcademicGraphRAGService:
         max_chunks: int = 12,
         max_chars: int = 1800,
     ) -> list[dict[str, Any]]:
-        terms = set(cls._query_terms(query_text, max_terms=24))
-        year_terms = set(re.findall(r"\b(?:19|20)\d{2}\b", query_text or ""))
-
-        def relevance(row: dict[str, Any]) -> tuple[int, int, str]:
-            title = str(row.get("title") or "")
-            body = " ".join(
-                str(row.get(key) or "")
-                for key in ("title", "authors", "venue", "tldr", "abstract", "doi")
-            ).casefold()
-            overlap = sum(1 for term in terms if term in body)
-            year_bonus = 3 if str(row.get("year") or "") in year_terms else 0
-            try:
-                year = int(row.get("year") or 0)
-            except (TypeError, ValueError):
-                year = 0
-            return overlap + year_bonus, year, title.casefold()
-
-        normalized: list[dict[str, Any]] = []
-        seen: set[str] = set()
-        ranked_rows = sorted(
-            rows or [],
-            key=lambda row: (
-                -relevance(row)[0],
-                -relevance(row)[1],
-                relevance(row)[2],
-            ),
+        return AcademicNormalizers.normalize_author_publication_chunks(
+            rows, query_text=query_text, max_chunks=max_chunks, max_chars=max_chars
         )
-        for index, row in enumerate(ranked_rows[:max_chunks], start=1):
-            title = str(row.get("title") or "").strip()
-            if not title:
-                continue
-            key = str(row.get("paper_id") or title).casefold()
-            if key in seen:
-                continue
-            seen.add(key)
-            parts = [
-                f"Title: {title}",
-                f"Year: {row.get('year') or 'unknown'}",
-                f"Author matched: {row.get('author') or 'unknown'}",
-                f"Authors: {cls._format_values(row.get('authors')) or 'unknown'}",
-            ]
-            if row.get("doi"):
-                parts.append(f"DOI: {row.get('doi')}")
-            if row.get("venue"):
-                parts.append(f"Venue: {row.get('venue')}")
-            if row.get("tldr"):
-                parts.append(f"TLDR: {row.get('tldr')}")
-            if row.get("abstract"):
-                parts.append(f"Abstract: {row.get('abstract')}")
-            if row.get("link"):
-                parts.append(f"Link: {row.get('link')}")
-            normalized.append(
-                {
-                    "rank": index,
-                    "content": cls._clip_text("\n".join(parts), max_chars),
-                    "score": 1.0,
-                    "source": title,
-                    "file_id": row.get("paper_id") or title,
-                    "chunk_id": f"author-publication:{row.get('paper_id') or title}",
-                    "chunk_index": index - 1,
-                    "metadata": {
-                        "source": title,
-                        "title": title,
-                        "year": row.get("year"),
-                        "authors": row.get("authors"),
-                        "doi": row.get("doi"),
-                        "venue": row.get("venue"),
-                        "paper_id": row.get("paper_id"),
-                        "retrieval_source": "neo4j_author_publications",
-                    },
-                }
-            )
-        return normalized
 
     @classmethod
     def normalize_lecturer_topic_chunks(
@@ -789,63 +384,9 @@ class AcademicGraphRAGService:
         max_chunks: int = 12,
         max_chars: int = 1800,
     ) -> list[dict[str, Any]]:
-        normalized: list[dict[str, Any]] = []
-        seen: set[str] = set()
-        for index, row in enumerate(rows or [], start=1):
-            title = str(row.get("title") or "").strip()
-            lecturer = str(row.get("lecturer") or "").strip()
-            if not title or not lecturer:
-                continue
-            key = f"{lecturer.casefold()}::{str(row.get('paper_id') or title).casefold()}"
-            if key in seen:
-                continue
-            seen.add(key)
-            matched_terms = row.get("matched_terms") or []
-            if isinstance(matched_terms, (list, tuple, set)):
-                matched_text = ", ".join(str(item) for item in matched_terms if item)
-            else:
-                matched_text = str(matched_terms or "")
-            parts = [
-                f"Lecturer: {lecturer}",
-                f"Affiliation: {row.get('affiliation') or 'unknown'}",
-                f"Title: {title}",
-                f"Year: {row.get('year') or 'unknown'}",
-                f"Authors: {cls._format_values(row.get('authors')) or 'unknown'}",
-                f"Matched terms: {matched_text or 'unknown'}",
-            ]
-            if row.get("doi"):
-                parts.append(f"DOI: {row.get('doi')}")
-            if row.get("venue"):
-                parts.append(f"Venue: {row.get('venue')}")
-            if row.get("tldr"):
-                parts.append(f"TLDR: {row.get('tldr')}")
-            if row.get("abstract"):
-                parts.append(f"Abstract: {row.get('abstract')}")
-            normalized.append(
-                {
-                    "rank": index,
-                    "content": cls._clip_text("\n".join(parts), max_chars),
-                    "score": row.get("score") or 1.0,
-                    "source": title,
-                    "file_id": row.get("paper_id") or title,
-                    "chunk_id": f"lecturer-topic:{lecturer}:{row.get('paper_id') or title}",
-                    "chunk_index": index - 1,
-                    "metadata": {
-                        "source": title,
-                        "title": title,
-                        "year": row.get("year"),
-                        "authors": row.get("authors"),
-                        "doi": row.get("doi"),
-                        "venue": row.get("venue"),
-                        "paper_id": row.get("paper_id"),
-                        "lecturer": lecturer,
-                        "affiliation": row.get("affiliation"),
-                        "matched_terms": matched_terms,
-                        "retrieval_source": "neo4j_lecturer_topic_publications",
-                    },
-                }
-            )
-        return normalized[:max_chunks]
+        return AcademicNormalizers.normalize_lecturer_topic_chunks(
+            rows, max_chunks=max_chunks, max_chars=max_chars
+        )
 
     @classmethod
     def normalize_publication_detail_chunks(
@@ -855,56 +396,9 @@ class AcademicGraphRAGService:
         max_chunks: int = 8,
         max_chars: int = 2200,
     ) -> list[dict[str, Any]]:
-        normalized: list[dict[str, Any]] = []
-        for index, row in enumerate((rows or [])[:max_chunks], start=1):
-            title = str(row.get("title") or "").strip()
-            if not title:
-                continue
-            concepts = row.get("concepts") or []
-            concept_text = ", ".join(
-                f"{item.get('relation')}: {item.get('value')}"
-                for item in concepts
-                if isinstance(item, dict) and item.get("value")
-            )
-            parts = [
-                f"Title: {title}",
-                f"Year: {row.get('year') or 'unknown'}",
-                f"Authors: {cls._format_values(row.get('authors')) or 'unknown'}",
-            ]
-            if row.get("doi"):
-                parts.append(f"DOI: {row.get('doi')}")
-            if row.get("venue"):
-                parts.append(f"Venue: {row.get('venue')}")
-            if row.get("tldr"):
-                parts.append(f"TLDR: {row.get('tldr')}")
-            if row.get("abstract"):
-                parts.append(f"Abstract: {row.get('abstract')}")
-            if concept_text:
-                parts.append(f"Graph concepts: {concept_text}")
-            if row.get("link"):
-                parts.append(f"Link: {row.get('link')}")
-            normalized.append(
-                {
-                    "rank": index,
-                    "content": cls._clip_text("\n".join(parts), max_chars),
-                    "score": 1.0,
-                    "source": title,
-                    "file_id": row.get("paper_id") or title,
-                    "chunk_id": f"publication-detail:{row.get('paper_id') or title}",
-                    "chunk_index": index - 1,
-                    "metadata": {
-                        "source": title,
-                        "title": title,
-                        "year": row.get("year"),
-                        "authors": row.get("authors"),
-                        "doi": row.get("doi"),
-                        "venue": row.get("venue"),
-                        "paper_id": row.get("paper_id"),
-                        "retrieval_source": "neo4j_publication_details",
-                    },
-                }
-            )
-        return normalized
+        return AcademicNormalizers.normalize_publication_detail_chunks(
+            rows, max_chunks=max_chunks, max_chars=max_chars
+        )
 
     @classmethod
     def normalize_topic_frequency_chunks(
@@ -913,37 +407,7 @@ class AcademicGraphRAGService:
         *,
         max_chunks: int = 15,
     ) -> list[dict[str, Any]]:
-        normalized: list[dict[str, Any]] = []
-        for index, row in enumerate((rows or [])[:max_chunks], start=1):
-            topic = str(row.get("topic") or "").strip()
-            if not topic:
-                continue
-            titles = cls._format_values(row.get("sample_titles"))
-            content = (
-                f"Topic: {topic}\n"
-                f"Concept type: {row.get('concept_type') or 'Concept'}\n"
-                f"Publication count: {row.get('publication_count') or 0}\n"
-                f"Sample publications: {titles or 'unknown'}"
-            )
-            normalized.append(
-                {
-                    "rank": index,
-                    "content": content,
-                    "score": float(row.get("publication_count") or 0),
-                    "source": "YUNESA Academic Knowledge Graph topic aggregation",
-                    "file_id": f"topic-frequency:{topic}",
-                    "chunk_id": f"topic-frequency:{topic}",
-                    "chunk_index": index - 1,
-                    "metadata": {
-                        "topic": topic,
-                        "concept_type": row.get("concept_type"),
-                        "publication_count": row.get("publication_count"),
-                        "sample_titles": row.get("sample_titles"),
-                        "retrieval_source": "neo4j_topic_frequency",
-                    },
-                }
-            )
-        return normalized
+        return AcademicNormalizers.normalize_topic_frequency_chunks(rows, max_chunks=max_chunks)
 
     @classmethod
     def normalize_collaboration_chunks(
@@ -952,39 +416,7 @@ class AcademicGraphRAGService:
         *,
         max_chunks: int = 12,
     ) -> list[dict[str, Any]]:
-        normalized: list[dict[str, Any]] = []
-        for index, row in enumerate((rows or [])[:max_chunks], start=1):
-            lecturer = str(row.get("lecturer") or "").strip()
-            collaborator = str(row.get("collaborator") or "").strip()
-            if not lecturer or not collaborator:
-                continue
-            titles = cls._format_values(row.get("paper_titles"))
-            content = (
-                f"Lecturer: {lecturer}\n"
-                f"Collaborator: {collaborator}\n"
-                f"Collaboration paper count: {row.get('paper_count') or 0}\n"
-                f"Shared publications: {titles or 'unknown'}"
-            )
-            normalized.append(
-                {
-                    "rank": index,
-                    "content": content,
-                    "score": float(row.get("paper_count") or 0),
-                    "source": f"{lecturer} collaborates with {collaborator}",
-                    "file_id": f"collaboration:{lecturer}:{collaborator}",
-                    "chunk_id": f"collaboration:{lecturer}:{collaborator}",
-                    "chunk_index": index - 1,
-                    "metadata": {
-                        "lecturer": lecturer,
-                        "collaborator": collaborator,
-                        "paper_count": row.get("paper_count"),
-                        "paper_titles": row.get("paper_titles"),
-                        "paper_ids": row.get("paper_ids"),
-                        "retrieval_source": "neo4j_collaborations",
-                    },
-                }
-            )
-        return normalized
+        return AcademicNormalizers.normalize_collaboration_chunks(rows, max_chunks=max_chunks)
 
     @classmethod
     async def query_collaborations(
@@ -997,114 +429,14 @@ class AcademicGraphRAGService:
         extracted_entities: dict[str, Any] | None = None,
         sub_intents: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        if extracted_entities is not None:
-            if "collaboration" not in (sub_intents or []):
-                return []
-            lecturer_candidates = extracted_entities.get("author_names") or []
-            if not lecturer_candidates:
-                return []
-            topic_terms = extracted_entities.get("topics") or []
-        else:
-            if not skip_intent_check and not cls._is_collaboration_query(query_text):
-                return []
-            lecturer_candidates = cls._extract_author_name_candidates(query_text)
-            if not lecturer_candidates:
-                return []
-            topic_terms = cls._topic_terms_for_neo4j(query_text)
-
-        try:
-            from yunesa import graph_base
-
-            if hasattr(graph_base, "start") and not graph_base.is_running():
-                graph_base.start()
-            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
-                return []
-
-            resolved_graph_name = cls._academic_graph_name(graph_name)
-            cypher = """
-                UNWIND $lecturer_candidates AS lecturer_name
-                MATCH (lecturer:Lecturer)
-                WHERE lecturer.graph_name = $graph_name
-                  AND (
-                    toLower(coalesce(lecturer.label, '')) CONTAINS toLower(lecturer_name)
-                    OR toLower(coalesce(lecturer.name, '')) CONTAINS toLower(lecturer_name)
-                    OR toLower(coalesce(lecturer.nama_dosen, '')) CONTAINS toLower(lecturer_name)
-                    OR toLower(coalesce(lecturer.nama_norm, '')) CONTAINS toLower(lecturer_name)
-                  )
-                MATCH (lecturer)-[collab_rel:COLLABORATES_WITH]-(collaborator:Lecturer)
-                WHERE collaborator.graph_name = $graph_name
-                OPTIONAL MATCH (lecturer)-[:PUBLISHES]->(paper:Publication)<-[:PUBLISHES]-(collaborator)
-                WHERE paper.graph_name = $graph_name
-                WITH DISTINCT lecturer, collaborator, collab_rel, collect(DISTINCT paper) AS papers
-                WITH
-                  lecturer,
-                  collaborator,
-                  collab_rel,
-                  [
-                    paper IN papers |
-                    {
-                      paper_id: paper.paper_id,
-                      title: coalesce(paper.title, paper.label, paper.name),
-                      year: paper.year,
-                      doi: paper.doi,
-                      text: toLower(
-                        toString(coalesce(paper.title, '')) + ' ' +
-                        toString(coalesce(paper.abstract, '')) + ' ' +
-                        toString(coalesce(paper.tldr, '')) + ' ' +
-                        toString(coalesce(paper.keywords, ''))
-                      )
-                    }
-                  ] AS paper_items
-                WITH
-                  lecturer,
-                  collaborator,
-                  collab_rel,
-                  CASE
-                    WHEN size($topic_terms) = 0 THEN paper_items
-                    ELSE [
-                      item IN paper_items
-                      WHERE any(term IN $topic_terms WHERE item.text CONTAINS toLower(term))
-                    ]
-                  END AS matched_papers,
-                  paper_items
-                WHERE size($topic_terms) = 0 OR size(matched_papers) > 0
-                RETURN
-                  coalesce(lecturer.label, lecturer.nama_norm, lecturer.nama_dosen, lecturer.name) AS lecturer,
-                  coalesce(
-                    collaborator.label,
-                    collaborator.nama_norm,
-                    collaborator.nama_dosen,
-                    collaborator.name
-                  ) AS collaborator,
-                  CASE
-                    WHEN size(matched_papers) > 0 THEN size(matched_papers)
-                    ELSE coalesce(collab_rel.paper_count, size(paper_items))
-                  END AS paper_count,
-                  [item IN matched_papers | item.paper_id][0..12] AS paper_ids,
-                  [item IN matched_papers | item.title][0..12] AS paper_titles,
-                  [item IN matched_papers | item.year][0..12] AS years,
-                  [item IN matched_papers | item.doi][0..12] AS dois
-                ORDER BY paper_count DESC, toLower(collaborator) ASC
-                LIMIT $limit
-            """
-
-            def run_query() -> list[dict[str, Any]]:
-                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
-                    rows = session.run(
-                        cypher,
-                        lecturer_candidates=lecturer_candidates,
-                        topic_terms=topic_terms,
-                        graph_name=resolved_graph_name,
-                        limit=limit,
-                    )
-                    return [dict(row) for row in rows]
-
-            return await asyncio.to_thread(run_query)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                f"Academic GraphRAG collaboration query failed: {type(exc).__name__}: {exc}"
-            )
-            return []
+        return await AcademicNeo4jQueries.query_collaborations(
+            query_text,
+            graph_name=graph_name,
+            limit=limit,
+            skip_intent_check=skip_intent_check,
+            extracted_entities=extracted_entities,
+            sub_intents=sub_intents,
+        )
 
     @classmethod
     async def query_author_publications(
@@ -1117,79 +449,14 @@ class AcademicGraphRAGService:
         extracted_entities: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        if not skip_intent_check and not cls._is_author_publication_query(query_text):
-            return []
-
-        author_candidates = cls._extract_author_name_candidates(query_text)
-        if not author_candidates:
-            return []
-
-        try:
-            from yunesa import graph_base
-
-            if hasattr(graph_base, "start") and not graph_base.is_running():
-                graph_base.start()
-            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
-                return []
-
-            resolved_graph_name = cls._academic_graph_name(graph_name)
-            cypher = """
-                UNWIND $author_candidates AS author_name
-                MATCH (lecturer:Lecturer)
-                WHERE lecturer.graph_name = $graph_name
-                  AND (
-                    toLower(coalesce(lecturer.label, '')) CONTAINS toLower(author_name)
-                    OR toLower(coalesce(lecturer.name, '')) CONTAINS toLower(author_name)
-                    OR toLower(coalesce(lecturer.nama_dosen, '')) CONTAINS toLower(author_name)
-                    OR toLower(coalesce(lecturer.nama_norm, '')) CONTAINS toLower(author_name)
-                  )
-                MATCH (lecturer)-[:PUBLISHES|HAS_AUTHOR]-(paper:Publication)
-                WHERE paper.graph_name = $graph_name
-                WITH DISTINCT lecturer, paper
-                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(coauthor:Lecturer)
-                WHERE coauthor.graph_name = $graph_name
-                WITH lecturer, paper,
-                     collect(DISTINCT coalesce(
-                       coauthor.label,
-                       coauthor.nama_norm,
-                       coauthor.nama_dosen,
-                       coauthor.name
-                     )) AS connected_authors
-                RETURN
-                  coalesce(lecturer.label, lecturer.nama_norm, lecturer.nama_dosen, lecturer.name) AS author,
-                  paper.paper_id AS paper_id,
-                  coalesce(paper.title, paper.label, paper.name) AS title,
-                  paper.year AS year,
-                  CASE
-                    WHEN size(connected_authors) > 0 THEN connected_authors
-                    ELSE paper.authors
-                  END AS authors,
-                  paper.doi AS doi,
-                  paper.venue AS venue,
-                  paper.tldr AS tldr,
-                  paper.abstract AS abstract,
-                  paper.link AS link
-                ORDER BY toInteger(coalesce(paper.year, '0')) DESC, title ASC
-                LIMIT $limit
-            """
-
-            def run_query() -> list[dict[str, Any]]:
-                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
-                    rows = session.run(
-                        cypher,
-                        author_candidates=author_candidates,
-                        graph_name=resolved_graph_name,
-                        limit=limit,
-                    )
-                    return [dict(row) for row in rows]
-
-            rows = await asyncio.to_thread(run_query)
-            return rows
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                f"Academic GraphRAG author publication query failed: {type(exc).__name__}: {exc}"
-            )
-            return []
+        return await AcademicNeo4jQueries.query_author_publications(
+            query_text,
+            graph_name=graph_name,
+            limit=limit,
+            skip_intent_check=skip_intent_check,
+            extracted_entities=extracted_entities,
+            **kwargs,
+        )
 
     @classmethod
     async def query_publication_details(
@@ -1201,77 +468,13 @@ class AcademicGraphRAGService:
         extracted_entities: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        title_candidates = cls._extract_publication_title_candidates(query_text)
-        if not title_candidates:
-            return []
-
-        try:
-            from yunesa import graph_base
-
-            if hasattr(graph_base, "start") and not graph_base.is_running():
-                graph_base.start()
-            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
-                return []
-
-            resolved_graph_name = cls._academic_graph_name(graph_name)
-            cypher = """
-                UNWIND $title_candidates AS title_candidate
-                MATCH (paper:Publication)
-                WHERE paper.graph_name = $graph_name
-                  AND toLower(coalesce(paper.title, paper.label, paper.name, ''))
-                      CONTAINS toLower(title_candidate)
-                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(author:Lecturer)
-                WHERE author.graph_name = $graph_name
-                WITH DISTINCT paper,
-                     collect(DISTINCT coalesce(
-                       author.label,
-                       author.nama_norm,
-                       author.nama_dosen,
-                       author.name
-                     )) AS connected_authors
-                OPTIONAL MATCH (paper)-[
-                  relation:HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|
-                  USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN|HAS_RESULT
-                ]->(concept)
-                WITH paper, connected_authors,
-                     collect(DISTINCT {
-                       relation: type(relation),
-                       value: coalesce(concept.label, concept.name, concept.id)
-                     }) AS concepts
-                RETURN
-                  paper.paper_id AS paper_id,
-                  coalesce(paper.title, paper.label, paper.name) AS title,
-                  paper.year AS year,
-                  CASE
-                    WHEN size(connected_authors) > 0 THEN connected_authors
-                    ELSE paper.authors
-                  END AS authors,
-                  paper.doi AS doi,
-                  paper.venue AS venue,
-                  paper.tldr AS tldr,
-                  paper.abstract AS abstract,
-                  paper.link AS link,
-                  concepts AS concepts
-                ORDER BY toInteger(toString(coalesce(paper.year, '0'))) DESC, title ASC
-                LIMIT $limit
-            """
-
-            def run_query() -> list[dict[str, Any]]:
-                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
-                    rows = session.run(
-                        cypher,
-                        title_candidates=title_candidates,
-                        graph_name=resolved_graph_name,
-                        limit=limit,
-                    )
-                    return [dict(row) for row in rows]
-
-            return await asyncio.to_thread(run_query)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                f"Academic GraphRAG publication detail query failed: {type(exc).__name__}: {exc}"
-            )
-            return []
+        return await AcademicNeo4jQueries.query_publication_details(
+            query_text,
+            graph_name=graph_name,
+            limit=limit,
+            extracted_entities=extracted_entities,
+            **kwargs,
+        )
 
     @classmethod
     async def query_topic_frequencies(
@@ -1284,52 +487,14 @@ class AcademicGraphRAGService:
         extracted_entities: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        if not skip_intent_check and not cls._is_topic_frequency_query(query_text):
-            return []
-
-        try:
-            from yunesa import graph_base
-
-            if hasattr(graph_base, "start") and not graph_base.is_running():
-                graph_base.start()
-            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
-                return []
-
-            resolved_graph_name = cls._academic_graph_name(graph_name)
-            cypher = """
-                MATCH (paper:Publication)-[
-                  relation:HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|HAS_KEYWORD|BELONGS_TO_DOMAIN|
-                  USES_METHOD|USES_MODEL|USES_DATASET
-                ]->(concept)
-                WHERE paper.graph_name = $graph_name
-                  AND concept.graph_name = $graph_name
-                WITH
-                  coalesce(concept.label, concept.name, concept.id) AS topic,
-                  coalesce(concept.concept_type, labels(concept)[0], 'Concept') AS concept_type,
-                  count(DISTINCT paper) AS publication_count,
-                  collect(DISTINCT coalesce(paper.title, paper.label, paper.name))[0..5]
-                    AS sample_titles
-                WHERE topic IS NOT NULL AND trim(toString(topic)) <> ''
-                RETURN topic, concept_type, publication_count, sample_titles
-                ORDER BY publication_count DESC, toLower(toString(topic)) ASC
-                LIMIT $limit
-            """
-
-            def run_query() -> list[dict[str, Any]]:
-                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
-                    rows = session.run(
-                        cypher,
-                        graph_name=resolved_graph_name,
-                        limit=limit,
-                    )
-                    return [dict(row) for row in rows]
-
-            return await asyncio.to_thread(run_query)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                f"Academic GraphRAG topic frequency query failed: {type(exc).__name__}: {exc}"
-            )
-            return []
+        return await AcademicNeo4jQueries.query_topic_frequencies(
+            query_text,
+            graph_name=graph_name,
+            limit=limit,
+            skip_intent_check=skip_intent_check,
+            extracted_entities=extracted_entities,
+            **kwargs,
+        )
 
     @classmethod
     async def query_lecturer_topic_publications(
@@ -1342,161 +507,14 @@ class AcademicGraphRAGService:
         extracted_entities: dict[str, Any] | None = None,
         sub_intents: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        if extracted_entities is not None:
-            if "lecturer_topic" not in (sub_intents or []):
-                return []
-            topic_terms = extracted_entities.get("topics") or []
-            if not topic_terms:
-                return []
-            dept = extracted_entities.get("department")
-            department_terms = [dept] if dept else []
-        else:
-            if not skip_intent_check and not cls._is_lecturer_topic_query(query_text):
-                return []
-            topic_terms = cls._topic_terms_for_neo4j(query_text)
-            if not topic_terms:
-                return []
-            department_terms = cls._department_terms(query_text)
-        min_match_count = min(2, len(topic_terms))
-
-        try:
-            from yunesa import graph_base
-
-            if hasattr(graph_base, "start") and not graph_base.is_running():
-                graph_base.start()
-            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
-                return []
-
-            resolved_graph_name = cls._academic_graph_name(graph_name)
-            cypher = """
-                MATCH (paper:Publication)
-                WHERE paper.graph_name = $graph_name
-                  AND (
-                    any(term IN $topic_terms WHERE toLower(coalesce(paper.title, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.label, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.abstract, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.tldr, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.keywords, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.authors, '')) CONTAINS toLower(term))
-                    OR EXISTS {
-                        MATCH (paper)-[:HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN]->(concept)
-                        WHERE any(term IN $topic_terms WHERE toLower(coalesce(concept.label, '')) CONTAINS toLower(term) OR toLower(coalesce(concept.name, '')) CONTAINS toLower(term))
-                    }
-                  )
-                MATCH (lecturer:Lecturer)-[:PUBLISHES]->(paper)
-                WHERE lecturer.graph_name = $graph_name
-                OPTIONAL MATCH (lecturer)-[:HAS_AFFILIATION]->(affiliation:Institution)
-                WITH lecturer, paper, collect(DISTINCT affiliation) AS affiliations
-                OPTIONAL MATCH (paper)-[
-                  :HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|
-                  USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN
-                ]->(concept)
-                WITH lecturer, paper, affiliations, collect(DISTINCT concept) AS concepts
-                WITH
-                  lecturer,
-                  paper,
-                  affiliations,
-                  concepts,
-                  toLower(
-                    toString(coalesce(paper.title, '')) + ' ' +
-                    toString(coalesce(paper.label, '')) + ' ' +
-                    toString(coalesce(paper.abstract, '')) + ' ' +
-                    toString(coalesce(paper.tldr, '')) + ' ' +
-                    toString(coalesce(paper.keywords, '')) + ' ' +
-                    toString(coalesce(paper.authors, ''))
-                  ) AS paper_text,
-                  [
-                    c IN concepts |
-                    toLower(
-                      toString(coalesce(c.label, '')) + ' ' +
-                      toString(coalesce(c.name, '')) + ' ' +
-                      toString(coalesce(c.description, '')) + ' ' +
-                      toString(coalesce(c.concept_type, ''))
-                    )
-                  ] AS concept_texts,
-                  [
-                    a IN affiliations |
-                    coalesce(a.label, a.name, a.id, '')
-                  ] AS affiliation_names,
-                  toLower(
-                    coalesce(lecturer.label, '') + ' ' +
-                    coalesce(lecturer.name, '') + ' ' +
-                    coalesce(lecturer.nama_dosen, '') + ' ' +
-                    coalesce(lecturer.nama_norm, '') + ' ' +
-                    coalesce(lecturer.prodi, '') + ' ' +
-                    coalesce(lecturer.jurusan, '') + ' ' +
-                    coalesce(lecturer.fakultas, '') + ' ' +
-                    reduce(s = '', a IN affiliations | s + ' ' + coalesce(a.label, a.name, a.id, ''))
-                  ) AS lecturer_text
-                WHERE size($department_terms) = 0
-                   OR any(term IN $department_terms WHERE lecturer_text CONTAINS toLower(term))
-                WITH
-                  lecturer,
-                  paper,
-                  affiliation_names,
-                  [
-                    term IN $topic_terms
-                    WHERE paper_text CONTAINS toLower(term)
-                       OR any(concept_text IN concept_texts WHERE concept_text CONTAINS toLower(term))
-                  ] AS matched_terms
-                WHERE size(matched_terms) >= $min_match_count
-                WITH DISTINCT lecturer, paper, affiliation_names, matched_terms
-                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(coauthor:Lecturer)
-                WHERE coauthor.graph_name = $graph_name
-                WITH lecturer, paper, affiliation_names, matched_terms,
-                     collect(DISTINCT coalesce(
-                       coauthor.label,
-                       coauthor.nama_norm,
-                       coauthor.nama_dosen,
-                       coauthor.name
-                     )) AS connected_authors
-                RETURN
-                  coalesce(lecturer.label, lecturer.nama_norm, lecturer.nama_dosen, lecturer.name) AS lecturer,
-                  affiliation_names AS affiliations,
-                  paper.paper_id AS paper_id,
-                  coalesce(paper.title, paper.label, paper.name) AS title,
-                  paper.year AS year,
-                  CASE
-                    WHEN size(connected_authors) > 0 THEN connected_authors
-                    ELSE paper.authors
-                  END AS authors,
-                  paper.doi AS doi,
-                  paper.venue AS venue,
-                  paper.tldr AS tldr,
-                  paper.abstract AS abstract,
-                  paper.link AS link,
-                  matched_terms AS matched_terms,
-                  size(matched_terms) AS score
-                ORDER BY score DESC, toInteger(toString(coalesce(paper.year, '0'))) DESC, lecturer ASC, title ASC
-                LIMIT $limit
-            """
-
-            def run_query() -> list[dict[str, Any]]:
-                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
-                    rows = session.run(
-                        cypher,
-                        graph_name=resolved_graph_name,
-                        topic_terms=topic_terms,
-                        department_terms=department_terms,
-                        min_match_count=min_match_count,
-                        limit=limit,
-                    )
-                    normalized_rows: list[dict[str, Any]] = []
-                    for row in rows:
-                        data = dict(row)
-                        affiliations = data.pop("affiliations", []) or []
-                        data["affiliation"] = ", ".join(
-                            str(item) for item in affiliations if item
-                        )
-                        normalized_rows.append(data)
-                    return normalized_rows
-
-            return await asyncio.to_thread(run_query)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                f"Academic GraphRAG lecturer-topic query failed: {type(exc).__name__}: {exc}"
-            )
-            return []
+        return await AcademicNeo4jQueries.query_lecturer_topic_publications(
+            query_text,
+            graph_name=graph_name,
+            limit=limit,
+            skip_intent_check=skip_intent_check,
+            extracted_entities=extracted_entities,
+            sub_intents=sub_intents,
+        )
 
     @classmethod
     async def query_papers_by_topic(
@@ -1509,101 +527,16 @@ class AcademicGraphRAGService:
         end_year: int | None = None,
         skip_intent_check: bool = False,
     ) -> list[dict[str, Any]]:
-        topic_terms = cls._topic_terms_for_neo4j(query_text)
-        if not topic_terms:
-            return []
-
-        try:
-            from yunesa import graph_base
-
-            if hasattr(graph_base, "start") and not graph_base.is_running():
-                graph_base.start()
-            if not graph_base.is_running() or not getattr(graph_base, "driver", None):
-                return []
-
-            resolved_graph_name = cls._academic_graph_name(graph_name)
-            
-            cypher = """
-                MATCH (paper:Publication)
-                WHERE paper.graph_name = $graph_name
-                  AND (
-                    any(term IN $topic_terms WHERE toLower(coalesce(paper.title, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.label, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.abstract, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.tldr, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.keywords, '')) CONTAINS toLower(term))
-                    OR any(term IN $topic_terms WHERE toLower(coalesce(paper.authors, '')) CONTAINS toLower(term))
-                    OR EXISTS {
-                        MATCH (paper)-[:HAS_KEYWORD|HAS_TOPIC|SOLVES_PROBLEM|WORKS_ON_TASK|PROPOSES_INNOVATION|USES_METHOD|USES_MODEL|USES_DATASET|EVALUATED_WITH|BELONGS_TO_DOMAIN]->(concept)
-                        WHERE any(term IN $topic_terms WHERE toLower(coalesce(concept.label, '')) CONTAINS toLower(term) OR toLower(coalesce(concept.name, '')) CONTAINS toLower(term))
-                    }
-                  )
-            """
-            
-            if start_year is not None:
-                cypher += "\n                  AND toInteger(toString(coalesce(paper.year, '0'))) >= $start_year"
-            if end_year is not None:
-                cypher += "\n                  AND toInteger(toString(coalesce(paper.year, '0'))) <= $end_year"
-                
-            cypher += """
-                OPTIONAL MATCH (paper)<-[:PUBLISHES]-(coauthor:Lecturer)
-                WHERE coauthor.graph_name = $graph_name
-                WITH paper,
-                     collect(DISTINCT coalesce(
-                       coauthor.label,
-                       coauthor.nama_norm,
-                       coauthor.nama_dosen,
-                       coauthor.name
-                     )) AS connected_authors,
-                     [
-                       term IN $topic_terms
-                       WHERE toLower(coalesce(paper.title, '')) CONTAINS toLower(term)
-                          OR toLower(coalesce(paper.label, '')) CONTAINS toLower(term)
-                          OR toLower(coalesce(paper.abstract, '')) CONTAINS toLower(term)
-                     ] AS matched_terms
-                RETURN
-                  paper.paper_id AS paper_id,
-                  coalesce(paper.title, paper.label, paper.name) AS title,
-                  paper.year AS year,
-                  CASE
-                    WHEN size(connected_authors) > 0 THEN connected_authors
-                    ELSE paper.authors
-                  END AS authors,
-                  paper.doi AS doi,
-                  paper.venue AS venue,
-                  paper.tldr AS tldr,
-                  paper.abstract AS abstract,
-                  paper.link AS link,
-                  matched_terms AS matched_terms,
-                  size(matched_terms) AS score
-                ORDER BY score DESC, toInteger(toString(coalesce(paper.year, '0'))) DESC, title ASC
-                LIMIT $limit
-            """
-
-            def run_query() -> list[dict[str, Any]]:
-                with graph_base.driver.session(database=graph_base._neo4j_database()) as session:
-                    params = {
-                        "graph_name": resolved_graph_name,
-                        "topic_terms": topic_terms,
-                        "limit": limit,
-                    }
-                    if start_year is not None:
-                        params["start_year"] = int(start_year)
-                    if end_year is not None:
-                        params["end_year"] = int(end_year)
-                        
-                    rows = session.run(cypher, **params)
-                    return [dict(row) for row in rows]
-
-            return await asyncio.to_thread(run_query)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                f"Academic GraphRAG paper-topic query failed: {type(exc).__name__}: {exc}"
-            )
-            return []
+        return await AcademicNeo4jQueries.query_papers_by_topic(
+            query_text,
+            graph_name=graph_name,
+            limit=limit,
+            start_year=start_year,
+            end_year=end_year,
+            skip_intent_check=skip_intent_check,
+        )
 
     @classmethod
-
     def _content_keyword_terms(
         cls,
         rows: list[dict[str, Any]] | None,
@@ -2240,21 +1173,9 @@ class AcademicGraphRAGService:
         max_chunks: int = 8,
         max_chars: int = 1200,
     ) -> list[dict[str, Any]]:
-        normalized: list[dict[str, Any]] = []
-        for index, chunk in enumerate((chunks or [])[:max_chunks], start=1):
-            metadata = dict(chunk.get("metadata") or {})
-            normalized.append(
-                {
-                    "rank": index,
-                    "content": cls._clip_text(chunk.get("content", ""), max_chars),
-                    "score": chunk.get("score"),
-                    "source": metadata.get("source") or chunk.get("source"),
-                    "file_id": metadata.get("file_id"),
-                    "chunk_id": metadata.get("chunk_id"),
-                    "chunk_index": metadata.get("chunk_index"),
-                }
-            )
-        return normalized
+        return AcademicNormalizers.normalize_chunks(
+            chunks, max_chunks=max_chunks, max_chars=max_chars
+        )
 
     @classmethod
     def normalize_academic_paper_chunks(
@@ -2264,145 +1185,29 @@ class AcademicGraphRAGService:
         max_chunks: int = 8,
         max_chars: int = 1200,
     ) -> list[dict[str, Any]]:
-        grouped: dict[str, dict[str, Any]] = {}
-        for position, row in enumerate(rows or []):
-            source = row.get("title") or row.get("paperUrl") or "PaperChunk"
-            key = str(source).strip().lower()
-            content = str(row.get("content") or "").strip()
-            distance = row.get("distance")
-            if key in grouped:
-                current = grouped[key]
-                if content and content not in current["content"]:
-                    current["content"] = cls._clip_text(f"{current['content']}\n{content}", max_chars)
-                if isinstance(distance, (int, float)) and (
-                    not isinstance(current.get("score"), (int, float)) or distance < current["score"]
-                ):
-                    current["score"] = distance
-                continue
-            grouped[key] = {
-                "rank": 0,
-                "content": cls._clip_text(content, max_chars),
-                "score": distance,
-                "_position": position,
-                "source": source,
-                "file_id": row.get("paperUrl") or row.get("title"),
-                "chunk_id": row.get("title"),
-                "chunk_index": len(grouped),
-                "metadata": {
-                    "title": row.get("title"),
-                    "year": row.get("year"),
-                    "authors": row.get("authors"),
-                    "paperUrl": row.get("paperUrl"),
-                    "graphName": row.get("graphName"),
-                },
-            }
-        normalized = sorted(
-            grouped.values(),
-            key=lambda item: (
-                item.get("score")
-                if isinstance(item.get("score"), (int, float))
-                else float("inf"),
-                item["_position"],
-            ),
-        )[:max_chunks]
-        for index, item in enumerate(normalized, start=1):
-            item.pop("_position", None)
-            item["rank"] = index
-        return normalized
+        return AcademicNormalizers.normalize_academic_paper_chunks(
+            rows, max_chunks=max_chunks, max_chars=max_chars
+        )
 
     @staticmethod
     def _triples_from_graph(graph: dict[str, Any]) -> list[dict[str, str]]:
-        node_names = {
-            str(node.get("id")): str(node.get("name") or node.get("id"))
-            for node in graph.get("nodes", [])
-        }
-        triples = []
-        for edge in graph.get("edges", []):
-            source_id = str(edge.get("source_id") or edge.get("source") or "")
-            target_id = str(edge.get("target_id") or edge.get("target") or "")
-            if not source_id or not target_id:
-                continue
-            triples.append(
-                {
-                    "source": node_names.get(source_id, source_id),
-                    "relation": str(edge.get("type") or "RELATED_TO"),
-                    "target": node_names.get(target_id, target_id),
-                }
-            )
-        return triples
+        return AcademicEvidence._triples_from_graph(graph)
 
     @classmethod
     def _fallback_graph_terms(cls, query_text: str, max_terms: int = 6) -> list[str]:
-        terms: list[str] = []
-        for token in re.findall(r"[A-Za-z0-9][A-Za-z0-9_+.-]{2,}", query_text or ""):
-            normalized = token.strip().lower()
-            if normalized in cls.GRAPH_STOPWORDS:
-                continue
-            if normalized not in terms:
-                terms.append(normalized)
-            if len(terms) >= max_terms:
-                break
-        return terms
+        return AcademicEvidence._fallback_graph_terms(query_text, max_terms=max_terms)
 
     @staticmethod
     def _merge_graph_results(results: list[dict[str, Any]], max_nodes: int) -> dict[str, Any]:
-        nodes_by_id: dict[str, dict[str, Any]] = {}
-        edges_by_signature: dict[tuple[str, str, str], dict[str, Any]] = {}
-
-        for graph in results:
-            for node in graph.get("nodes", []) or []:
-                node_id = str(node.get("id") or "")
-                if not node_id:
-                    continue
-                existing = nodes_by_id.get(node_id)
-                node_is_virtual = node.get("graph_type") == "virtual"
-                existing_is_virtual = existing and existing.get("graph_type") == "virtual"
-                if existing_is_virtual and not node_is_virtual:
-                    nodes_by_id[node_id] = node
-                elif existing is None and len(nodes_by_id) < max_nodes:
-                    nodes_by_id[node_id] = node
-
-        allowed_nodes = set(nodes_by_id)
-        for graph in results:
-            for edge in graph.get("edges", []) or []:
-                source_id = str(edge.get("source_id") or edge.get("source") or "")
-                target_id = str(edge.get("target_id") or edge.get("target") or "")
-                relation = str(edge.get("type") or "RELATED_TO").upper()
-                if source_id not in allowed_nodes or target_id not in allowed_nodes:
-                    continue
-                signature = (source_id, relation, target_id)
-                existing = edges_by_signature.get(signature)
-                edge_source = str((edge.get("properties") or {}).get("source") or "")
-                existing_source = str(
-                    ((existing or {}).get("properties") or {}).get("source") or ""
-                )
-                if existing_source == "structured_query" and edge_source != "structured_query":
-                    edges_by_signature[signature] = edge
-                elif existing is None:
-                    edges_by_signature[signature] = edge
-
-        return {
-            "nodes": list(nodes_by_id.values()),
-            "edges": list(edges_by_signature.values()),
-        }
+        return AcademicEvidence._merge_graph_results(results, max_nodes=max_nodes)
 
     @staticmethod
     def _virtual_id(node_type: str, value: Any) -> str:
-        normalized = re.sub(r"\s+", " ", str(value or "").strip()).casefold()
-        digest = hashlib.sha1(
-            f"{node_type}:{normalized}".encode()
-        ).hexdigest()[:16]
-        return f"virtual:{node_type.casefold()}:{digest}"
+        return AcademicEvidence._virtual_id(node_type, value)
 
     @staticmethod
     def _structured_node_id(node_type: str, node_id: Any) -> str:
-        value = str(node_id or "").strip()
-        if (
-            node_type == "Publication"
-            and re.fullmatch(r"[0-9a-fA-F]{32}", value)
-        ):
-            return f"paper:{value.lower()}"
-        return value
+        return AcademicEvidence._structured_node_id(node_type, node_id)
 
     @classmethod
     def _dedupe_evidence_chunks(
@@ -2411,217 +1216,14 @@ class AcademicGraphRAGService:
         *,
         max_chunks: int = 24,
     ) -> list[dict[str, Any]]:
-        deduped: list[dict[str, Any]] = []
-        seen: set[str] = set()
-        for chunk in chunks:
-            source = re.sub(
-                r"\s+",
-                " ",
-                str(chunk.get("source") or chunk.get("file_id") or "").strip(),
-            )
-            key = source.casefold()
-            if not key:
-                key = hashlib.sha1(
-                    str(chunk.get("content") or "").encode()
-                ).hexdigest()
-            if key in seen:
-                continue
-            seen.add(key)
-            item = dict(chunk)
-            item["rank"] = len(deduped) + 1
-            deduped.append(item)
-            if len(deduped) >= max_chunks:
-                break
-        return deduped
+        return AcademicEvidence._dedupe_evidence_chunks(chunks, max_chunks=max_chunks)
 
     @classmethod
     def _map_structured_rows_to_graph(
         cls,
         academic: dict[str, Any] | None,
     ) -> dict[str, list[dict[str, Any]]]:
-        """Convert structured academic query rows into deterministic graph evidence."""
-        academic = academic or {}
-        nodes: dict[str, dict[str, Any]] = {}
-        edges: dict[tuple[str, str, str], dict[str, Any]] = {}
-
-        def add_node(
-            node_type: str,
-            name: Any,
-            *,
-            node_id: Any = None,
-            properties: dict[str, Any] | None = None,
-        ) -> str:
-            display_name = str(name or node_id or "").strip()
-            if not display_name:
-                return ""
-            resolved_id = cls._structured_node_id(
-                node_type,
-                node_id,
-            ) or cls._virtual_id(
-                node_type,
-                display_name,
-            )
-            node = nodes.setdefault(
-                resolved_id,
-                {
-                    "id": resolved_id,
-                    "name": display_name,
-                    "type": node_type,
-                    "labels": [node_type],
-                    "properties": {},
-                    "normalized": {
-                        "name": display_name,
-                        "type": node_type,
-                        "source": "structured_query",
-                    },
-                    "graph_type": "virtual",
-                },
-            )
-            node["properties"].update(
-                {
-                    key: value
-                    for key, value in (properties or {}).items()
-                    if value not in (None, "", [], {})
-                }
-            )
-            return resolved_id
-
-        def add_edge(
-            source_id: str,
-            relation: Any,
-            target_id: str,
-            *,
-            properties: dict[str, Any] | None = None,
-        ) -> None:
-            relation_name = str(relation or "RELATED_TO").strip().upper()
-            if not source_id or not target_id:
-                return
-            signature = (source_id, relation_name, target_id)
-            if signature in edges:
-                edges[signature]["properties"].update(properties or {})
-                return
-            edge_id = cls._virtual_id(
-                "edge",
-                "|".join(signature),
-            )
-            edges[signature] = {
-                "id": edge_id,
-                "source_id": source_id,
-                "target_id": target_id,
-                "type": relation_name,
-                "properties": {
-                    "source": "structured_query",
-                    **(properties or {}),
-                },
-                "normalized": {
-                    "type": relation_name,
-                    "direction": "directed",
-                },
-            }
-
-        publication_rows = [
-            *(academic.get("author_publications") or []),
-            *(academic.get("lecturer_topic_publications") or []),
-        ]
-        for row in publication_rows:
-            lecturer_name = row.get("author") or row.get("lecturer")
-            title = row.get("title")
-            lecturer_id = add_node(
-                "Lecturer",
-                lecturer_name,
-                properties={"affiliation": row.get("affiliation")},
-            )
-            publication_id = add_node(
-                "Publication",
-                title,
-                node_id=row.get("paper_id"),
-                properties={
-                    "title": title,
-                    "year": row.get("year"),
-                    "authors": row.get("authors"),
-                    "doi": row.get("doi"),
-                    "tldr": row.get("tldr"),
-                    "abstract": row.get("abstract"),
-                },
-            )
-            add_edge(publication_id, "HAS_AUTHOR", lecturer_id)
-            affiliation = row.get("affiliation")
-            if affiliation:
-                institution_id = add_node("Institution", affiliation)
-                add_edge(lecturer_id, "HAS_AFFILIATION", institution_id)
-
-        for row in academic.get("publication_details") or []:
-            title = row.get("title")
-            publication_id = add_node(
-                "Publication",
-                title,
-                node_id=row.get("paper_id"),
-                properties={
-                    "title": title,
-                    "year": row.get("year"),
-                    "authors": row.get("authors"),
-                    "doi": row.get("doi"),
-                    "tldr": row.get("tldr"),
-                    "abstract": row.get("abstract"),
-                },
-            )
-            for concept in row.get("concepts") or []:
-                if not isinstance(concept, dict):
-                    continue
-                concept_name = concept.get("value") or concept.get("name")
-                concept_type = concept.get("concept_type") or concept.get("type") or "Concept"
-                concept_id = add_node(
-                    str(concept_type),
-                    concept_name,
-                    node_id=concept.get("id"),
-                )
-                add_edge(
-                    publication_id,
-                    concept.get("relation") or "HAS_TOPIC",
-                    concept_id,
-                )
-
-        for row in academic.get("collaborations") or []:
-            lecturer_id = add_node("Lecturer", row.get("lecturer"))
-            collaborator_id = add_node("Lecturer", row.get("collaborator"))
-            add_edge(
-                lecturer_id,
-                "COLLABORATES_WITH",
-                collaborator_id,
-                properties={
-                    "paper_count": row.get("paper_count"),
-                    "paper_titles": row.get("paper_titles"),
-                },
-            )
-
-        for row in academic.get("entities") or []:
-            add_node(
-                str(row.get("entityType") or "Concept"),
-                row.get("entityName"),
-                node_id=row.get("nodeId"),
-                properties={
-                    "description": row.get("description"),
-                    "source_id": row.get("sourceId"),
-                },
-            )
-
-        for row in academic.get("relationships") or []:
-            source_id = add_node("Entity", row.get("srcId"), node_id=row.get("srcId"))
-            target_id = add_node("Entity", row.get("tgtId"), node_id=row.get("tgtId"))
-            add_edge(
-                source_id,
-                row.get("relType"),
-                target_id,
-                properties={
-                    "description": row.get("description"),
-                    "source_id": row.get("sourceId"),
-                },
-            )
-
-        return {
-            "nodes": list(nodes.values()),
-            "edges": list(edges.values()),
-        }
+        return AcademicEvidence._map_structured_rows_to_graph(academic)
 
     @staticmethod
     def _prune_shortest_path_graph(
@@ -2630,43 +1232,9 @@ class AcademicGraphRAGService:
         *,
         seed_node_ids: list[str],
     ) -> dict[str, Any]:
-        """Keep shortest-path edges supported by relationship vector retrieval."""
-        rows = relationship_rows or []
-        if not rows:
-            return graph
-
-        allowed = {
-            (
-                frozenset(
-                    {
-                        str(row.get("srcId") or "").strip(),
-                        str(row.get("tgtId") or "").strip(),
-                    }
-                ),
-                str(row.get("relType") or "").strip().upper(),
-            )
-            for row in rows
-            if row.get("srcId") and row.get("tgtId")
-        }
-        kept_edges = []
-        kept_node_ids = {str(node_id) for node_id in seed_node_ids if node_id}
-        for edge in graph.get("edges", []) or []:
-            source_id = str(edge.get("source_id") or edge.get("source") or "").strip()
-            target_id = str(edge.get("target_id") or edge.get("target") or "").strip()
-            relation = str(edge.get("type") or "").strip().upper()
-            if (frozenset({source_id, target_id}), relation) not in allowed:
-                continue
-            kept_edges.append(edge)
-            kept_node_ids.update({source_id, target_id})
-
-        return {
-            "nodes": [
-                node
-                for node in graph.get("nodes", []) or []
-                if str(node.get("id") or "") in kept_node_ids
-            ],
-            "edges": kept_edges,
-        }
+        return AcademicEvidence._prune_shortest_path_graph(
+            graph, relationship_rows, seed_node_ids=seed_node_ids
+        )
 
     @classmethod
     async def _query_shortest_path_subgraph(
@@ -2678,49 +1246,17 @@ class AcademicGraphRAGService:
         graph_storage: BaseGraphStorage | None = None,
         max_nodes: int = 80,
     ) -> dict[str, Any]:
-        seed_ids = cls._dedupe_terms(node_ids, max_terms=8)
-        if not seed_ids:
-            return {"nodes": [], "edges": [], "status": "skipped"}
-        try:
-            storage = graph_storage or Neo4jGraphStorage(graph_name=graph_name)
-            max_hops = int(
-                os.getenv("YUNESA_NEO4J_SHORTEST_PATH_MAX_HOPS", "3")
-            )
-            graph = await storage.get_shortest_path(
-                seed_ids,
-                max_hops=max_hops,
-                max_nodes=max_nodes,
-                graph_name=graph_name,
-            )
-            graph = cls._prune_shortest_path_graph(
-                graph,
-                relationship_rows,
-                seed_node_ids=seed_ids,
-            )
-            graph["status"] = "ok" if graph.get("nodes") else "empty"
-            graph["seed_node_ids"] = seed_ids
-            return graph
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "Academic GraphRAG shortest-path retrieval failed: "
-                f"{type(exc).__name__}: {exc}"
-            )
-            return {
-                "nodes": [],
-                "edges": [],
-                "status": "error",
-                "seed_node_ids": seed_ids,
-                "message": str(exc),
-            }
+        return await AcademicEvidence._query_shortest_path_subgraph(
+            node_ids,
+            graph_name=graph_name,
+            relationship_rows=relationship_rows,
+            graph_storage=graph_storage,
+            max_nodes=max_nodes,
+        )
 
     @staticmethod
     def _encode_string_by_tiktoken(content: str, model_name: str = "gpt-4") -> list[int]:
-        import tiktoken
-        try:
-            encoder = tiktoken.encoding_for_model(model_name)
-        except Exception:
-            encoder = tiktoken.get_encoding("cl100k_base")
-        return encoder.encode(content)
+        return AcademicEvidence._encode_string_by_tiktoken(content, model_name=model_name)
 
     @classmethod
     def _truncate_list_by_token_size(
@@ -2730,14 +1266,9 @@ class AcademicGraphRAGService:
         max_token_size: int,
         model_name: str = "gpt-4",
     ) -> list[Any]:
-        if max_token_size <= 0:
-            return []
-        tokens = 0
-        for i, data in enumerate(list_data):
-            tokens += len(cls._encode_string_by_tiktoken(key(data), model_name=model_name))
-            if tokens > max_token_size:
-                return list_data[:i]
-        return list_data
+        return AcademicEvidence._truncate_list_by_token_size(
+            list_data, key=key, max_token_size=max_token_size, model_name=model_name
+        )
 
     @classmethod
     def _compact_evidence_text(
@@ -2748,253 +1279,17 @@ class AcademicGraphRAGService:
         grounding: dict[str, Any] | None = None,
         mode: str = "hybrid",
     ) -> str:
-        del grounding
-        # Fetch limits according to original AcademicRAG parameters
-        param = AcademicQueryParam.from_runtime(mode)
-        is_global = param.resolved_kg_mode() == "global"
-        
-        # Max tokens from environment or QueryParam defaults
-        max_entity_tokens = int(os.getenv("MAX_TOKEN_ENTITY_DESC", str(param.max_token_for_local_context)))
-        max_relation_tokens = int(os.getenv("MAX_TOKEN_RELATION_DESC", str(param.max_token_for_global_context if is_global else param.max_token_for_local_context)))
-        max_text_tokens = int(os.getenv("MAX_TOKEN_TEXT_CHUNK", str(param.max_token_for_text_unit)))
-
-        combined_graph = cls._merge_graph_results(
-            [
-                graph or {},
-                cls._map_structured_rows_to_graph(academic),
-            ],
-            max_nodes=80,
+        return AcademicEvidence._compact_evidence_text(
+            chunks, graph, academic=academic, grounding=grounding, mode=mode
         )
-        node_names = {
-            str(node.get("id") or ""): str(
-                node.get("name") or node.get("id") or ""
-            )
-            for node in combined_graph.get("nodes", [])
-        }
-
-        # --- Entities (truncated based on description token size) ---
-        nodes = combined_graph.get("nodes", [])
-        truncated_nodes = cls._truncate_list_by_token_size(
-            nodes,
-            key=lambda x: str(x.get("properties", {}).get("description") or x.get("properties", {}).get("abstract") or x.get("name") or x.get("id") or ""),
-            max_token_size=max_entity_tokens
-        )
-
-        entity_rows: list[list[Any]] = [
-            ["id", "entity", "type", "description", "source"]
-        ]
-        for index, node in enumerate(truncated_nodes, start=1):
-            properties = node.get("properties") or {}
-            description = (
-                properties.get("description")
-                or properties.get("tldr")
-                or properties.get("abstract")
-                or properties.get("title")
-                or ""
-            )
-            entity_rows.append(
-                [
-                    index,
-                    node.get("name") or node.get("id"),
-                    node.get("type") or "Node",
-                    cls._clip_text(description, 800),
-                    (node.get("normalized") or {}).get("source")
-                    or node.get("graph_type")
-                    or "neo4j",
-                ]
-            )
-
-        # --- Relationships (truncated based on relationship description/triples token size) ---
-        all_relations = []
-        for edge in combined_graph.get("edges", []):
-            all_relations.append({
-                "is_edge": True,
-                "data": edge,
-                "description": str((edge.get("properties") or {}).get("description") or "")
-            })
-        for triple in (graph.get("triples", []) or []):
-            all_relations.append({
-                "is_edge": False,
-                "data": triple,
-                "description": f"{triple.get('source')} {triple.get('relation')} {triple.get('target')}"
-            })
-            
-        # Deduplicate relationships by source, type, and target
-        relationship_signatures: set[tuple[str, str, str]] = set()
-        deduped_relations = []
-        for r in all_relations:
-            if r["is_edge"]:
-                source_id = str(r["data"].get("source_id") or r["data"].get("source") or "")
-                target_id = str(r["data"].get("target_id") or r["data"].get("target") or "")
-                relation = str(r["data"].get("type") or "RELATED_TO")
-            else:
-                source_id = str(r["data"].get("source") or "")
-                relation = str(r["data"].get("relation") or "RELATED_TO")
-                target_id = str(r["data"].get("target") or "")
-            sig = (source_id, relation, target_id)
-            if sig not in relationship_signatures:
-                relationship_signatures.add(sig)
-                deduped_relations.append(r)
-
-        truncated_relations = cls._truncate_list_by_token_size(
-            deduped_relations,
-            key=lambda x: x["description"],
-            max_token_size=max_relation_tokens
-        )
-
-        relationship_rows: list[list[Any]] = [
-            ["id", "source", "target", "relation", "description", "source"]
-        ]
-        for index, r in enumerate(truncated_relations, start=1):
-            if r["is_edge"]:
-                edge = r["data"]
-                properties = edge.get("properties") or {}
-                source_id = str(edge.get("source_id") or edge.get("source") or "")
-                target_id = str(edge.get("target_id") or edge.get("target") or "")
-                relation = str(edge.get("type") or "RELATED_TO")
-                relationship_rows.append(
-                    [
-                        index,
-                        node_names.get(source_id, source_id),
-                        node_names.get(target_id, target_id),
-                        relation,
-                        cls._clip_text(properties.get("description") or "", 600),
-                        properties.get("source") or "neo4j",
-                    ]
-                )
-            else:
-                triple = r["data"]
-                source = str(triple.get("source") or "")
-                relation = str(triple.get("relation") or "RELATED_TO")
-                target = str(triple.get("target") or "")
-                relationship_rows.append(
-                    [
-                        index,
-                        source,
-                        target,
-                        relation,
-                        "",
-                        "neo4j",
-                    ]
-                )
-
-        # --- Sources (truncated based on content token size) ---
-        truncated_chunks = cls._truncate_list_by_token_size(
-            chunks or [],
-            key=lambda x: str(x.get("content") or ""),
-            max_token_size=max_text_tokens
-        )
-
-        source_rows: list[list[Any]] = [["id", "source", "content", "score"]]
-        for index, chunk in enumerate(truncated_chunks, start=1):
-            source_rows.append(
-                [
-                    index,
-                    chunk.get("source") or "knowledge-base",
-                    cls._clip_text(chunk.get("content") or "", 1600),
-                    chunk.get("score"),
-                ]
-            )
-
-        def to_csv(rows: list[list[Any]]) -> str:
-            output = io.StringIO(newline="")
-            writer = csv.writer(
-                output,
-                quoting=csv.QUOTE_ALL,
-                lineterminator="\n",
-            )
-            writer.writerows(rows)
-            return output.getvalue().strip()
-
-        community_summaries = (academic or {}).get("community_summaries") or []
-        community_rows: list[list[Any]] = [["id", "community_id", "summary"]]
-        for index, comm in enumerate(community_summaries, start=1):
-            community_rows.append([
-                index,
-                comm.get("community_id") or comm.get("id"),
-                cls._clip_text(comm.get("content") or "", 1200)
-            ])
-
-        evidence_parts = []
-        if len(community_rows) > 1:
-            evidence_parts.append(
-                "-----Community Summaries-----\n"
-                "```csv\n"
-                f"{to_csv(community_rows)}\n"
-                "```"
-            )
-        evidence_parts.append(
-            "-----Entities-----\n"
-            "```csv\n"
-            f"{to_csv(entity_rows)}\n"
-            "```"
-        )
-        evidence_parts.append(
-            "-----Relationships-----\n"
-            "```csv\n"
-            f"{to_csv(relationship_rows)}\n"
-            "```"
-        )
-        evidence_parts.append(
-            "-----Sources-----\n"
-            "```csv\n"
-            f"{to_csv(source_rows)}\n"
-            "```"
-        )
-        evidence = "\n".join(evidence_parts)
-        logger.debug(
-            "Academic GraphRAG evidence_text size: %d chars "
-            "(communities=%d, entities=%d, relations=%d, sources=%d)",
-            len(evidence),
-            len(community_rows) - 1,
-            len(entity_rows) - 1,
-            len(relationship_rows) - 1,
-            len(source_rows) - 1,
-        )
-        return evidence
 
     @staticmethod
     def _graph_summary(graph: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "status": graph.get("status"),
-            "nodes": len(graph.get("nodes", []) or []),
-            "edges": len(graph.get("edges", []) or []),
-            "triples": len(graph.get("triples", []) or []),
-        }
+        return AcademicEvidence._graph_summary(graph)
 
     @classmethod
     def _context_summary(cls, payload: dict[str, Any], duration_seconds: float) -> dict[str, Any]:
-        graph = payload.get("graph") or {}
-        academic = payload.get("academic_retrieval") or {}
-        keyword_decomposition = academic.get("keyword_decomposition") or {}
-        return {
-            "mode": payload.get("mode"),
-            "requested_mode": payload.get("requested_mode"),
-            "route_decision": payload.get("route_decision"),
-            "kb_name": (payload.get("knowledge_base") or {}).get("name"),
-            "collection_id": (payload.get("knowledge_base") or {}).get("collection_id"),
-            "chunks": len(payload.get("chunks", []) or []),
-            "academic_status": academic.get("status"),
-            "academicrag_mode": academic.get("academicrag_mode"),
-            "kg_mode": academic.get("kg_mode"),
-            "academic_paper_chunks": len(academic.get("paper_chunks", []) or []),
-            "academic_author_publications": len(academic.get("author_publications", []) or []),
-            "academic_publication_details": len(academic.get("publication_details", []) or []),
-            "academic_lecturer_topic_publications": len(
-                academic.get("lecturer_topic_publications", []) or []
-            ),
-            "academic_topic_frequencies": len(academic.get("topic_frequencies", []) or []),
-            "academic_collaborations": len(academic.get("collaborations", []) or []),
-            "academic_keywords": len(academic.get("keywords", []) or []),
-            "academic_entities": len(academic.get("entities", []) or []),
-            "academic_relationships": len(academic.get("relationships", []) or []),
-            "high_level_keywords": keyword_decomposition.get("high_level_keywords", []),
-            "low_level_keywords": keyword_decomposition.get("low_level_keywords", []),
-            "graph": cls._graph_summary(graph),
-            "grounding": payload.get("grounding"),
-            "evidence_chars": len(payload.get("evidence_text") or ""),
-            "duration_seconds": round(duration_seconds, 3),
-        }
+        return AcademicEvidence._context_summary(payload, duration_seconds=duration_seconds)
 
     @classmethod
     def _grounding_status(
@@ -3004,103 +1299,9 @@ class AcademicGraphRAGService:
         academic: dict[str, Any],
         query_text: str = "",
     ) -> dict[str, Any]:
-        # Extract query terms and filter out generic/question stopwords
-        terms = cls._query_terms(query_text, max_terms=24)
-        generic_stopwords = {
-            # English
-            "paper", "papers", "publication", "publications", "article", "articles", "lecturer", "lecturers",
-            "researcher", "researchers", "professor", "professors", "author", "authors", "write", "written",
-            "topic", "topics", "study", "studies", "research", "researching", "list", "find", "search", "show",
-            "get", "about", "using", "use", "used", "method", "methods", "algorithm", "algorithms",
-            "dataset", "datasets", "model", "models", "approach", "approaches", "framework", "frameworks",
-            "results", "result", "performance", "analysis", "evaluation", "evaluate", "implement", "implementation",
-            # Indonesian
-            "paper", "publikasi", "artikel", "dosen", "peneliti", "penulis", "tulis", "ditulis",
-            "topik", "penelitian", "riset", "daftar", "cari", "carikan", "tunjukkan", "dapatkan",
-            "tentang", "menggunakan", "penerapan", "implementasi", "metode", "algoritma", "dataset",
-            "model", "pendekatan", "kerangka", "hasil", "performa", "analisa", "analisis", "evaluasi",
-            "siapa", "apa", "bagaimana", "dimana", "kapan", "mengapa", "kenapa", "saja", "yang", "dengan",
-            "pada", "dan", "untuk", "oleh", "di", "ke", "dari", "adalah", "yaitu", "yakni", "sebagai",
-            "dalam", "secara", "bahwa", "ini", "itu", "saya", "kami", "mereka", "kita", "kamu", "dia",
-        }
-        topic_terms = [t.lower() for t in terms if t.lower() not in generic_stopwords and len(t) >= 3]
-
-        # Check if topic terms are found in retrieved chunks, academic details, or graph nodes/triples
-        has_topic_match = True
-        if topic_terms:
-            content_parts = []
-            for chunk in chunks or []:
-                content_parts.append(str(chunk.get("content") or ""))
-                content_parts.append(str(chunk.get("source") or ""))
-
-            for key in ("publication_details", "author_publications", "lecturer_topic_publications", "topic_frequencies", "collaborations"):
-                for item in academic.get(key, []) or []:
-                    if isinstance(item, dict):
-                        content_parts.extend(str(val) for val in item.values() if val)
-
-            for node in graph.get("nodes", []) or []:
-                if isinstance(node, dict):
-                    content_parts.append(str(node.get("name") or ""))
-                    content_parts.append(str(node.get("label") or ""))
-
-            for triple in graph.get("triples", []) or []:
-                if isinstance(triple, dict):
-                    content_parts.append(str(triple.get("source") or ""))
-                    content_parts.append(str(triple.get("target") or ""))
-
-            search_text = " ".join(content_parts).lower()
-            has_topic_match = any(term in search_text for term in topic_terms)
-
-        direct_count = len(chunks) if has_topic_match else 0
-        structured_direct_count = sum(
-            len(academic.get(key, []) or [])
-            for key in (
-                "publication_details",
-                "author_publications",
-                "lecturer_topic_publications",
-                "topic_frequencies",
-                "collaborations",
-            )
-        ) if has_topic_match else 0
-        direct_count += structured_direct_count
-        relation_intent = any(
-            marker in str(query_text or "").casefold()
-            for marker in (
-                "berkolaborasi",
-                "collaborat",
-                "hubungan",
-                "relasi",
-                "collaboration",
-                "relationship",
-                "connected",
-                "terhubung",
-            )
+        return AcademicEvidence._grounding_status(
+            chunks, graph, academic, query_text=query_text
         )
-        graph_direct_count = (
-            len(graph.get("triples", []) or [])
-            if relation_intent and structured_direct_count == 0 and has_topic_match
-            else 0
-        )
-        direct_count += graph_direct_count
-        supporting_count = sum(
-            len(academic.get(key, []) or [])
-            for key in ("keywords", "entities", "relationships")
-        )
-        supporting_count += max(0, len(graph.get("triples", []) or []) - graph_direct_count)
-        supporting_count += len(cls._publication_nodes_from_graph(graph, max_nodes=12))
-        if direct_count:
-            status = "grounded"
-        elif supporting_count:
-            status = "supporting_only"
-        else:
-            status = "empty"
-        return {
-            "status": status,
-            "answerable": status == "grounded",
-            "direct_evidence_count": direct_count,
-            "supporting_evidence_count": supporting_count,
-            "graph_direct_evidence_count": graph_direct_count,
-        }
 
     async def query_graph(
         self,
@@ -3286,9 +1487,19 @@ class AcademicGraphRAGService:
             )
             mode = str(route_decision["effective_mode"])
             resolved_graph_name = self._academic_graph_name(graph_name)
-            author_publication_enumeration_query = (
-                self._is_author_publication_enumeration_query(intent_query)
-            )
+            # Extract entities and sub-intents from routing_metadata
+            routing_metadata = routing_metadata or {}
+            extracted_entities = routing_metadata.get("entities")
+            sub_intents = routing_metadata.get("sub_intents") or []
+
+            if extracted_entities is not None:
+                author_publication_enumeration_query = "author_publications" in sub_intents and any(
+                    marker in intent_query.lower() for marker in ("daftar", "list", "apa saja", "show")
+                )
+            else:
+                author_publication_enumeration_query = (
+                    self._is_author_publication_enumeration_query(intent_query)
+                )
             author_publication_context_limit = int(
                 os.getenv("YUNESA_AUTHOR_PUBLICATION_CONTEXT_LIMIT", "12")
             )
@@ -3303,11 +1514,6 @@ class AcademicGraphRAGService:
                 if author_publication_enumeration_query
                 else author_publication_context_limit
             )
-
-            # Extract entities and sub-intents from routing_metadata
-            routing_metadata = routing_metadata or {}
-            extracted_entities = routing_metadata.get("entities")
-            sub_intents = routing_metadata.get("sub_intents") or []
 
             # Graceful fallback: skip structured queries if intent is vector_search
             # or if routing_metadata is empty/lacks valid entities.
@@ -3348,12 +1554,14 @@ class AcademicGraphRAGService:
                         graph_name=resolved_graph_name,
                         limit=author_publication_window + 1,
                         extracted_entities=extracted_entities,
+                        sub_intents=sub_intents,
                     ),
                     self.query_publication_details(
                         intent_query,
                         graph_name=resolved_graph_name,
                         limit=int(os.getenv("YUNESA_PUBLICATION_DETAIL_QUERY_LIMIT", "12")),
                         extracted_entities=extracted_entities,
+                        sub_intents=sub_intents,
                     ),
                     self.query_lecturer_topic_publications(
                         intent_query,
@@ -3367,6 +1575,7 @@ class AcademicGraphRAGService:
                         graph_name=resolved_graph_name,
                         limit=int(os.getenv("YUNESA_TOPIC_FREQUENCY_QUERY_LIMIT", "15")),
                         extracted_entities=extracted_entities,
+                        sub_intents=sub_intents,
                     ),
                     self.query_collaborations(
                         intent_query,

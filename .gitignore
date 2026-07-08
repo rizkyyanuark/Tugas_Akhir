@@ -233,3 +233,16 @@ notebooks/build-graph/outputs/
 # Cloudflare Tunnel
 cloudflared/credentials.json
 cloudflared/config.yaml
+
+# Local scripts and ad-hoc debugging files
+scripts/scratch/
+scripts/dump_*.py
+scripts/trigger_*.py
+scripts/test_*.py
+scripts/update_*.py
+scripts/print_*.py
+scripts/inspect_*.py
+
+# Agent configurations
+.agents/
+
