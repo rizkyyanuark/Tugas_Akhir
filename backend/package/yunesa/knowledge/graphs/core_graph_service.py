@@ -307,26 +307,26 @@ class CoreGraphService:
         keyword_lc = search.lower()
 
         if search == "*":
-            seed_where = "($graph_name IS NULL OR seed.graph_name = $graph_name)"
+            match_clause = "MATCH (seed:Lecturer|Publication|Concept|Department|Faculty|Institution)"
+            where_clause = "WHERE ($graph_name IS NULL OR seed.graph_name = $graph_name)"
         else:
-            seed_where = """
-                ($graph_name IS NULL OR seed.graph_name = $graph_name)
-                AND (
-                    toLower(coalesce(seed.label, '')) CONTAINS $keyword
-                    OR toLower(coalesce(seed.name, '')) CONTAINS $keyword
-                    OR toLower(coalesce(seed.title, '')) CONTAINS $keyword
-                    OR toLower(coalesce(seed.nama_dosen, '')) CONTAINS $keyword
-                    OR toLower(coalesce(seed.paper_id, '')) CONTAINS $keyword
-                    OR toLower(coalesce(seed.node_type, '')) CONTAINS $keyword
-                    OR toLower(coalesce(seed.concept_type, '')) CONTAINS $keyword
-                    OR any(label IN labels(seed) WHERE toLower(label) CONTAINS $keyword)
-                )
+            import re
+            cleaned_search = re.sub(r'[^\w\s]', '', search)
+            fts_terms = [t for t in cleaned_search.split() if t]
+            if fts_terms:
+                fts_query = " OR ".join(f"*{t}*" for t in fts_terms)
+            else:
+                fts_query = f"*{search}*"
+            match_clause = 'CALL db.index.fulltext.queryNodes("kgnode_fts_idx", $fts_query) YIELD node AS seed'
+            where_clause = """
+                WHERE ($graph_name IS NULL OR seed.graph_name = $graph_name)
+                AND any(lbl IN labels(seed) WHERE lbl IN ['Lecturer', 'Publication', 'Concept', 'Department', 'Faculty', 'Institution'])
             """
 
         if depth == 1:
             query_text = f"""
-                MATCH (seed:Lecturer|Publication|Concept|Department|Faculty|Institution)
-                WHERE {seed_where}
+                {match_clause}
+                {where_clause}
                 WITH seed, COUNT {{ (seed)--() }} AS degree
                 ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
                 LIMIT $seed_limit
@@ -361,8 +361,8 @@ class CoreGraphService:
             """
         else:
             query_text = f"""
-                MATCH (seed:Lecturer|Publication|Concept|Department|Faculty|Institution)
-                WHERE {seed_where}
+                {match_clause}
+                {where_clause}
                 WITH seed, COUNT {{ (seed)--() }} AS degree
                 ORDER BY degree DESC, coalesce(seed.label, seed.name, seed.title, seed.id, '') ASC
                 LIMIT $seed_limit
@@ -407,14 +407,23 @@ class CoreGraphService:
                 RETURN nodes, collect(DISTINCT r)[0..toInteger($edge_limit)] AS rels
             """
 
-        isolated_query = f"""
-            MATCH (seed)
-            WHERE {seed_where}
-            RETURN collect(seed)[0..toInteger($node_limit)] AS nodes, [] AS rels
-        """
+        if search == "*":
+            isolated_query = f"""
+                MATCH (seed:Lecturer|Publication|Concept|Department|Faculty|Institution)
+                WHERE ($graph_name IS NULL OR seed.graph_name = $graph_name)
+                RETURN collect(seed)[0..toInteger($node_limit)] AS nodes, [] AS rels
+            """
+        else:
+            isolated_query = f"""
+                CALL db.index.fulltext.queryNodes("kgnode_fts_idx", $fts_query) YIELD node AS seed
+                WHERE ($graph_name IS NULL OR seed.graph_name = $graph_name)
+                AND any(lbl IN labels(seed) WHERE lbl IN ['Lecturer', 'Publication', 'Concept', 'Department', 'Faculty', 'Institution'])
+                RETURN collect(seed)[0..toInteger($node_limit)] AS nodes, [] AS rels
+            """
 
         params = {
             "keyword": keyword_lc,
+            "fts_query": fts_query if search != "*" else "",
             "graph_name": graph_filter,
             "seed_limit": seed_limit,
             "node_limit": node_limit,
