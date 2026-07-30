@@ -501,24 +501,22 @@ def run_post_processing() -> Optional[Path]:
     return FINAL_CSV
 
 
-# Step 6: Supabase Sync
-
 def run_supabase_sync() -> int:
-    """Sync final data to Supabase."""
-    from ..clients.supabase_client import SupabaseClient
-    
-    logger.info("SUPABASE SYNC: Starting sync process")
-    
+    """Sync final lecturer data to Self-Hosted PostgreSQL (postgres-prod)."""
+    from ..clients.postgres_client import PostgresClient
+
+    logger.info("POSTGRES SYNC: Starting sync process to postgres-prod")
+
     try:
         df = read_dataframe_csv(FINAL_CSV, dtype=str)
     except FileNotFoundError:
         logger.error("Final file not found. Run previous steps first.")
         return 0
-    
+
     df = enforce_strict_ids(df)
-    supabase = SupabaseClient()
-    supabase.upsert_lecturers(df)
-    
-    logger.info(f"Done: {len(df)} lecturers synced to Supabase.")
+    pg_client = PostgresClient()
+    pg_client.upsert_lecturers(df)
+
+    logger.info(f"Done: {len(df)} lecturers synced to Self-Hosted PostgreSQL.")
     return len(df)
 

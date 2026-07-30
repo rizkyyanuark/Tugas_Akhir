@@ -2140,6 +2140,54 @@ def summarize_extracted_elements(
     }
 
 
+def fetch_postgres_sample(sample_size: int = 50) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Read sample data from Self-Hosted PostgreSQL (postgres-prod)."""
+    import psycopg
+    host = os.getenv("POSTGRES_HOST") or os.getenv("PGHOST") or "postgres-prod"
+    port = os.getenv("POSTGRES_PORT") or os.getenv("PGPORT") or "5432"
+    db = os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE") or "tugas_akhir"
+    user = os.getenv("POSTGRES_USER") or os.getenv("PGUSER") or "postgres"
+    password = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD") or "71509325"
+
+    conn_str = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+    with psycopg.connect(conn_str) as conn:
+        with conn.cursor() as cur:
+            limit_clause = f" LIMIT {max(sample_size * 3, sample_size)}" if sample_size > 0 else ""
+            cur.execute(f"SELECT paper_id, title, abstract, tldr, keywords, year, journal, document_type, authors, author_ids, doi, link FROM papers ORDER BY year DESC NULLS LAST{limit_clause};")
+            rows = cur.fetchall()
+            cols = [desc[0] for desc in cur.description]
+            papers_df = pd.DataFrame(rows, columns=cols)
+
+            cur.execute("SELECT nip, nama_dosen, nama_norm, nidn, prodi, scopus_id, scholar_id, sinta_id FROM lecturers;")
+            l_rows = cur.fetchall()
+            l_cols = [desc[0] for desc in cur.description]
+            lecturers_df = pd.DataFrame(l_rows, columns=l_cols)
+
+    if not papers_df.empty:
+        papers_df = papers_df[
+            papers_df["title"].map(lambda value: bool(safe_str(value)))
+            & (
+                papers_df["abstract"].map(lambda value: len(safe_str(value)) > 20)
+                | papers_df["tldr"].map(lambda value: len(safe_str(value)) > 20)
+            )
+        ]
+        if sample_size > 0:
+            papers_df = papers_df.head(sample_size).copy()
+
+    links = []
+    if not papers_df.empty:
+        for _, row in papers_df.iterrows():
+            pid = row.get("paper_id")
+            a_ids = str(row.get("author_ids") or "")
+            if pid and a_ids:
+                for aid in a_ids.replace(";", ",").split(","):
+                    aid_clean = aid.strip()
+                    if aid_clean:
+                        links.append({"paper_id": pid, "nip": aid_clean})
+    links_df = pd.DataFrame(links)
+    return papers_df.reset_index(drop=True), lecturers_df.reset_index(drop=True), links_df.reset_index(drop=True)
+
+
 def fetch_supabase_sample(sample_size: int = 50) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Read sample data from Supabase.
 
@@ -6076,7 +6124,7 @@ def write_run_manifest(
 def run_local_kg_pipeline(
     *,
     sample_size: int = 50,
-    source: str = "supabase",
+    source: str = "postgres",
     graph_name: str = "yunesa_academic_kg_local",
     write_neo4j: bool = False,
     write_milvus: bool = False,
@@ -6090,13 +6138,18 @@ def run_local_kg_pipeline(
     config = KGConfig.default(sample_size=sample_size)
     load_project_env(config.project_root)
 
-    source = normalize_text(source) or "supabase"
+    source = normalize_text(source) or "postgres"
     try:
         if source == "local_csv":
             raise RuntimeError("forced local CSV source")
-        papers_df, lecturers_df, links_df = fetch_supabase_sample(sample_size=sample_size)
-        data_source = "supabase"
-    except Exception:
+        elif source == "supabase":
+            papers_df, lecturers_df, links_df = fetch_supabase_sample(sample_size=sample_size)
+            data_source = "supabase"
+        else:
+            papers_df, lecturers_df, links_df = fetch_postgres_sample(sample_size=sample_size)
+            data_source = "postgres"
+    except Exception as exc:
+        logger.warning(f"kg.load_failed | source={source} | error={exc} | fallback=local_csv")
         papers_df, lecturers_df, links_df = load_local_csv_sample(config.project_root / "notebooks", sample_size=sample_size)
         data_source = "local_csv"
 

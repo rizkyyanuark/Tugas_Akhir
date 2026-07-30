@@ -1,6 +1,26 @@
 \ProvidesClass{SkripsiUnesa}[28/02/2025 v2.5]
 \NeedsTeXFormat{LaTeX2e}
 \LoadClass[a5paper,10pt,twoside,openright]{book}
+
+\def\cleardoublepagecustom{%
+	\clearpage
+	\if@twoside
+		\ifodd\c@page
+		\else
+			\thispagestyle{empty}%
+			\vspace*{\fill}
+			\begin{center}
+				\textit{(Halaman ini sengaja dikosongkan)}
+			\end{center}
+			\vspace*{\fill}
+			\newpage
+			\if@twocolumn\hbox{}\newpage\fi
+		\fi
+	\fi
+}
+
+
+
 \RequirePackage[hmargin={2.5cm,2cm},vmargin={2.5cm,2cm}]{geometry}
 \RequirePackage{graphicx,setspace,amssymb,amsmath,amsthm,amsfonts,newpx,enumitem,indentfirst,tabularx,ifthen,lscape,hyperref,array,mathtools,subcaption,multirow,natbib,tikz,listings,wrapfig,imakeidx,fancyhdr,pgfplots,setspace,longtable,lipsum,hhline,adjustbox}
 \RequirePackage[font=small,labelfont=bf]{caption}
@@ -192,35 +212,39 @@
 \AtBeginDocument{\setlength{\headheight}{14.5pt}}
 \AtBeginDocument{\pagestyle{plain}} % Terapkan style untuk halaman biasa
 
+% Parameter Float agar tabel & teks dapat berada di halaman yang sama
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.8}
+
 \newcommand\HalamanJudul{%
 	\pagenumbering{gobble}
 	
 	\begin{center}
 		\noindent
-		{\Large\textbf{\MakeUppercase{\@judul}}}\\[21pt] % Ganti ex dengan pt
+		{\Large\textbf{\MakeUppercase{\@judul}}}\\[12pt]
 		
-		\textit{{\large SKRIPSI}}\\[36pt] % Ganti ex dengan pt
+		\textit{{\large SKRIPSI}}\\[18pt]
 		
-		\includegraphics[height=5cm]{Gambar/logounesa}\\[36pt] % Logo disesuaikan dalam pt
+		\includegraphics[height=3.5cm]{Gambar/logounesa}\\[18pt]
 		
 		\vspace*{\stretch{1}}
 		
 		Oleh\\
 		\MakeUppercase{\@nama}\\
-		\textbf{NIM \@NIM}\\[45pt] % Jarak sebelum universitas
+		\textbf{NIM \@NIM}\\[20pt]
 		
-		\vfill % Mengisi ruang kosong agar konten selalu berada di satu halaman
+		\vfill
 		
 		UNIVERSITAS NEGERI SURABAYA\\
 		\makebox[\textwidth][c]{FAKULTAS~\MakeUppercase{\@fak}}\\
 		%DEPARTEMEN~\MakeUppercase{\@dep}\\
 		\textit{PROGRAM STUDI~\MakeUppercase{\@prodi}}\\
 		\@thn
-		\vspace*{\stretch{1}} % Mengisi ruang kosong setelah bagian bawah
+		\vspace*{\stretch{1}}
 	\end{center}
-	\cleardoublepage
-	\thispagestyle{empty} % Halaman kosong juga tanpa nomor
-	
+	\clearpage
 	\setcounter{page}{1} 
 	\pagenumbering{roman}
 }
@@ -228,19 +252,18 @@
 % Bagian Awal (Tanpa nomor halaman pada halaman kosong)
 \newcommand\Awal{%
 	\frontmatter
-	\pagestyle{plain} % Terapkan style halaman biasa
-	\pagenumbering{roman} % Menggunakan penomoran Romawi kecil
-	
-	% Cek apakah halaman kosong (genap) dan jangan dicetak
-	\clearpage
-	\ifodd\value{page}%
-	\else
-	\clearpage
-	\fi
+	\let\cleardoublepage\clearpage
+	\fancypagestyle{plain}{%
+		\fancyhf{}%
+		\renewcommand{\headrulewidth}{0pt}%
+		\renewcommand{\footrulewidth}{0pt}%
+		\fancyfoot[C]{\thepage}%
+	}%
+	\pagestyle{plain}%
+	\pagenumbering{roman}%
 }
 
 \newcommand\SampulDalam{%
-	\cleardoublepage
 	\thispagestyle{chapterstyle} % Halaman ini tanpa nomor halaman
 	\begin{center}
 		\noindent
@@ -269,12 +292,6 @@
 	\end{center}
 	\addcontentsline{toc}{chapter}{SAMPUL}
 	\clearpage
-	\ifodd\value{page} 
-	\thispagestyle{empty} % Hilangkan nomor halaman
-	\null
-	\clearpage
-	\pagenumbering{roman} % Kembalikan penomoran halaman
-	\fi
 }
 
 \newcommand{\katakunci}{} % Definisi awal agar tidak undefined
@@ -289,21 +306,33 @@
 
 \newenvironment*{Abstrak}{%
 	\chapter*{\MakeUppercase{Abstrak}} % Ubah ke huruf besar
+	\vspace{-20pt} % Kurangi jarak setelah judul agar proporsional
 	\addcontentsline{toc}{chapter}{ABSTRAK} % Tampilkan di daftar isi dengan huruf besar
 	\thispagestyle{chapterstyle} % Halaman pertama footer tengah
-	\begin{center}%
-		\@nama \\
-		\textbf{\MakeUppercase{\@judul}} \\ 
-		Skripsi \\ 
-		\@univ, Fakultas \@fak, \@thn 
-	\end{center}
-	\setlength{\parindent}{20pt} % Paksa indentasi pada setiap paragraf
+	\enlargethispage{1.5cm}
+	\begingroup
+	\renewcommand{\arraystretch}{1.0}%
+	\small
 	\noindent
+	\begin{tabularx}{\textwidth}{@{}p{3.6cm}@{\ }c@{\ }X}
+		\textbf{Nama Penulis} & : & \@nama \\
+		\textbf{Judul} & : & \@judul \\
+		\textbf{Bentuk Tugas Akhir} & : & Skripsi \\
+		\textbf{Nama Kota} & : & Surabaya \\
+		\textbf{Fakultas} & : & \@fak \\
+		\textbf{Tahun} & : & \@thn \\
+	\end{tabularx}\par
+	\endgroup
+	\vspace{2pt}
+	\begin{singlespace}
+	\small
+	\setlength{\parindent}{0pt}%
+	\parindent=0pt\relax
 }{%
 	\par
-	\bigskip
-	\noindent\textbf{Kata kunci:}~\@katakunci % Menampilkan kata kunci di akhir abstrak
-	\par
+	\vspace{4pt}
+	\noindent\textbf{Kata kunci:} \@katakunci
+	\end{singlespace}
 	\normalfont\normalsize
 }
 
@@ -311,29 +340,41 @@
 	\clearpage
 	\pagestyle{chapterstyle} % Terapkan chapterstyle ke seluruh halaman Abstract
 	\chapter*{\MakeUppercase{Abstract}} % Ubah ke huruf besar
+	\vspace{-20pt} % Kurangi jarak setelah judul agar proporsional
 	\addcontentsline{toc}{chapter}{ABSTRACT} % Tambahkan ke daftar isi
 	\thispagestyle{chapterstyle} % Pastikan halaman ini menggunakan chapterstyle
-	\begin{center}%
-		\@nama \\
-		\textbf{\MakeUppercase{\@juduleng}} \\ 
-		Undergraduate Thesis \\ 
-		\@uni, Faculty of \@fac, \@thn 
-	\end{center}
-	\setlength{\parindent}{20pt} % Indentasi paragraf
+	\enlargethispage{1.5cm}
+	\begingroup
+	\renewcommand{\arraystretch}{1.0}%
+	\small
 	\noindent
+	\begin{tabularx}{\textwidth}{@{}p{3.6cm}@{\ }c@{\ }X}
+		\textbf{Author} & : & \@nama \\
+		\textbf{Title} & : & \@juduleng \\
+		\textbf{Type of Final Project} & : & Undergraduate Thesis \\
+		\textbf{City} & : & Surabaya \\
+		\textbf{Faculty} & : & \@fac \\
+		\textbf{Year} & : & \@thn \\
+	\end{tabularx}\par
+	\endgroup
+	\vspace{2pt}
+	\begin{singlespace}
+	\small
+	\setlength{\parindent}{0pt}%
+	\parindent=0pt\relax
 }{%
 	\par
-	\bigskip
-	\noindent\textbf{Keywords:}~\@keywords % Menampilkan keywords di akhir abstract
-	\par
-	\normalfont\normalsize
+	\vspace{4pt}
+	\noindent\textbf{Keywords:} \@keywords
+	\end{singlespace}
 	\clearpage % Pastikan halaman berikutnya tidak ikut terkena chapterstyle
 	\pagestyle{plain} % Kembalikan ke format halaman biasa
+	\normalfont\normalsize
 }
 
 \newcommand\SuratPernyataan{
 	\chapter*{Surat Pernyataan} % Pastikan judul tetap dalam satu halaman
-	\thispagestyle{plain} % Gunakan format halaman biasa
+	\thispagestyle{chapterstyle} % Gunakan format halaman awal bab
 	\vspace{-10pt} % Kurangi jarak kosong setelah judul
 	
 	\noindent
@@ -370,6 +411,144 @@
 	\vfill % Paksa agar konten hanya dalam satu halaman
 }
 
+\newcommand\@tglorisinalitas{17 Juli 2026}
+\DeclareRobustCommand\TanggalOrisinalitas[1]{%
+	\renewcommand\@tglorisinalitas{#1}%
+}
+
+\newcommand\SuratOrisinalitas{
+	\clearpage
+	\pagestyle{chapterstyle}
+	\chapter*{SURAT PERNYATAAN ORISINALITAS SKRIPSI}%
+	\vspace{-20pt}
+	\addcontentsline{toc}{chapter}{SURAT PERNYATAAN ORISINALITAS SKRIPSI}
+	\thispagestyle{chapterstyle}
+	\begin{singlespacing}
+	\small
+	\renewcommand{\arraystretch}{1.1}
+	
+	\noindent
+	Yang bertanda tangan di bawah ini:\\
+	\begin{tabular}{@{}lcp{0.65\textwidth}}
+		Nama & : & \@nama\\
+		NIM & : &  \@NIM\\
+		Program Studi & : & \@prodi\\
+		Jenjang & : & S1\\
+		Fakultas & : & \@fak\\
+		Judul Skripsi & : & \@judul
+	\end{tabular}\\[4pt]
+	
+	\noindent
+	Dengan ini menyatakan dengan sebenar-benarnya bahwa skripsi ini adalah murni hasil karya saya sendiri, disusun dengan menjunjung tinggi nilai-nilai kejujuran dan etika akademik, serta:
+	\begin{daftar}[leftmargin=0.5cm, itemsep=2pt, parsep=0pt, topsep=2pt, partopsep=0pt]
+		\item Tidak merupakan hasil penjiplakan (plagiasi) sebagian atau seluruhnya dari karya pihak lain;
+		\item Tidak pernah diajukan untuk memperoleh gelar akademik pada perguruan tinggi manapun;
+		\item Setiap sumber informasi dan kutipan dari karya orang lain telah disebutkan dengan jelas dan diacu sesuai ketentuan akademik;
+		\item Dalam hal skripsi ini disusun berdasarkan artikel ilmiah yang telah diterbitkan, saya menyatakan bahwa saya adalah penulis pertama dan artikel tersebut disusun bersama dosen pembimbing yang dicantumkan dalam publikasi;
+		\item Apabila di kemudian hari terbukti bahwa skripsi ini bukan merupakan hasil karya saya sendiri atau mengandung unsur pelanggaran etika akademik (termasuk plagiarisme atau penyalahgunaan teknologi kecerdasan buatan tanpa pengakuan), maka saya bersedia menerima sanksi akademik sesuai ketentuan yang berlaku di Universitas Negeri Surabaya.
+	\end{daftar}
+	\newpage
+	\thispagestyle{chapterstyle}
+	
+	\noindent
+	Demikian surat pernyataan yang saya buat dengan sebenar-benarnya untuk digunakan sebagaimana mestinya.
+	\begin{flushright}
+		\begin{tabular}{@{}p{0.55\textwidth}@{}}
+			Surabaya, \@tglorisinalitas\\
+			Yang Membuat Pernyataan,\\[18ex]
+			\textbf{\@nama}\\
+			NIM. \@NIM
+		\end{tabular}
+	\end{flushright}
+	\end{singlespacing}
+	\clearpage
+	\pagestyle{plain}
+}
+ 
+\newcommand{\checkedbox}{\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}}
+\newcommand{\emptybox}{$\square$}
+
+\newcommand{\AIEksplorasiIde}{\checkedbox}
+\newcommand{\AIKerangkaTulisan}{\checkedbox}
+\newcommand{\AITataBahasa}{\emptybox}
+\newcommand{\AIAnalisisData}{\checkedbox}
+\newcommand{\AIIlustrasi}{\emptybox}
+\newcommand{\AILainnya}{\emptybox}
+\newcommand{\AILainnyaTeks}{}
+
+\newcommand\SuratPernyataanAI{
+	\clearpage
+	\begingroup
+		\def\@makeschapterhead##1{%
+			\vspace*{-0.6cm}%
+			{\parindent \z@ \centering\normalfont
+				\interlinepenalty\@M
+				\large\bfseries\MakeUppercase{##1}\par\nobreak
+				\vskip 10\p@
+			}%
+		}%
+		\chapter*{PERNYATAAN PENGGUNAAN ARTIFICIAL\\INTELLIGENCE (AI) DALAM KARYA AKADEMIK}%
+	\endgroup
+	\thispagestyle{chapterstyle}
+	\enlargethispage{1.5cm}
+	\begin{singlespacing}
+	\small
+	\renewcommand{\arraystretch}{1.1}
+	
+	\noindent
+	\begin{tabularx}{\textwidth}{@{}p{3.0cm}@{\ }c@{\ }X}
+		\textbf{Nama Penulis} & : & \@nama \\
+		\textbf{NIM} & : & \@NIM \\
+		\textbf{Program Studi} & : & \@prodi \\
+		\textbf{Jenjang} & : & S1 \\
+		\textbf{Fakultas} & : & \@fak \\
+		\textbf{Judul} & : & \@judul \\
+	\end{tabularx}\par
+	\vspace{0.8em}
+	
+	\noindent
+	Dengan ini menyatakan bahwa:\\
+	Saya telah menggunakan/atau tidak menggunakan bantuan \textit{Artificial Intelligence} (AI) dalam proses penyusunan karya akademik ini.\par
+	\vspace{0.4em}
+	\noindent
+	Apabila menggunakan AI, bentuk pemanfaatan yang dilakukan adalah (pilih yang sesuai):
+	\begin{itemize}[label={}, leftmargin=0.5cm, itemsep=2pt, parsep=0pt, topsep=4pt]
+		\item \AIEksplorasiIde\ Membantu dalam eksplorasi ide/ gagasan
+		\item \AIKerangkaTulisan\ Membantu dalam perumusan kerangka tulisan
+		\item \AITataBahasa\ Membantu dalam pengecekan tata bahasa/ penyuntingan bahasa
+		\item \AIAnalisisData\ Membantu dalam analisis data/simulasi
+		\item \AIIlustrasi\ Membantu dalam pembuatan ilustrasi/diagram
+		\item \AILainnya\ Lainnya: \AILainnyaTeks
+	\end{itemize}
+	\vspace{0.4em}
+	
+	\noindent
+	Saya menjamin bahwa seluruh isi, argumentasi, dan kesimpulan dalam karya akademik ini merupakan hasil pemikiran saya sendiri, serta bukan hasil salin-tempel langsung dari keluaran AI.\par
+	\vspace{0.2em}
+	\noindent
+	Saya bertanggung jawab penuh atas keaslian, keabsahan, dan integritas karya ini sesuai dengan norma akademik yang berlaku.\par
+	\vspace{0.2em}
+	\noindent
+	Saya menyadari bahwa pelanggaran terhadap ketentuan ini dapat mengakibatkan sanksi akademik sesuai aturan yang berlaku di Universitas.\par
+	\vspace{0.2em}
+	\noindent
+	Demikian pernyataan ini saya buat dengan sebenar-benarnya untuk dipergunakan sebagaimana mestinya.\par
+	\vspace{0.8em}
+	
+	\begin{flushright}
+		\begin{tabular}{@{}p{0.55\textwidth}@{}}
+			Surabaya, \@tglorisinalitas\\
+			Yang Membuat Pernyataan,\\[7ex]
+			\textbf{\@nama}\\
+			NIM. \@NIM
+		\end{tabular}
+	\end{flushright}
+	\end{singlespacing}
+	\addcontentsline{toc}{chapter}{PERNYATAAN PENGGUNAAN ARTIFICIAL INTELLIGENCE (AI) DALAM KARYA AKADEMIK}
+	\clearpage
+}
+
+
 \newcommand\@tglsetuju{6 Februari 2023}
 \DeclareRobustCommand\TanggalDisetujui[1]{%
 	\renewcommand\@tglsetuju{#1}
@@ -383,7 +562,7 @@
 \newcommand\HalamanPersetujuan{
 	\clearpage
 	\chapter*{Halaman Persetujuan Tugas Akhir}%
-	\vspace{-50pt} % Mengurangi jarak bawaan setelah \chapter*
+	\vspace{-38pt} % Menyamakan jarak judul dengan halaman pengesahan
 	\noindent
 	\begin{center}
 		{\large \textbf{BENTUK: SKRIPSI}}
@@ -428,24 +607,30 @@
 	
 \newcommand\HalamanPengesahan{
 	\clearpage
+	\begingroup
+	\thispagestyle{chapterstyle}
+	\setstretch{1.05}
+	\setlength{\parindent}{0pt}
+	\setlength{\tabcolsep}{2pt}
+	\renewcommand{\arraystretch}{1.05}
 	\chapter*{Halaman Pengesahan Tugas Akhir}%
-	\vspace{-50pt} % Mengurangi jarak bawaan setelah \chapter*
+	\vspace{-38pt} % Mengurangi jarak bawaan setelah \chapter* tanpa menumpuk judul
 	\noindent
 	\begin{center}
 		{\large \textbf{BENTUK: SKRIPSI}}
 	\end{center}
 	
-	\vspace{5pt}
+	\vspace{4pt}
 	
 	% Informasi mahasiswa
 	\noindent
-	\begin{tabular}{@{}lcp{0.56\textwidth}}
-		Nama Mahasiswa & : & \@nama\\
-		NIM & : &  \@NIM\\
-		Judul Penelitian & : & \@judul
+	\begin{tabular}{@{}p{0.28\textwidth}@{\hspace{0.02\textwidth}:\hspace{0.02\textwidth}}p{0.66\textwidth}@{}}
+		Nama Mahasiswa & \@nama\\
+		NIM & \@NIM\\
+		Judul Penelitian & \@judul
 	\end{tabular}
 	
-	\vspace{10pt}
+	\vspace{8pt}
 	
 	\noindent
 	ini telah dipertahankan dihadapan dewan penguji tanggal \@tglsidang
@@ -453,37 +638,44 @@
 	\vspace{5pt}
 	
 	\noindent
-	\begin{tabular}{@{}p{0.46\textwidth}p{0.16\textwidth}p{0.20\textwidth}@{}}
+	\begin{tabular}{@{}p{0.46\textwidth}>{\centering\arraybackslash}p{0.16\textwidth}>{\centering\arraybackslash}p{0.20\textwidth}@{}}
 		\multirow{2}{*}{Dewan Penguji,} & \multicolumn{1}{c}{Tanda} & \multicolumn{1}{c}{Tanggal Selesai}\\
 		& \multicolumn{1}{c}{Tangan} & \multicolumn{1}{c}{Revisi}\\[5pt]
 		\@pujsatu & & \\
-		NIP.~\@NIPpujsatu & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
+		NIP.~\@NIPpujsatu & \dotfill & \dotfill \\[8pt]
 		\@pujdua  & & \\
-		NIP.~\@NIPpujdua & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
-		\@pujtiga  & & \\
-		NIP.~\@NIPpujtiga & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
+		NIP.~\@NIPpujdua & \dotfill & \dotfill \\[8pt]
+		\ifthenelse{\equal{\@pujtiga}{}\OR\equal{\@pujtiga}{ }}{}{%
+			\@pujtiga  & & \\
+			NIP.~\@NIPpujtiga & \dotfill & \dotfill \\[8pt]
+		}%
 		\@pbbsatu  & & \\
-		NIP.~\@NIPpbbsatu & \multicolumn{1}{c}{\dotfill} & \multicolumn{1}{c}{\dotfill} \\[10pt]
+		NIP.~\@NIPpbbsatu & \dotfill & \dotfill \\[8pt]
+		\ifthenelse{\equal{\@pbbdua}{}\OR\equal{\@pbbdua}{ }}{}{%
+			\@pbbdua  & & \\
+			NIP.~\@NIPpbbdua & \dotfill & \dotfill \\
+		}%
 	\end{tabular}
 	
-	\vspace{\stretch{2}}
+	\vspace{20pt}
 	
 	\noindent
-	\begin{tabular}{@{}p{0.44\textwidth}p{0.44\textwidth}@{}}
+	\begin{tabular}{@{}p{0.46\textwidth}p{0.46\textwidth}@{}}
 		Mengesahkan, & Mengetahui,\\
 		Dekan FMIPA & Koordinator Program Studi\\
-		\@univ & \@prodi\\[40pt]
+		\@univ & \@prodi\\[32pt]
 		\@dekan & \@kps\\
 		NIP. \@NIPdekan & NIP. \@NIPkps
 	\end{tabular}
 	\addcontentsline{toc}{chapter}{HALAMAN PENGESAHAN}
+	\par\endgroup
 }
-
 
 \newcommand{\Prakata}{%-----------------
 	\chapter*{Prakata}
+	\vspace{-20pt}
 	\addcontentsline{toc}{chapter}{PRAKATA}
-	\vspace{\stretch{1}}
+
 }
 \newcommand{\DaftarIsi}{%---------------------
 	\pagestyle{plain}
@@ -504,21 +696,16 @@
 }
 
 \newcommand\Inti{%
-	\cleardoublepage
+	\clearpage
 	\mainmatter
-	\pagestyle{plain} % Terapkan style halaman biasa
-	
-	% Pastikan Bab baru selalu dimulai di halaman ganjil
-	\clearpage
-	\ifodd\value{page}\else
-	\thispagestyle{plain} % Gunakan format halaman biasa
-	\vfill
-	\begin{center}
-		\textit{Halaman ini sengaja dikosongkan.}
-	\end{center}
-	\vfill
-	\clearpage
-	\fi
+	\fancypagestyle{plain}{%
+		\fancyhf{}%
+		\renewcommand{\headrulewidth}{0pt}%
+		\renewcommand{\footrulewidth}{0pt}%
+		\fancyhead[LE]{\thepage}%
+		\fancyhead[RO]{\thepage}%
+	}%
+	\pagestyle{plain}%
 }
 
 \usepackage{indentfirst} % Paket untuk mengontrol indentasi paragraf pertama
@@ -671,7 +858,6 @@
 }
 
 %%%%---------------------------------
-% Bagian Lampiran (Tanpa nomor halaman pada halaman kosong)
 \newcommand\BukaLampiran{%
 	\cleardoublepage
 	\setcounter{chapter}{0}%
@@ -695,8 +881,8 @@
 \newcommand\lampiran[1]{%
 	\refstepcounter{chapter}
 	\cleardoublepage
-	\thispagestyle{plain}
-	\addcontentsline{toc}{chapter}{\thechapter~~ #1}
+	\thispagestyle{chapterstyle}
+	\addcontentsline{toc}{section}{\numberline{\thechapter}#1}
 	\null
 	\begin{center}
 		\large\bfseries

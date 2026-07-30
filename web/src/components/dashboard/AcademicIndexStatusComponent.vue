@@ -97,9 +97,9 @@ const collectionItems = computed(() => distributionItems(stats.value.vector_coll
 
 const services = computed(() =>
   [
-    ['supabase', 'Supabase'],
-    ['neo4j', 'AuraDB'],
-    ['milvus', 'Zilliz']
+    ['supabase', 'PostgreSQL (Self-Hosted)'],
+    ['neo4j', 'Neo4j (Self-Hosted)'],
+    ['milvus', 'Milvus (Self-Hosted)']
   ].map(([key, label]) => {
     const source = stats.value.source_status?.[key] || {}
     return {

@@ -49,7 +49,7 @@ from yunesa_academic_kg import extraction_runtime_status, run_local_kg_pipeline 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build and optionally write the YUNESA Academic KG locally.")
     parser.add_argument("--sample-size", type=int, default=50)
-    parser.add_argument("--source", choices=["supabase", "local_csv"], default="supabase")
+    parser.add_argument("--source", choices=["postgres", "supabase", "local_csv"], default="postgres")
     parser.add_argument("--graph-name", default="yunesa_academic_kg_local")
     parser.add_argument("--write-neo4j", action="store_true")
     parser.add_argument("--write-milvus", action="store_true")

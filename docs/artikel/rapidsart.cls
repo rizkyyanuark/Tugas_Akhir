@@ -455,10 +455,14 @@
     \else
       \@tempa
     \fi
-    \ifdefined\MSC@active@kunciwords
+    \ifdefined\MSC@active@keywords
       \href{\msc@hrefprefix #2}{#2}%
     \else
-      #2%
+      \ifdefined\MSC@active@kunciwords
+        \href{\msc@hrefprefix #2}{#2}%
+      \else
+        #2%
+      \fi
     \fi
   \egroup
   \ignorespaces
@@ -481,32 +485,7 @@
   \let\fix@italic@cor\empty
 \fi
   
-\newif\if@firstkwd
-\def\kwd@sep{\unskip\fix@italic@cor; }
-\def\kwd@lastsep{\unskip}
-\def\kwd@font{\itshape}
-\def\msc@hrefprefix{https://www.ams.org/msc/msc2010.html?s=}
-\newcommand\kwd[2][]{%
-  \bgroup
-    \kwd@font
-    \def\@tempa{#1}%
-    \if@firstkwd
-      \global\@firstkwdfalse
-      \let\kwd@sep\@empty
-    \fi
-    \ifx\@tempa\@empty
-      \kwd@sep
-    \else
-      \@tempa
-    \fi
-    \ifdefined\MSC@active@keywords
-      \href{\msc@hrefprefix #2}{#2}%
-    \else
-      #2%
-    \fi
-  \egroup
-  \ignorespaces
-  }
+% Duplicate \kwd definition removed to resolve conflict
 
 \newdimen\Columnwidth
 \Columnwidth=\columnwidth

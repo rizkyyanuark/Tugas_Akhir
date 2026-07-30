@@ -130,33 +130,47 @@ class KGPipeline:
     # Step 1: Source Loading
     # ══════════════════════════════════════════════════════════
     def load_sources(self) -> tuple:
-        """Fetch papers and lecturers from Supabase.
+        """Fetch papers and lecturers from Self-Hosted PostgreSQL (postgres-prod).
 
         Returns:
             Tuple of (df_papers, df_dosen).
         """
         self._start_step("Step 1: Source Loading")
 
-        from supabase import create_client
-        from ..config import SUPABASE_URL, SUPABASE_KEY
+        try:
+            import psycopg
+            import os
+            host = os.getenv("POSTGRES_HOST") or os.getenv("PGHOST") or "postgres-prod"
+            port = os.getenv("POSTGRES_PORT") or os.getenv("PGPORT") or "5432"
+            db = os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE") or "tugas_akhir"
+            user = os.getenv("POSTGRES_USER") or os.getenv("PGUSER") or "postgres"
+            password = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD") or "71509325"
 
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            raise ValueError(
-                "SUPABASE_URL and SUPABASE_KEY must be properly configured.")
+            conn_str = f"postgresql://{user}:{password}@{host}:{port}/{db}"
+            with psycopg.connect(conn_str) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM papers;")
+                    p_rows = cur.fetchall()
+                    p_cols = [desc[0] for desc in cur.description]
+                    df_papers = pd.DataFrame(p_rows, columns=p_cols).fillna("")
 
-        # Create native Supabase client inline (no need for scraping notebooks hack)
-        sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+                    cur.execute("SELECT * FROM lecturers;")
+                    l_rows = cur.fetchall()
+                    l_cols = [desc[0] for desc in cur.description]
+                    df_dosen = pd.DataFrame(l_rows, columns=l_cols).fillna("")
+        except Exception as exc:
+            logger.warning(f"kg_pipeline.postgres_failed | {exc} | Falling back to Supabase...")
+            from supabase import create_client
+            from ..config import SUPABASE_URL, SUPABASE_KEY
+            if not SUPABASE_URL or not SUPABASE_KEY:
+                raise ValueError("SUPABASE_URL and SUPABASE_KEY must be properly configured.") from exc
+            sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+            res_papers = sb.table("papers").select("*").execute()
+            res_dosen = sb.table("lecturers").select("*").execute()
+            df_papers = pd.DataFrame(res_papers.data).fillna("")
+            df_dosen = pd.DataFrame(res_dosen.data).fillna("")
 
-        logger.info(
-            "Fetching data from Supabase tables: 'papers' and 'lecturers'...")
-
-        res_papers = sb.table("papers").select("*").execute()
-        res_dosen = sb.table("lecturers").select("*").execute()
-
-        df_papers = pd.DataFrame(res_papers.data).fillna("")
-        df_dosen = pd.DataFrame(res_dosen.data).fillna("")
-
-        # Column mapping: Supabase snake_case → Notebook Title Case
+        # Column mapping: PostgreSQL/Supabase snake_case → Notebook Title Case
         df_papers = df_papers.rename(columns={
             "title": "Title",
             "abstract": "Abstract",

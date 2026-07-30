@@ -9,13 +9,11 @@
 Berdasarkan hasil penelitian yang telah dilakukan, diperoleh beberapa kesimpulan sebagai berikut:
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=8pt]
-      \item Hasil dari Konstruksi \textit{Knowledge Graph} akademik UNESA berhasil dibangun dengan data profil dosen dan data publikasi dosen. Hasil konstruksi menghasilkan 45.685 simpul dan 122.675 relasi dengan distribusi simpul dan relasi sesuai dengan schema yang telah dirancang untuk merepresentasikan domain riset akademik.
+      \item Hasil dari konstruksi \textit{Knowledge Graph} akademik UNESA berhasil dibangun dengan data profil dosen dan data publikasi dosen. Hasil konstruksi menghasilkan 45.685 simpul dan 122.675 relasi dengan distribusi simpul dan relasi sesuai dengan skema yang telah dirancang untuk merepresentasikan domain riset akademik.
 
-      \item Integrasi indeks ganda pada arsitektur \textit{Hybrid Retrieval} terbukti meningkatkan kualitas pencarian secara signifikan. Pada 3 kategori kueri \textit{factual}, \textit{relational}, dan \textit{multi-hop}, metode \textit{Hybrid} unggul secara signifikan dengan pencapaian \textit{MRR} keseluruhan sebesar 0,4983, mengungguli metode lainnya walaupun ada biaya latensi yang dibayar karena sistem melakukan \textit{retrieval} lebih kompleks.
+      \item Penerapan arsitektur \textit{Hybrid Vector-Graph Retrieval} pada dokumen akademik seperti publikasi dosen terbukti meningkatkan kualitas pencarian secara signifikan. Pada 3 kategori kueri \textit{factual}, \textit{relational}, dan \textit{multi-hop}, metode \textit{Hybrid} unggul secara signifikan dengan pencapaian \textit{MRR} keseluruhan sebesar 0,50, mengungguli metode lainnya walaupun ada biaya latensi yang dibayar karena sistem melakukan \textit{retrieval} lebih kompleks.
 
-      \item Pengujian hasil evaluasi menggunakan metode \textit{LLM as Judge} dan framework \textit{Ragas} menunjukkan bahwa metode \textit{Hybrid} memperoleh preferensi keseluruhan \textit{Win Rate Overall} tertinggi sebesar 53,9\% terhadap \textit{Naive}. Meskipun demikian, perlu di cermati bahwa pada kueri \textit{multi-hop} model \textit{hybrid} cenderung mengembalikan konteks terlalu luas yang berpotensi memicu penumpukan entitas yang tidak relevan pada model bahasa besar.
-
-      \item Sistem antarmuka yang dilengkapi dengan panel bukti akademik dalam bentuk visualisasi graf terbukti secara visual meningkatkan keterjelasan (\textit{explainability}) dan ketertelusuran (\textit{traceability}) referensi jawaban \textit{LLM}.
+      \item Penggunaan metode evaluasi \textit{LLM as Judge} dan \textit{framework} Ragas menunjukkan bahwa metode \textit{Hybrid} memperoleh \textit{Win Rate Overall} tertinggi sebesar 53,9\% terhadap \textit{Naive}. Selain itu, sistem antarmuka yang dilengkapi panel bukti akademik berupa visualisasi graf mendukung proses validasi hasil jawaban \textit{LLM}.
 \end{enumerate}
 
 \section{Saran}
@@ -24,9 +22,9 @@ Berdasarkan hasil penelitian yang telah dilakukan, diperoleh beberapa kesimpulan
 Berdasarkan hasil penelitian yang telah dilakukan, terdapat beberapa saran yang dapat dipertimbangkan untuk pengembangan penelitian selanjutnya:
 
 \begin{enumerate}[label=\arabic*., leftmargin=0.75cm, itemsep=8pt]
-      \item Penelitian selanjutnya dapat memperluas cakupan data publikasi di luar rumpun Infokom UNESA serta menambahkan relasi sitasi (\texttt{CITES}) antar-publikasi guna membangun representasi graf bibliometrik yang lebih beragam.
+      \item Penelitian selanjutnya dapat memperluas cakupan data publikasi di luar rumpun Infokom UNESA serta menambahkan relasi sitasi antar-publikasi untuk membangun representasi graf bibliometrik yang lebih komprehensif.
 
-      \item Penelitian selanjutnya dapat mengintegrasikan modularitas graf dengan teknik seperti algoritma \textit{Louvain} atau \textit{Leiden} untuk membagi graf menjadi komunitas berdasarkan densitas koneksi internal, untuk meningkatkan akurasi sistem dalam menemukan informasi yang relevan.
+      \item Penelitian selanjutnya dapat meningkatkan efisiensi sistem dengan mengoptimalkan query yang kompleks dan mempertimbangkan penggunaan model yang lebih ringan untuk mengurangi biaya latensi.
 
-      \item Penelitian selanjutnya dapat mengembangkan proses evaluasi yang lebih komprehensif dengan memperluas cakupan kueri dan kriteria penilaian sehingga menghasilkan pengukuran metrik evaluasi yang holistik.
+      \item Penelitian selanjutnya dapat memperluas cakupan kueri dan kriteria penilaian sehingga menghasilkan pengukuran metrik evaluasi yang lebih objektif dan holistik.
 \end{enumerate}

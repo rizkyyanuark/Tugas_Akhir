@@ -80,26 +80,26 @@ class AcademicDashboardService:
         return f'graphName == "{safe_graph_name}"' if safe_graph_name else ""
 
     async def collect(self) -> dict[str, Any]:
-        supabase, neo4j, milvus = await asyncio.gather(
-            self._collect_supabase(),
+        postgres_data, neo4j, milvus = await asyncio.gather(
+            self._collect_postgres(),
             self._collect_neo4j(),
             self._collect_milvus(),
         )
         embedding = self._embedding_metadata()
         storage_consistency = self._storage_consistency(
-            supabase=supabase,
+            supabase=postgres_data,
             neo4j=neo4j,
             milvus=milvus,
         )
 
         return {
             "graph_name": self.graph_name,
-            "papers_count": supabase["papers_count"],
-            "lecturers_count": supabase["lecturers_count"],
-            "authorship_links_count": supabase["authorship_links_count"],
-            "papers_with_abstract": supabase["papers_with_abstract"],
-            "papers_with_keywords": supabase["papers_with_keywords"],
-            "papers_with_tldr": supabase["papers_with_tldr"],
+            "papers_count": postgres_data["papers_count"],
+            "lecturers_count": postgres_data["lecturers_count"],
+            "authorship_links_count": postgres_data["authorship_links_count"],
+            "papers_with_abstract": postgres_data["papers_with_abstract"],
+            "papers_with_keywords": postgres_data["papers_with_keywords"],
+            "papers_with_tldr": postgres_data["papers_with_tldr"],
             "kg_nodes_count": neo4j["total_nodes"],
             "kg_edges_count": neo4j["total_edges"],
             "graph_entity_distribution": neo4j["entity_distribution"],
@@ -112,12 +112,53 @@ class AcademicDashboardService:
             "embedding_dimension": embedding["dimension"],
             "storage_consistency": storage_consistency,
             "source_status": {
-                "supabase": supabase["source_status"],
+                "supabase": postgres_data["source_status"],
                 "neo4j": neo4j["source_status"],
                 "milvus": milvus["source_status"],
             },
             "generated_at": datetime.now(UTC).isoformat(),
         }
+
+    async def _collect_postgres(self) -> dict[str, Any]:
+        result = {
+            "papers_count": 0,
+            "lecturers_count": 0,
+            "authorship_links_count": 0,
+            "papers_with_abstract": 0,
+            "papers_with_keywords": 0,
+            "papers_with_tldr": 0,
+            "source_status": _source_status("unconfigured", "PostgreSQL credentials are not configured."),
+        }
+        host = os.getenv("POSTGRES_HOST") or os.getenv("PGHOST") or "postgres-prod"
+        port = int(os.getenv("POSTGRES_PORT") or os.getenv("PGPORT") or "5432")
+        db = os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE") or "tugas_akhir"
+        user = os.getenv("POSTGRES_USER") or os.getenv("PGUSER") or "postgres"
+        password = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD") or "71509325"
+
+        try:
+            import asyncpg
+            conn = await asyncpg.connect(user=user, password=password, database=db, host=host, port=port, timeout=5.0)
+            try:
+                row_papers = await conn.fetchrow("SELECT count(*) FROM papers;")
+                row_lecturers = await conn.fetchrow("SELECT count(*) FROM lecturers;")
+                row_links = await conn.fetchrow("SELECT count(*) FROM (SELECT unnest(string_to_array(author_ids, ',')) FROM papers WHERE author_ids IS NOT NULL AND author_ids != '') sub;")
+                row_abstract = await conn.fetchrow("SELECT count(*) FROM papers WHERE abstract IS NOT NULL AND abstract != '';")
+                row_keywords = await conn.fetchrow("SELECT count(*) FROM papers WHERE keywords IS NOT NULL AND keywords != '';")
+                row_tldr = await conn.fetchrow("SELECT count(*) FROM papers WHERE tldr IS NOT NULL AND tldr != '';")
+
+                result["papers_count"] = int(row_papers[0]) if row_papers else 0
+                result["lecturers_count"] = int(row_lecturers[0]) if row_lecturers else 0
+                result["authorship_links_count"] = int(row_links[0]) if row_links else 0
+                result["papers_with_abstract"] = int(row_abstract[0]) if row_abstract else 0
+                result["papers_with_keywords"] = int(row_keywords[0]) if row_keywords else 0
+                result["papers_with_tldr"] = int(row_tldr[0]) if row_tldr else 0
+                result["source_status"] = _source_status("ready", "Self-hosted PostgreSQL corpus is available.")
+                return result
+            finally:
+                await conn.close()
+        except Exception as exc:
+            logger.warning(f"academic_dashboard.postgres_failed | error_type={type(exc).__name__} | detail={exc}")
+            return await self._collect_supabase()
 
     @staticmethod
     def _storage_consistency(

@@ -904,9 +904,11 @@ FUNCTION {calc.label}
       if$
     }
   if$
-  ", "                                                  % these three lines are
-  *                                                     % for apalike, which
-  year field.or.null purify$ #-1 #4 substring$          % uses all four digits
+  " ("
+  *
+  year field.or.null purify$ #-1 #4 substring$
+  *
+  ")"
   *
   'label :=
 }
@@ -923,7 +925,7 @@ FUNCTION {sort.format.names}
         'skip$
       if$                                               % apalike uses initials
       s nameptr "{vv{ } }{ll{ }}{  f{ }}{  jj{ }}" format.name$ 't := % <= here
-      nameptr numnames = t "others" = dan
+      nameptr numnames = t "others" = and
         { "et al" * }
         { t sortify * }
       if$

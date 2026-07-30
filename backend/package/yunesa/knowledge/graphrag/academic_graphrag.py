@@ -164,8 +164,8 @@ class AcademicGraphRAGService:
     def storage_layer() -> dict[str, Any]:
         return {
             "metadata": {
-                "backend": "supabase",
-                "stores": ["papers", "lecturers", "paper_lecturers"],
+                "backend": "postgres_self_hosted",
+                "stores": ["papers", "lecturers"],
             },
             "vector": {
                 "backend": "milvus_self_hosted",

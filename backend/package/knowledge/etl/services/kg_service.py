@@ -249,11 +249,53 @@ def _load_supabase_frames(mode: str, sample_size: int) -> tuple[pd.DataFrame, pd
     return papers_df.reset_index(drop=True), lecturers_df.reset_index(drop=True), links_df.reset_index(drop=True)
 
 
+def _load_postgres_frames(mode: str, sample_size: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    try:
+        from knowledge.etl.clients.postgres_client import PostgresClient
+        pg_client = PostgresClient()
+        with pg_client._get_connection() as conn:
+            with conn.cursor() as cur:
+                limit_clause = f" LIMIT {max(sample_size * 3, sample_size)}" if mode == "sample" else ""
+                cur.execute(f"SELECT paper_id, title, abstract, tldr, keywords, year, journal, document_type, authors, author_ids, doi, link FROM papers ORDER BY year DESC NULLS LAST{limit_clause};")
+                rows = cur.fetchall()
+                cols = [desc[0] for desc in cur.description]
+                papers_df = pd.DataFrame(rows, columns=cols)
+
+                cur.execute("SELECT nip, nama_dosen, nama_norm, nidn, prodi, scopus_id, scholar_id, sinta_id FROM lecturers;")
+                l_rows = cur.fetchall()
+                l_cols = [desc[0] for desc in cur.description]
+                lecturers_df = pd.DataFrame(l_rows, columns=l_cols)
+
+        if not papers_df.empty:
+            title_mask = papers_df["title"].fillna("").astype(str).str.strip() != ""
+            abstract_mask = papers_df["abstract"].fillna("").astype(str).str.len() > 20
+            tldr_mask = papers_df["tldr"].fillna("").astype(str).str.len() > 20
+            papers_df = papers_df[title_mask & (abstract_mask | tldr_mask)].copy()
+            if mode == "sample":
+                papers_df = papers_df.head(sample_size).copy()
+
+        links = []
+        if not papers_df.empty:
+            for _, row in papers_df.iterrows():
+                pid = row.get("paper_id")
+                a_ids = str(row.get("author_ids") or "")
+                if pid and a_ids:
+                    for aid in a_ids.replace(";", ",").split(","):
+                        aid_clean = aid.strip()
+                        if aid_clean:
+                            links.append({"paper_id": pid, "nip": aid_clean})
+        links_df = pd.DataFrame(links)
+        return papers_df.reset_index(drop=True), lecturers_df.reset_index(drop=True), links_df.reset_index(drop=True)
+    except Exception as exc:
+        logger.warning(f"kg_service.postgres_failed | {exc} | Falling back to Supabase...")
+        return _load_supabase_frames(mode, sample_size)
+
+
 def run_kg_data_load(*, mode: str = "incremental", sample_size: int = 50) -> dict[str, Any]:
-    """Fetch KG source tables from Supabase and persist task artifacts."""
+    """Fetch KG source tables from Self-Hosted PostgreSQL (with Supabase fallback) and persist task artifacts."""
     mode = _normal_mode(mode)
     sample_size = max(1, int(sample_size))
-    papers_df, lecturers_df, links_df = _load_supabase_frames(mode, sample_size)
+    papers_df, lecturers_df, links_df = _load_postgres_frames(mode, sample_size)
 
     write_dataframe_artifact(papers_df, kg_paths.KG_PAPERS_PARQUET)
     write_dataframe_artifact(lecturers_df, kg_paths.KG_LECTURERS_PARQUET)

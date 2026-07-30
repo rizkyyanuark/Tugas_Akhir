@@ -30,17 +30,19 @@ Penelitian ini mengintegrasikan ekstraksi informasi terstruktur dengan metode pe
     % --- Studi 1 ---
     \textit{Swamped with Too Many Articles: GraphRAG Makes Getting Started Easy}                                                    &
     \cite{Ngangmeni2025SwampedWT}                                                                                                   &
-    Evaluasi komparatif menunjukkan bahwa \textit{GraphRAG} mengungguli \textit{Naive RAG} dan \textit{LightRAG} dalam empat metrik kritis: \textbf{\textit{Comprehensiveness, Diversity, Empowerment,}} dan \textbf{\textit{Directness}}. Temuan ini memvalidasi landasan penelitian bahwa pendekatan berbasis graf menawarkan navigasi semantik yang lebih superior dibandingkan pencarian leksikal untuk mengatasi \textit{literature overload} pada repositori data berskala besar.
+    Berdasarkan evaluasi komparatif, studi ini membuktikan bahwa arsitektur \textit{GraphRAG} secara konsisten mengungguli \textit{Naive RAG} dan \textit{LightRAG} pada metrik \textit{Comprehensiveness, Diversity, Empowerment,} dan \textit{Directness}. Namun, studi tersebut masih menguji \textit{GraphRAG} pada domain medis, dan belum menguji hibrida yang mengabungkan pencarian vektor dan graf secara sinergis untuk menghasilkan informasi yang lebih akurat dan relevan.
     \\ \hline
+
     % --- Studi 2 ---
     \textit{HybridRAG: Integrating Knowledge Graphs and Vector Retrieval Augmented Generation for Efficient Information Extraction} &
     \cite{10.1145/3677052.3698671}                                                                                                  &
-    Penelitian ini menetapkan standar efektivitas arsitektur hibrida dengan pencapaian skor \textbf{\textit{Faithfulness} dan \textit{Answer Relevance} sebesar 0,96} serta \textbf{\textit{Context Recall} sempurna (1,00)}. Hasil empiris ini menjadi rujukan utama penelitian usulan, yang membuktikan bahwa penggabungan \textit{Knowledge Graph} dan \textit{Vector Retrieval} adalah strategi optimal untuk memitigasi halusinasi dan memaksimalkan presisi jawaban pada dokumen kompleks.
+    Studi ini membuktikan keunggulan pendekatan hibrida (\textit{Knowledge Graph} dan basis data vektor). Namun, penelitian tersebut dilakukan pada domain finansial (\textit{earning call transcripts}). Efektivitasnya pada domain literatur akademik yang memiliki topologi relasi kompleks seperti jaringan sitasi, kolaborasi penulis, dan bidang keilmuan masih menjadi celah riset (\textit{research gap}). Penelitian ini hadir untuk mengadopsi sekaligus menguji paradigma hibrida tersebut pada ekosistem literatur Infokom UNESA.
     \\ \hline
+
     % --- Studi 3 ---
     \textit{Knowledge Graph Generation and Application for Unstructured Data Using Data Processing Pipeline}                        &
     \cite{thushara2024}                                                                                                             &
-    Mengembangkan \textit{pipeline} otomatis menggunakan model generatif \textit{REBEL} yang mencapai \textbf{akurasi ekstraksi 87\%} pada data tidak terstruktur. Metrik akurasi ini menyoroti tantangan yang ada, yang dalam penelitian ini akan ditingkatkan melalui strategi \textit{Parallel Processing} (integrasi data terstruktur PDDikti/SINTA dan teks abstrak) untuk melampaui batasan akurasi model generatif tunggal dalam konstruksi KG.
+    Penelitian ini menawarkan sebuah \textit{pipeline} otomatis untuk mengekstraksi \textit{Knowledge Graph} dari data tidak terstruktur dengan memanfaatkan model generatif \textit{REBEL}. Meskipun berhasil diimplementasikan, ketergantungan penuh pada model ekstraksi generatif tunggal menimbulkan beban komputasi tinggi dan masalah skalabilitas jika dihadapkan pada korpus akademik. Sebagai bentuk pembaruan, penelitian ini memodifikasi arsitektur tersebut dengan mengganti model generatif menjadi \textit{GLiNER} (berbasis \textit{zero-shot NER}) yang lebih ringan.
     \\ \hline
 \end{longtable}
 \endgroup
@@ -63,19 +65,13 @@ Perkembangan terkini, sebagaimana dicatat oleh \citet{gupta2024comprehensivesurv
 
 \textit{Knowledge base} adalah kumpulan data terorganisir yang mendeskripsikan entitas dan hubungannya dalam format \textit{triplet}. Ketika himpunan \textit{triplet} ini direpresentasikan sebagai jaringan dengan entitas sebagai titik (\textit{node}) dan hubungan sebagai garis (\textit{edge}), strukturnya disebut \textit{Knowledge Graph} \citep{mondal2021end}. Berbeda dengan basis data relasional yang kaku, \textit{Knowledge Graph} menawarkan representasi pengetahuan yang dinamis. Struktur graf ini memungkinkan mesin memahami hubungan antar potongan informasi, menyerupai mekanisme asosiasi kognitif manusia \citep{cheng2025humancognitioninspiredrag}.
 
-Komponen fundamental dari sebuah \textit{Knowledge Graph} adalah \textit{triplet} faktual yang terdiri dari \textit{Subjek-Predikat-Objek} atau \textit{Head-Relation-Tail}. \textit{Knowledge Graph} menyimpan pengetahuan terstruktur sebagai himpunan \textit{triplet}, yang dapat direpresentasikan sebagai berikut:
+Komponen fundamental dari sebuah \textit{Knowledge Graph} adalah \textit{triplet} faktual yang terdiri dari \textit{Subjek-Predikat-Objek} atau \textit{Head-Relation-Tail}. \textit{Knowledge Graph} menyimpan pengetahuan terstruktur sebagai himpunan \textit{triplet} $T$ yang menghubungkan himpunan entitas $E$ dengan himpunan relasi $R$, yang diformulasikan secara berturut-turut pada persamaan \eqref{eq:kg-definition} dan \eqref{eq:triplet-format} sebagai berikut:
 
-\begin{equation}
-    G = (E, R, T)
-    \label{eq:kg-definition}
-\end{equation}
-di mana $E$ adalah himpunan entitas (seperti individu atau objek), $R$ adalah himpunan relasi (seperti ``bagian\_dari''), dan $T$ adalah himpunan \textit{triplet} yang membentuk keseluruhan struktur graf tersebut \citep{Hogan_2021}. Setiap elemen di dalam $T$ merepresentasikan satu fakta tunggal yang diformulasikan sebagai:
-
-\begin{equation}
-    (h, r, t) \in T
-    \label{eq:triplet-format}
-\end{equation}
-di mana $h$ adalah entitas sumber atau \textit{head}, $t$ adalah entitas tujuan atau \textit{tail}, dan $r$ adalah relasi yang menghubungkan keduanya \citep{peng2023knowledge}. Contohnya dalam konteks akademik
+\begin{align}
+    G         &= (E, R, T), \label{eq:kg-definition} \\
+    (h, r, t) &\in T, \label{eq:triplet-format}
+\end{align}
+di mana $E$ adalah himpunan entitas (seperti individu atau objek), $R$ adalah himpunan relasi (seperti ``bagian\_dari''), $T$ adalah himpunan \textit{triplet} yang membentuk keseluruhan struktur graf tersebut \citep{Hogan_2021}, $h$ adalah entitas sumber atau \textit{head}, $t$ adalah entitas tujuan atau \textit{tail}, dan $r$ adalah relasi yang menghubungkan keduanya \citep{peng2023knowledge}. Contohnya dalam konteks akademik:
 \begin{itemize}
     \item $(\underbrace{\text{\texttt{Dosen\_A}}}_{\text{head}}) \xrightarrow{\underbrace{\text{\small menulis}}_{\text{relation}}} (\underbrace{\text{\texttt{Publikasi\_B}}}_{\text{tail}})$
     \item $(\underbrace{\text{\texttt{Publikasi\_B}}}_{\text{head}}) \xrightarrow{\underbrace{\text{\small mensitasi}}_{\text{relation}}} (\underbrace{\text{\texttt{Publikasi\_C}}}_{\text{tail}})$
@@ -86,59 +82,59 @@ Struktur ini sangat efektif karena arah panah memberi makna eksplisit, di mana e
 \begin{figure}[htbp]
     \centering
     \resizebox{\textwidth}{!}{%
-    \begin{tikzpicture}[
-            node distance=2cm,
-            every node/.style={font=\small},
-            entity/.style={circle, draw, line width=2pt, minimum size=2cm, align=center, inner sep=2pt},
-            graynode/.style={entity, fill=gray!30},
-            whitenode/.style={entity, fill=white},
-            arrow/.style={->, >=latex, line width=2pt},
-            lbl/.style={font=\footnotesize, fill=white, inner sep=1.5pt, rounded corners=1pt}
-        ]
+        \begin{tikzpicture}[
+                node distance=2cm,
+                every node/.style={font=\small},
+                entity/.style={circle, draw, line width=2pt, minimum size=2cm, align=center, inner sep=2pt},
+                graynode/.style={entity, fill=gray!30},
+                whitenode/.style={entity, fill=white},
+                arrow/.style={->, >=latex, line width=2pt},
+                lbl/.style={font=\footnotesize, fill=white, inner sep=1.5pt, rounded corners=1pt}
+            ]
 
-        % Nodes — spread wider to avoid label overlap
-        \node[graynode] (dosen_a) at (0,0) {Dosen\_A};
-        \node[graynode] (pub_c) at (5,-2) {Publikasi\_C};
+            % Nodes — spread wider to avoid label overlap
+            \node[graynode] (dosen_a) at (0,0) {Dosen\_A};
+            \node[graynode] (pub_c) at (5,-2) {Publikasi\_C};
 
-        \node[whitenode] (dosen_c) at (-4,1) {Dosen\_C};
-        \node[whitenode] (univ_x) at (1.5,3.5) {Univ\_X};
+            \node[whitenode] (dosen_c) at (-4,1) {Dosen\_C};
+            \node[whitenode] (univ_x) at (1.5,3.5) {Univ\_X};
 
-        \node[whitenode] (dosen_d) at (7,4) {Dosen\_D};
-        \node[whitenode] (fak_a) at (6.5,1.5) {Fakultas\_A};
+            \node[whitenode] (dosen_d) at (7,4) {Dosen\_D};
+            \node[whitenode] (fak_a) at (6.5,1.5) {Fakultas\_A};
 
-        \node[whitenode] (pub_b) at (9.5,-0.5) {Publikasi\_B};
-        \node[whitenode] (pub_a) at (0.5,-4) {Publikasi\_A};
-        \node[whitenode] (dosen_b) at (8.5,-4.5) {Dosen\_B};
+            \node[whitenode] (pub_b) at (9.5,-0.5) {Publikasi\_B};
+            \node[whitenode] (pub_a) at (0.5,-4) {Publikasi\_A};
+            \node[whitenode] (dosen_b) at (8.5,-4.5) {Dosen\_B};
 
-        % === EDGES — all labeled ===
+            % === EDGES — all labeled ===
 
-        % Dosen_C -> Dosen_A (berkolaborasi)
-        \draw[arrow] (dosen_c) -- node[lbl, above, sloped] {\textit{berkolaborasi}} (dosen_a);
+            % Dosen_C -> Dosen_A (berkolaborasi)
+            \draw[arrow] (dosen_c) -- node[lbl, above, sloped] {\textit{berkolaborasi}} (dosen_a);
 
-        % Dosen_A -> Univ_X (berafiliasi_dengan) — label below to avoid clash
-        \draw[arrow] (dosen_a) -- node[lbl, below, sloped, pos=0.45, align=center] {\textit{berafiliasi\_}\\\textit{dengan}} (univ_x);
+            % Dosen_A -> Univ_X (berafiliasi_dengan) — label below to avoid clash
+            \draw[arrow] (dosen_a) -- node[lbl, below, sloped, pos=0.45, align=center] {\textit{berafiliasi\_}\\\textit{dengan}} (univ_x);
 
-        % Univ_X -> Dosen_D (berafiliasi_dengan)
-        \draw[arrow] (dosen_d) -- node[lbl, below, sloped, pos=0.45, align=center] {\textit{berafiliasi\_}\\\textit{dengan}} (univ_x);
+            % Univ_X -> Dosen_D (berafiliasi_dengan)
+            \draw[arrow] (dosen_d) -- node[lbl, below, sloped, pos=0.45, align=center] {\textit{berafiliasi\_}\\\textit{dengan}} (univ_x);
 
-        % Univ_X -> Fakultas_A (memiliki)
-        \draw[arrow] (univ_x) -- node[lbl, above, sloped, pos=0.4] {\textit{memiliki}} (fak_a);
+            % Univ_X -> Fakultas_A (memiliki)
+            \draw[arrow] (univ_x) -- node[lbl, above, sloped, pos=0.4] {\textit{memiliki}} (fak_a);
 
-        % Dosen_A -> Pub_C (menulis)
-        \draw[arrow] (dosen_a) -- node[lbl, above, sloped] {\textit{menulis}} (pub_c);
+            % Dosen_A -> Pub_C (menulis)
+            \draw[arrow] (dosen_a) -- node[lbl, above, sloped] {\textit{menulis}} (pub_c);
 
-        % Pub_A -> Pub_C (mensitasi)
-        \draw[arrow] (pub_a) -- node[lbl, below, sloped] {\textit{mensitasi}} (pub_c);
+            % Pub_A -> Pub_C (mensitasi)
+            \draw[arrow] (pub_a) -- node[lbl, below, sloped] {\textit{mensitasi}} (pub_c);
 
-        % Pub_C -> Pub_B (mensitasi)
-        \draw[arrow] (pub_c) -- node[lbl, above, sloped] {\textit{mensitasi}} (pub_b);
+            % Pub_C -> Pub_B (mensitasi)
+            \draw[arrow] (pub_c) -- node[lbl, above, sloped] {\textit{mensitasi}} (pub_b);
 
-        % Pub_C -> Dosen_B (ditulis_oleh)
-        \draw[arrow] (dosen_b) -- node[lbl, below, sloped, pos=0.45] {\textit{menulis}} (pub_c);
+            % Pub_C -> Dosen_B (ditulis_oleh)
+            \draw[arrow] (dosen_b) -- node[lbl, below, sloped, pos=0.45] {\textit{menulis}} (pub_c);
 
-    \end{tikzpicture}
+        \end{tikzpicture}
     }
-    \caption{Visualisasi \textit{Knowledge Graph} akademik yang menunjukkan relasi antar entitas.}
+    \caption{Visualisasi \textit{Knowledge Graph} Akademik yang Menunjukkan Relasi Antar Entitas}
     \label{fig:simple-kg}
 \end{figure}
 
@@ -149,12 +145,12 @@ Dalam lingkungan universitas, penerapan \textit{Scholarly Knowledge Graph} (SKG)
 \subsection{\textit{Knowledge Extraction}}
 \textit{Knowledge Extraction} atau ekstraksi pengetahuan merupakan proses krusial untuk mentransformasi data tidak terstruktur (seperti teks naratif dalam publikasi ilmiah, email, atau dokumen PDF) menjadi representasi pengetahuan yang terorganisir, formal, dan dapat diolah oleh mesin \citep{WANG2018112}. Dalam ekosistem \textit{Knowledge Graph}, \textit{Knowledge Extraction} berperan dalam menyarikan fakta-fakta atomik dari teks untuk mengisi dan memperbarui struktur graf tersebut. Implementasi ini berfungsi sebagai fondasi untuk membangun basis pengetahuan (\textit{knowledge base}) yang dapat memfasilitasi mekanisme penalaran sistem dalam menghasilkan jawaban yang akurat.
 
-Secara formal, tugas \textit{Knowledge Extraction} dapat diformulasikan sebagai fungsi pemetaan dari teks input \(\mathcal{T}\) menjadi representasi terstruktur \(\mathcal{S}\). Representasi ini terdiri dari himpunan entitas \(E\) dan relasi \(R\), sebagaimana dinyatakan dalam Persamaan \ref{eq:ie-mapping}:
+Secara formal, tugas \textit{Knowledge Extraction} dapat diformulasikan sebagai fungsi pemetaan dari teks input \(\mathcal{T}\) menjadi representasi terstruktur \(\mathcal{S}\). Representasi ini terdiri dari himpunan entitas \(E\) dan relasi \(R\), sebagaimana dinyatakan dalam persamaan \eqref{eq:ie-mapping}:
 
-\begin{equation}
-    \mathcal{S} = f_{IE}(\mathcal{T}) = \{(e_i, r_{ij}, e_j) \mid e_i, e_j \in E, r_{ij} \in R\}
-    \label{eq:ie-mapping}
-\end{equation}
+\begin{align}
+    \mathcal{S} &= f_{IE}(\mathcal{T}) \notag \\
+                &= \{(e_i, r_{ij}, e_j) \mid e_i, e_j \in E, r_{ij} \in R\}, \label{eq:ie-mapping}
+\end{align}
 di mana setiap elemen dalam \(\mathcal{S}\) berupa \textit{triplet} \((e_i, r_{ij}, e_j)\) yang merepresentasikan satu fakta tunggal, dengan \(e_i\) bertindak sebagai entitas subjek, \(r_{ij}\) sebagai predikat atau relasi, dan \(e_j\) sebagai entitas objek.
 
 Implementasi fungsi pemetaan berskala besar menuntut otomatisasi, mengingat ekstraksi manual tidak lagi memadai untuk menangani pertumbuhan volume data tekstual yang eksponensial \citep{Premasiri2025}. Secara umum, proses otomatisasi \textit{Knowledge Extraction} didekomposisi menjadi tiga tahapan fundamental:
@@ -162,7 +158,7 @@ Implementasi fungsi pemetaan berskala besar menuntut otomatisasi, mengingat ekst
 \begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=10pt]
     \item \textbf{\textit{Named Entity Recognition} (NER)}
 
-          \hspace*{0.75cm} Sebagai langkah awal, \textit{Named Entity Recognition} (NER) bertugas mengidentifikasi dan mengklasifikasikan entitas penting dalam teks untuk menemukan himpunan entitas \(E\) (Persamaan \ref{eq:ie-mapping}). NER mendeteksi istilah relevan seperti nama orang, organisasi, atau terminologi ilmiah, lalu memberikan label kategori yang sesuai \citep{ZHAO2023225}.
+          \hspace*{0.75cm} Sebagai langkah awal, \textit{Named Entity Recognition} (NER) bertugas mengidentifikasi dan mengklasifikasikan entitas penting dalam teks untuk menemukan himpunan entitas $E$ pada persamaan \eqref{eq:ie-mapping}. NER mendeteksi istilah relevan seperti nama orang, organisasi, atau terminologi ilmiah, lalu memberikan label kategori yang sesuai \citep{ZHAO2023225}.
 
     \item \textbf{\textit{Relation Extraction} (RE)}
 
@@ -191,14 +187,13 @@ Dalam penelitian ini, efektivitas \textit{Knowledge Extraction} sangat berperan 
 
 Evolusi \textit{LLM} telah melahirkan dua paradigma utama, yaitu model \textit{encoder-only} seperti \textit{BERT} yang unggul dalam pemahaman kontekstual dan ekstraksi informasi \citep{devlin2019bertpretrainingdeepbidirectional}, serta model \textit{decoder-only} seperti keluarga \textit{GPT} yang dioptimalkan untuk tugas-tugas generatif \textit{autoregresif} \citep{Radford2018ImprovingLU}. Melalui proses \textit{pre-training} pada triliunan token data dari internet, buku, dan artikel ilmiah, \textit{LLM} menunjukkan fenomena \textit{emergent properties}, di mana kemampuan kompleks seperti penalaran \textit{chain-of-thought}, pemecahan masalah matematika, dan \textit{in-context learning} (ICL) muncul seiring dengan peningkatan skala parameter model \citep{brown2020languagemodelsfewshotlearners}. Kemampuan \textit{ICL} ini sangat krusial karena memungkinkan model beradaptasi dengan tugas baru melalui instruksi teks tanpa memerlukan pelatihan ulang (\textit{retraining}) yang mahal.
 
-Pada tahap inferensi, \textit{LLM} menghasilkan token secara \textit{autoregresif} berdasarkan distribusi probabilitas bersyarat:
-\begin{equation}
-    y_t = \arg\max_{y} P_\theta(y \mid y_{<t}, x),
-    \label{eq:llm-generation}
-\end{equation}
+Pada tahap inferensi, \textit{LLM} menghasilkan token secara \textit{autoregresif} berdasarkan distribusi probabilitas bersyarat pada persamaan \eqref{eq:llm-generation} berikut:
+\begin{align}
+    y_t &= \arg\max_{y} P_\theta(y \mid y_{<t}, x), \label{eq:llm-generation}
+\end{align}
 di mana $y_t$ merupakan token yang dihasilkan pada langkah waktu $t$, yang ditentukan berdasarkan probabilitas bersyarat $P_\theta$ terhadap urutan token sebelumnya ($y_1$ hingga $y_{t-1}$) dan input $x$ yang diberikan.
 
-Namun, terlepas dari kecanggihannya, \textit{LLM} memiliki keterbatasan fundamental yang menjadi tantangan besar dalam domain akademik. Model ini bersifat probabilistik, bukan mesin penalaran logis murni, yang berarti model menghasilkan teks berdasarkan tebakan statistik terhadap kelanjutan kata yang paling mungkin, bukan berdasarkan pemahaman fakta yang absolut. Studi oleh \cite{lála2023paperqaretrievalaugmentedgenerativeagent} menyebutkan bahwa hal ini menyebabkan munculnya halusinasi, di mana model memberikan jawaban yang terdengar meyakinkan namun salah secara faktual atau sepenuhnya fabrikasi. Selain itu, \textit{LLM} mengalami kendala \textit{knowledge cutoff}, di mana pengetahuan model terbatas pada data pelatihan terakhirnya, sehingga tidak mampu mengakses informasi terkini atau literatur ilmiah terbaru yang diterbitkan setelah masa pelatihannya.
+Meskipun demikian, \textit{LLM} memiliki dua keterbatasan fundamental yang menjadi tantangan besar dalam domain akademik. Pertama, \textit{LLM} memprediksi token keluaran berdasarkan probabilitas statistik, bukan berdasarkan pemahaman fakta. Akibatnya, model dapat menghasilkan informasi yang terdengar benar tetapi salah secara faktual — fenomena yang disebut halusinasi (\textit{hallucination}) \citep{lala2023paperqaretrievalaugmentedgenerativeagent}. Kedua, pengetahuan \textit{LLM} terbatas pada data yang digunakan saat pelatihan terakhirnya (\textit{knowledge cutoff}), sehingga model tidak mengetahui informasi yang terbit setelah masa pelatihan tersebut. Kedua keterbatasan ini menjadikan \textit{LLM} tidak dapat diandalkan secara mandiri untuk menjawab pertanyaan akademik yang menuntut keakuratan fakta dan kemutakhiran referensi.
 
 Dalam penelitian ini, \textit{LLM} berperan sebagai ``otak'' atau unit pemrosesan utama dalam arsitektur sistem yang bertanggung jawab untuk menghasilkan jawaban. Oleh karena itu, mengintegrasikan \textit{LLM} dengan pengetahuan eksternal menjadi strategi penting untuk mengurangi risiko halusinasi dengan cara memberikan dasar (\textit{grounding}) pada setiap respons generatif menggunakan fakta terstruktur yang dapat diverifikasi dan memiliki jejak data (\textit{provenance}) yang jelas.
 
@@ -206,7 +201,7 @@ Dalam penelitian ini, \textit{LLM} berperan sebagai ``otak'' atau unit pemrosesa
 
 \textit{Retrieval-Augmented Generation (RAG)} adalah sebuah arsitektur yang dirancang untuk meningkatkan performa model bahasa besar (\textit{LLM}) dengan menggabungkan mekanisme pencarian informasi eksternal ke dalam proses generasi teks \citep{lewis2021retrievalaugmentedgenerationknowledgeintensivenlp}. Secara prinsip, \textit{RAG} berperan sebagai penghubung antara kemampuan penalaran linguistik statis dari \textit{LLM} dengan basis pengetahuan eksternal dinamis yang dapat diperbarui terus-menerus. Pendekatan ini menghasilkan konsep yang dikenal sebagai \textit{grounded intelligence} atau kecerdasan yang berlandaskan bukti, di mana model tidak hanya mengandalkan pengetahuan internalnya, tetapi juga melakukan pencarian pada dokumen referensi sebelum memberikan respons \citep{Huang_2025}.
 
-Sebagaimana ditekankan oleh \citet{Huang_2025}, pendekatan ini dirancang secara efektif untuk memitigasi keterbatasan inheren pada \textit{LLM}, seperti fenomena halusinasi (\textit{hallucination}), keterbatasan pengetahuan akibat masa pelatihan yang statis (\textit{knowledge cutoff}), serta kurangnya spesialisasi pada domain tertentu. Dengan menyandarkan respons pada dokumen pendukung yang relevan, \textit{RAG} memungkinkan model untuk menghasilkan jawaban yang lebih akurat dan terverifikasi. Secara umum, alur kerja standar RAG terdiri dari tiga tahapan utama, yaitu:
+Sebagaimana ditekankan oleh \citet{Huang_2025}, \textit{RAG} dirancang untuk mengatasi dua kelemahan utama \textit{LLM} yang telah diuraikan sebelumnya: risiko halusinasi dan keterbatasan \textit{knowledge cutoff}. Dengan menyediakan dokumen pendukung yang relevan sebagai konteks tambahan sebelum proses generasi, \textit{RAG} memastikan jawaban model berlandaskan pada fakta yang dapat diverifikasi, bukan sekadar prediksi statistik. Selain itu, karena basis dokumen dapat diperbarui secara independen tanpa melatih ulang model, \textit{RAG} juga mengatasi kendala keterbatasan pengetahuan \textit{LLM}. Secara umum, alur kerja standar RAG terdiri dari tiga tahapan utama, yaitu:
 
 \begin{enumerate}[label=\textbf{\Alph*.}, leftmargin=0.75cm]
     \item \textbf{\textit{Indexing}:} Segmentasi teks menjadi \textit{chunks} dan konversi ke representasi vektor (\textit{embedding}) dalam basis data.
@@ -236,24 +231,17 @@ Namun, implementasi \textit{RAG} konvensional yang hanya berbasis pada kemiripan
 \begin{figure}[!t]
     \centering
     \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{Gambar/framework graphrag.png}}
-    \caption{Alur Graph-Based RAG untuk tugas \textit{Question-Answering}
+    \caption{Alur Graph-Based RAG untuk Tugas \textit{Question-Answering}
         \citep{peng2024graphretrievalaugmentedgenerationsurvey}}
     \label{fig:graphrag-framework}
 \end{figure}
 
-Tujuan \textit{GraphRAG} adalah menemukan jawaban optimal ($a^*$) untuk pertanyaan ($q$) berbasis Graf Pengetahuan ($\mathcal{G}$), diformulasikan sebagai:
-
-\begin{equation}
-    a^* = \operatorname*{arg\,max}_{a \in A} p(a|q, \mathcal{G})
-    \label{eq:graphrag_goal}
-\end{equation}
-di mana \(A\) merepresentasikan himpunan seluruh kemungkinan respons yang dapat dihasilkan. Untuk mencapai tujuan tersebut, distribusi probabilitas target \(p(a \mid q, \mathcal{G})\) dimodelkan melalui kolaborasi dua komponen utama, yaitu model \textit{graph retriever} \(p_\theta(G \mid q, \mathcal{G})\) dan model \textit{answer generator} \(p_\phi(a \mid q, G)\), di mana \(\theta\) dan \(\phi\) adalah parameter yang dapat dilatih.
-
-\begin{equation}
-    p(a \mid q, \mathcal{G}) \approx p_\phi(a \mid q, G^*)\, p_\theta(G^* \mid q, \mathcal{G})
-    \label{eq:graphrag_decomposition_approx}
-\end{equation}
-Di sini, $p_\theta$ mewakili parameter model \textit{retriever} yang mencari subgraf relevan, sementara $p_\phi$ adalah model \textit{generator} yang menyusun jawaban berdasarkan subgraf tersebut.
+Tujuan \textit{GraphRAG} adalah menemukan jawaban optimal ($a^*$) untuk pertanyaan ($q$) berbasis Graf Pengetahuan ($\mathcal{G}$). Distribusi probabilitas target $p(a \mid q, \mathcal{G})$ dimodelkan melalui kolaborasi dua komponen utama, yaitu model \textit{graph retriever} $p_\theta(G \mid q, \mathcal{G})$ dan model \textit{answer generator} $p_\phi(a \mid q, G)$ dengan parameter latih $\theta$ dan $\phi$, yang secara berturut-turut diformulasikan pada persamaan \eqref{eq:graphrag_goal} dan \eqref{eq:graphrag_decomposition_approx} sebagai berikut:
+\begin{align}
+    a^*                      &= \operatorname*{arg\,max}_{a \in A} p(a \mid q, \mathcal{G}), \label{eq:graphrag_goal} \\
+    p(a \mid q, \mathcal{G}) &\approx p_\phi(a \mid q, G^*)\, p_\theta(G^* \mid q, \mathcal{G}), \label{eq:graphrag_decomposition_approx}
+\end{align}
+di mana $A$ merepresentasikan himpunan seluruh kemungkinan respons yang dapat dihasilkan, $G^*$ adalah subgraf terpilih yang paling relevan, $p_\theta$ mewakili model \textit{retriever} yang mencari subgraf relevan, dan $p_\phi$ adalah model \textit{generator} yang menyusun jawaban berdasarkan subgraf tersebut.
 
 Secara arsitektural, implementasi \textit{GraphRAG} terbagi menjadi tiga tahapan utama, sebagaimana diilustrasikan pada \ref{fig:graphrag-framework}:
 

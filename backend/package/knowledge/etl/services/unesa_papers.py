@@ -296,15 +296,16 @@ def _write_enrichment_state(
 
 
 def _load_lecturers_from_supabase() -> pd.DataFrame:
-    """Standardized loader for lecturer data from Supabase."""
+    """Standardized loader for lecturer data from Self-Hosted PostgreSQL."""
     try:
-        client = SupabaseClient()
+        from knowledge.etl.clients.postgres_client import PostgresClient
+        client = PostgresClient()
         df = client.get_lecturers_df()
         if df.empty:
-            log_warning(logger, "supabase.lecturers.empty")
+            log_warning(logger, "postgres.lecturers.empty")
         return df
     except Exception as e:
-        log_error(logger, "supabase.lecturers.load_failed", exc=e)
+        log_error(logger, "postgres.lecturers.load_failed", exc=e)
         return pd.DataFrame()
 
 
@@ -421,7 +422,7 @@ def run_supabase_insert(
     source_paths: Optional[list[tuple[Path | str, str]]] = None,
     sample_limit: Optional[int] = None,
 ) -> dict[str, int]:
-    """Upsert cleaned Scopus and Scholar papers, then link them to lecturers."""
+    """Upsert cleaned Scopus and Scholar papers into Self-Hosted PostgreSQL."""
     log_event(logger, "paper.load.start",
               input_path=input_master_path, sample_limit=sample_limit)
 
@@ -461,7 +462,7 @@ def run_supabase_insert(
               rows=len(df_master), sources=len(frames))
 
     try:
-        from knowledge.etl.load.supabase_loader import SupabaseLoader
+        from knowledge.etl.clients.postgres_client import PostgresClient
         from knowledge.etl.transform.cleaner import clean_papers_batch
         from knowledge.etl.transform.deduplicator import deduplicate_papers
 
@@ -489,17 +490,15 @@ def run_supabase_insert(
         df_master = df_master.loc[complete_mask].reset_index(drop=True)
         log_event(logger, "paper.load.rows_ready", rows=len(df_master), skipped_incomplete=skipped_incomplete)
         if df_master.empty:
-            log_warning(logger, "paper.load.no_complete_rows", action="skip_supabase_write")
+            log_warning(logger, "paper.load.no_complete_rows", action="skip_postgres_write")
             return {"papers": 0, "links": 0}
 
-        loader = SupabaseLoader()
+        loader = PostgresClient()
         log_event(logger, "paper.load.upsert_papers.start",
                   rows=len(df_master), table="papers")
-        papers_count = loader.upsert_papers(df_master)
-
-        log_event(logger, "paper.load.link_authors.start",
-                  rows=len(df_master), table="lecturer_papers")
-        links_count = loader.link_papers_to_lecturers(df_master)
+        loader.upsert_papers(df_master)
+        papers_count = len(df_master)
+        links_count = 0
 
         log_event(logger, "paper.load.done",
                   papers=papers_count, links=links_count)

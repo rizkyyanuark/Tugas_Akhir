@@ -1,8 +1,11 @@
 \PassOptionsToPackage{table}{xcolor}
 \documentclass{SkripsiUnesa}
 \usepackage{booktabs}
+\usepackage{float}
+\usepackage[section]{placeins}
 \pgfplotsset{compat=1.18}
 \loadglsentries{Istilah.tex}
+\raggedbottom
 
 \begin{document}
 
@@ -14,25 +17,24 @@
 
 %Abstrak
 \begin{Abstrak}
+    Produksi literatur ilmiah di lingkungan perguruan tinggi menunjukkan peningkatan yang signifikan setiap tahunnya. Peningkatan jumlah publikasi menyebabkan peneliti mengalami kesulitan dalam menemukan literatur yang relevan secara efisien. Sistem pencarian akademik konvensional yang mengandalkan pencocokan kata kunci kurang mampu memahami konteks semantik dan relasi antar-entitas akademik. Penelitian ini bertujuan merancang \textit{pipeline} konstruksi \textit{Knowledge Graph} dari korpus literatur akademik, merancang mekanisme \textit{Hybrid Vector-Graph Retrieval} dalam arsitektur \textit{Knowledge Graph-Based Retrieval Augmented Generation}, dan mengevaluasi efektivitas integrasi \textit{Knowledge Graph} dalam meningkatkan kualitas jawaban model bahasa besar. Data publikasi diperoleh dari profil dosen dan publikasi rumpun Informatika dan Komputer UNESA. Konstruksi graf menghasilkan 45.685 simpul dan 122.675 relasi dengan 16 jenis simpul yang mencakup entitas bibliografis dan konseptual. Eksperimen dilakukan dengan membandingkan tiga metode \textit{retrieval}, yaitu \textit{Naive}, \textit{Subgraph}, dan \textit{Hybrid} pada 90 pertanyaan evaluasi yang terbagi ke dalam kategori faktual, relasional, dan \textit{multi-hop}. Evaluasi \textit{retrieval} menggunakan \textit{Mean Reciprocal Rank} dan \textit{Hit@K}, sedangkan evaluasi generasi jawaban menggunakan metode \textit{Pairwise LLM as Judge}. Metode \textit{Hybrid} menghasilkan performa terbaik dengan \textit{MRR} sebesar 0,50 dan \textit{Win Rate Overall} sebesar 53,9\% terhadap metode \textit{Naive}. Metode \textit{Subgraph} memperoleh \textit{MRR} sebesar 0,43 dengan \textit{Win Rate Overall} sebesar 45,3\% terhadap \textit{Naive}. Evaluasi pada dimensi \textit{Traceability} dan \textit{Faithfulness} menunjukkan integrasi \textit{Knowledge Graph} membantu model bahasa besar menghasilkan jawaban yang lebih mudah dilacak sumbernya dan mengurangi klaim yang tidak terverifikasi.
 
-    Pencarian literatur di repositori institusi masih sering terkendala oleh keterbatasan sistem berbasis kata kunci yang tidak menangkap makna, sedangkan \textit{Retrieval-Augmented Generation} konvensional berbasis vektor cenderung kehilangan konteks hubungan antar-dokumen. Penelitian ini membangun sistem pencarian akademik yang memanfaatkan \textit{Knowledge Graph} sebagai penyedia konteks, dengan arsitektur \textit{dual-indexing} yang mengintegrasikan representasi data berupa vektor dan \textit{graph database}. Dari data publikasi dosen rumpun Infokom UNESA, \textit{pipeline} yang dikembangkan berhasil menyusun graf heterogen berisi simpul dan  relasi secara terintegrasi. Untuk mengukur kualitas jawaban, digunakan paradigma \textit{LLM-as-a-Judge} secara berpasangan dan \textit{framework RAGAS} terhadap 90 kueri pengujian pada tiga mode pencarian, yaitu \textit{Naive} , \textit{Subgraph} , dan \textit{Hybrid}. Hasil pengujian menunjukkan bahwa metode \textit{Hybrid} yang diintegrasikan dengan \textit{Cross-Encoder Reranker} memperoleh kinerja \textit{retrieval} terbaik dengan \textit{Mean Reciprocal Rank} (\textit{MRR}) sebesar 0,50 dan \textit{win rate} keseluruhan mencapai 53,9\% terhadap \textit{Naive}. Selain itu, integrasi graf meningkatkan ketertelusuran jawaban hingga 54,7\% karena melakukan bukti relasional terstruktur berupa \textit{graph triples}. Temuan riset menunjukkan bahwa penggabungan representasi vektor semantik dan traversal graf relasional mampu meningkatkan kualitas dan keterlacakan jawaban sistem \textit{RAG} dalam domain pencarian literatur akademik.
-
-    \katakunci{\textit{Knowledge Graph, Retrieval-Augmented Generation, GraphRAG, Dual-Indexing, LLM-as-a-Judge}}
+    \katakunci{\textit{Knowledge Graph}, \textit{Retrieval Augmented Generation}, \textit{Hybrid Retrieval}, Pencarian Literatur Akademik, Model Bahasa Besar}
 \end{Abstrak}
-\newpage
 
 %Abstrak dalam Bahasa Inggris
 \begin{Abstract}
+    Scientific literature production in higher education institutions shows a significant increase every year. The growing number of publications causes researchers to experience difficulties in finding relevant literature efficiently. Conventional academic search systems that rely on keyword matching are less capable of understanding semantic context and relationships between academic entities. This study aims to design a Knowledge Graph construction pipeline from academic literature corpora, design a Hybrid Vector-Graph Retrieval mechanism within a Knowledge Graph-Based Retrieval Augmented Generation architecture, and evaluate the effectiveness of Knowledge Graph integration in improving the quality of large language model responses. Publication data were obtained from lecturer profiles and publications of the Informatics and Computer Science department at UNESA. The graph construction produced 45,685 nodes and 122,675 relationships with 16 node types covering bibliographic and conceptual entities. Experiments were conducted by comparing three retrieval methods, namely Naive, Subgraph, and Hybrid on 90 evaluation questions divided into factual, relational, and multi-hop categories. Retrieval evaluation used Mean Reciprocal Rank and Hit@K, while answer generation evaluation used the Pairwise LLM as Judge method. The Hybrid method achieved the best performance with an MRR of 0.50 and an Overall Win Rate of 53.9\% against the Naive method. The Subgraph method obtained an MRR of 0.43 with an Overall Win Rate of 45.3\% against Naive. Evaluation on the Traceability and Faithfulness dimensions showed that Knowledge Graph integration helps large language models produce answers that are more traceable to their sources and reduces unverified claims.
 
-    Literature search in institutional repositories remains constrained by a fundamental gap: keyword-based systems fail to capture semantic meaning, while conventional vector-based Retrieval-Augmented Generation (RAG) tends to lose inter-document relational context. This study builds an academic search system that leverages a Knowledge Graph as its contextual backbone, using a dual-indexing architecture that integrates a vector database (Zilliz Cloud) and a graph database (Neo4j AuraDB). From publication data of Infokom faculty members at UNESA, the developed pipeline automatically constructed a heterogeneous graph containing 45,685 nodes and 122,675 relationships. Answer quality was measured through a pairwise LLM-as-a-Judge evaluation and automated RAGAS metrics across 90 test queries for three retrieval modes, namely Naive (pure vector), Subgraph (local graph navigation), and Hybrid (combined). The results show that the Hybrid mode, integrated with a Cross-Encoder Reranker, achieved the best retrieval performance with a Mean Reciprocal Rank (MRR) of 0.4983 and an overall win rate of 53.9\% against the Naive baseline. Furthermore, the graph integration enhanced answer Traceability to 54.7\% by providing structured relational evidence in the form of graph triples. These findings suggest that combining semantic vector representations with relational graph traversal effectively improves the quality and explainability of RAG systems in the academic literature search domain.
-
-    \keywords{Knowledge Graph, Retrieval-Augmented Generation, GraphRAG, Dual-Indexing, LLM-as-a-Judge}
+    \keywords{Knowledge Graph, Retrieval Augmented Generation, Hybrid Retrieval, Academic Literature Search, Large Language Model}
 \end{Abstract}
 
-\SuratPernyataan
+% \SuratPernyataan
+\SuratOrisinalitas
 %-------------------------------
 \HalamanPersetujuan %digunakan untuk sidang skripsi
 \HalamanPengesahan %digunakan untuk buku skripsi A5
+% \SuratPernyataanAI
 
 \Prakata
 
@@ -48,7 +50,7 @@ Akhir kata, penulis berharap skripsi ini dapat memberikan manfaat bagi perkemban
 
 \vspace{1cm}
 \begin{flushright}
-    Surabaya, Juni 2025\\
+    Surabaya, Juni 2026\\
     \vspace{1.5cm}
     Penulis
 \end{flushright}
@@ -59,22 +61,36 @@ Akhir kata, penulis berharap skripsi ini dapat memberikan manfaat bagi perkemban
 \DaftarSimbol
 \begin{longtable}{p{0.15\textwidth} p{0.75\textwidth}}
     % ===== STRUKTUR PENGETAHUAN =====
-    $G$                            & \textit{Knowledge Graph} akademik yang didefinisikan sebagai himpunan entitas ($E$), relasi ($R$), dan \textit{triplet} ($T$).                      \\
-    $(h, r, t)$                    & \textit{Triplet} pengetahuan yang terdiri dari \textit{head entity} (subjek), \textit{relation} (predikat), dan \textit{tail entity} (objek).       \\
-    $N_{\text{raw}}$               & Jumlah total data mentah publikasi yang dikumpulkan dari berbagai sumber sebelum pemrosesan.                                                        \\
+    $G$                                     & \textit{Knowledge Graph} akademik, terdiri atas himpunan entitas ($E$), relasi ($R$), dan \textit{triplet} ($T$).   \\
+    $(h, r, t)$                             & \textit{Triplet} pengetahuan: \textit{head} (subjek), \textit{relation} (predikat), \textit{tail} (objek).          \\
+    $\mathcal{S}$                           & Himpunan \textit{triplet} hasil pemetaan fungsi ekstraksi informasi $f_{IE}$ dari teks $\mathcal{T}$.               \\
+    $E$                                     & Himpunan entitas dalam \textit{Knowledge Graph}.                                                                    \\
+    $R$                                     & Himpunan relasi dalam \textit{Knowledge Graph}.                                                                     \\
 
     % ===== PEMODELAN ACADEMIC RAG =====
-    $q$                            & Pertanyaan atau kueri yang diajukan oleh pengguna ke dalam sistem.                                                                                  \\
-    $\mathcal{K}_l, \mathcal{K}_h$ & Kata kunci hierarkis; tingkat rendah (\textit{low-level}) untuk pencarian detail dan tingkat tinggi (\textit{high-level}) untuk konteks tema besar. \\
-    $\mathcal{L}_{\text{local}}$   & Informasi lokal (mikro) yang mencakup detail spesifik entitas dan relasi dari subgraf.                                                              \\
-    $\mathcal{L}_{\text{global}}$  & Informasi global (makro) yang mencakup pola konseptual dan tren riset lintas domain.                                                                \\
+    $q$ / $Q$                               & Pertanyaan atau kueri pengguna.                                                                                     \\
+    $K^{\text{content}}$                    & Himpunan kata kunci korpus akademik.                                                                                \\
+    $K^{\text{clues}}$                      & Kandidat \textit{clues} hasil penyaringan kata kunci berdasarkan ambang kemiripan $\tau$.                           \\
+    $f_{\text{embed}}(\cdot)$               & Fungsi \textit{embedding} yang memetakan teks ke representasi vektor.                                               \\
+    $\tau$                                  & Ambang batas (\textit{threshold}) kemiripan untuk penyaringan \textit{clues}.                                       \\
+    $\mathcal{K}_l, \mathcal{K}_h$          & Kata kunci hierarkis; $\mathcal{K}_l$ untuk pencarian lokal detail, $\mathcal{K}_h$ untuk konteks global.           \\
+    $\mathcal{L}_{\text{local}}$            & Konteks lokal berupa entitas, relasi, dan unit teks dari subgraf.                                                   \\
+    $\mathcal{L}_{\text{global}}$           & Konteks global berupa entitas, relasi, dan unit teks dari jejaring lintas domain.                                   \\
+    $\mathcal{E}, \mathcal{R}, \mathcal{T}$ & Komponen konteks: entitas ($\mathcal{E}$), relasi ($\mathcal{R}$), unit teks ($\mathcal{T}$).                       \\
+
+    % ===== LLM =====
+    $P_\theta(y \mid y_{<t}, x)$            & Distribusi probabilitas bersyarat token pada model bahasa besar dengan parameter $\theta$.                          \\
 
     % ===== METRIK EVALUASI =====
-    $|V|$                          & Jumlah klaim yang terverifikasi (\textit{verified claims}) dalam jawaban sistem, digunakan untuk menghitung \textit{Faithfulness}.                  \\
-    $|S|$                          & Total jumlah klaim (\textit{total statements}) yang terdapat dalam jawaban yang dihasilkan sistem.                                                  \\
-    $\text{sim}(q, \hat{q})$       & Skor kemiripan (\textit{similarity score}) antara pertanyaan asli pengguna dengan pertanyaan sintetis untuk mengukur relevansi jawaban.             \\
+    $|Q|$                                   & Jumlah kueri dalam himpunan evaluasi.                                                                               \\
+    $\text{rank}_i$                         & Posisi dokumen relevan pertama pada kueri ke-$i$.                                                                   \\
+    $Q_{\text{relevan@}K}$                  & Himpunan kueri yang memiliki dokumen relevan dalam $K$ peringkat teratas.                                           \\
+    $|V|$                                   & Jumlah klaim terverifikasi dalam jawaban, untuk menghitung \textit{Faithfulness}.                                   \\
+    $|S|$                                   & Total klaim yang diekstraksi dari jawaban sistem.                                                                   \\
+    $E_q, E_{q_i}$                          & Vektor \textit{embedding} kueri asli ($E_q$) dan kueri sintetis ke-$i$ ($E_{q_i}$) untuk \textit{Answer Relevancy}. \\
+    $m$                                     & Jumlah pertanyaan sintetis yang dibangkitkan untuk menghitung \textit{Answer Relevancy}.                            \\
+    $M$                                     & Metode pencarian yang dievaluasi (misal: \textit{Naive}, \textit{Subgraph}, \textit{Hybrid}).                       \\
 \end{longtable}
-\newpage
 
 \Inti
 
@@ -89,19 +105,95 @@ Akhir kata, penulis berharap skripsi ini dapat memberikan manfaat bagi perkemban
 \include{Bab_5/Simpulan}
 
 \DaftarPustaka{Pustaka}
-\Glosarium
+% \Glosarium
 \BukaLampiran
 
-\lampiran{Surat Keterangan Uji Ahli} %gunakan ini jika memerlukan keterangan uji ahli, misal kuesioner
-\UjiAhli
 
 \lampiran{\textit{Source code}}
-% \lstinputlisting[language=python]{epidemiology.py}
 
-\lampiran{Biodata Penulis}
-\biodata{Gambar/foto}
-% Ryan took part in the BBC series Strictly Come Dancing. He was partnered with professional dancer Nadiya Bychkova and was the second contestant to be eliminated on 7 October 2018. In 2019, Ryan starred in Celebs Go Dating on E4 and released his first single after nine years called "Ghost". Ryan subsequently released two further solo singles in 2020, "Mockingbirds" and Swayed".
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries,
+    commentstyle=\itshape\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    xleftmargin=2em,
+    framexleftmargin=1.5em,
+    tabsize=4,
+}
 
-% Ryan reunited with Blue in 2011 and in 2022 they released singles "Haven't Found You Yet" and "Dance with Me" from their sixth studio album Heart \& Soul.
+\begin{lstlisting}[language=Python, caption={Algoritma \textit{Hybrid Vector-Graph Retrieval}}]
+ALGORITHM: HybridVectorGraphRetrieval
+
+INPUT:
+    Q           : kueri pengguna
+    VectorDB    : basis data vektor (Zilliz Cloud)
+    GraphDB     : basis data graf (Neo4j AuraDB)
+    Reranker    : model Cross-Encoder Reranker
+    mode        : "naive" | "subgraph" | "hybrid"
+    top_k       : jumlah dokumen yang diambil
+
+OUTPUT:
+    context     : konteks terstruktur untuk LLM
+
+BEGIN
+    result = {}
+
+    # === TAHAP 1: Dekomposisi Kata Kunci ===
+    IF mode IN {subgraph, hybrid} THEN
+        keyword_clues = VectorDB.search("ContentKeyword", Q)
+        (K_high, K_low) = LLM_decompose(Q, keyword_clues)
+        local_query  = combine(K_low, Q)
+        global_query = combine(K_high, Q)
+    END IF
+
+    # === TAHAP 2: Pencarian Vektor (Naive) ===
+    IF mode IN {naive, hybrid} THEN
+        paper_chunks = VectorDB.search("PaperChunk", Q, top_k * 3)
+    END IF
+
+    # === TAHAP 3: Pencarian Subgraf Lokal ===
+    IF mode IN {subgraph, hybrid} THEN
+        entities = EntitySubgraphRetrieval(local_query, VectorDB,
+                                           GraphDB, top_k)
+        subgraph_triples = GraphDB.shortest_path(entities, depth=2)
+        text_units = VectorDB.search("PaperChunk", local_query)
+    END IF
+
+    # === TAHAP 4: Pencarian Relasi Global ===
+    IF mode IN {hybrid} THEN
+        relationships = VectorDB.search("RelationshipEmbedding",
+                                         global_query, top_k * 2)
+        FOR EACH rel IN relationships DO
+            src_deg = GraphDB.get_degree(rel.src_id)
+            tgt_deg = GraphDB.get_degree(rel.tgt_id)
+            rel.distance = rel.distance /
+                (1 + 0.05 * (log(src_deg+1) + log(tgt_deg+1)))
+        END FOR
+        relationships = sort_ascending(relationships, key=distance)
+    END IF
+
+    # === TAHAP 5: Fusi dan Pemeringkatan Ulang ===
+    IF mode == hybrid THEN
+        ranked_papers = RRF_Rerank(paper_chunks, entities,
+                                    GraphDB, Reranker, Q, top_k)
+    ELSE IF mode == naive THEN
+        ranked_papers = Reranker.rerank(Q, paper_chunks, top_k)
+    END IF
+
+    # === TAHAP 6: Penyusunan Konteks ===
+    context = format_context(
+        paper_chunks  = ranked_papers,
+        entities      = entities,
+        relationships = relationships,
+        subgraph      = subgraph_triples,
+        text_units    = text_units
+    )
+
+    RETURN context
+END
+\end{lstlisting}
 
 \end{document}
