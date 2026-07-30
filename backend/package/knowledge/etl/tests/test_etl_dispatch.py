@@ -420,7 +420,7 @@ def test_paper_enrichment_resumes_completed_checkpoint(monkeypatch):
 
 def test_paper_supabase_insert_combines_scopus_and_scholar(monkeypatch):
     import pandas as pd
-    import knowledge.etl.load.supabase_loader as loader_module
+    import knowledge.etl.clients.postgres_client as pg_module
     import knowledge.etl.services.unesa_papers as service
     import knowledge.etl.transform.cleaner as cleaner
     import knowledge.etl.transform.deduplicator as deduplicator
@@ -456,30 +456,26 @@ def test_paper_supabase_insert_combines_scopus_and_scholar(monkeypatch):
             }]
         )
 
-    class FakeLoader:
+    class FakePostgresClient:
         def upsert_papers(self, df):
             captured["paper_titles"] = set(df["Title"].tolist())
-            return len(df)
-
-        def link_papers_to_lecturers(self, df):
-            captured["link_rows"] = len(df)
             return len(df)
 
     monkeypatch.setattr(service, "smart_exists", fake_exists)
     monkeypatch.setattr(service, "read_dataframe_artifact", fake_read)
     monkeypatch.setattr(cleaner, "clean_papers_batch", lambda df: df)
     monkeypatch.setattr(deduplicator, "deduplicate_papers", lambda df: df)
-    monkeypatch.setattr(loader_module, "SupabaseLoader", lambda: FakeLoader())
+    monkeypatch.setattr(pg_module, "PostgresClient", lambda: FakePostgresClient())
 
     result = service.run_supabase_insert()
 
-    assert result == {"papers": 2, "links": 2}
+    assert result == {"papers": 2, "links": 0}
     assert captured["paper_titles"] == {"Scopus Paper", "Scholar Paper"}
 
 
 def test_paper_supabase_insert_skips_incomplete_rows(monkeypatch):
     import pandas as pd
-    import knowledge.etl.load.supabase_loader as loader_module
+    import knowledge.etl.clients.postgres_client as pg_module
     import knowledge.etl.services.unesa_papers as service
     import knowledge.etl.transform.cleaner as cleaner
     import knowledge.etl.transform.deduplicator as deduplicator
@@ -497,19 +493,16 @@ def test_paper_supabase_insert_skips_incomplete_rows(monkeypatch):
             }]
         )
 
-    class FakeLoader:
+    class FakePostgresClient:
         def upsert_papers(self, df):
             captured["upsert_called"] = True
-            return len(df)
-
-        def link_papers_to_lecturers(self, df):
             return len(df)
 
     monkeypatch.setattr(service, "smart_exists", lambda path: path == "input.csv")
     monkeypatch.setattr(service, "read_dataframe_artifact", fake_read)
     monkeypatch.setattr(cleaner, "clean_papers_batch", lambda df: df)
     monkeypatch.setattr(deduplicator, "deduplicate_papers", lambda df: df)
-    monkeypatch.setattr(loader_module, "SupabaseLoader", lambda: FakeLoader())
+    monkeypatch.setattr(pg_module, "PostgresClient", lambda: FakePostgresClient())
 
     result = service.run_supabase_insert(input_master_path="input.csv")
 
