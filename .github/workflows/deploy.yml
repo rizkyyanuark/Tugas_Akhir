@@ -200,8 +200,26 @@ jobs:
             sudo chmod 600 cloudflared/credentials.json
 
             echo "[4/7] Preparing EC2 host"
-            chmod +x scripts/setup-server.sh
-            bash scripts/setup-server.sh
+            # -- Create required directories --
+            mkdir -p data saves models orchestration/dags
+
+            # -- Add swap if not exists --
+            if [ "$(swapon --show | wc -l)" -lt 2 ]; then
+              sudo fallocate -l 4G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+            fi
+
+            # -- Resize filesystem if EBS was expanded --
+            ROOT_DEVICE=$(df / | tail -1 | awk '{print $1}')
+            if command -v growpart &>/dev/null; then
+              DISK_DEVICE=$(echo "$ROOT_DEVICE" | sed 's/p\?[0-9]*$//')
+              PARTITION_NUM=$(echo "$ROOT_DEVICE" | grep -o '[0-9]*$')
+              sudo growpart "$DISK_DEVICE" "$PARTITION_NUM" 2>/dev/null || true
+              sudo resize2fs "$ROOT_DEVICE" 2>/dev/null || true
+            fi
             df -h /
 
             echo "[5/7] Removing old Docker build artifacts"
