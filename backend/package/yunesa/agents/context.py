@@ -56,12 +56,12 @@ class BaseContext:
     )
 
     knowledges: Annotated[list[str], {"__template_metadata__": {"kind": "knowledges"}}] = field(
-        default_factory=lambda: ["yunesa_academic_kg"],
+        default_factory=lambda: ["infokom_unesa_kg"],
         metadata={
             "name": "Knowledge Bases",
             "description": (
                 "Knowledge sources available to this agent, including document knowledge bases "
-                "and the curated YUNESA Academic KG."
+                "and the curated Infokom Unesa KG."
             ),
             "type": "list",  # Explicitly mark as list type for frontend if needed
         },

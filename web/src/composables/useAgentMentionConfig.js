@@ -1,9 +1,9 @@
 import { computed } from 'vue'
 
 const ACADEMIC_KG_OPTION = {
-  id: 'yunesa_academic_kg',
-  name: 'YUNESA Academic KG',
-  description: 'Curated Neo4j/Zilliz academic knowledge graph for GraphRAG.'
+  id: 'infokom_unesa_kg',
+  name: 'Infokom Unesa',
+  description: 'Curated Neo4j/Milvus academic knowledge graph for GraphRAG Infokom Unesa.'
 }
 
 export function useAgentMentionConfig({

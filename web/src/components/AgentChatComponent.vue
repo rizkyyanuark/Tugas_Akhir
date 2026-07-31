@@ -585,7 +585,7 @@ const activeProgressText = computed(() => {
   const hasCompleted = relevantCalls.some((toolCall) => toolCall?.tool_call_result)
 
   if (queryKbCalls.length && hasRunning) {
-    return 'Searching YUNESA Academic KG across graph and vector indexes'
+    return 'Searching Infokom Unesa across graph and vector indexes'
   }
   if (queryKbCalls.length && hasCompleted) {
     return 'Composing a grounded answer from retrieved evidence'
