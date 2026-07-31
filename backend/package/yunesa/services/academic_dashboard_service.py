@@ -321,33 +321,33 @@ class AcademicDashboardService:
             async with driver.session(database=database) as session:
                 node_record = await (
                     await session.run(
-                        "MATCH (n:KGNode {graph_name: $graph_name}) "
+                        "MATCH (n) "
+                        "WHERE $graph_name IS NULL OR n.graph_name = $graph_name "
                         "RETURN count(n) AS total",
                         graph_name=self.graph_name,
                     )
                 ).single()
                 edge_record = await (
                     await session.run(
-                        "MATCH (:KGNode {graph_name: $graph_name})"
-                        "-[r]->(:KGNode {graph_name: $graph_name}) "
-                        "WHERE r.graph_name = $graph_name "
+                        "MATCH ()-[r]->() "
+                        "WHERE $graph_name IS NULL OR r.graph_name = $graph_name "
                         "RETURN count(r) AS total",
                         graph_name=self.graph_name,
                     )
                 ).single()
                 entity_rows = await (
                     await session.run(
-                        "MATCH (n:KGNode {graph_name: $graph_name}) "
-                        "WITH coalesce(n.node_type, 'Unknown') AS entity_type, count(*) AS total "
+                        "MATCH (n) "
+                        "WHERE $graph_name IS NULL OR n.graph_name = $graph_name "
+                        "WITH coalesce(head(labels(n)), n.node_type, 'Unknown') AS entity_type, count(*) AS total "
                         "RETURN entity_type, total ORDER BY total DESC",
                         graph_name=self.graph_name,
                     )
                 ).data()
                 relationship_rows = await (
                     await session.run(
-                        "MATCH (:KGNode {graph_name: $graph_name})"
-                        "-[r]->(:KGNode {graph_name: $graph_name}) "
-                        "WHERE r.graph_name = $graph_name "
+                        "MATCH ()-[r]->() "
+                        "WHERE $graph_name IS NULL OR r.graph_name = $graph_name "
                         "RETURN type(r) AS relation_type, count(*) AS total "
                         "ORDER BY total DESC",
                         graph_name=self.graph_name,

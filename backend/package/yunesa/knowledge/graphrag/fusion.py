@@ -108,7 +108,7 @@ async def degree_rerank_entities(
     neo4j_storage: Any,
     graph_name: str,
 ) -> list[dict[str, Any]]:
-    """Rerank entities by scaling distance based on their Neo4j node degree."""
+    """Rerank entities by scaling distance based on their Neo4j degree."""
     if not entities:
         return []
 
@@ -118,7 +118,7 @@ async def degree_rerank_entities(
 
     query = """
     UNWIND $node_ids AS nid
-    MATCH (n:KGNode {id: nid})
+    MATCH (n {id: nid})
     WHERE $graph_name = '' OR n.graph_name = $graph_name
     RETURN n.id AS nodeId, count { (n)-[]-() } AS degree
     """
@@ -165,7 +165,7 @@ async def degree_rerank_relationships(
 
     query = """
     UNWIND $node_ids AS nid
-    MATCH (n:KGNode {id: nid})
+    MATCH (n {id: nid})
     WHERE $graph_name = '' OR n.graph_name = $graph_name
     RETURN n.id AS nodeId, count { (n)-[]-() } AS degree
     """
@@ -212,7 +212,7 @@ async def graph_connection_rank(
     UNWIND $titles AS paper_title
     MATCH (p:Publication) WHERE p.title = paper_title
     AND ($graph_name = '' OR p.graph_name = $graph_name)
-    OPTIONAL MATCH (p)-[r]-(e:KGNode)
+    OPTIONAL MATCH (p)-[r]-(e)
     WHERE e.id IN $entity_ids
     RETURN paper_title, count(DISTINCT e) AS match_count
     """
@@ -243,13 +243,13 @@ async def match_mentioned_entities(
         return []
 
     query = """
-    MATCH (n:KGNode)
-    WHERE n.node_type IN ['Lecturer', 'Venue']
+    MATCH (n)
+    WHERE (n:Lecturer OR n:Venue OR n.node_type IN ['Lecturer', 'Venue'])
       AND (
         (n.nama_norm IS NOT NULL AND toLower($q) CONTAINS toLower(n.nama_norm))
         OR toLower($q) CONTAINS toLower(n.label)
       )
-    RETURN n.id AS id, n.label AS label, n.node_type AS type, n.description AS description
+    RETURN n.id AS id, n.label AS label, head(labels(n)) AS type, n.description AS description
     """
     params = {"q": query_text}
 

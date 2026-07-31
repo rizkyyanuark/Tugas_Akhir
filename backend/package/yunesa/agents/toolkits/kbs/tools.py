@@ -156,7 +156,7 @@ async def get_mindmap(kb_name: str, runtime: ToolRuntime) -> str:
 class QueryKBInput(BaseModel):
     """Input model for knowledge base retrieval."""
 
-    kb_name: str = Field(description="Knowledge base name to query. For academic, lecturer, or publication questions, always query using 'yunesa_academic_kg'.")
+    kb_name: str = Field(description="Knowledge base name to query. For academic, lecturer, or publication questions, query using 'infokom_unesa_kg'.")
     query_text: str = Field(
         description=(
             "Keywords for retrieval. Prefer focused keywords that help answer the question "
@@ -237,6 +237,9 @@ def _is_academic_virtual_kb(kb_name: str) -> bool:
     normalized = str(kb_name or "").strip().lower().replace("-", "_").replace(" ", "_")
     allowed = {
         "yunesa",
+        "infokom",
+        "infokom_unesa",
+        "infokom_unesa_kg",
         "academic_kg",
         "yunesa_academic_kg",
         "yunesa_academic_graphrag",
@@ -248,8 +251,8 @@ def _is_academic_virtual_kb(kb_name: str) -> bool:
 
 def _academic_virtual_kb_info() -> dict[str, str]:
     return {
-        "name": os.getenv("YUNESA_ACADEMIC_KB_NAME") or "yunesa_academic_kg",
-        "description": "Curated YUNESA academic knowledge graph stored in Neo4j and Zilliz.",
+        "name": os.getenv("YUNESA_ACADEMIC_KB_NAME") or "infokom_unesa_kg",
+        "description": "Curated Infokom Unesa academic knowledge graph stored in Neo4j and Milvus.",
     }
 
 

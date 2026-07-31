@@ -477,8 +477,8 @@ class CoreGraphService:
 
         path_query = f"""
             UNWIND $pairs AS pair
-            MATCH (source:KGNode {{id: pair.source, graph_name: $graph_name}})
-            MATCH (target:KGNode {{id: pair.target, graph_name: $graph_name}})
+            MATCH (source {{id: pair.source, graph_name: $graph_name}})
+            MATCH (target {{id: pair.target, graph_name: $graph_name}})
             MATCH path = shortestPath((source)-[*..{depth}]-(target))
             WHERE all(node IN nodes(path) WHERE node.graph_name = $graph_name)
               AND all(rel IN relationships(path) WHERE rel.graph_name = $graph_name)
@@ -494,7 +494,7 @@ class CoreGraphService:
             RETURN nodes, rels
         """
         seed_query = """
-            MATCH (node:KGNode)
+            MATCH (node)
             WHERE node.graph_name = $graph_name
               AND node.id IN $node_ids
             RETURN collect(DISTINCT node)[0..toInteger($node_limit)] AS nodes, [] AS rels
@@ -739,7 +739,7 @@ class CoreGraphService:
         def query_fuzzy(tx, kw):
             result = tx.run(
                 """
-                MATCH (n:Entity|KGNode)
+                MATCH (n)
                 WHERE (n.label IS NOT NULL AND toLower(n.label) CONTAINS toLower($kw))
                    OR (n.name IS NOT NULL AND toLower(n.name) CONTAINS toLower($kw))
                 RETURN DISTINCT coalesce(n.label, n.name) AS name
@@ -780,9 +780,9 @@ class CoreGraphService:
 
         def query(tx, name, limit):
             query_str = """
-            MATCH (n:Entity|KGNode)
+            MATCH (n)
             WHERE coalesce(n.label, n.name) = $name
-            OPTIONAL MATCH (n)-[r]-(m:Entity|KGNode)
+            OPTIONAL MATCH (n)-[r]-(m)
             RETURN
                 {id: elementId(n), name: coalesce(n.label, n.name), properties: properties(n)} as h,
                 {
