@@ -191,18 +191,7 @@ provide('settingsModal', {
     </router-view>
 
     <!-- Debug Modal -->
-    <a-modal
-      v-model:open="showDebugModal"
-      title="Debug Panel"
-      width="90%"
-      :footer="null"
-      @cancel="handleDebugModalClose"
-      :maskClosable="true"
-      :destroyOnClose="true"
-      class="debug-modal"
-    >
-      <DebugComponent />
-    </a-modal>
+    <DebugComponent v-model:show="showDebugModal" />
     <TaskCenterDrawer v-if="userStore.isAdmin" />
     <SettingsModal v-model:visible="showSettingsModal" @close="() => (showSettingsModal = false)" />
   </div>

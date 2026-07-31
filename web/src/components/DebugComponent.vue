@@ -6,19 +6,25 @@
     :footer="null"
     :maskClosable="true"
     :destroyOnClose="true"
-    class="debug-modal"
+    class="debug-modal-container"
   >
     <div :class="['log-viewer', { fullscreen: state.isFullscreen }]" ref="logViewer">
       <div class="control-panel">
         <div class="button-group">
-          <a-button
-            @click="fetchLogs"
-            :loading="state.fetching"
-            :icon="h(ReloadOutlined)"
-            class="icon-only"
-          >
-          </a-button>
-          <a-button @click="clearLogs" :icon="h(ClearOutlined)" class="icon-only"> </a-button>
+          <a-tooltip title="Reload logs">
+            <a-button
+              @click="fetchLogs"
+              :loading="state.fetching"
+              :icon="h(ReloadOutlined)"
+              class="icon-only"
+            />
+          </a-tooltip>
+          <a-tooltip title="Clear log viewer">
+            <a-button @click="clearLogs" :icon="h(ClearOutlined)" class="icon-only" />
+          </a-tooltip>
+          <a-tooltip title="Copy logs to clipboard">
+            <a-button @click="copyLogs" :icon="h(CopyOutlined)" class="icon-only" />
+          </a-tooltip>
           <a-button @click="printSystemConfig">
             <template #icon><SettingOutlined /></template>
             System Config
@@ -72,7 +78,7 @@
           <a-input-search
             v-model:value="state.searchText"
             placeholder="Search logs..."
-            style="width: 200px; height: 32px"
+            style="width: 220px; height: 32px"
             @search="onSearch"
           />
           <div class="log-level-selector">
@@ -83,7 +89,8 @@
                 class="option-card"
                 :class="{
                   selected: isLogLevelSelected(level.value),
-                  unselected: !isLogLevelSelected(level.value)
+                  unselected: !isLogLevelSelected(level.value),
+                  [`badge-${level.value.toLowerCase()}`]: true
                 }"
                 @click="toggleLogLevel(level.value)"
               >
@@ -107,12 +114,12 @@
             :class="['log-line', `level-${log.level.toLowerCase()}`]"
           >
             <span class="timestamp">{{ formatTimestamp(log.timestamp) }}</span>
-            <span class="level">{{ log.level }}</span>
-            <span class="module">{{ log.module }}</span>
-            <span class="message">{{ log.message }}</span>
+            <span class="level-badge">{{ log.level }}</span>
+            <span v-if="log.module" class="module">{{ log.module }}</span>
+            <span class="message" v-html="highlightSearchText(log.message)"></span>
           </div>
         </div>
-        <div v-else class="empty-logs">No logs</div>
+        <div v-else class="empty-logs">No logs found</div>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
       <!-- User switcher modal -->
@@ -157,7 +164,6 @@ const showModal = defineModel('show')
 // Watch showModal changes and fetch logs when opened
 watch(showModal, (isOpen) => {
   if (isOpen) {
-    // Delay slightly to ensure DOM is rendered
     setTimeout(fetchLogs, 100)
   }
 })
@@ -181,6 +187,7 @@ import {
   FullscreenExitOutlined,
   ReloadOutlined,
   ClearOutlined,
+  CopyOutlined,
   SettingOutlined,
   SyncOutlined,
   CheckCircleOutlined,
@@ -231,37 +238,43 @@ let autoRefreshInterval = null
 
 // Parse a log line
 const parseLogLine = (line) => {
-  // Support two timestamp formats: with milliseconds and without
+  if (!line || !line.trim()) return null
+
+  // Support timestamp formats: 2026-07-31 10:32:48,314 or 2026-07-31 10:32:48
   const match = line.match(
-    /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:,\d{3})?)\s*-\s*(\w+)\s*-\s*([^-]+?)\s*-\s*(.+)$/
+    /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:[,\.]\d{3})?)\s*[-:]?\s*(\w+)\s*[-:]?\s*([^-:]+?)?\s*[-:]?\s*(.+)$/
   )
   if (match) {
     return {
       timestamp: match[1],
-      level: match[2],
-      module: match[3].trim(),
+      level: match[2].toUpperCase(),
+      module: (match[3] || '').trim(),
       message: match[4].trim(),
       raw: line
     }
   }
-  return null
+
+  // Fallback for stack traces or unformatted lines so they are NOT lost
+  return {
+    timestamp: '',
+    level: 'INFO',
+    module: '',
+    message: line,
+    raw: line
+  }
 }
 
 // Format timestamp
 const formatTimestamp = (timestamp) => {
+  if (!timestamp) return ''
   try {
-    // Convert format with milliseconds: "2025-03-10 08:26:37,269" -> "2025-03-10 08:26:37.269"
     let normalizedTimestamp = timestamp.replace(',', '.')
-
-    // Add .000 when milliseconds are missing
     if (!/\.\d{3}$/.test(normalizedTimestamp)) {
       normalizedTimestamp += '.000'
     }
-
     const date = dayjs(normalizedTimestamp)
     return date.isValid() ? date.format('HH:mm:ss.SSS') : timestamp
   } catch (err) {
-    console.error('Timestamp formatting error:', err)
     return timestamp
   }
 }
@@ -277,6 +290,23 @@ const processedLogs = computed(() => {
     })
 })
 
+// Highlight search text inside log message
+const highlightSearchText = (text) => {
+  if (!text) return ''
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  if (!state.searchText || !state.searchText.trim()) {
+    return escaped
+  }
+
+  const query = state.searchText.trim()
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return escaped.replace(regex, '<mark class="log-highlight">$1</mark>')
+}
+
 // Fetch logs
 const fetchLogs = async () => {
   if (!checkSuperAdminPermission()) return
@@ -284,10 +314,9 @@ const fetchLogs = async () => {
   state.fetching = true
   try {
     error.value = ''
-    // Convert selected log levels to a comma-separated string for backend
     const levelsParam = state.selectedLevels.join(',')
     const logData = await configApi.getLogs(levelsParam)
-    state.rawLogs = logData.log.split('\n').filter((line) => line.trim())
+    state.rawLogs = (logData.log || '').split('\n').filter((line) => line.trim())
 
     await nextTick()
     const scrollToBottom = useThrottleFn(() => {
@@ -309,6 +338,21 @@ const clearLogs = () => {
   state.rawLogs = []
 }
 
+// Copy logs
+const copyLogs = async () => {
+  const logText = processedLogs.value.map((l) => l.raw).join('\n')
+  if (!logText) {
+    message.warning('No logs to copy')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(logText)
+    message.success(`Copied ${processedLogs.value.length} log lines to clipboard`)
+  } catch (err) {
+    message.error('Failed to copy logs to clipboard')
+  }
+}
+
 // Search feature
 const onSearch = () => {
   // Search is handled automatically by computed state
@@ -324,17 +368,13 @@ const toggleLogLevel = (level) => {
   const index = currentLevels.indexOf(level)
 
   if (index > -1) {
-    // Prevent empty selection
-    if (currentLevels.length === 1) {
-      return
-    }
+    if (currentLevels.length === 1) return
     currentLevels.splice(index, 1)
   } else {
     currentLevels.push(level)
   }
 
   state.selectedLevels = currentLevels
-  // Refetch logs after log level changes
   fetchLogs()
 }
 
@@ -484,7 +524,6 @@ const printAgentConfig = async () => {
   try {
     console.log('=== Agent Config Info ===')
 
-    // Store state info
     console.log('Store state:', {
       isInitialized: agentStore.isInitialized,
       selectedAgentId: agentStore.selectedAgentId,
@@ -499,13 +538,11 @@ const printAgentConfig = async () => {
       hasConfigChanges: agentStore.hasConfigChanges
     })
 
-    // Agent list info
     console.log('Agent list:', {
       count: agentStore.agentsList.length,
       agents: toRaw(agentStore.agentsList)
     })
 
-    // Current selected agent info
     if (agentStore.selectedAgent) {
       console.log('Current selected agent:', {
         agent: toRaw(agentStore.selectedAgent),
@@ -513,7 +550,6 @@ const printAgentConfig = async () => {
         configurableItemsCount: Object.keys(agentStore.configurableItems).length
       })
 
-      // Current agent config (admin only)
       if (userStore.isAdmin) {
         console.log('Current agent config:', {
           current: toRaw(agentStore.agentConfig),
@@ -525,14 +561,12 @@ const printAgentConfig = async () => {
       }
     }
 
-    // Tool info
     const toolsList = agentStore.availableTools ? Object.values(agentStore.availableTools) : []
     console.log('Available tools:', {
       count: toolsList.length,
       tools: toolsList
     })
 
-    // Configurable items (admin only)
     if (userStore.isAdmin && agentStore.selectedAgent) {
       console.log('Configurable items:', toRaw(agentStore.configurableItems))
     }
@@ -568,7 +602,6 @@ const openUserSwitcher = () => {
 const switchToUser = async (user) => {
   if (!checkSuperAdminPermission()) return
 
-  // Dangerous operation confirmation
   Modal.confirm({
     title: 'Dangerous Operation Confirmation',
     content: `Are you sure you want to switch to user "${user.username}"? This action will be logged.`,
@@ -587,11 +620,9 @@ const switchToUser = async (user) => {
           throw new Error(error.detail || 'Failed to switch user')
         }
         const data = await response.json()
-        // Set new token
         localStorage.setItem('user_token', data.access_token)
         message.success(`Switched user: ${user.username}`)
         state.showUserSwitcher = false
-        // Reload page to reinitialize application
         window.location.reload()
       } catch (err) {
         message.error(`Switch failed: ${err.message}`)
@@ -603,7 +634,7 @@ const switchToUser = async (user) => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="less">
 .log-viewer.fullscreen {
   padding: 16px;
 }
@@ -615,7 +646,7 @@ const switchToUser = async (user) => {
 .button-group {
   display: flex;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 
   .ant-btn {
@@ -639,18 +670,7 @@ const switchToUser = async (user) => {
     &.ant-btn-primary {
       background-color: var(--main-color);
       border-color: var(--main-color);
-      color: var(--gray-0);
-
-      &:hover,
-      &:focus {
-        background-color: var(--main-color);
-        border-color: var(--main-color);
-        color: var(--gray-0);
-      }
-    }
-
-    .anticon {
-      font-size: 14px;
+      color: #ffffff;
     }
   }
 
@@ -659,132 +679,172 @@ const switchToUser = async (user) => {
     opacity: 0.8;
     margin-left: 2px;
   }
-
-  .auto-refresh-button {
-    color: var(--gray-0);
-  }
 }
 
 .filter-group {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
-  height: 32px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 12px;
-  }
 }
 
 .error {
-  color: var(--color-error-500);
+  color: #f87171;
+  margin-top: 8px;
+  font-weight: 500;
 }
 
+/* Dedicated High-Contrast Terminal Dark Canvas */
 .log-container {
   height: calc(80vh - 200px);
   overflow-y: auto;
-  background: var(--gray-0);
-  color: var(--gray-1000);
-  border-radius: 5px;
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 12px;
+  background-color: #0d1117 !important; /* GitHub/VSCode Dark Terminal Canvas */
+  color: #f8fafc !important; /* Crisp Bright Slate White Text */
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  font-family: 'Fira Code', 'Consolas', 'JetBrains Mono', 'Monaco', monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.2px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Custom Sleek Scrollbar */
+.log-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.log-container::-webkit-scrollbar-track {
+  background: #090d13;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 .log-lines {
-  padding: 8px;
+  padding: 10px 12px;
 }
 
 .log-line {
-  padding: 2px 4px;
+  padding: 3px 6px;
   display: flex;
-  gap: 8px;
-  line-height: 1.4;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.55;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
 }
 
-.log-line:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
+/* High Contrast Log Field Styling */
 .timestamp {
-  color: var(--color-success-500);
-  min-width: 80px;
+  color: #64748b !important; /* Muted Slate Gray */
+  font-size: 11.5px;
+  white-space: nowrap;
+  user-select: none;
 }
 
-.level {
-  min-width: 40px;
-  font-weight: bold;
+.level-badge {
+  font-weight: 700;
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  user-select: none;
 }
 
 .module {
-  color: var(--color-info-500);
-  min-width: 30px;
+  color: #38bdf8 !important; /* Sky Blue Module Name */
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0.9;
 }
 
 .message {
   flex: 1;
+  color: #f8fafc !important; /* Explicit 100% Crisp White Message Text */
   white-space: pre-wrap;
   word-break: break-all;
 }
 
+/* Log Level Badges & Message Color Highlights */
 .level-info {
-  .level {
-    color: var(--color-success-500);
-  }
-}
-
-.level-error {
-  .level {
-    color: var(--color-error-500);
-  }
-}
-
-.level-debug {
-  .level {
-    color: var(--color-info-500);
+  .level-badge {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.4);
   }
 }
 
 .level-warning {
-  .level {
-    color: var(--color-warning-500);
+  .level-badge {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.4);
   }
+  .message {
+    color: #fef08a !important;
+  }
+}
+
+.level-error {
+  .level-badge {
+    background-color: rgba(239, 68, 68, 0.25);
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+  }
+  .message {
+    color: #fca5a5 !important;
+  }
+}
+
+.level-debug {
+  .level-badge {
+    background-color: rgba(168, 85, 247, 0.2);
+    color: #c084fc !important;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+  }
+}
+
+:deep(.log-highlight) {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-weight: 600;
 }
 
 .empty-logs {
-  padding: 16px;
+  padding: 32px;
   text-align: center;
-  color: var(--gray-500);
-}
-
-@media (prefers-color-scheme: dark) {
-  .log-container {
-    background: var(--gray-900);
-  }
+  color: #64748b !important;
+  font-size: 13px;
 }
 
 :fullscreen .log-container {
   height: calc(100vh - 160px);
 }
 
-:-webkit-full-screen .log-container {
-  height: calc(100vh - 160px);
-}
-
-:-ms-fullscreen .log-container {
-  height: calc(100vh - 160px);
-}
-
 .multi-select-cards {
   display: flex;
   flex-direction: row;
-  gap: 10px;
+  gap: 8px;
 
   .option-card {
     border: 1px solid var(--gray-300);
     border-radius: 6px;
-    padding: 0px 10px;
+    padding: 0 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     background: var(--gray-0);
@@ -808,15 +868,15 @@ const switchToUser = async (user) => {
 
       .option-text {
         color: var(--main-color);
-        font-weight: 500;
+        font-weight: 600;
       }
     }
 
     &.unselected {
+      opacity: 0.6;
       .option-indicator {
         color: var(--gray-400);
       }
-
       .option-text {
         color: var(--gray-700);
       }
@@ -838,20 +898,8 @@ const switchToUser = async (user) => {
 
     .option-indicator {
       flex-shrink: 0;
-      font-size: 14px;
-      transition: color 0.2s ease;
+      font-size: 13px;
     }
-  }
-}
-
-/* Responsive adaptation */
-@media (max-width: 768px) {
-  .log-level-selector {
-    min-width: 280px;
-  }
-
-  .multi-select-cards .options-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
