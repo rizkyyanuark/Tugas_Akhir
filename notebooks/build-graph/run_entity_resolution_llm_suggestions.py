@@ -15,10 +15,17 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[1]
-SRC_DIR = HERE / "src"
-sys.path.insert(0, str(SRC_DIR))
+BACKEND_PKG_PATH = PROJECT_ROOT / "backend" / "package"
 
-from yunesa_academic_kg import LLMAliasSuggestionConfig, load_project_env, write_llm_alias_suggestions
+# Prefer production package import; fallback to legacy src/ path
+if str(BACKEND_PKG_PATH) not in sys.path:
+    sys.path.insert(0, str(BACKEND_PKG_PATH))
+try:
+    from knowledge.etl.kg.yunesa_academic_kg import LLMAliasSuggestionConfig, load_project_env, write_llm_alias_suggestions
+except ImportError:
+    SRC_DIR = HERE / "src"
+    sys.path.insert(0, str(SRC_DIR))
+    from yunesa_academic_kg import LLMAliasSuggestionConfig, load_project_env, write_llm_alias_suggestions
 
 
 def parse_args() -> argparse.Namespace:

@@ -32,21 +32,39 @@ except Exception:
     pass
 
 HERE = Path(__file__).resolve().parent
-SRC = HERE / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+PROJECT_ROOT = HERE.parents[1]
+BACKEND_PKG_PATH = PROJECT_ROOT / "backend" / "package"
 
-from yunesa_academic_kg import (  # noqa: E402
-    GraphRAGGenerationParam,
-    GraphRAGQueryParam,
-    KGConfig,
-    format_graphrag_context,
-    generate_graphrag_answer_with_groq,
-    graphrag_retrieve,
-    inspect_milvus_collections,
-    inspect_neo4j_graph,
-    load_project_env,
-)
+# Prefer production package import; fallback to legacy src/ path
+if str(BACKEND_PKG_PATH) not in sys.path:
+    sys.path.insert(0, str(BACKEND_PKG_PATH))
+try:
+    from knowledge.etl.kg.yunesa_academic_kg import (  # noqa: E402
+        GraphRAGGenerationParam,
+        GraphRAGQueryParam,
+        KGConfig,
+        format_graphrag_context,
+        generate_graphrag_answer_with_groq,
+        graphrag_retrieve,
+        inspect_milvus_collections,
+        inspect_neo4j_graph,
+        load_project_env,
+    )
+except ImportError:
+    SRC = HERE / "src"
+    if str(SRC) not in sys.path:
+        sys.path.insert(0, str(SRC))
+    from yunesa_academic_kg import (  # noqa: E402
+        GraphRAGGenerationParam,
+        GraphRAGQueryParam,
+        KGConfig,
+        format_graphrag_context,
+        generate_graphrag_answer_with_groq,
+        graphrag_retrieve,
+        inspect_milvus_collections,
+        inspect_neo4j_graph,
+        load_project_env,
+    )
 
 
 def parse_args() -> argparse.Namespace:

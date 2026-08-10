@@ -1,52 +1,34 @@
 <template>
-  <a-card title="Tool Call Monitoring" :loading="loading" class="dashboard-card">
-    <!-- Tool call overview -->
+  <a-card title="Tool Call Monitoring" :loading="loading" class="dashboard-card tool-stats-card">
+    <!-- Tool call overview metrics -->
     <div class="stats-overview">
-      <a-row :gutter="16">
-        <a-col :span="8">
-          <a-statistic
-            title="Total Calls"
-            :value="toolStats?.total_calls || 0"
-            :value-style="{ color: 'var(--color-info-500)' }"
-          />
-        </a-col>
-        <a-col :span="8">
-          <a-statistic
-            title="Failed Calls"
-            :value="toolStats?.failed_calls || 0"
-            :value-style="{ color: 'var(--color-error-500)' }"
-            suffix="times"
-          />
-        </a-col>
-        <a-col :span="8">
-          <a-statistic
-            title="Success Rate"
-            :value="toolStats?.success_rate || 0"
-            suffix="%"
-            :value-style="{
-              color:
-                (toolStats?.success_rate || 0) >= 90
-                  ? 'var(--color-success-500)'
-                  : (toolStats?.success_rate || 0) >= 70
-                    ? 'var(--color-warning-500)'
-                    : 'var(--color-error-500)'
-            }"
-          />
-        </a-col>
-      </a-row>
+      <div class="stat-box">
+        <div class="stat-title">TOTAL CALLS</div>
+        <div class="stat-value total-calls">{{ toolStats?.total_calls || 0 }}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">FAILED CALLS</div>
+        <div class="stat-value failed-calls">
+          {{ toolStats?.failed_calls || 0 }} <span class="unit">times</span>
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">SUCCESS RATE</div>
+        <div class="stat-value success-rate" :class="getSuccessRateClass(toolStats?.success_rate)">
+          {{ toolStats?.success_rate ?? 100 }}<span class="unit">%</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Most used tools -->
-    <a-divider />
-    <div class="chart-container">
-      <h4>Top 10 Most Used Tools</h4>
-      <div ref="toolsChartRef" class="chart"></div>
+    <!-- Most used tools chart -->
+    <div class="chart-section">
+      <div class="chart-title">Top 10 Most Used Tools</div>
+      <div ref="toolsChartRef" class="chart-container"></div>
     </div>
 
-    <!-- Error analysis -->
-    <a-divider />
+    <!-- Error analysis section if errors exist -->
     <div class="error-analysis" v-if="hasErrorData">
-      <h4>Tool Error Analysis</h4>
+      <div class="chart-title">Tool Error Analysis</div>
       <a-row :gutter="16">
         <a-col :span="12">
           <a-table
@@ -54,11 +36,12 @@
             :data-source="errorData"
             size="small"
             :pagination="false"
-            :scroll="{ y: 200 }"
+            :scroll="{ y: 160 }"
+            class="error-table"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'tool_name'">
-                <a-tag color="blue">{{ record.tool_name }}</a-tag>
+                <span class="tool-tag">{{ record.tool_name }}</span>
               </template>
               <template v-if="column.key === 'error_count'">
                 <a-tag :color="record.error_count > 5 ? 'red' : 'orange'">
@@ -69,10 +52,7 @@
           </a-table>
         </a-col>
         <a-col :span="12">
-          <div class="chart-container">
-            <h4>Error Distribution</h4>
-            <div ref="errorChartRef" class="chart-small"></div>
-          </div>
+          <div ref="errorChartRef" class="chart-small"></div>
         </a-col>
       </a-row>
     </div>
@@ -82,18 +62,10 @@
 <script setup>
 import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
-import { getColorByIndex, getColorPalette } from '@/utils/chartColors'
 import { useThemeStore } from '@/stores/theme'
 
-// CSS variable parsing helper
-function getCSSVariable(variableName, element = document.documentElement) {
-  return getComputedStyle(element).getPropertyValue(variableName).trim()
-}
-
-// theme store
 const themeStore = useThemeStore()
 
-// Props
 const props = defineProps({
   toolStats: {
     type: Object,
@@ -105,25 +77,23 @@ const props = defineProps({
   }
 })
 
-// Chart refs
 const toolsChartRef = ref(null)
 const errorChartRef = ref(null)
 let toolsChart = null
 let errorChart = null
 
-// Error analysis table
 const errorColumns = [
   {
     title: 'Tool Name',
     dataIndex: 'tool_name',
     key: 'tool_name',
-    width: '50%'
+    width: '60%'
   },
   {
     title: 'Error Count',
     dataIndex: 'error_count',
     key: 'error_count',
-    width: '50%',
+    width: '40%',
     sorter: (a, b) => a.error_count - b.error_count
   }
 ]
@@ -137,17 +107,21 @@ const hasErrorData = computed(() => {
 
 const errorData = computed(() => {
   if (!hasErrorData.value) return []
-
   return Object.entries(props.toolStats.tool_error_distribution)
     .map(([tool_name, error_count]) => ({ tool_name, error_count }))
     .sort((a, b) => b.error_count - a.error_count)
 })
 
-// Initialize most-used tools chart
+const getSuccessRateClass = (rate) => {
+  const val = rate ?? 100
+  if (val >= 90) return 'rate-high'
+  if (val >= 70) return 'rate-mid'
+  return 'rate-low'
+}
+
 const initToolsChart = () => {
   if (!toolsChartRef.value || !props.toolStats?.most_used_tools?.length) return
 
-  // Destroy existing chart instance first if it exists.
   if (toolsChart) {
     toolsChart.dispose()
     toolsChart = null
@@ -155,71 +129,71 @@ const initToolsChart = () => {
 
   toolsChart = echarts.init(toolsChartRef.value)
 
-  const data = [...props.toolStats.most_used_tools].sort((a, b) => a.count - b.count).slice(0, 10) // Show only top 10; ascending order puts the largest at the top.
+  const isDark = themeStore.isDark
+  const textColor = isDark ? '#94a3b8' : '#64748b'
+  const gridLineColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'
+  const tooltipBg = isDark ? '#0f172a' : '#ffffff'
+  const tooltipBorder = isDark ? '#1e293b' : '#e2e8f0'
+  const tooltipText = isDark ? '#f8fafc' : '#0f172a'
+
+  // Top 10 items sorted ascending for horizontal bar chart
+  const data = [...props.toolStats.most_used_tools].sort((a, b) => a.count - b.count).slice(0, 10)
 
   const option = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      },
-      backgroundColor: getCSSVariable('--gray-0'),
-      borderColor: getCSSVariable('--gray-200'),
+      axisPointer: { type: 'shadow' },
+      backgroundColor: tooltipBg,
+      borderColor: tooltipBorder,
       borderWidth: 1,
-      textStyle: {
-        color: getCSSVariable('--gray-600')
-      }
+      textStyle: { color: tooltipText, fontSize: 12 },
+      formatter: '{b}: <b>{c} calls</b>'
     },
     grid: {
       left: '3%',
-      right: '4%',
+      right: '6%',
       bottom: '3%',
-      top: '5%',
+      top: '4%',
       containLabel: true
     },
     xAxis: {
       type: 'value',
-      axisLine: {
-        lineStyle: {
-          color: getCSSVariable('--gray-200')
-        }
-      },
-      axisLabel: {
-        color: getCSSVariable('--gray-500')
-      },
-      splitLine: {
-        lineStyle: {
-          color: getCSSVariable('--gray-150')
-        }
-      }
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: textColor, fontSize: 11 },
+      splitLine: { lineStyle: { color: gridLineColor, type: 'dashed' } }
     },
     yAxis: {
       type: 'category',
       data: data.map((item) => item.tool_name),
-      axisLine: {
-        lineStyle: {
-          color: getCSSVariable('--gray-200')
-        }
-      },
+      axisLine: { show: false },
+      axisTick: { show: false },
       axisLabel: {
-        color: getCSSVariable('--gray-500'),
+        color: textColor,
+        fontSize: 11.5,
+        fontFamily: 'monospace',
         interval: 0
       }
     },
     series: [
       {
-        name: 'Call Count',
+        name: 'Calls',
         type: 'bar',
+        barWidth: 14,
         data: data.map((item) => item.count),
         itemStyle: {
-          color: getColorByIndex(0),
-          borderRadius: [0, 4, 4, 0]
+          borderRadius: [0, 4, 4, 0],
+          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+            { offset: 0, color: '#0284c7' },
+            { offset: 1, color: '#38bdf8' }
+          ])
         },
         emphasis: {
           itemStyle: {
-            color: getColorByIndex(0),
-            shadowBlur: 10,
-            shadowColor: getCSSVariable('--color-info-50')
+            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+              { offset: 0, color: '#0369a1' },
+              { offset: 1, color: '#7dd3fc' }
+            ])
           }
         }
       }
@@ -229,58 +203,43 @@ const initToolsChart = () => {
   toolsChart.setOption(option)
 }
 
-// Initialize error distribution chart
 const initErrorChart = () => {
   if (!errorChartRef.value || !hasErrorData.value) return
 
-  // Destroy existing chart instance first if it exists.
   if (errorChart) {
     errorChart.dispose()
     errorChart = null
   }
 
   errorChart = echarts.init(errorChartRef.value)
+  const isDark = themeStore.isDark
 
-  const data = errorData.value.slice(0, 5) // Show only top 5.
+  const data = errorData.value.slice(0, 5)
 
   const option = {
     tooltip: {
       trigger: 'item',
-      backgroundColor: getCSSVariable('--gray-0'),
-      borderColor: getCSSVariable('--gray-200'),
-      borderWidth: 1,
-      textStyle: {
-        color: getCSSVariable('--gray-600')
-      },
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
+      backgroundColor: isDark ? '#0f172a' : '#ffffff',
+      borderColor: isDark ? '#1e293b' : '#e2e8f0',
+      textStyle: { color: isDark ? '#f8fafc' : '#0f172a' },
+      formatter: '{b}: {c} ({d}%)'
     },
     series: [
       {
-        name: 'Error Distribution',
+        name: 'Errors',
         type: 'pie',
-        radius: ['30%', '70%'],
-        center: ['50%', '60%'],
+        radius: ['35%', '65%'],
+        center: ['50%', '50%'],
         data: data.map((item) => ({
           name: item.tool_name,
           value: item.error_count
         })),
         itemStyle: {
-          borderRadius: 6,
-          borderColor: getCSSVariable('--gray-0'),
+          borderRadius: 4,
+          borderColor: isDark ? '#1e293b' : '#ffffff',
           borderWidth: 2
         },
-        label: {
-          show: true,
-          formatter: '{b}: {c}'
-        },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: getCSSVariable('--shadow-300')
-          }
-        },
-        color: getColorPalette()
+        label: { show: false }
       }
     ]
   }
@@ -288,7 +247,6 @@ const initErrorChart = () => {
   errorChart.setOption(option)
 }
 
-// Update charts
 const updateCharts = () => {
   nextTick(() => {
     initToolsChart()
@@ -298,16 +256,17 @@ const updateCharts = () => {
   })
 }
 
-// Watch data changes
 watch(
   () => props.toolStats,
-  () => {
-    updateCharts()
-  },
+  () => updateCharts(),
   { deep: true }
 )
 
-// Resize charts when window size changes
+watch(
+  () => themeStore.isDark,
+  () => updateCharts()
+)
+
 const handleResize = () => {
   if (toolsChart) toolsChart.resize()
   if (errorChart) errorChart.resize()
@@ -318,19 +277,6 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
 })
 
-// Watch theme changes and re-render charts
-watch(
-  () => themeStore.isDark,
-  () => {
-    if (props.toolStats && (toolsChart || errorChart)) {
-      nextTick(() => {
-        updateCharts()
-      })
-    }
-  }
-)
-
-// Cleanup on component unmount
 const cleanup = () => {
   window.removeEventListener('resize', handleResize)
   if (toolsChart) {
@@ -343,8 +289,129 @@ const cleanup = () => {
   }
 }
 
-// Expose cleanup function for parent component
-defineExpose({
-  cleanup
-})
+defineExpose({ cleanup })
 </script>
+
+<style scoped lang="less">
+.tool-stats-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  :deep(.ant-card-head) {
+    min-height: 48px;
+    padding: 0 16px;
+    .ant-card-head-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+  }
+
+  :deep(.ant-card-body) {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+
+    /* High-contrast background in Dark Mode for card body */
+    .dashboard-container & {
+      background-color: var(--gray-0);
+    }
+  }
+}
+
+.stats-overview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .stat-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .stat-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-500);
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2;
+
+      .unit {
+        font-size: 12px;
+        font-weight: 500;
+        margin-left: 2px;
+      }
+
+      &.total-calls {
+        color: #38bdf8;
+      }
+
+      &.failed-calls {
+        color: #f87171;
+      }
+
+      &.rate-high {
+        color: #34d399;
+      }
+
+      &.rate-mid {
+        color: #fbbf24;
+      }
+
+      &.rate-low {
+        color: #f87171;
+      }
+    }
+  }
+}
+
+.chart-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+
+  .chart-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+  }
+
+  .chart-container {
+    width: 100%;
+    height: 230px;
+  }
+}
+
+.error-analysis {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-200);
+
+  .chart-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+  }
+
+  .tool-tag {
+    font-family: monospace;
+    font-size: 11px;
+    color: #38bdf8;
+  }
+
+  .chart-small {
+    width: 100%;
+    height: 160px;
+  }
+}
+</style>

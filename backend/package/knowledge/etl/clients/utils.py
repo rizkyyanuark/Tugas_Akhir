@@ -11,6 +11,8 @@ from ..utils.utils import (  # noqa: F401
     clean_identifier,
     enforce_strict_ids,
     save_final_csv,
+    check_first_middle_match,
+    match_authors_for_paper,
 )
 
 # Aliases for backward compatibility during refactor

@@ -319,157 +319,144 @@ class ScholarClient:
         self.last_fetch_status = status
 
     def get_papers(self, scholar_id: str, limit: int = 500) -> List[Dict[str, Any]]:
-        """Fetch papers from a Scholar profile using SerpAPI exclusively."""
+        """Fetch papers from a Scholar profile page via BrightData Proxy (Single Engine)."""
         self._set_fetch_status(
             scholar_id=scholar_id,
-            method="not_started",
+            method="brightdata_proxy",
             rows=0,
             complete=False,
             reason="not_started",
             limit=limit,
         )
 
-        if not SERPAPI_KEY:
-            logger.error("scholar.serpapi.missing_key | scholar_id=%s", scholar_id)
-            self._set_fetch_status(
-                scholar_id=scholar_id,
-                method="serpapi",
-                rows=0,
-                complete=False,
-                reason="missing_api_key",
-                limit=limit,
-            )
-            return []
-
-        try:
-            return self._get_papers_serpapi(scholar_id, limit)
-        except Exception as e:
-            logger.error(
-                "scholar.serpapi.error | scholar_id=%s | error=%s",
-                scholar_id,
-                e,
-            )
-            self._set_fetch_status(
-                scholar_id=scholar_id,
-                method="serpapi",
-                rows=0,
-                complete=False,
-                reason=f"error: {str(e)}",
-                limit=limit,
-            )
-            return []
-
-    # ------------------------------------------------------------------
-    # SerpAPI implementation
-    # ------------------------------------------------------------------
-
-    def _get_papers_serpapi(
-        self, scholar_id: str, limit: int
-    ) -> List[Dict[str, Any]]:
-        """Fetch papers via SerpAPI Google Scholar Author endpoint.
-
-        Uses ``start`` / ``num`` pagination. Each request costs 1 API credit.
-        """
-        SERPAPI_URL = "https://serpapi.com/search.json"
-        PAGE_SIZE = 100
         all_papers: List[Dict[str, Any]] = []
-        start = 0
+        seen_titles = set()
+        cstart = 0
+        pagesize = 20  # Google Scholar profile HTML returns 20 items per page
+        page_num = 1
 
         while len(all_papers) < limit:
-            params = {
-                "engine": "google_scholar_author",
-                "author_id": scholar_id,
-                "api_key": SERPAPI_KEY,
-                "start": str(start),
-                "num": str(PAGE_SIZE),
-                "hl": "en",
-            }
+            # Build URL with 'user' parameter first as required by BrightData proxy parser
+            url = f"https://scholar.google.com/citations?user={scholar_id}&cstart={cstart}&pagesize={pagesize}&hl=en"
             logger.info(
-                "scholar.serpapi.page | scholar_id=%s | start=%s | rows_so_far=%s",
+                "scholar.brightdata.page | scholar_id=%s | cstart=%s | rows_so_far=%s",
                 scholar_id,
-                start,
+                cstart,
                 len(all_papers),
             )
-            resp = requests.get(SERPAPI_URL, params=params, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
 
-            articles = data.get("articles", [])
-            if not articles:
+            resp = self._get(url, timeout=45)
+            if not resp or resp.status_code != 200:
+                logger.warning(
+                    "scholar.brightdata.page_failed | scholar_id=%s | cstart=%s | status=%s",
+                    scholar_id,
+                    cstart,
+                    resp.status_code if resp else "None",
+                )
                 self._set_fetch_status(
                     scholar_id=scholar_id,
-                    method="serpapi",
+                    method="brightdata_proxy",
+                    rows=len(all_papers),
+                    complete=True,
+                    reason="request_finished_or_failed",
+                    limit=limit,
+                )
+                break
+
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            rows = soup.select('tr.gsc_a_tr')
+            if not rows:
+                self._set_fetch_status(
+                    scholar_id=scholar_id,
+                    method="brightdata_proxy",
                     rows=len(all_papers),
                     complete=True,
                     reason="no_more_articles",
                     limit=limit,
-                    start=start,
                 )
                 break
 
-            for art in articles:
+            new_in_batch = 0
+            for tr in rows:
                 if len(all_papers) >= limit:
                     break
-                all_papers.append(self._map_serpapi_article(art, scholar_id))
 
-            # Check pagination
-            pagination = data.get("serpapi_pagination", {})
-            if not pagination.get("next"):
-                # No next page – all articles fetched
+                title_a = tr.select_one('a.gsc_a_at')
+                title = title_a.get_text().strip() if title_a else ""
+                norm_title = title.lower()
+                if not title or norm_title in seen_titles:
+                    continue
+
+                seen_titles.add(norm_title)
+                new_in_batch += 1
+
+                link = "https://scholar.google.com" + title_a['href'] if title_a and 'href' in title_a.attrs else ""
+
+                cid = ""
+                if link:
+                    qs = parse_qs(urlparse(link).query)
+                    if 'citation_for_view' in qs:
+                        cid = qs['citation_for_view'][0]
+
+                grays = tr.select('.gs_gray')
+                authors_snippet = grays[0].get_text().strip() if len(grays) > 0 else ""
+                venue = grays[1].get_text().strip() if len(grays) > 1 else ""
+
+                year_el = tr.select_one('.gsc_a_y')
+                year = year_el.get_text().strip() if year_el else ""
+
+                cite_a = tr.select_one('a.gsc_a_ac')
+                citations_str = cite_a.get_text().strip() if cite_a else "0"
+                citations = int(citations_str) if citations_str.isdigit() else 0
+
+                all_papers.append({
+                    "scholar_id": scholar_id,
+                    "title": title,
+                    "authors": authors_snippet,
+                    "journal": venue,
+                    "year": year,
+                    "citations": citations,
+                    "link": link,
+                    "citation_id": cid,
+                    "source": "scholar",
+                })
+
+            if new_in_batch == 0:
+                # No new unique titles found in this page response; profile end reached
                 self._set_fetch_status(
                     scholar_id=scholar_id,
-                    method="serpapi",
+                    method="brightdata_proxy",
                     rows=len(all_papers),
                     complete=True,
-                    reason="last_page",
+                    reason="all_unique_articles_fetched",
                     limit=limit,
-                    start=start,
                 )
                 break
 
-            start += len(articles)
+            cstart += len(rows)
+            page_num += 1
 
-            # Small polite delay between SerpAPI pages
-            time.sleep(random.uniform(0.3, 0.8))
+            # Polite delay between pages
+            time.sleep(random.uniform(2.0, 3.5))
 
-        # If we exhausted the loop via limit
         if not self.last_fetch_status or self.last_fetch_status.get("method") == "not_started":
             self._set_fetch_status(
                 scholar_id=scholar_id,
-                method="serpapi",
+                method="brightdata_proxy",
                 rows=len(all_papers),
                 complete=len(all_papers) < limit,
                 reason="limit_reached" if len(all_papers) >= limit else "loop_finished",
                 limit=limit,
-                start=start,
             )
 
         logger.info(
-            "scholar.serpapi.done | scholar_id=%s | rows=%s | complete=%s | reason=%s",
+            "scholar.brightdata.done | scholar_id=%s | rows=%s | complete=%s | reason=%s",
             scholar_id,
             len(all_papers),
             self.last_fetch_status.get("complete"),
             self.last_fetch_status.get("reason"),
         )
         return all_papers
-
-    @staticmethod
-    def _map_serpapi_article(art: Dict[str, Any], scholar_id: str) -> Dict[str, Any]:
-        """Convert a SerpAPI article dict to the canonical paper format."""
-        cited_by = art.get("cited_by", {})
-        citation_count = cited_by.get("value", 0) if isinstance(cited_by, dict) else 0
-
-        return {
-            "scholar_id": scholar_id,
-            "title": art.get("title", "").strip(),
-            "authors": art.get("authors", "").strip(),
-            "journal": art.get("publication", "").strip(),
-            "year": str(art.get("year", "")).strip(),
-            "citations": citation_count,
-            "link": art.get("link", ""),
-            "citation_id": art.get("citation_id", ""),
-            "source": "scholar",
-        }
 
     def scrape_papers_for_scholars(self, scholars_list: List[Dict[str, Any]], limit_per_author: int = 100) -> List[Dict[str, Any]]:
         """

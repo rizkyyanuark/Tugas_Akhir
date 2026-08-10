@@ -165,6 +165,7 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
        - Try direct request first.
        - If blocked (403, 503, Cloudflare/anti-bot detected) or fails, escalate to BrightData Web Unlocker proxy.
     """
+
     # Reorder query parameters for Google Scholar citations to ensure compliance with robots.txt (user= parameter first)
     # This prevents Bright Data's robots.txt check from blocking it (brob error) under Immediate Access mode.
     if url and "scholar.google.com/citations" in url:
@@ -287,6 +288,11 @@ def request_hybrid_stealth(url, use_proxy=True, stream=False,
             pass
 
     return None
+
+
+# Clean Code alias for production services
+fetch_html_with_proxy = request_hybrid_stealth
+
 
 
 def request_smart(url, timeout=30, stream=False):

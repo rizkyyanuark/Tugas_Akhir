@@ -7,16 +7,12 @@ dual-indexing, GraphRAG development, dan evaluasi.
 
 | Kebutuhan | File | Catatan |
 | --- | --- | --- |
-| Build KG resmi dan write ke Neo4j/Zilliz | `run_local_kg_pipeline.py` | Gunakan ini untuk eksekusi yang repeatable dan punya quality gate. |
-| Eksplorasi dan dokumentasi KG | `yunesa_academic_kg_construction.ipynb` | Untuk inspeksi, tabel, visualisasi, dan bahan Bab 4. |
-| Development GraphRAG | `yunesa_academic_graphrag_dev.ipynb` | Untuk cek retrieval context, subgraph, evidence, dan jawaban. |
+| Build KG resmi dan write ke Neo4j/Zilliz | `run_local_kg_pipeline.py` | Eksekusi repeatable dengan quality gate. |
+| **Eksplorasi & eksperimen KG** | `constuction_knowledge_graph.ipynb` | Notebook canonical: inline construction, PyVis visualisasi, Dual-Index Storage. |
+| Development GraphRAG | `yunesa_academic_graphrag_dev.ipynb` | Cek retrieval context, subgraph, evidence, dan jawaban. |
 | Smoke/demo GraphRAG lokal | `run_local_graphrag_demo.py` | Runner terminal sederhana. |
 | Evaluasi retrieval dan jawaban | `eval_pipeline/` | Dataset, layer evaluasi, dan export artefak Bab 4. |
 | Core logic | `src/yunesa_academic_kg.py` | Source of truth untuk KG construction dan local GraphRAG. |
-
-Notebook lama seperti `construction-kg.ipynb`, `constuction_knowledge_graph.ipynb`,
-`kg_pipeline.ipynb`, dan `Knowledge graph.ipynb` dipertahankan sebagai arsip
-eksperimen. Jangan jadikan file-file tersebut entrypoint baru.
 
 ## Build KG Lokal
 

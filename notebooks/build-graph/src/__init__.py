@@ -1,36 +1,20 @@
-"""YUNESA Academic Knowledge Graph public entrypoints.
+"""YUNESA Academic Knowledge Graph – backward compatibility shim.
 
-The canonical KG construction and GraphRAG implementation lives in
-`yunesa_academic_kg.py`. Older modules in this package are kept only for
-backward compatibility with historical notebooks.
+The canonical source of truth has been moved to
+``backend/package/knowledge/etl/kg/yunesa_academic_kg.py``.
+
+This ``__init__.py`` re-exports all public symbols from the production
+package so that any legacy code still importing from ``src/`` will
+continue to work without modification.
 """
 
-from .yunesa_academic_kg import (
-    AcademicKGBuilder,
-    GraphRAGGenerationParam,
-    GraphRAGQueryParam,
-    KGConfig,
-    fetch_postgres_sample,
-    fetch_supabase_sample,
-    generate_graphrag_answer_with_groq,
-    graphrag_answer,
-    graphrag_retrieve,
-    run_local_kg_pipeline,
-    write_graph_to_neo4j,
-    write_vector_index_to_milvus,
-)
+import sys
+from pathlib import Path
 
-__all__ = [
-    "AcademicKGBuilder",
-    "GraphRAGGenerationParam",
-    "GraphRAGQueryParam",
-    "KGConfig",
-    "fetch_postgres_sample",
-    "fetch_supabase_sample",
-    "generate_graphrag_answer_with_groq",
-    "graphrag_answer",
-    "graphrag_retrieve",
-    "run_local_kg_pipeline",
-    "write_graph_to_neo4j",
-    "write_vector_index_to_milvus",
-]
+# Ensure backend package is on sys.path for seamless re-export
+_BACKEND_PKG = Path(__file__).resolve().parents[3] / "backend" / "package"
+if str(_BACKEND_PKG) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_PKG))
+
+from knowledge.etl.kg import *  # noqa: F401,F403
+from knowledge.etl.kg import __all__  # noqa: F401

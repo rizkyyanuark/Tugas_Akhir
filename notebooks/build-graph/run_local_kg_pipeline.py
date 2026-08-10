@@ -39,11 +39,19 @@ except Exception:
     pass
 
 HERE = Path(__file__).resolve().parent
-SRC = HERE / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+PROJECT_ROOT = HERE.parents[1]
+BACKEND_PKG_PATH = PROJECT_ROOT / "backend" / "package"
 
-from yunesa_academic_kg import extraction_runtime_status, run_local_kg_pipeline  # noqa: E402
+# Prefer production package import; fallback to legacy src/ path
+if str(BACKEND_PKG_PATH) not in sys.path:
+    sys.path.insert(0, str(BACKEND_PKG_PATH))
+try:
+    from knowledge.etl.kg.yunesa_academic_kg import extraction_runtime_status, run_local_kg_pipeline  # noqa: E402
+except ImportError:
+    SRC = HERE / "src"
+    if str(SRC) not in sys.path:
+        sys.path.insert(0, str(SRC))
+    from yunesa_academic_kg import extraction_runtime_status, run_local_kg_pipeline  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:

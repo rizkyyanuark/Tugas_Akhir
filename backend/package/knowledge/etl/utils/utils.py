@@ -134,6 +134,84 @@ def fuzzy_match_name(name_a: str, name_b: str, threshold: float = 0.85) -> Tuple
     best_score = max(seq_ratio, token_ratio, sorted_ratio)
     return False, best_score, "none"
 
+
+def check_initial_letters(initial_str: str, doc_first_letters: list) -> bool:
+    """Matches initial letter sequence against word starting letters."""
+    clean_inits = re.sub(r'[^a-zA-Z]', '', initial_str).lower()
+    if not clean_inits:
+        return True
+    match_count = 0
+    doc_idx = 0
+    for char in clean_inits:
+        while doc_idx < len(doc_first_letters):
+            if doc_first_letters[doc_idx] == char:
+                match_count += 1
+                doc_idx += 1
+                break
+            doc_idx += 1
+    return match_count == len(clean_inits)
+
+
+def check_first_middle_match(first_middle_tokens: list, doc_full_name: str) -> bool:
+    """Intelligently matches full name tokens or initial tokens against lecturer name."""
+    clean_doc = clean_lecturer_name(doc_full_name).lower()
+    doc_words = clean_doc.split()
+    if not doc_words:
+        return False
+    doc_first_letters = [w[0] for w in doc_words]
+    if not first_middle_tokens:
+        return True
+    for token in first_middle_tokens:
+        token = token.lower().strip(".")
+        if not token:
+            continue
+        if len(token) > 1 and not (len(token) <= 3 and token.isalpha() and token.isupper()):
+            word_match = any(w.startswith(token) or token.startswith(w) for w in doc_words)
+            if not word_match:
+                if not check_initial_letters(token, doc_first_letters):
+                    return False
+        else:
+            if not check_initial_letters(token, doc_first_letters):
+                return False
+    return True
+
+
+def match_authors_for_paper(author_snippet_str: str, df_lecturers: pd.DataFrame) -> List[Dict[str, Any]]:
+    """
+    2-Step Author Matching Algorithm:
+    Step 1: Match exact last name token.
+    Step 2: Match first/middle tokens (either as full words or initial letters).
+    """
+    raw_authors = [a.strip().rstrip(".") for a in str(author_snippet_str).split(",") if a.strip() and a.strip() != "..."]
+    matched_lecturers = []
+    
+    for author_str in raw_authors:
+        clean_author = clean_lecturer_name(author_str).lower()
+        tokens = clean_author.split()
+        if not tokens:
+            continue
+        target_last_name = tokens[-1]
+        first_middle_tokens = tokens[:-1]
+        
+        for _, row in df_lecturers.iterrows():
+            doc_name = str(row.get("nama_dosen", row.get("nama_norm", "")))
+            clean_doc = clean_lecturer_name(doc_name).lower()
+            doc_tokens = clean_doc.split()
+            if not doc_tokens:
+                continue
+            doc_last_name = doc_tokens[-1]
+            
+            if target_last_name == doc_last_name:
+                if check_first_middle_match(first_middle_tokens, doc_name):
+                    matched_lecturers.append({
+                        "nip": row.get("nip", "-"),
+                        "nama_dosen": row.get("nama_dosen", doc_name),
+                        "prodi": row.get("prodi", "-"),
+                        "scholar_id": row.get("scholar_id", "-")
+                    })
+    return matched_lecturers
+
+
 def extract_ids_from_links(links: List[Dict[str, Any]]) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
     Extracts identification strings from a list of link dictionaries (e.g., from BeautifulSoup).

@@ -60,12 +60,20 @@ def _effective_graph_name(mode: str) -> str:
     return DEFAULT_GRAPH_NAME
 
 
-def _kg_source_candidates() -> list[Path]:
+def _kg_module() -> Any:
+    """Import the canonical KG engine from knowledge.etl.kg (preferred)
+    with fallback to legacy notebook paths for backward compatibility."""
+    try:
+        from knowledge.etl.kg import yunesa_academic_kg
+        return yunesa_academic_kg
+    except ImportError:
+        pass
+
+    # Legacy fallback: search filesystem paths
     candidates: list[Path] = []
     configured = os.getenv("YUNESA_KG_SRC_DIR", "").strip()
     if configured:
         candidates.append(Path(configured))
-
     candidates.extend(
         [
             Path("/app/kg-src"),
@@ -73,18 +81,14 @@ def _kg_source_candidates() -> list[Path]:
             Path(__file__).resolve().parents[5] / "notebooks" / "build-graph" / "src",
         ]
     )
-    return candidates
-
-
-def _kg_module() -> Any:
-    for candidate in _kg_source_candidates():
+    for candidate in candidates:
         if (candidate / "yunesa_academic_kg.py").exists():
             candidate_str = str(candidate)
             if candidate_str not in sys.path:
                 sys.path.insert(0, candidate_str)
             return importlib.import_module("yunesa_academic_kg")
     raise ImportError(
-        "Cannot locate yunesa_academic_kg.py. Set YUNESA_KG_SRC_DIR or copy notebooks/build-graph/src to /app/kg-src."
+        "Cannot locate yunesa_academic_kg. Install knowledge.etl.kg or set YUNESA_KG_SRC_DIR."
     )
 
 
