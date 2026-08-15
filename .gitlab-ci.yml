@@ -32,17 +32,20 @@ test_ontology_and_schema:
 # ── 2. DEPLOY STAGE (GCP VM) ──────────────────────────────────────────────────
 deploy_to_gcp_vm:
   stage: deploy
-  image: alpine:latest
+  image: debian:bookworm-slim
   variables:
     TARGET_HOST: "${GCP_SERVER_IP:-35.221.218.4}"
     TARGET_USER: "${GCP_SERVER_USER:-rizky}"
   before_script:
-    - apk add --no-cache openssh-client curl bash
-    - eval $(ssh-agent -s)
-    - echo "$GCP_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - apt-get update && apt-get install -y --no-install-recommends openssh-client curl
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - 'echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - echo "$GCP_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - echo "" >> ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - eval $(ssh-agent -s)
+    - ssh-add ~/.ssh/id_rsa
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - 'echo "Deploying commit $CI_COMMIT_SHORT_SHA ($CI_COMMIT_REF_NAME) to GCP VM at $TARGET_HOST..."'
     - 'ssh $TARGET_USER@$TARGET_HOST "cd /home/$TARGET_USER/Tugas_Akhir && sudo git fetch origin && sudo git checkout $CI_COMMIT_REF_NAME && sudo git pull origin $CI_COMMIT_REF_NAME && sudo docker compose -f docker-compose.prod.yml up -d --build api worker web"'
