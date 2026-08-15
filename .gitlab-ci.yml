@@ -13,6 +13,9 @@ stages:
 test_ontology_and_schema:
   stage: test
   image: python:3.11-slim
+  variables:
+    GROQ_API_KEY: "ci-dummy-token"
+    LITE_MODE: "true"
   before_script:
     - pip install uv
   script:
