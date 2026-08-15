@@ -34,8 +34,8 @@ deploy_to_gcp_vm:
   stage: deploy
   image: debian:bookworm-slim
   variables:
-    TARGET_HOST: "${GCP_SERVER_IP:-35.221.218.4}"
-    TARGET_USER: "${GCP_SERVER_USER:-rizky}"
+    TARGET_HOST: "$GCP_SERVER_IP"
+    TARGET_USER: "$GCP_SERVER_USER"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends openssh-client curl
     - mkdir -p ~/.ssh
@@ -58,5 +58,5 @@ deploy_to_gcp_vm:
     - Eksperimen
   environment:
     name: production
-    url: "http://35.221.218.4:5050/api/system/health"
+    url: "http://$GCP_SERVER_IP:5050/api/system/health"
 

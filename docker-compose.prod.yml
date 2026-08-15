@@ -311,6 +311,8 @@ services:
       MILVUS_LOG_LEVEL: error
     volumes:
       - milvus-data:/var/lib/milvus
+    ports:
+      - "19530:19530"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 60s
