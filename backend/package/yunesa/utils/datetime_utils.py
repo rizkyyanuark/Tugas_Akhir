@@ -13,7 +13,7 @@ import os
 from collections.abc import Iterable
 from zoneinfo import ZoneInfo
 
-UTC = dt.UTC
+UTC = getattr(dt, "UTC", dt.timezone.utc)
 LOCAL_TZ = ZoneInfo(os.getenv("APP_TIMEZONE", "Asia/Jakarta"))
 SHANGHAI_TZ = LOCAL_TZ  # Backward-compatible alias for older call sites.
 _ISO_Z_SUFFIX = "+00:00"
