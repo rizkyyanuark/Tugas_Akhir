@@ -8,8 +8,16 @@ from neo4j import GraphDatabase as GD
 from yunesa.utils import logger
 
 
-def neo4j_uri_for_driver(uri: str) -> str:
-    """Apply self-signed certificate trust only when explicitly configured."""
+def neo4j_uri_for_driver(uri: str | None = None) -> str:
+    """Apply self-signed certificate trust and host resolution for Docker vs local environment."""
+    uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    if "graph:" in uri:
+        import socket
+        try:
+            socket.gethostbyname("graph")
+        except Exception:
+            uri = uri.replace("://graph:", "://localhost:")
+
     trust_self_signed = os.environ.get("NEO4J_TRUST_SELF_SIGNED", "0").strip().lower()
     if trust_self_signed in {"1", "true", "yes", "on"}:
         return uri.replace("neo4j+s://", "neo4j+ssc://").replace(

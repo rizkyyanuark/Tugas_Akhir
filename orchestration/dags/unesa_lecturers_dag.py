@@ -64,6 +64,7 @@ dag = DAG(
 #   2. Scheduler container running as root (user: "0:0")
 #   3. /var/run/docker.sock mounted as volume
 
+# --- Task Definitions -------------------------------------------
 def create_operator(task_id: str, command_suffix: str):
     return DockerOperator(
         task_id=task_id,
@@ -83,9 +84,8 @@ def worker_command(task_name: str) -> str:
     return f"{task_name} --mode {RUN_MODE_TEMPLATE}"
 
 
-extract_web = create_operator("extract_web", worker_command("lec_extract_web"))
+extract_web_univ = create_operator("extract_web_univ", worker_command("lec_extract_web"))
 extract_pddikti = create_operator("extract_pddikti", worker_command("lec_extract_pddikti"))
-extract_siakadu = create_operator("extract_siakadu", worker_command("lec_extract_siakadu"))
 merge_task = create_operator("merge", worker_command("lec_merge"))
 enrich_task = create_operator("enrich", worker_command("lec_enrich"))
 transform_task = create_operator("transform", worker_command("lec_transform"))
@@ -93,6 +93,7 @@ load_task = create_operator("load", worker_command("lec_load"))
 
 
 # --- DAG Pipeline Flow ------------------------------------------
-[extract_web, extract_pddikti] >> merge_task
-[merge_task, extract_siakadu] >> enrich_task
-enrich_task >> transform_task >> load_task
+# 2 Parallel Extraction Sources (Internal UNESA + External PDDIKTI)
+[extract_web_univ, extract_pddikti] >> merge_task >> enrich_task >> transform_task >> load_task
+
+

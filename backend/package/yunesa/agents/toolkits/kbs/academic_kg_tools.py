@@ -15,7 +15,7 @@ from .tools import (
     _find_query_target,
     _academic_tool_response,
 )
-from yunesa.knowledge.graphrag import AcademicGraphRAGService
+from yunesa.graphrag import AcademicGraphRAGService
 
 
 async def _run_specialized_academic_retrieval(

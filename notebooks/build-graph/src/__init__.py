@@ -16,5 +16,5 @@ _BACKEND_PKG = Path(__file__).resolve().parents[3] / "backend" / "package"
 if str(_BACKEND_PKG) not in sys.path:
     sys.path.insert(0, str(_BACKEND_PKG))
 
-from knowledge.etl.kg import *  # noqa: F401,F403
-from knowledge.etl.kg import __all__  # noqa: F401
+from yunesa.knowledge import *  # noqa: F401,F403
+from yunesa.knowledge import __all__  # noqa: F401

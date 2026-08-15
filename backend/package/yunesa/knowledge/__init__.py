@@ -1,8 +1,6 @@
 import os
-
-from ..config import config
+from yunesa import config as global_config
 from .factory import KnowledgeBaseFactory
-from .implementations.dify import DifyKB
 from .manager import KnowledgeBaseManager
 
 _LITE_MODE = os.environ.get("LITE_MODE", "").lower() in ("true", "1")
@@ -10,24 +8,16 @@ _SKIP_APP_INIT = os.environ.get("YUNESA_SKIP_APP_INIT") == "1"
 
 if not _LITE_MODE:
     from .graphs.core_graph_service import CoreGraphService
-    from .implementations.lightrag import LightRagKB
-    from .implementations.milvus import MilvusKB
+    from .implementations.milvus import MilvusKB, AcademicKGVectorStore
 
     # Register knowledge base types
     KnowledgeBaseFactory.register(
         "milvus", MilvusKB, {
-            "description": "Production-grade vector knowledge base based on Milvus for high-performance deployment"}
+            "description": "Production-grade vector knowledge base based on Milvus for UNESA Academic Knowledge Graph deployment"}
     )
-    KnowledgeBaseFactory.register(
-        "lightrag", LightRagKB, {
-            "description": "Graph-based knowledge base supporting entity relationship construction and complex queries"}
-    )
-
-KnowledgeBaseFactory.register("dify", DifyKB, {
-                              "description": "Read-only retrieval knowledge base connected to Dify Dataset"})
 
 # Create knowledge base manager
-work_dir = os.path.join(config.save_dir, "knowledge_base_data")
+work_dir = os.path.join(global_config.save_dir, "knowledge_base_data")
 knowledge_base = KnowledgeBaseManager(work_dir)
 
 # Create graph database instance
@@ -44,7 +34,6 @@ if _LITE_MODE or _SKIP_APP_INIT:
             return None
 
     graph_base = _LiteGraphStub()
-    # Backward compatibility
     GraphDatabase = _LiteGraphStub
     if _LITE_MODE:
         logger.info("LITE_MODE enabled, knowledge graph services disabled")
@@ -52,8 +41,37 @@ if _LITE_MODE or _SKIP_APP_INIT:
         logger.info(
             "YUNESA_SKIP_APP_INIT enabled, knowledge graph services disabled for current process")
 else:
-    graph_base = CoreGraphService()
-    # Backward compatibility: make GraphDatabase point to CoreGraphService
+    class _LazyGraphBaseProxy:
+        """Lazy proxy for CoreGraphService to avoid network calls on module import."""
+
+        def __init__(self):
+            self._service = None
+
+        def _get_service(self):
+            if self._service is None:
+                self._service = CoreGraphService()
+            return self._service
+
+        def __getattr__(self, name):
+            return getattr(self._get_service(), name)
+
+    graph_base = _LazyGraphBaseProxy()
     GraphDatabase = CoreGraphService
 
-__all__ = ["GraphDatabase", "knowledge_base", "graph_base"]
+from .graphs.builder import AcademicKGBuilder
+from .config import KGConfig
+from .services.kg_service import run_kg_build
+from .graphs.storage_neo4j import write_graph_to_neo4j
+from .implementations.milvus import write_vector_index_to_milvus, AcademicKGVectorStore
+
+__all__ = [
+    "GraphDatabase",
+    "knowledge_base",
+    "graph_base",
+    "AcademicKGBuilder",
+    "AcademicKGVectorStore",
+    "KGConfig",
+    "run_kg_build",
+    "write_graph_to_neo4j",
+    "write_vector_index_to_milvus",
+]

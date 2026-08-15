@@ -721,7 +721,7 @@ async def _build_academic_graphrag_context(
     routing_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Retrieve AcademicRAG-style context from Milvus/Zilliz and Neo4j/AuraDB."""
-    from yunesa.knowledge.graphrag import AcademicGraphRAGService
+    from yunesa.graphrag import AcademicGraphRAGService
 
     service = AcademicGraphRAGService()
     return await service.build_context_package(
@@ -789,7 +789,7 @@ async def query_kb(
         if not _is_academic_virtual_kb(kb_name):
             return target_error
 
-        from yunesa.knowledge.graphrag import AcademicGraphRAGService
+        from yunesa.graphrag import AcademicGraphRAGService
 
         resolved_retrieval_mode = AcademicGraphRAGService.normalize_mode(
             retrieval_mode,
@@ -828,7 +828,7 @@ async def query_kb(
         if file_name:
             kwargs["file_name"] = file_name
 
-        from yunesa.knowledge.graphrag import AcademicGraphRAGService
+        from yunesa.graphrag import AcademicGraphRAGService
 
         resolved_retrieval_mode = AcademicGraphRAGService.normalize_mode(
             retrieval_mode,

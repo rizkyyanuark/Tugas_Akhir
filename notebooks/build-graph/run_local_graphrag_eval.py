@@ -32,7 +32,7 @@ BACKEND_PKG_PATH = PROJECT_ROOT / "backend" / "package"
 if str(BACKEND_PKG_PATH) not in sys.path:
     sys.path.insert(0, str(BACKEND_PKG_PATH))
 try:
-    from knowledge.etl.kg.yunesa_academic_kg import (  # noqa: E402
+    from yunesa.knowledge import (  # noqa: E402
         GraphRAGGenerationParam,
         GraphRAGQueryParam,
         KGConfig,

@@ -1,16 +1,5 @@
-# ══════════════════════════════════════════════════════════════
-# etl-worker.Dockerfile — Isolated ETL Execution Container
-# ══════════════════════════════════════════════════════════════
-# Level 3 Architecture: This container does the HEAVY LIFTING.
-# Airflow DockerOperator spawns this as a sibling container
-# to execute scraping, transform, and load tasks.
-#
-# NO apache-airflow is installed here.
-# All secrets are injected as environment variables by Airflow.
-# ══════════════════════════════════════════════════════════════
 FROM python:3.12-slim
 
-# ── System Dependencies (Chromium for Selenium-based scrapers) ──
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
@@ -27,27 +16,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Environment Configuration ──────────────────────────────────
 ENV CHROME_BIN=/usr/bin/chromium \
     CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     PYTHONUNBUFFERED=1 \
-    UV_HTTP_TIMEOUT=300 \
+    UV_HTTP_TIMEOUT=600 \
+    UV_CONCURRENT_DOWNLOADS=2 \
+    UV_HTTP_RETRIES=10 \
     DOCKER_ENVIRONMENT=true
+
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 
 WORKDIR /app
 
-# ── LAYER 1: Python Dependencies (cached separately) ────────
-
-# ── LAYER 2: Application Code ───────────────────────────────
 COPY backend/package /app/package
 COPY README.md /app/package/README.md
 COPY notebooks/build-graph/src /app/kg-src
-RUN mkdir -p /app/package/knowledge/etl/resources
-COPY notebooks/build-graph/ieee-thesaurus.ttl /app/package/knowledge/etl/resources/ieee-thesaurus.ttl
-COPY notebooks/build-graph/ieee-taxonomy.ttl /app/package/knowledge/etl/resources/ieee-taxonomy.ttl
-COPY notebooks/build-graph/config/concept_aliases.yml /app/package/knowledge/etl/resources/concept_aliases.yml
+RUN mkdir -p /app/package/yunesa/etl/resources
+COPY notebooks/build-graph/ieee-thesaurus.ttl /app/package/yunesa/etl/resources/ieee-thesaurus.ttl
+COPY notebooks/build-graph/ieee-taxonomy.ttl /app/package/yunesa/etl/resources/ieee-taxonomy.ttl
+COPY notebooks/build-graph/config/concept_aliases.yml /app/package/yunesa/etl/resources/concept_aliases.yml
 ARG ETL_INSTALL_TEST_DEPS=true
 ARG ETL_INSTALL_KG_DEPS=false
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -62,10 +50,5 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV PATH="/app/package/.venv/bin:$PATH" \
     PYTHONPATH="/app/package:/app/kg-src"
 
-# ── LAYER 3: Data Directories ───────────────────────────────
-# These directories are the mount points for the shared Docker volume.
-# Airflow mounts the same named volume here for data persistence.
 RUN mkdir -p /app/data/raw /app/data/processed
-
-# ── Entrypoint ──────────────────────────────────────────────
-ENTRYPOINT ["python", "-m", "knowledge.etl.run_worker"]
+ENTRYPOINT ["python", "-m", "yunesa.etl.run_worker"]

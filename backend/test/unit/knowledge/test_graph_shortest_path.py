@@ -5,7 +5,7 @@ import asyncio
 from yunesa.knowledge.graphs.adapters.core import CoreGraphAdapter
 from yunesa.knowledge.graphs.adapters.lightrag import LightRAGGraphAdapter
 from yunesa.knowledge.graphs.core_graph_service import CoreGraphService
-from yunesa.knowledge.graphrag.storage import MilvusVectorStorage, Neo4jGraphStorage
+from yunesa.graphrag.storage import MilvusVectorStorage, Neo4jGraphStorage
 
 
 class FakeNode(dict):

@@ -5,13 +5,13 @@ import json
 
 import pytest
 
-from yunesa.knowledge.graphrag import academic_graphrag
-from yunesa.knowledge.graphrag.academic_graphrag import (
+from yunesa.graphrag import academic_graphrag
+from yunesa.graphrag.academic_graphrag import (
     ACADEMIC_COLLECTIONS,
     AcademicGraphRAGService,
 )
-from yunesa.knowledge.graphrag.query_planner import AcademicQueryParam, AcademicQueryPlanner
-from yunesa.knowledge.graphrag.storage import normalize_milvus_uri
+from yunesa.graphrag.query_planner import AcademicQueryParam, AcademicQueryPlanner
+from yunesa.graphrag.storage import normalize_milvus_uri
 from yunesa.agents.toolkits.kbs.tools import _academic_tool_response
 
 

@@ -21,7 +21,7 @@ BACKEND_PKG_PATH = PROJECT_ROOT / "backend" / "package"
 if str(BACKEND_PKG_PATH) not in sys.path:
     sys.path.insert(0, str(BACKEND_PKG_PATH))
 try:
-    from knowledge.etl.kg.yunesa_academic_kg import LLMAliasSuggestionConfig, load_project_env, write_llm_alias_suggestions
+    from yunesa.knowledge import LLMAliasSuggestionConfig, load_project_env, write_llm_alias_suggestions
 except ImportError:
     SRC_DIR = HERE / "src"
     sys.path.insert(0, str(SRC_DIR))

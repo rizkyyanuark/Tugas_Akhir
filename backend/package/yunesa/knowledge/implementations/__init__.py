@@ -1,13 +1,24 @@
-"""Concrete knowledge base implementations.
+"""Concrete knowledge base implementations for UNESA Academic Knowledge Graph.
 
 Available backends:
-- MilvusKB: vector knowledge base powered by Milvus.
-- LightRagKB: graph retrieval knowledge base powered by LightRAG.
-- DifyKB: read-only knowledge base backed by the Dify retrieval API.
+- MilvusKB: Standard vector knowledge base powered by Milvus / Zilliz Cloud.
+- AcademicKGVectorStore: Object-oriented GraphRAG vector store manager.
 """
 
-from .dify import DifyKB
-from .lightrag import LightRagKB
-from .milvus import MilvusKB
+from .milvus import (
+    MilvusKB,
+    AcademicKGVectorStore,
+    write_vector_index_to_milvus,
+    build_milvus_index_records,
+    summarize_milvus_records,
+    inspect_milvus_collections,
+)
 
-__all__ = ["MilvusKB", "LightRagKB", "DifyKB"]
+__all__ = [
+    "MilvusKB",
+    "AcademicKGVectorStore",
+    "write_vector_index_to_milvus",
+    "build_milvus_index_records",
+    "summarize_milvus_records",
+    "inspect_milvus_collections",
+]

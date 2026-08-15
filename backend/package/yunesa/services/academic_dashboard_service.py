@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 
 from yunesa.config.static.models import DEFAULT_EMBED_MODELS
-from yunesa.knowledge.graphrag.storage import normalize_milvus_uri
+from yunesa.graphrag.storage import normalize_milvus_uri
 from yunesa.utils import logger
 
 

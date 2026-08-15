@@ -190,14 +190,17 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
         name="Google Gemini (AI Studio)",
         url="https://ai.google.dev/gemini-api/docs",
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-        default="gemini-2.5-flash",
+        default="gemini-flash-latest",
         env="GEMINI_API_KEY",
         models=[
+            "gemini-flash-latest",
+            "gemini-pro-latest",
+            "gemini-flash-lite-latest",
             "gemini-2.5-flash",
             "gemini-2.5-pro",
-            "gemini-2.0-flash",
         ],
     ),
+
 }
 
 

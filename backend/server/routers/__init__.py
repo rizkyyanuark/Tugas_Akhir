@@ -39,6 +39,7 @@ if not _LITE_MODE:
     from server.routers.evaluation_router import evaluation
     from server.routers.mindmap_router import mindmap
     from server.routers.entity_resolution_router import entity_resolution
+    from server.routers.conskg_router import conskg_router
 
     # Knowledge base and graph dependencies are heavy, so LITE mode skips them.
     router.include_router(knowledge)  # /api/knowledge/* knowledge base management and retrieval
@@ -46,3 +47,4 @@ if not _LITE_MODE:
     router.include_router(mindmap)  # /api/mindmap/* mind map generation and query
     router.include_router(graph)  # /api/graph/* graph query and management
     router.include_router(entity_resolution)  # /api/entity-resolution/* concept alias curation
+    router.include_router(conskg_router)  # /api/conskg/* knowledge graph construction

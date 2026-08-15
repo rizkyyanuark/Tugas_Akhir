@@ -1,15 +1,4 @@
-# ══════════════════════════════════════════════════════════════
-# api.Dockerfile — Backend FastAPI Service (Yuxi-style)
-# ══════════════════════════════════════════════════════════════
-# Build strategy:
-#   1. Install system deps (cached forever)
-#   2. Copy pyproject.toml + package/ → `uv sync` (cached until deps change)
-#   3. Copy server/ last (only this layer busts on code changes)
-#
-# This means editing server/main.py does NOT re-download 2GB of
-# PyTorch/SpaCy/GLiNER dependencies. Docker build goes from
-# 15 minutes → 5 seconds on code-only changes.
-# ══════════════════════════════════════════════════════════════
+# Backend FastAPI Service
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 COPY --from=node:24-slim /usr/local/bin /usr/local/bin
@@ -17,54 +6,46 @@ COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=node:24-slim /usr/local/include /usr/local/include
 COPY --from=node:24-slim /usr/local/share /usr/local/share
 
-# -- Working Directory --
 WORKDIR /app
 
-# -- Environment --
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
-    UV_HTTP_TIMEOUT=300 \
+    UV_HTTP_TIMEOUT=600 \
+    UV_CONCURRENT_DOWNLOADS=2 \
+    UV_HTTP_RETRIES=10 \
     HF_HOME="/app/.cache/huggingface"
 
-# -- System Dependencies --
 RUN apt-get update && apt-get install -y --no-install-recommends \
+
+
     build-essential \
     git \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# ── LAYER 1: Python Dependencies (cached separately) ────────
 COPY README.md /app/README.md
 COPY backend/pyproject.toml /app/pyproject.toml
 COPY backend/uv.lock /app/uv.lock
 COPY backend/package /app/package
 COPY README.md /app/package/README.md
 
-# Install dependencies into the virtual environment
-# We use cache mount to speed up downloads
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# -- Add venv to PATH --
 ENV PATH="/app/.venv/bin:$PATH"
 
-# ── LAYER 2: Actual Source Code (BUSTS on code change) ──────
-# Now copy the real source code. This is very fast (milliseconds).
 COPY backend/package /app/package
 COPY backend/server /app/server
 COPY configs /app/configs
 
-# Final fast sync to link actual source files correctly.
-# This step is nearly instant because all heavy lifting is already cached.
 RUN uv sync --frozen --no-dev
 
-# -- Expose Port --
 EXPOSE 5050
 
-# -- Health Check --
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:5050/api/system/health || exit 1
 
 # -- Default: Run FastAPI with Uvicorn --
 CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "5050", "--workers", "1"]
+

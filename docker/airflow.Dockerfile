@@ -1,10 +1,4 @@
-# ══════════════════════════════════════════════════════════════
-# airflow.Dockerfile — Pure Orchestrator (Level 3 Architecture)
-# ══════════════════════════════════════════════════════════════
-# Airflow does NOT run ETL code directly. All heavy lifting runs
-# in isolated etl-worker containers via DockerOperator.
-# Requires: docker-ce-cli (debug) + Docker SDK + /var/run/docker.sock.
-# ══════════════════════════════════════════════════════════════
+# Isolated etl-worker containers via DockerOperator.
 FROM apache/airflow:3.1.7-python3.12
 
 USER root
@@ -46,3 +40,5 @@ RUN uv pip install --system --no-cache \
     --constraint "${CONSTRAINT_URL}"
 
 USER airflow
+
+

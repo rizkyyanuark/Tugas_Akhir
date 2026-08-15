@@ -108,103 +108,81 @@ def worker_command(task_name: str) -> str:
     return command
 
 
+DYNAMIC_ENV_PREFIXES = (
+    "SUPABASE_",
+    "NEO4J_",
+    "MILVUS_",
+    "YUNESA_",
+    "ETL_",
+    "SILICONFLOW_",
+    "BD_",
+    "SCIVAL_",
+    "SERPAPI_",
+    "GROQ_",
+    "HF_",
+    "AWS_",
+    "OPENROUTER_",
+    "TELEGRAM_",
+    "SEMANTIC_SCHOLAR_",
+    "S2_",
+    "OPIK_",
+)
+
+EXPLICIT_ENV_KEYS = (
+    "SCIVAL_EMAIL",
+    "SCIVAL_PASS",
+    "SERPAPI_KEY",
+    "GROQ_API_KEY",
+    "HF_TOKEN",
+    "HF_HOME",
+    "GLOBAL_PASSWORD",
+)
+
+
 def worker_env() -> dict[str, str]:
-    return {
-        # Credentials
-        "SUPABASE_URL": _clean_env("SUPABASE_URL"),
-        "SUPABASE_KEY": _clean_env("SUPABASE_KEY"),
-        "SUPABASE_SERVICE_ROLE_KEY": _clean_env(
-            "SUPABASE_SERVICE_ROLE_KEY",
-            _clean_env("SUPABASE_SERVICE_KEY"),
-        ),
-        "SCIVAL_EMAIL": _clean_env("SCIVAL_EMAIL"),
-        "SCIVAL_PASS": _clean_env("SCIVAL_PASS"),
-        "SEMANTIC_SCHOLAR_API_KEY": _clean_env("SEMANTIC_SCHOLAR_API_KEY", _clean_env("S2_API_KEY")),
-        "SERPAPI_KEY": _clean_env("SERPAPI_KEY"),
-        "BRIGHT_DATA_HOST": _clean_env("BRIGHT_DATA_HOST", "brd.superproxy.io:33335"),
-        "BD_USER_UNLOCKER": _clean_env("BD_USER_UNLOCKER"),
-        "BD_PASS_UNLOCKER": _clean_env("BD_PASS_UNLOCKER"),
-        "BD_USER_SERP": _clean_env("BD_USER_SERP"),
-        "BD_PASS_SERP": _clean_env("BD_PASS_SERP"),
-        "BD_SCRAPING_BROWSER_URL": _clean_env("BD_SCRAPING_BROWSER_URL"),
-        "GROQ_API_KEY": _clean_env("GROQ_API_KEY"),
-        # Knowledge Graph storage and optional extraction.
-        "NEO4J_URI": _clean_env("NEO4J_URI"),
-        "NEO4J_USERNAME": _clean_env("NEO4J_USERNAME"),
-        "NEO4J_PASSWORD": _clean_env("NEO4J_PASSWORD"),
-        "NEO4J_DATABASE": _clean_env("NEO4J_DATABASE"),
-        "MILVUS_URI": _clean_env("MILVUS_URI"),
-        "MILVUS_TOKEN": _clean_env("MILVUS_TOKEN"),
-        "MILVUS_DB_NAME": _clean_env("MILVUS_DB_NAME"),
-        "SILICONFLOW_API_KEY": _clean_env("SILICONFLOW_API_KEY"),
-        "HF_TOKEN": _clean_env("HF_TOKEN"),
-        "HF_HOME": _clean_env("HF_HOME", "/app/data/huggingface"),
-        "YUNESA_KG_GRAPH_NAME": _clean_env("YUNESA_KG_GRAPH_NAME"),
-        "YUNESA_CONCEPT_ALIASES_PATH": _clean_env("YUNESA_CONCEPT_ALIASES_PATH"),
-        "YUNESA_KG_WRITE_NEO4J": _clean_env("YUNESA_KG_WRITE_NEO4J"),
-        "YUNESA_KG_WRITE_MILVUS": _clean_env("YUNESA_KG_WRITE_MILVUS"),
-        "YUNESA_KG_CLEAR_NEO4J": _clean_env("YUNESA_KG_CLEAR_NEO4J"),
-        "YUNESA_KG_CLEAR_MILVUS": _clean_env("YUNESA_KG_CLEAR_MILVUS"),
-        "YUNESA_EMBEDDING_CACHE_PATH": _clean_env(
-            "YUNESA_EMBEDDING_CACHE_PATH",
-            "/app/data/kg/cache/embeddings.sqlite3",
-        ),
-        "SILICONFLOW_EMBEDDING_MAX_ATTEMPTS": _clean_env(
-            "SILICONFLOW_EMBEDDING_MAX_ATTEMPTS", "5"
-        ),
-        "SILICONFLOW_EMBEDDING_RETRY_BASE_SECONDS": _clean_env(
-            "SILICONFLOW_EMBEDDING_RETRY_BASE_SECONDS", "2"
-        ),
-        "SILICONFLOW_EMBEDDING_RETRY_MAX_SECONDS": _clean_env(
-            "SILICONFLOW_EMBEDDING_RETRY_MAX_SECONDS", "30"
-        ),
-        "SILICONFLOW_EMBEDDING_MAX_SPLIT_DEPTH": _clean_env(
-            "SILICONFLOW_EMBEDDING_MAX_SPLIT_DEPTH", "2"
-        ),
-        "YUNESA_EMBEDDING_PROGRESS_EVERY_BATCHES": _clean_env(
-            "YUNESA_EMBEDDING_PROGRESS_EVERY_BATCHES", "25"
-        ),
-        "YUNESA_MILVUS_PROGRESS_EVERY_BATCHES": _clean_env(
-            "YUNESA_MILVUS_PROGRESS_EVERY_BATCHES", "25"
-        ),
-        "YUNESA_MILVUS_INSERT_BATCH_SIZE": _clean_env(
-            "YUNESA_MILVUS_INSERT_BATCH_SIZE", "128"
-        ),
-        "YUNESA_USE_GLINER": _clean_env("YUNESA_USE_GLINER", "0"),
-        "YUNESA_USE_GLIREL": _clean_env("YUNESA_USE_GLIREL", "0"),
-        # Entity Resolution
-        "YUNESA_ALIAS_SUGGESTIONS_PATH": _clean_env(
-            "YUNESA_ALIAS_SUGGESTIONS_PATH",
-            "/app/data/kg/entity_resolution/concept_alias_suggestions.json",
-        ),
-        "YUNESA_ALIAS_CURATION_STORE": _clean_env(
-            "YUNESA_ALIAS_CURATION_STORE",
-            "/app/data/kg/entity_resolution/alias_curation_store.json",
-        ),
-        "YUNESA_APPROVED_CONCEPT_ALIASES_PATH": _clean_env(
-            "YUNESA_APPROVED_CONCEPT_ALIASES_PATH",
-            "/app/data/kg/entity_resolution/concept_aliases.approved.yml",
-        ),
-        "YUNESA_ENFORCE_QUALITY_GATES": _clean_env("YUNESA_ENFORCE_QUALITY_GATES", "true"),
-        # Storage
-        "ETL_STORAGE_TYPE": _clean_env("ETL_STORAGE_TYPE", "local"),
-        "AWS_S3_BUCKET": _clean_env("AWS_S3_BUCKET"),
-        "AWS_S3_PATH": _clean_env("AWS_S3_PATH", "etl/data"),
-        "AWS_ACCESS_KEY_ID": _clean_env("AWS_ACCESS_KEY_ID"),
-        "AWS_SECRET_ACCESS_KEY": _clean_env("AWS_SECRET_ACCESS_KEY"),
-        # Runtime tuning
-        "ETL_RUN_MODE": ETL_RUN_MODE,
-        "ETL_SAMPLE_SIZE": ETL_SAMPLE_SIZE,
-        "ETL_ENRICH_MAX_PAPERS_PER_RUN": _clean_env("ETL_ENRICH_MAX_PAPERS_PER_RUN", "0"),
-        "ETL_FORCE_EXTRACT": _clean_env("ETL_FORCE_EXTRACT", "false"),
-        "ETL_FRESHNESS_HOURS": _clean_env("ETL_FRESHNESS_HOURS", "72"),
-        "ETL_CRAWLER_MAX_RETRIES": _clean_env("ETL_CRAWLER_MAX_RETRIES", "3"),
-        "ETL_CRAWLER_TIMEOUT": _clean_env("ETL_CRAWLER_TIMEOUT", "60"),
-        "ETL_CRAWLER_HEADLESS": _clean_env("ETL_CRAWLER_HEADLESS", "true"),
-        "ETL_ENABLE_SIAKADU": _clean_env("ETL_ENABLE_SIAKADU", "true"),
-        # Container behavior
+    """Dynamically scan and build environment dictionary for etl-worker containers."""
+    env_dict: dict[str, str] = {
+        # Core container environment settings
         "DOCKER_ENVIRONMENT": "true",
         "DATA_SOURCE_PATH": "/app/data",
         "PYTHONPATH": "/app/package",
         "PYTHONDONTWRITEBYTECODE": "1",
+        "ETL_RUN_MODE": ETL_RUN_MODE,
+        "ETL_SAMPLE_SIZE": ETL_SAMPLE_SIZE,
+        "HF_HOME": _clean_env("HF_HOME", "/app/data/huggingface"),
+        "ETL_FRESHNESS_HOURS": _clean_env("ETL_FRESHNESS_HOURS", "72"),
+        "ETL_STORAGE_TYPE": _clean_env("ETL_STORAGE_TYPE", "local"),
+        "BRIGHT_DATA_HOST": _clean_env("BRIGHT_DATA_HOST", "brd.superproxy.io:33335"),
+        "YUNESA_EMBEDDING_CACHE_PATH": _clean_env(
+            "YUNESA_EMBEDDING_CACHE_PATH",
+            "/app/data/kg/cache/embeddings.sqlite3",
+        ),
     }
+
+    # 1. Dynamic Prefix Auto-Scanner (Auto-discovers any current & future env vars)
+    for raw_key in os.environ:
+        clean_key = raw_key
+        if raw_key.startswith("AIRFLOW_VAR_"):
+            clean_key = raw_key[len("AIRFLOW_VAR_") :]
+            if clean_key.endswith("_SECRET"):
+                clean_key = clean_key[: -len("_SECRET")]
+
+        if clean_key.startswith(DYNAMIC_ENV_PREFIXES) or clean_key in EXPLICIT_ENV_KEYS:
+            if clean_key not in env_dict or not env_dict[clean_key]:
+                val = _clean_env(clean_key)
+                if val:
+                    env_dict[clean_key] = val
+
+    # 2. Aliases fallback resolution
+    if "SUPABASE_SERVICE_ROLE_KEY" not in env_dict:
+        svc_key = _clean_env("SUPABASE_SERVICE_ROLE_KEY", _clean_env("SUPABASE_SERVICE_KEY"))
+        if svc_key:
+            env_dict["SUPABASE_SERVICE_ROLE_KEY"] = svc_key
+
+    if "SEMANTIC_SCHOLAR_API_KEY" not in env_dict:
+        s2_key = _clean_env("SEMANTIC_SCHOLAR_API_KEY", _clean_env("S2_API_KEY"))
+        if s2_key:
+            env_dict["SEMANTIC_SCHOLAR_API_KEY"] = s2_key
+
+    return env_dict
+

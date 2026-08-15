@@ -1,0 +1,211 @@
+"""UNESA lecturers pipeline task handlers for the ETL worker."""
+
+import logging
+from datetime import datetime, timezone
+
+from ..config import ETL_FORCE_EXTRACT, ETL_FRESHNESS_HOURS, ID_COLUMN_TYPES
+from ..services.lecturer_paths import (
+    FINAL_CSV,
+    MERGED_CSV,
+    SCRAPE_PDDIKTI_PATH,
+    SCRAPE_SIAKADU_PATH,
+    SCRAPE_WEB_PATH,
+)
+from ..utils.storage import path_exists, get_modification_time, read_dataframe_csv
+from ..utils.logging import log_event, result_fields, timed_event
+
+logger = logging.getLogger("etl-worker")
+
+# Backward-compatible task-level names.
+RAW_WEB_CSV = SCRAPE_WEB_PATH
+PDDIKTI_CSV = SCRAPE_PDDIKTI_PATH
+SIAKADU_CSV = SCRAPE_SIAKADU_PATH
+
+
+def _is_data_fresh(file_path, max_age_hours: int) -> bool:
+    """Check if a file was modified within the freshness window."""
+    if not path_exists(file_path):
+        return False
+
+    mtime = get_modification_time(file_path)
+    if not mtime:
+        return False
+
+    # Ensure mtime is timezone-aware for comparison
+    if mtime.tzinfo is None:
+        mtime = mtime.replace(tzinfo=timezone.utc)
+
+    age_hours = (datetime.now(timezone.utc) - mtime).total_seconds() / 3600
+    return age_hours < max_age_hours
+
+
+def _should_skip_extract(config, label: str, file_path) -> bool:
+    """
+    Determine if extraction should be skipped based on run mode + freshness.
+
+    Args:
+        config:    RunConfig from run_worker.
+        label:     Human-readable task label for logging.
+        file_path: Path to the OUTPUT file of this step.
+                   Freshness is checked against this file.
+    """
+    # full mode → always run
+    if config.is_full:
+        log_event(logger, "freshness.force", task=label, reason="mode_full")
+        return False
+
+    # sample mode → always run (quick test)
+    if config.is_sample:
+        return False
+
+    # explicit force flag → always run
+    if ETL_FORCE_EXTRACT:
+        log_event(logger, "freshness.force", task=label, reason="ETL_FORCE_EXTRACT")
+        return False
+
+    # incremental mode → skip if output file is fresh enough
+    if _is_data_fresh(file_path, ETL_FRESHNESS_HOURS):
+        mtime = get_modification_time(file_path)
+        if mtime.tzinfo is None:
+            mtime = mtime.replace(tzinfo=timezone.utc)
+        age_hours = (datetime.now(timezone.utc) - mtime).total_seconds() / 3600
+
+        # Get display name for the file
+        fname = file_path.name if hasattr(file_path, 'name') else str(file_path).split("/")[-1]
+        log_event(
+            logger,
+            "freshness.skip",
+            task=label,
+            file=fname,
+            age_hours=f"{age_hours:.1f}",
+            threshold_hours=ETL_FRESHNESS_HOURS,
+            override="--mode full or ETL_FORCE_EXTRACT=true",
+        )
+        return True
+
+    return False
+
+
+# TASK HANDLERS
+# Each handler checks data freshness against its own specific output file.
+
+def _lec_extract_web(config):
+    """Scrape lecturer data from prodi websites."""
+    if _should_skip_extract(config, "lec_extract_web", RAW_WEB_CSV):
+        return
+
+    from yunesa.etl.services.unesa_lecturers import scrape_university_websites
+
+    with timed_event(logger, "lecturer.extract_web", prodi_filter=config.prodi_filter):
+        output = scrape_university_websites(prodi_filter=config.prodi_filter)
+    log_event(logger, "lecturer.extract_web.result", **result_fields(output))
+
+
+def _lec_extract_pddikti(config):
+    """Fetch lecturer data from PDDIKTI API."""
+    if _should_skip_extract(config, "lec_extract_pddikti", PDDIKTI_CSV):
+        return
+
+    from yunesa.etl.services.unesa_lecturers import fetch_pddikti_data
+
+    with timed_event(logger, "lecturer.extract_pddikti", prodi_filter=config.prodi_filter):
+        output = fetch_pddikti_data(prodi_filter=config.prodi_filter)
+    log_event(logger, "lecturer.extract_pddikti.result", **result_fields(output))
+
+
+def _lec_extract_siakadu(config):
+    """Fetch lecturer NIP/NIDN identities from SIAKADU."""
+    if _should_skip_extract(config, "lec_extract_siakadu", SIAKADU_CSV):
+        return
+
+    from yunesa.etl.services.siakadu_identity import fetch_siakadu_data
+
+    with timed_event(logger, "lecturer.extract_siakadu", prodi_filter=config.prodi_filter):
+        output = fetch_siakadu_data(prodi_filter=config.prodi_filter)
+    log_event(logger, "lecturer.extract_siakadu.result", **result_fields(output))
+
+
+def _read_checkpoint(file_path, label: str, prodi_filter: str | None = None):
+    df = read_dataframe_csv(file_path, dtype=ID_COLUMN_TYPES)
+    if prodi_filter and "prodi_code" in df.columns:
+        df = df[df["prodi_code"].astype(str) == str(prodi_filter)]
+    log_event(logger, "checkpoint.loaded", label=label, path=file_path, rows=len(df))
+    return df
+
+
+def _load_or_extract_web(config):
+    from yunesa.etl.services.unesa_lecturers import scrape_university_websites
+
+    if path_exists(RAW_WEB_CSV):
+        df = _read_checkpoint(RAW_WEB_CSV, "web", config.prodi_filter)
+        if not df.empty:
+            return df
+
+    log_event(logger, "checkpoint.miss", label="web", action="extract_before_merge")
+    return scrape_university_websites(prodi_filter=config.prodi_filter)
+
+
+def _load_or_extract_pddikti(config):
+    from yunesa.etl.services.unesa_lecturers import fetch_pddikti_data
+
+    if path_exists(PDDIKTI_CSV):
+        df = _read_checkpoint(PDDIKTI_CSV, "PDDIKTI", config.prodi_filter)
+        if not df.empty:
+            return df
+
+    log_event(logger, "checkpoint.miss", label="pddikti", action="extract_before_merge")
+    return fetch_pddikti_data(prodi_filter=config.prodi_filter)
+
+
+def _lec_merge(config):
+    """Merge web + PDDIKTI data into a single dataset."""
+    from yunesa.etl.services.unesa_lecturers import run_smart_merge
+
+    df_web = _load_or_extract_web(config)
+    df_pddikti = _load_or_extract_pddikti(config)
+    
+    with timed_event(logger, "lecturer.merge", web_rows=len(df_web), pddikti_rows=len(df_pddikti)):
+        output = run_smart_merge(df_web, df_pddikti)
+    log_event(logger, "lecturer.merge.result", **result_fields(output))
+
+
+def _lec_enrich(config):
+    """API enrichment (SimCV, Sinta, SciVal, Scholar)."""
+    from yunesa.etl.services.unesa_lecturers import run_enrichment
+
+    # In sample mode, limit Scholar API calls to sample_size
+    scholar_sample = config.sample_size if config.is_sample else None
+    with timed_event(logger, "lecturer.enrich", scholar_sample=scholar_sample):
+        output = run_enrichment(scholar_sample=scholar_sample)
+    log_event(logger, "lecturer.enrich.result", **result_fields(output))
+
+
+def _lec_transform(config):
+    """Final post-processing and cleaning."""
+    from yunesa.etl.services.unesa_lecturers import run_post_processing
+
+    with timed_event(logger, "lecturer.transform"):
+        output = run_post_processing()
+    log_event(logger, "lecturer.transform.result", **result_fields(output))
+
+
+def _lec_load(config):
+    """UPSERT to Supabase PostgreSQL."""
+    from yunesa.etl.services.unesa_lecturers import run_supabase_sync
+
+    with timed_event(logger, "lecturer.load"):
+        synced_count = run_supabase_sync()
+    log_event(logger, "lecturer.load.result", synced_records=synced_count)
+
+
+LECTURERS_TASKS = {
+    "lec_extract_web": _lec_extract_web,
+    "lec_extract_pddikti": _lec_extract_pddikti,
+    "lec_extract_siakadu": _lec_extract_siakadu,
+    "lec_merge": _lec_merge,
+    "lec_enrich": _lec_enrich,
+    "lec_transform": _lec_transform,
+    "lec_load": _lec_load,
+}
+
+TASKS = LECTURERS_TASKS

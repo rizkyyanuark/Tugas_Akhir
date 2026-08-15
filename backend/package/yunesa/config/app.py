@@ -65,11 +65,11 @@ class Config(BaseModel):
     # Model configuration
     # ============================================================
     default_model: str = Field(
-        default="groq/llama-3.3-70b-versatile",
+        default="gemini/gemini-flash-latest",
         description="Default chat model",
     )
     fast_model: str = Field(
-        default="groq/llama-3.1-8b-instant",
+        default="gemini/gemini-flash-latest",
         description="Fast response model",
     )
     embed_model: str = Field(

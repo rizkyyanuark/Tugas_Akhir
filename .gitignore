@@ -113,11 +113,20 @@ notebooks/scraping/pipeline_cells/
 notebooks/scraping/rps_pdfs/
 notebooks/scraping/tldr_results.json
 notebooks/build-graph/kg_export.json
+notebooks/build-graph/academic_kg*
+notebooks/build-graph/run_manifest.json
+notebooks/build-graph/output/
+notebooks/build-graph/outputs/
+notebooks/notebooks/
 notebooks/build-graph/lancedb_store/
 notebooks/build-graph/test_lancedb/
 **/lancedb_store/
 **/test_lancedb/
 *.lance/
+
+# Local GPU lab and startup scripts
+start_gpu_lab.ps1
+*.ps1.local
 
 # External/cloned repositories
 academicRAG/

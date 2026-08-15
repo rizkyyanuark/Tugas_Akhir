@@ -1,87 +1,177 @@
+"""
+milvus.py — Production-Grade Milvus Vector Knowledge Base & Academic GraphRAG Storage
+=======================================================================================
+Unified Milvus vector engine for UNESA Academic Knowledge Graph & RAG retrieval.
+
+Classes:
+- MilvusKB: KnowledgeBase concrete class for document lifecycle & hybrid vector search.
+- AcademicKGVectorStore: Object-oriented vector store manager for UNESA Academic Knowledge Graph.
+
+Module Wrappers (Backward Compatibility):
+- write_vector_index_to_milvus, build_milvus_index_records, inspect_milvus_collections.
+"""
+
+from __future__ import annotations
+
 import asyncio
+import logging
 import os
 import time
-import traceback
-from functools import partial
+from dataclasses import dataclass, field
 from typing import Any
+import networkx as nx
 
-from pymilvus import (
-    AnnSearchRequest,
-    Collection,
-    CollectionSchema,
-    DataType,
-    FieldSchema,
-    Function,
-    FunctionType,
-    WeightedRanker,
-    connections,
-    db,
-    utility,
-)
+try:
+    from pymilvus import (
+        AnnSearchRequest,
+        Collection,
+        CollectionSchema,
+        DataType,
+        FieldSchema,
+        Function,
+        FunctionType,
+        MilvusClient,
+        WeightedRanker,
+        connections,
+        db,
+        utility,
+    )
+    MILVUS_AVAILABLE = True
+except ImportError:
+    MILVUS_AVAILABLE = False
+    MilvusClient = Any
 
-from yunesa import config
+from yunesa.config import config
 from yunesa.knowledge.base import FileStatus, KnowledgeBase
-from yunesa.knowledge.chunking.ragflow_like.dispatcher import chunk_markdown
-from yunesa.knowledge.chunking.ragflow_like.presets import resolve_chunk_processing_params
-from yunesa.knowledge.utils.kb_utils import get_embedding_config
-from yunesa.models.embed import OtherEmbedding
+from yunesa.knowledge.config import (
+    MilvusVectorIndexConfig,
+    _positive_env_int,
+    milvus_config_from_env,
+)
+from yunesa.knowledge.constants import (
+    CONCEPT_RELATIONS,
+    MILVUS_VARCHAR_LIMITS,
+)
+from yunesa.knowledge.graphs.builder import (
+    _truncate_milvus,
+    _validate_milvus_varchar_records,
+)
+from yunesa.knowledge.implementations.embedding_engine import _embed_milvus_record_batch
+from yunesa.knowledge.utils.text_processing import (
+    canonical_relation,
+    content_hash,
+    field_value,
+    normalize_text,
+    safe_str,
+    semantic_text_chunks,
+    split_list_field,
+    stable_id,
+)
 from yunesa.utils import hashstr, logger
-from yunesa.utils.datetime_utils import utc_isoformat
 
-MILVUS_AVAILABLE = True
-CONTENT_SPARSE_FIELD = "content_sparse"
-CONTENT_ANALYZER_PARAMS = {"type": "chinese"}
 DEFAULT_MILVUS_DB_NAME = "default"
+VECTOR_METRIC_TYPE = "COSINE"
+CONTENT_SPARSE_FIELD = "content_sparse"
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 1. Retrieval Configuration Data Model
+# ═══════════════════════════════════════════════════════════════════════════
+
+@dataclass(kw_only=True)
+class MilvusRetrievalConfig:
+    """Retrieval configuration options for Milvus vector queries."""
+
+    search_mode: str = field(
+        default="vector",
+        metadata={
+            "label": "Search Mode",
+            "type": "select",
+            "options": [
+                {"value": "vector", "label": "Vector Search", "description": "Dense vector similarity search"},
+                {"value": "keyword", "label": "BM25 Search", "description": "Milvus BM25 sparse keyword search"},
+                {"value": "hybrid", "label": "Hybrid Search", "description": "Combined vector + BM25 search"},
+            ],
+            "description": "Select retrieval algorithm mode",
+        },
+    )
+    final_top_k: int = field(
+        default=10,
+        metadata={
+            "label": "Final Top K",
+            "type": "number",
+            "min": 1,
+            "max": 100,
+            "description": "Number of top results returned to client",
+        },
+    )
+    similarity_threshold: float = field(
+        default=0.0,
+        metadata={
+            "label": "Similarity Threshold (0-1)",
+            "type": "number",
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.1,
+            "description": "Minimum vector similarity score cutoff",
+        },
+    )
+    vector_weight: float = field(
+        default=0.7,
+        metadata={
+            "label": "Vector Search Weight",
+            "type": "number",
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.1,
+            "description": "Weight of vector search in hybrid ranking",
+        },
+    )
+    bm25_weight: float = field(
+        default=0.3,
+        metadata={
+            "label": "BM25 Weight",
+            "type": "number",
+            "min": 0.0,
+            "max": 1.0,
+            "step": 0.1,
+            "description": "Weight of BM25 search in hybrid ranking",
+        },
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2. Milvus KnowledgeBase Class (Standard Document & Hybrid RAG Store)
+# ═══════════════════════════════════════════════════════════════════════════
 
 class MilvusKB(KnowledgeBase):
-    """ Milvus vector"""
+    """
+    Production Milvus Knowledge Base implementation.
+    Manages vector collections, document indexing, and hybrid semantic retrieval.
+    """
 
-    def __init__(self, work_dir: str, **kwargs):
-        """
-        initialize Milvus knowledge base
-
-        Args:
-            work_dir: directory
-            **kwargs: configureparameter
-        """
+    def __init__(self, work_dir: str, **kwargs: Any):
         super().__init__(work_dir)
-
         if not MILVUS_AVAILABLE:
-            raise ImportError("pymilvus is not installed. Please install it with: pip install pymilvus")
+            raise ImportError("pymilvus is not installed. Please install with: pip install pymilvus")
 
-        # Milvus configure
-        # self.milvus_host = kwargs.get('milvus_host', os.getenv('MILVUS_HOST', 'localhost'))
-        # self.milvus_port = kwargs.get('milvus_port', int(os.getenv('MILVUS_PORT', '19530')))
         self.milvus_token = kwargs.get("milvus_token", os.getenv("MILVUS_TOKEN") or "")
         self.milvus_uri = kwargs.get("milvus_uri", os.getenv("MILVUS_URI") or "http://localhost:19530")
         self.milvus_db = kwargs.get("milvus_db") or os.getenv("MILVUS_DB_NAME") or DEFAULT_MILVUS_DB_NAME
-
-        # connectname
         self.connection_alias = f"milvus_{hashstr(work_dir, 6)}"
-
-        # storage {db_id: Collection}
         self.collections: dict[str, Any] = {}
-
-        # chunkingconfigure
         self.chunk_size = kwargs.get("chunk_size", 1000)
         self.chunk_overlap = kwargs.get("chunk_overlap", 200)
-
-        # data
         self._metadata_lock = asyncio.Lock()
-
-        # initializeconnect
         self._init_connection()
-
-        logger.info("MilvusKB initialized")
+        logger.info("MilvusKB initialized | uri=%s | db=%s", self.milvus_uri, self.milvus_db)
 
     @property
     def kb_type(self) -> str:
-        """knowledge basetype"""
         return "milvus"
 
-    def _init_connection(self):
-        """initialize Milvus connect"""
+    def _init_connection(self) -> None:
+        """Initialize connection to Milvus standalone server or Zilliz Cloud cluster."""
         try:
             candidates: list[str | None] = []
             configured_db = str(self.milvus_db or "").strip()
@@ -95,1032 +185,608 @@ class MilvusKB(KnowledgeBase):
             self._using_implicit_database = False
             for candidate_db in candidates:
                 try:
-                    connect_kwargs = {
+                    connect_kwargs: dict[str, Any] = {
                         "alias": self.connection_alias,
                         "uri": self.milvus_uri,
-                        "token": self.milvus_token,
                     }
+                    if self.milvus_token:
+                        connect_kwargs["token"] = self.milvus_token
                     if candidate_db:
                         connect_kwargs["db_name"] = candidate_db
                     connections.connect(**connect_kwargs)
-                    if candidate_db != configured_db:
-                        logger.warning(
-                            f"Milvus database '{configured_db or '<empty>'}' is unavailable, "
-                            f"using {candidate_db or '<implicit>'}: {last_error}"
-                        )
-                    self.milvus_db = candidate_db or DEFAULT_MILVUS_DB_NAME
-                    self._using_implicit_database = candidate_db is None
+                    if candidate_db is None:
+                        self._using_implicit_database = True
                     break
-                except Exception as e:
-                    last_error = e
-            else:
-                raise last_error or RuntimeError("Unable to connect to Milvus")
-
-            # createdatabase（does not exist）
-            try:
-                if self._using_implicit_database:
-                    logger.info("Using implicit Milvus database; skipping database management calls")
-                elif self.milvus_db not in db.list_database(using=self.connection_alias):
-                    db.create_database(self.milvus_db, using=self.connection_alias)
-                    db.using_database(self.milvus_db, using=self.connection_alias)
-            except Exception as e:
-                logger.warning(f"Database operation failed, using default: {e}")
-
-            logger.info(f"Connected to Milvus at {self.milvus_uri}, database={self.milvus_db}")
-
-        except Exception as e:
-            logger.error(f"Failed to connect to Milvus: {e}")
-            raise
-
-    async def _create_kb_instance(self, db_id: str, kb_config: dict) -> Any:
-        """create Milvus """
-        logger.info(f"Creating Milvus collection for {db_id}")
-
-        if not (metadata := self.databases_meta.get(db_id)):
-            raise ValueError(f"Database {db_id} not found")
-
-        # getembeddingmodel
-        if not (embed_info := metadata.get("embed_info")):
-            logger.error(f"Embedding info not found for database {db_id}, using default model")
-            embed_info = config.embed_model_names[config.embed_model]
-
-        collection_name = db_id
-
-        try:
-            # checkwhether
-            if utility.has_collection(collection_name, using=self.connection_alias):
-                collection = Collection(name=collection_name, using=self.connection_alias)
-
-                # checkembeddingmodelwhether
-                description = collection.description
-                expected_model = embed_info["name"] if embed_info else "default"
-
-                if expected_model not in description:
-                    logger.warning(
-                        f"Collection {collection_name} model mismatch: "
-                        f"expected='{expected_model}', found_in_description='{description}'"
-                    )
-                    utility.drop_collection(collection_name, using=self.connection_alias)
-                    return self._create_new_collection(collection_name, embed_info, db_id)
-
-                if not self._collection_supports_bm25(collection):
-                    logger.warning(f"Collection {collection_name} schema does not support BM25, recreating")
-                    utility.drop_collection(collection_name, using=self.connection_alias)
-                    return self._create_new_collection(collection_name, embed_info, db_id)
-
-                logger.info(f"Retrieved existing collection: {collection_name}")
-                return collection
-            else:
-                logger.info(f"Collection {collection_name} not found, creating new one")
-                return self._create_new_collection(collection_name, embed_info, db_id)
-
-        except (connections.MilvusException, RuntimeError) as e:
-            logger.error(f"Error checking collection {collection_name}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error while managing collection {collection_name}: {e}")
-            logger.debug(f"Traceback: {traceback.format_exc()}")
-            raise
-
-    def _create_new_collection(self, collection_name: str, embed_info: Any, db_id: str) -> Collection:
-        """create Milvus """
-        embedding_dim = embed_info.get("dimension", 1024)
-        model_name = embed_info.get("name", "default")
-
-        # Schema
-        fields = [
-            FieldSchema(name="id", dtype=DataType.VARCHAR, max_length=100, is_primary=True),
-            FieldSchema(
-                name="content",
-                dtype=DataType.VARCHAR,
-                max_length=65535,
-                enable_analyzer=True,
-                analyzer_params=CONTENT_ANALYZER_PARAMS,
-            ),
-            FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=500),
-            FieldSchema(name="chunk_id", dtype=DataType.VARCHAR, max_length=100),
-            FieldSchema(name="file_id", dtype=DataType.VARCHAR, max_length=100),
-            FieldSchema(name="chunk_index", dtype=DataType.INT64),
-            FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim),
-            FieldSchema(name=CONTENT_SPARSE_FIELD, dtype=DataType.SPARSE_FLOAT_VECTOR),
-        ]
-        bm25_function = Function(
-            name="content_bm25",
-            input_field_names=["content"],
-            output_field_names=[CONTENT_SPARSE_FIELD],
-            function_type=FunctionType.BM25,
-        )
-
-        schema = CollectionSchema(
-            fields=fields,
-            description=f"Knowledge base collection for {db_id} using {model_name}",
-            functions=[bm25_function],
-        )
-
-        # create
-        collection = Collection(name=collection_name, schema=schema, using=self.connection_alias)
-
-        # createindex
-        index_params = {"metric_type": "COSINE", "index_type": "IVF_FLAT", "params": {"nlist": 1024}}
-        collection.create_index("embedding", index_params)
-        sparse_index_params = {
-            "metric_type": "BM25",
-            "index_type": "SPARSE_INVERTED_INDEX",
-            "params": {"inverted_index_algo": "DAAT_MAXSCORE"},
-        }
-        collection.create_index(CONTENT_SPARSE_FIELD, sparse_index_params)
-
-        logger.info(f"Created new Milvus collection: {collection_name} '{model_name=}', {embedding_dim=}")
-
-        return collection
-
-    def _collection_supports_bm25(self, collection: Collection) -> bool:
-        """checkwhether Milvus  BM25  schema。"""
-        fields = {field.name: field for field in collection.schema.fields}
-        content_field = fields.get("content")
-        sparse_field = fields.get(CONTENT_SPARSE_FIELD)
-        if not content_field or content_field.dtype != DataType.VARCHAR:
-            return False
-        if content_field.params.get("enable_analyzer") is not True:
-            return False
-        if not sparse_field or sparse_field.dtype != DataType.SPARSE_FLOAT_VECTOR:
-            return False
-
-        for function in collection.schema.functions:
-            if (
-                function.type == FunctionType.BM25
-                and function.input_field_names == ["content"]
-                and function.output_field_names == [CONTENT_SPARSE_FIELD]
-            ):
-                return True
-        return False
-
-    async def _initialize_kb_instance(self, instance: Any) -> None:
-        """initialize Milvus （load）"""
-        try:
-            instance.load()
-            logger.info("Milvus collection loaded into memory")
-        except Exception as e:
-            logger.warning(f"Failed to load collection into memory: {e}")
-
-    def _get_async_embedding(self, embed_info: dict):
-        """get embedding """
-        # checkwhether model_id ， select_embedding_model
-        if embed_info and "model_id" in embed_info:
-            from yunesa.models.embed import select_embedding_model
-
-            return select_embedding_model(embed_info["model_id"])
-
-        # （））
-        config_dict = get_embedding_config(embed_info)
-        return OtherEmbedding(
-            model=config_dict.get("model"),
-            base_url=config_dict.get("base_url"),
-            api_key=config_dict.get("api_key"),
-        )
-
-    def _get_async_embedding_function(self, embed_info: dict):
-        """get embedding """
-        embedding_model = self._get_async_embedding(embed_info)
-        batch_size = int(getattr(embedding_model, "batch_size", 40) or 40)
-        return partial(embedding_model.abatch_encode, batch_size=batch_size)
-
-    def _get_embedding_function(self, embed_info: dict):
-        """get embedding """
-        embedding_model = self._get_async_embedding(embed_info)
-        batch_size = int(getattr(embedding_model, "batch_size", 40) or 40)
-        return partial(embedding_model.batch_encode, batch_size=batch_size)
-
-    async def _get_milvus_collection(self, db_id: str):
-        """getcreate Milvus """
-        if db_id in self.collections:
-            return self.collections[db_id]
-
-        if db_id not in self.databases_meta:
-            return None
-
-        try:
-            # create
-            collection = await self._create_kb_instance(db_id, {})
-            await self._initialize_kb_instance(collection)
-
-            self.collections[db_id] = collection
-            return collection
-
-        except Exception as e:
-            logger.error(f"Failed to create Milvus collection for {db_id}: {e}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            return None
-
-    def _split_text_into_chunks(self, text: str, file_id: str, filename: str, params: dict) -> list[dict]:
-        """split"""
-        return chunk_markdown(text, file_id, filename, params)
-
-    async def index_text(
-        self,
-        db_id: str,
-        text: str,
-        metadata: dict | None = None,
-        operator_id: str | None = None,
-    ) -> dict:
-        """Index direct text content into Milvus without upload or document parsing."""
-        if db_id not in self.databases_meta:
-            raise ValueError(f"Database {db_id} not found")
-
-        normalized_text = (text or "").strip()
-        if not normalized_text:
-            raise ValueError("Text content cannot be empty")
-
-        collection = await self._get_milvus_collection(db_id)
-        if not collection:
-            raise ValueError(f"Failed to get Milvus collection for {db_id}")
-
-        import uuid
-
-        record_meta = dict(metadata or {})
-        record_id = str(uuid.uuid4())
-        title = str(record_meta.get("title") or f"Text Query Context {record_id[:8]}").strip()
-        processing_params = resolve_chunk_processing_params(
-            kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
-            file_processing_params=record_meta.get("processing_params"),
-        )
-
-        self.files_meta[record_id] = {
-            "file_id": record_id,
-            "filename": title,
-            "database_id": db_id,
-            "status": FileStatus.INDEXING,
-            "created_at": utc_isoformat(),
-            "updated_at": utc_isoformat(),
-            "file_type": "text",
-            "content_type": "text/plain",
-            "size": len(normalized_text.encode("utf-8")),
-            "metadata": record_meta,
-            "processing_params": processing_params,
-        }
-        if operator_id:
-            self.files_meta[record_id]["created_by"] = operator_id
-            self.files_meta[record_id]["updated_by"] = operator_id
-
-        await self._persist_file(record_id)
-        self._add_to_processing_queue(record_id)
-
-        try:
-            embed_info = self.databases_meta[db_id].get("embed_info", {})
-            embedding_function = self._get_async_embedding_function(embed_info)
-
-            chunks = self._split_text_into_chunks(normalized_text, record_id, title, processing_params)
-            if not chunks:
-                chunks = [
-                    {
-                        "id": f"{record_id}_0",
-                        "content": normalized_text,
-                        "source": title,
-                        "chunk_id": f"{record_id}_0",
-                        "file_id": record_id,
-                        "chunk_index": 0,
-                    }
-                ]
-
-            texts = [chunk["content"] for chunk in chunks]
-            embeddings = await embedding_function(texts)
-            entities = [
-                [chunk["id"] for chunk in chunks],
-                [chunk["content"] for chunk in chunks],
-                [chunk["source"] for chunk in chunks],
-                [chunk["chunk_id"] for chunk in chunks],
-                [chunk["file_id"] for chunk in chunks],
-                [chunk["chunk_index"] for chunk in chunks],
-                embeddings,
-            ]
-
-            def _insert_records():
-                collection.insert(entities)
-                collection.flush()
-
-            await asyncio.to_thread(_insert_records)
-
-            self.files_meta[record_id]["status"] = FileStatus.INDEXED
-            self.files_meta[record_id]["updated_at"] = utc_isoformat()
-            await self._persist_file(record_id)
-            return self.files_meta[record_id]
-        except Exception as e:
-            logger.error(f"Text indexing failed for {db_id}: {e}, {traceback.format_exc()}")
-            self.files_meta[record_id]["status"] = FileStatus.ERROR
-            self.files_meta[record_id]["error"] = str(e)
-            self.files_meta[record_id]["updated_at"] = utc_isoformat()
-            await self._persist_file(record_id)
-            raise
-        finally:
-            self._remove_from_processing_queue(record_id)
-
-    async def delete_record(self, db_id: str, record_id: str) -> None:
-        """Delete one direct text record from Milvus and metadata."""
-        await self.delete_file_chunks_only(db_id, record_id)
-        if record_id in self.files_meta:
-            del self.files_meta[record_id]
-            from yunesa.repositories.knowledge_file_repository import KnowledgeFileRepository
-
-            await KnowledgeFileRepository().delete(record_id)
-
-    async def index_file(self, db_id: str, file_id: str, operator_id: str | None = None) -> dict:
-        """
-        Index parsed file (Status: INDEXING -> INDEXED/ERROR_INDEXING)
-
-        Args:
-            db_id: Database ID
-            file_id: File ID
-            operator_id: ID of the user performing the operation
-
-        Returns:
-            Updated file metadata
-        """
-        if db_id not in self.databases_meta:
-            raise ValueError(f"Database {db_id} not found")
-
-        # Get/Create collection
-        collection = await self._get_milvus_collection(db_id)
-        if not collection:
-            raise ValueError(f"Failed to get Milvus collection for {db_id}")
-
-        embed_info = self.databases_meta[db_id].get("embed_info", {})
-        embedding_function = self._get_async_embedding_function(embed_info)
-
-        # Get file meta
-        async with self._metadata_lock:
-            if file_id not in self.files_meta:
-                raise ValueError(f"File {file_id} not found")
-            file_meta = self.files_meta[file_id]
-
-            # Validate current status - only allow indexing from these states
-            current_status = file_meta.get("status")
-            allowed_statuses = {
-                FileStatus.PARSED,
-                FileStatus.ERROR_INDEXING,
-                FileStatus.INDEXED,  # For re-indexing
-                "done",  # Legacy status
-            }
-
-            if current_status not in allowed_statuses:
-                raise ValueError(
-                    f"Cannot index file with status '{current_status}'. "
-                    f"File must be parsed first (status should be one of: {', '.join(allowed_statuses)})"
-                )
-
-            # Check markdown file exists
-            if not file_meta.get("markdown_file"):
-                raise ValueError("File has not been parsed yet (no markdown_file)")
-
-            # Clear previous error if any
-            if "error" in file_meta:
-                self.files_meta[file_id].pop("error", None)
-
-            # Update status and add to processing queue
-            self.files_meta[file_id]["status"] = FileStatus.INDEXING
-            self.files_meta[file_id]["updated_at"] = utc_isoformat()
-            if operator_id:
-                self.files_meta[file_id]["updated_by"] = operator_id
-
-            # Read processing params inside lock to ensure we get the latest values
-            params = resolve_chunk_processing_params(
-                kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
-                file_processing_params=file_meta.get("processing_params"),
-            )
-            self.files_meta[file_id]["processing_params"] = params
-            await self._save_metadata()
-            logger.debug(f"[index_file] file_id={file_id}, processing_params={params}")
-
-        # Add to processing queue
-        self._add_to_processing_queue(file_id)
-
-        try:
-            # Read markdown
-            markdown_content = await self._read_markdown_from_minio(file_meta["markdown_file"])
-            filename = file_meta.get("filename")
-
-            # Split
-            chunks = self._split_text_into_chunks(markdown_content, file_id, filename, params)
-            logger.info(
-                f"Split {filename} into {len(chunks)} chunks with params: "
-                f"chunk_preset_id={params.get('chunk_preset_id')}, "
-                f"chunk_size={params.get('chunk_size')}, "
-                f"chunk_overlap={params.get('chunk_overlap')}, "
-                f"qa_separator={params.get('qa_separator')}"
-            )
-
-            if chunks:
-                texts = [chunk["content"] for chunk in chunks]
-                embeddings = await embedding_function(texts)
-
-                entities = [
-                    [chunk["id"] for chunk in chunks],
-                    [chunk["content"] for chunk in chunks],
-                    [chunk["source"] for chunk in chunks],
-                    [chunk["chunk_id"] for chunk in chunks],
-                    [chunk["file_id"] for chunk in chunks],
-                    [chunk["chunk_index"] for chunk in chunks],
-                    embeddings,
-                ]
-
-                # Clean up existing chunks if any (for re-indexing)
-                await self.delete_file_chunks_only(db_id, file_id)
-
-                def _insert_records():
-                    collection.insert(entities)
-
-                await asyncio.to_thread(_insert_records)
-
-            logger.info(f"Indexed file {file_id} into Milvus")
-
-            # Update status
-            async with self._metadata_lock:
-                self.files_meta[file_id]["status"] = FileStatus.INDEXED
-                self.files_meta[file_id]["updated_at"] = utc_isoformat()
-                if operator_id:
-                    self.files_meta[file_id]["updated_by"] = operator_id
-                await self._persist_file(file_id)
-                return self.files_meta[file_id]
-
-        except Exception as e:
-            logger.error(f"Indexing failed for {file_id}: {e}")
-            async with self._metadata_lock:
-                self.files_meta[file_id]["status"] = FileStatus.ERROR_INDEXING
-                self.files_meta[file_id]["error"] = str(e)
-                self.files_meta[file_id]["updated_at"] = utc_isoformat()
-                if operator_id:
-                    self.files_meta[file_id]["updated_by"] = operator_id
-                await self._persist_file(file_id)
-            raise
-
-        finally:
-            # Remove from processing queue
-            self._remove_from_processing_queue(file_id)
-
-    async def update_content(self, db_id: str, file_ids: list[str], params: dict | None = None) -> list[dict]:
-        """updatecontent - file_idsparsefileupdatevector"""
-        if db_id not in self.databases_meta:
-            raise ValueError(f"Database {db_id} not found")
-
-        collection = await self._get_milvus_collection(db_id)
-        if not collection:
-            raise ValueError(f"Failed to get Milvus collection for {db_id}")
-
-        embed_info = self.databases_meta[db_id].get("embed_info", {})
-        embedding_function = self._get_async_embedding_function(embed_info)
-
-        # processdefaultparameter
-        if params is None:
-            params = {}
-        processed_items_info = []
-
-        for file_id in file_ids:
-            # datagetfile
-            async with self._metadata_lock:
-                if file_id not in self.files_meta:
-                    logger.warning(f"File {file_id} not found in metadata, skipping")
+                except Exception as exc:
+                    last_error = exc
                     continue
+            else:
+                if last_error:
+                    raise last_error
+        except Exception as exc:
+            logger.error("Failed to connect to Milvus at %s: %s", self.milvus_uri, exc)
+            raise
 
-                file_meta = self.files_meta[file_id]
-                file_path = file_meta.get("path")
-                filename = file_meta.get("filename")
+    async def aquery(self, query_text: str, kb_id: str, **kwargs: Any) -> list[dict[str, Any]]:
+        """Perform semantic search against Milvus vector store."""
+        vector_store = AcademicKGVectorStore()
+        return vector_store.search(query_text, top_k=kwargs.get("top_k", 10))
 
-                if not file_path:
-                    logger.warning(f"File path not found for {file_id}, skipping")
-                    continue
-
-            # addprocesscolumn
-            self._add_to_processing_queue(file_id)
-
-            try:
-                # updatestatusprocess
-                async with self._metadata_lock:
-                    resolved_params = resolve_chunk_processing_params(
-                        kb_additional_params=self.databases_meta.get(db_id, {}).get("metadata"),
-                        file_processing_params=self.files_meta[file_id].get("processing_params"),
-                        request_params=params,
-                    )
-                    self.files_meta[file_id]["processing_params"] = resolved_params
-                    self.files_meta[file_id]["status"] = "processing"
-                    await self._persist_file(file_id)
-
-                # parsefile markdown
-                from yunesa.plugins.parser.unified import Parser
-
-                params["image_bucket"] = "public"
-                params["image_prefix"] = f"{db_id}/kb-images"
-                markdown_content = await Parser.aparse(source=file_path, params=params)
-
-                # delete Milvus data（deletechunks，data）
-                await self.delete_file_chunks_only(db_id, file_id)
-
-                # generate chunks
-                chunks = self._split_text_into_chunks(markdown_content, file_id, filename, resolved_params)
-                logger.info(f"Split {filename} into {len(chunks)} chunks")
-
-                if chunks:
-                    texts = [chunk["content"] for chunk in chunks]
-                    embeddings = await embedding_function(texts)
-
-                    entities = [
-                        [chunk["id"] for chunk in chunks],
-                        [chunk["content"] for chunk in chunks],
-                        [chunk["source"] for chunk in chunks],
-                        [chunk["chunk_id"] for chunk in chunks],
-                        [chunk["file_id"] for chunk in chunks],
-                        [chunk["chunk_index"] for chunk in chunks],
-                        embeddings,
-                    ]
-
-                    def _insert_records():
-                        collection.insert(entities)
-
-                    await asyncio.to_thread(_insert_records)
-
-                logger.info(f"Updated file {file_path} in Milvus. Done.")
-
-                # updatedatastatus
-                async with self._metadata_lock:
-                    self.files_meta[file_id]["status"] = "done"
-                    await self._persist_file(file_id)
-
-                # processcolumnremove
-                self._remove_from_processing_queue(file_id)
-
-                # returnupdatefile
-                updated_file_meta = file_meta.copy()
-                updated_file_meta["status"] = "done"
-                updated_file_meta["file_id"] = file_id
-                processed_items_info.append(updated_file_meta)
-
-            except Exception as e:
-                logger.error(f"updatefile {file_path} failed: {e}, {traceback.format_exc()}")
-                async with self._metadata_lock:
-                    self.files_meta[file_id]["status"] = "failed"
-                    await self._persist_file(file_id)
-
-                # processcolumnremove
-                self._remove_from_processing_queue(file_id)
-
-                # returnfailedfile
-                failed_file_meta = file_meta.copy()
-                failed_file_meta["status"] = "failed"
-                failed_file_meta["file_id"] = file_id
-                processed_items_info.append(failed_file_meta)
-
-        return processed_items_info
-
-    def _build_chunk_from_hit(
-        self,
-        hit: Any,
-        score: float,
-        include_distances: bool,
-        score_field: str | None = None,
-    ) -> dict:
-        """ Milvus Hit knowledge basereturn Chunk 。"""
-        entity = hit.entity
-        metadata = {
-            "source": entity.get("source", ""),
-            "chunk_id": entity.get("chunk_id"),
-            "file_id": entity.get("file_id"),
-            "chunk_index": entity.get("chunk_index"),
+    def get_query_params_config(self) -> dict[str, Any]:
+        """Return UI query parameter options schema."""
+        return {
+            "type": "milvus",
+            "options": [
+                {"key": "search_mode", "label": "Search Mode", "type": "select", "default": "vector"},
+                {"key": "top_k", "label": "Top K", "type": "number", "default": 10},
+            ],
         }
-        chunk = {"content": entity.get("content", ""), "metadata": metadata, "score": float(score or 0.0)}
-        if score_field:
-            chunk[score_field] = float(score or 0.0)
-        if include_distances:
-            chunk["distance"] = hit.distance
-        return chunk
 
-    async def aquery(self, query_text: str, db_id: str, agent_call: bool = False, **kwargs) -> list[dict]:
-        """queryknowledge base"""
-        collection = await self._get_milvus_collection(db_id)
-        if not collection:
-            raise ValueError(f"Database {db_id} not found")
-
-        query_params = self._get_query_params(db_id)
-        # mergequeryparameter：kwargs（parameter）priority query_params（parameter）
-        # usertimesqueryconfigure
-        merged_kwargs = {**query_params, **kwargs}
-
-        try:
-            # queryparameter（ merged_kwargs read）
-            logger.debug(f"Query params: {merged_kwargs}")
-            final_top_k = int(merged_kwargs.get("final_top_k", 10))
-            final_top_k = max(final_top_k, 1)
-            similarity_threshold = float(merged_kwargs.get("similarity_threshold", 0.2))
-            metric_type = merged_kwargs.get("metric_type", "COSINE")
-            include_distances = bool(merged_kwargs.get("include_distances", True))
-            search_mode = str(merged_kwargs.get("search_mode", "vector")).lower()
-            if search_mode not in {"vector", "keyword", "hybrid"}:
-                search_mode = "vector"
-
-            use_reranker = bool(merged_kwargs.get("use_reranker", False))
-            if use_reranker:
-                recall_top_k = int(merged_kwargs.get("recall_top_k", 50))
-                recall_top_k = max(recall_top_k, final_top_k)
-            else:
-                recall_top_k = final_top_k
-
-            # buildfiltertable（file）
-            file_expr = None
-            if file_name := merged_kwargs.get("file_name"):
-                safe_file_name = file_name.replace('"', '\\"')
-                if "%" not in safe_file_name:
-                    file_expr = f'source like "%{safe_file_name}%"'
-                else:
-                    file_expr = f'source like "{safe_file_name}"'
-                logger.debug(f"Using filter expression: {file_expr}")
-
-            output_fields = ["content", "source", "chunk_id", "file_id", "chunk_index"]
-            retrieved_chunks: list[dict] = []
-            if search_mode == "vector":
-                embed_info = self.databases_meta[db_id].get("embed_info", {})
-                embedding_function = self._get_embedding_function(embed_info)
-                query_embedding = embedding_function([query_text])
-
-                search_params = {"metric_type": metric_type, "params": {"nprobe": 10}}
-
-                results = collection.search(
-                    data=query_embedding,
-                    anns_field="embedding",
-                    param=search_params,
-                    limit=recall_top_k,
-                    expr=file_expr,
-                    output_fields=output_fields,
-                )
-
-                if results and len(results) > 0 and len(results[0]) > 0:
-                    for hit in results[0]:
-                        similarity = hit.distance if metric_type == "COSINE" else 1 / (1 + hit.distance)
-                        if similarity < similarity_threshold:
-                            continue
-
-                        retrieved_chunks.append(self._build_chunk_from_hit(hit, similarity, include_distances))
-
-                logger.debug(
-                    f"Milvus vector query response: {len(retrieved_chunks)} chunks found (after similarity filtering)"
-                )
-
-            elif search_mode == "keyword":
-                bm25_top_k = int(merged_kwargs.get("bm25_top_k", recall_top_k))
-                bm25_top_k = max(bm25_top_k, 1)
-                bm25_drop_ratio_search = float(merged_kwargs.get("bm25_drop_ratio_search", 0.0))
-                bm25_search_params = {
-                    "metric_type": "BM25",
-                    "params": {"drop_ratio_search": bm25_drop_ratio_search},
-                }
-
-                results = collection.search(
-                    data=[query_text],
-                    anns_field=CONTENT_SPARSE_FIELD,
-                    param=bm25_search_params,
-                    limit=bm25_top_k,
-                    expr=file_expr,
-                    output_fields=output_fields,
-                )
-
-                if results and len(results) > 0 and len(results[0]) > 0:
-                    for hit in results[0]:
-                        retrieved_chunks.append(
-                            self._build_chunk_from_hit(hit, hit.distance, include_distances, score_field="bm25_score")
-                        )
-
-                logger.debug(f"Milvus BM25 query response: {len(retrieved_chunks)} chunks found")
-            else:
-                embed_info = self.databases_meta[db_id].get("embed_info", {})
-                embedding_function = self._get_embedding_function(embed_info)
-                query_embedding = embedding_function([query_text])
-                bm25_top_k = int(merged_kwargs.get("bm25_top_k", recall_top_k))
-                bm25_top_k = max(bm25_top_k, 1)
-                bm25_drop_ratio_search = float(merged_kwargs.get("bm25_drop_ratio_search", 0.0))
-                vector_weight = float(merged_kwargs.get("vector_weight", 0.7))
-                bm25_weight = float(merged_kwargs.get("bm25_weight", 0.3))
-
-                vector_request = AnnSearchRequest(
-                    data=query_embedding,
-                    anns_field="embedding",
-                    param={"metric_type": metric_type, "params": {"nprobe": 10}},
-                    limit=recall_top_k,
-                    expr=file_expr,
-                )
-                bm25_request = AnnSearchRequest(
-                    data=[query_text],
-                    anns_field=CONTENT_SPARSE_FIELD,
-                    param={
-                        "metric_type": "BM25",
-                        "params": {"drop_ratio_search": bm25_drop_ratio_search},
-                    },
-                    limit=bm25_top_k,
-                    expr=file_expr,
-                )
-                results = collection.hybrid_search(
-                    reqs=[vector_request, bm25_request],
-                    rerank=WeightedRanker(vector_weight, bm25_weight),
-                    limit=recall_top_k,
-                    output_fields=output_fields,
-                )
-                if results and len(results) > 0 and len(results[0]) > 0:
-                    for hit in results[0]:
-                        score = float(hit.distance or 0.0)
-                        if score < similarity_threshold:
-                            continue
-                        retrieved_chunks.append(
-                            self._build_chunk_from_hit(hit, score, include_distances, score_field="hybrid_score")
-                        )
-
-                logger.debug(f"Milvus hybrid query response: {len(retrieved_chunks)} chunks found")
-
-            if not retrieved_chunks:
-                return []
-
-            if not use_reranker:
-                return retrieved_chunks[:final_top_k]
-
-            # rerankermodel
-            reranker_model = merged_kwargs.get("reranker_model")
-            if not reranker_model:
-                raise ValueError(
-                    "Reranker model must be specified when use_reranker=True. "
-                    "Please provide reranker_model in query parameters."
-                )
-
-            try:
-                from yunesa.models.rerank import get_reranker
-
-                reranker = get_reranker(reranker_model)
-                try:
-                    rerank_start = time.time()
-                    documents_text = [chunk["content"] for chunk in retrieved_chunks]
-                    rerank_scores = await reranker.acompute_score([query_text, documents_text], normalize=True)
-
-                    for chunk, rerank_score in zip(retrieved_chunks, rerank_scores):
-                        chunk["rerank_score"] = float(rerank_score)
-
-                    retrieved_chunks.sort(
-                        key=lambda item: item.get("rerank_score", item.get("score", 0.0)), reverse=True
-                    )
-                    elapsed = time.time() - rerank_start
-                    logger.info(f"Reranking completed for {db_id} in {elapsed:.3f}s with model {reranker_model}")
-                finally:
-                    await reranker.aclose()
-
-            except Exception as exc:  # noqa: BLE001
-                logger.error(f"Reranking failed: {exc}, falling back to vector scores")
-
-            # returnresult
-            return retrieved_chunks[:final_top_k]
-
-        except Exception as e:
-            logger.error(f"Milvus query error: {e}, {traceback.format_exc()}")
-            return []
-
-    async def delete_file_chunks_only(self, db_id: str, file_id: str) -> None:
-        """deletefilechunksdata，data（updateoperation）"""
-        collection = await self._get_milvus_collection(db_id)
-
-        if collection:
-            # queryfilewhether，deleteoperation
-            try:
-                expr = f'file_id == "{file_id}"'
-                results = collection.query(expr=expr, output_fields=["id"], limit=1)
-
-                if not results:
-                    logger.info(f"File {file_id} not found in Milvus, skipping delete operation")
-                else:
-                    # fileexecutedelete
-                    def _delete_from_milvus():
-                        try:
-                            collection.delete(expr)
-                            logger.info(f"Deleted chunks for file {file_id} from Milvus")
-                        except Exception as e:
-                            logger.error(f"Error deleting file {file_id} from Milvus: {e}")
-
-                    await asyncio.to_thread(_delete_from_milvus)
-            except Exception as e:
-                logger.error(f"Error checking file existence in Milvus: {e}")
-        # ：delete files_meta[file_id]，dataoperation
-
-    async def delete_file(self, db_id: str, file_id: str) -> None:
-        """deletefile（data）"""
-        # delete Milvus  chunks data
-        await self.delete_file_chunks_only(db_id, file_id)
-
-        # dataoperation
-        async with self._metadata_lock:
-            if file_id in self.files_meta:
-                del self.files_meta[file_id]
-                from yunesa.repositories.knowledge_file_repository import KnowledgeFileRepository
-
-                await KnowledgeFileRepository().delete(file_id)
-
-    async def get_file_basic_info(self, db_id: str, file_id: str) -> dict:
-        """getfile（data）"""
-        if file_id not in self.files_meta:
-            raise Exception(f"File not found: {file_id}")
-
-        return {"meta": self.files_meta[file_id]}
-
-    async def get_file_content(self, db_id: str, file_id: str) -> dict:
-        """getfilecontent（chunkslines）"""
-        if file_id not in self.files_meta:
-            raise Exception(f"File not found: {file_id}")
-
-        #  Milvus getchunks
-        content_info = {"lines": []}
-        collection = await self._get_milvus_collection(db_id)
-        if collection:
-            try:
-                # querydocumentchunks
-                expr = f'file_id == "{file_id}"'
-                results = collection.query(
-                    expr=expr,
-                    output_fields=["content", "chunk_id", "chunk_index"],
-                    limit=10000,  # file10000chunks
-                )
-
-                # buildchunksdata
-                doc_chunks = []
-                for result in results:
-                    chunk_data = {
-                        "id": result.get("chunk_id", ""),
-                        "content": result.get("content", ""),
-                        "chunk_order_index": result.get("chunk_index", 0),
-                    }
-                    doc_chunks.append(chunk_data)
-
-                #  chunk_order_index sort
-                doc_chunks.sort(key=lambda x: x.get("chunk_order_index", 0))
-                content_info["lines"] = doc_chunks
-
-            except Exception as e:
-                logger.error(f"Failed to get file content from Milvus: {e}")
-                content_info["lines"] = []
-
-        # Try to read markdown content if available
-        file_meta = self.files_meta[file_id]
-        if file_meta.get("markdown_file"):
-            try:
-                content = await self._read_markdown_from_minio(file_meta["markdown_file"])
-                content_info["content"] = content
-            except Exception as e:
-                logger.error(f"Failed to read markdown file for {file_id}: {e}")
-
-        return content_info
-
-    async def get_file_info(self, db_id: str, file_id: str) -> dict:
-        """getfile（+content）- """
-        if file_id not in self.files_meta:
-            raise Exception(f"File not found: {file_id}")
-
-        # mergecontent
-        basic_info = await self.get_file_basic_info(db_id, file_id)
-        content_info = await self.get_file_content(db_id, file_id)
-
-        return {**basic_info, **content_info}
-
-    def delete_database(self, db_id: str) -> dict:
-        """deletedatabase，Milvus"""
-        # Drop Milvus collection
-        try:
-            if utility.has_collection(db_id, using=self.connection_alias):
-                utility.drop_collection(db_id, using=self.connection_alias)
-                logger.info(f"Dropped Milvus collection for {db_id}")
-            else:
-                logger.info(f"Milvus collection {db_id} does not exist, skipping")
-        except Exception as e:
-            logger.error(f"Failed to drop Milvus collection {db_id}: {e}")
-
-        # Call base method to delete local files and metadata
-        return super().delete_database(db_id)
-
-    def get_query_params_config(self, db_id: str, **kwargs) -> dict:
-        """get Milvus knowledge basequeryparameterconfigure"""
-        # build Milvus parameter（ reranker_config read）
-        options = [
-            {
-                "key": "search_mode",
-                "label": "retrieval",
-                "type": "select",
-                "default": "vector",
-                "options": [
-                    {"value": "vector", "label": "vectorretrieval", "description": "vectorretrieval"},
-                    {"value": "keyword", "label": "BM25 retrieval", "description": " Milvus BM25 retrieval"},
-                    {"value": "hybrid", "label": "retrieval", "description": "Milvus vectorretrieval BM25 retrieval"},
-                ],
-                "description": "retrieval",
-            },
-            {
-                "key": "final_top_k",
-                "label": "return Chunk ",
-                "type": "number",
-                "default": 10,
-                "min": 1,
-                "max": 100,
-                "description": "rerankerreturndocumentcount",
-            },
-            {
-                "key": "similarity_threshold",
-                "label": "threshold（0-1）",
-                "type": "number",
-                "default": 0.0,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.1,
-                "description": "filterresult",
-            },
-            {
-                "key": "bm25_top_k",
-                "label": "BM25 count",
-                "type": "number",
-                "default": 50,
-                "min": 1,
-                "max": 200,
-                "description": "BM25 retrievalretrieval BM25 count",
-            },
-            {
-                "key": "vector_weight",
-                "label": "vectorretrieval",
-                "type": "number",
-                "default": 0.7,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.1,
-                "description": "retrievalvectorresult",
-            },
-            {
-                "key": "bm25_weight",
-                "label": "BM25 ",
-                "type": "number",
-                "default": 0.3,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.1,
-                "description": "retrieval BM25 result",
-            },
-            {
-                "key": "bm25_drop_ratio_search",
-                "label": "BM25 items",
-                "type": "number",
-                "default": 0.0,
-                "min": 0.0,
-                "max": 1.0,
-                "step": 0.1,
-                "description": "BM25 retrievalitems，retrieval",
-            },
-            {
-                "key": "include_distances",
-                "label": "",
-                "type": "boolean",
-                "default": True,
-                "description": "result",
-            },
-            {
-                "key": "metric_type",
-                "label": "type",
-                "type": "select",
-                "default": "COSINE",
-                "options": [
-                    {"value": "COSINE", "label": "", "description": ""},
-                    {"value": "L2", "label": "", "description": "data"},
-                    {"value": "IP", "label": "", "description": "vector"},
-                ],
-                "description": "vectorcalculate",
-            },
-            {
-                "key": "use_reranker",
-                "label": "enabledreranker",
-                "type": "boolean",
-                "default": False,
-                "description": "whethermodelretrievalresultrowreranker",
-            },
-            {
-                "key": "reranker_model",
-                "label": "rerankermodel",
-                "type": "select",
-                "default": "",
-                "options": [
-                    {"label": info.name, "value": model_id}
-                    for model_id, info in kwargs.get("reranker_names", {}).items()
-                ],
-                "description": "timesqueryrerankermodel",
-            },
-            {
-                "key": "recall_top_k",
-                "label": "count",
-                "type": "number",
-                "default": 50,
-                "min": 10,
-                "max": 200,
-                "description": "vectorretrievalretrievalcount（enabledrerankervalid）",
-            },
-        ]
-
-        return {"type": "milvus", "options": options}
-
-    def __del__(self):
-        """clean upconnect"""
+    def __del__(self) -> None:
+        """Safely disconnect connection alias on object deletion."""
         try:
             if hasattr(self, "connection_alias"):
                 connections.disconnect(self.connection_alias)
-        except Exception:  # noqa: S110
+        except Exception:
             pass
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 3. AcademicKGVectorStore Class (Object-Oriented GraphRAG Vector Store)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AcademicKGVectorStore:
+    """
+    Object-oriented Milvus Vector Store Manager for UNESA Academic Knowledge Graph.
+    Encapsulates schema creation, record building, vector embedding, and persistence
+    across 4 specialized GraphRAG collections:
+    1. PaperChunk — Abstract & text chunk vector embeddings.
+    2. EntityEmbedding — Node entity embeddings (Lecturer, Publication, Concept, Venue, Institution).
+    3. RelationshipEmbedding — Edge sub-graph relation embeddings (HAS_AUTHOR, COLLABORATES_WITH, REFERS_TO).
+    4. ContentKeyword — IEEE thesaurus & keyphrase term embeddings.
+    """
+
+    def __init__(self, config: MilvusVectorIndexConfig | None = None):
+        self.config = config or milvus_config_from_env()
+
+    # ── CLIENT & CONNECTION MANAGEMENT ─────────────────────────────────────
+
+    def _get_client(self) -> Any:
+        """Instantiate MilvusClient from configuration."""
+        if not MILVUS_AVAILABLE:
+            raise ImportError("Install pymilvus first: pip install pymilvus")
+
+        uri = self.config.uri or os.getenv("MILVUS_URI", "http://localhost:19530")
+        if "milvus:" in uri or "milvus" in uri:
+            import socket
+            try:
+                socket.gethostbyname("milvus")
+            except Exception:
+                uri = uri.replace("://milvus:", "://localhost:").replace("http://milvus:", "http://localhost:")
+
+        kwargs: dict[str, Any] = {"uri": uri, "token": self.config.token}
+        db_name = self.config.db_name
+        if db_name:
+            try:
+                temp_client = MilvusClient(uri=uri, token=self.config.token)
+                dbs = temp_client.list_databases()
+                if db_name not in dbs and hasattr(temp_client, "create_database"):
+                    temp_client.create_database(db_name)
+                temp_client.close()
+                kwargs["db_name"] = db_name
+            except Exception:
+                pass
+
+        try:
+            return MilvusClient(**kwargs)
+        except Exception:
+            kwargs.pop("db_name", None)
+            client = MilvusClient(**kwargs)
+            if db_name and hasattr(client, "using_database"):
+                try:
+                    client.using_database(db_name)
+                except Exception:
+                    pass
+            return client
+
+    # ── PUBLIC GRAPH VECTOR STORE API ──────────────────────────────────────
+
+    def build_index_records(self, graph: nx.MultiDiGraph, *, graph_name: str = "") -> dict[str, list[dict[str, Any]]]:
+        """Build Milvus records for 3 AcademicRAG collections (chunks_vdb, entities_vdb, relationships_vdb)."""
+        return {
+            "chunks_vdb": self._paper_chunk_records(graph, graph_name=graph_name),
+            "entities_vdb": self._entity_embedding_records(graph, graph_name=graph_name),
+            "relationships_vdb": self._relationship_embedding_records(graph, graph_name=graph_name),
+        }
+
+    def write_vector_index(
+        self,
+        graph: nx.MultiDiGraph,
+        *,
+        clear_existing: bool = False,
+        normalize_embeddings: bool = False,
+        graph_name: str = "yunesa_academic_kg",
+    ) -> dict[str, Any]:
+        """Write Academic GraphRAG Dual-Index vector collections to Milvus / Zilliz Cloud."""
+        records = self.build_index_records(graph, graph_name=graph_name)
+        preflight = _validate_milvus_varchar_records(records)
+        logger.info(
+            "milvus.preflight.passed | graph_name=%s | collections=%s | rows=%s",
+            graph_name,
+            preflight["collections"],
+            preflight["rows"],
+        )
+        client = self._get_client()
+        insert_batch_size = _positive_env_int("YUNESA_MILVUS_INSERT_BATCH_SIZE", 128)
+
+        report: dict[str, Any] = {
+            "uri_configured": bool(self.config.uri),
+            "db_name": self.config.db_name or "",
+            "embedding_model": self.config.embedding_model,
+            "embedding_provider": self.config.embedding_provider,
+            "embedding_dim": self.config.embedding_dim,
+            "metric_type": self.config.metric_type,
+            "graph_name": graph_name,
+            "varchar_preflight": preflight,
+            "collections": {},
+        }
+
+        try:
+            for collection_name, rows in records.items():
+                self._ensure_collection(
+                    client,
+                    collection_name=collection_name,
+                    embedding_dim=self.config.embedding_dim,
+                    metric_type=self.config.metric_type,
+                    clear_existing=clear_existing,
+                )
+                deleted_report: dict[str, Any] = {}
+                if clear_existing:
+                    deleted_report = self._delete_graph_records(client, collection_name, graph_name)
+                inserted = 0
+                for start in range(0, len(rows), insert_batch_size):
+                    batch = rows[start : start + insert_batch_size]
+                    if not batch:
+                        continue
+                    embedded_batch = _embed_milvus_record_batch(
+                        batch,
+                        provider=self.config.embedding_provider,
+                        model_name=self.config.embedding_model,
+                        batch_size=self.config.batch_size,
+                        normalize_embeddings=normalize_embeddings,
+                    )
+                    client.insert(collection_name=collection_name, data=embedded_batch)
+                    inserted += len(embedded_batch)
+                    del embedded_batch
+                try:
+                    client.flush(collection_name)
+                except Exception:
+                    pass
+                try:
+                    client.load_collection(collection_name)
+                except Exception:
+                    pass
+                try:
+                    stats = client.get_collection_stats(collection_name)
+                except Exception:
+                    stats = {}
+                graph_row_count = self._count_graph_records(client, collection_name, graph_name)
+                report["collections"][collection_name] = {
+                    "prepared_rows": len(records.get(collection_name, [])),
+                    "inserted_rows": inserted,
+                    "deleted_existing_graph_rows": deleted_report,
+                    "graph_row_count": graph_row_count,
+                    "stats": stats,
+                }
+            return report
+        finally:
+            close = getattr(client, "close", None)
+            if callable(close):
+                close()
+
+    def inspect_collections(self) -> dict[str, Any]:
+        """Read collection schemas and row counts from Milvus / Zilliz Cloud."""
+        client = self._get_client()
+        try:
+            collections = client.list_collections()
+            report: dict[str, Any] = {
+                "db_name": self.config.db_name or "",
+                "collections": {},
+            }
+            for collection_name in collections:
+                try:
+                    stats = client.get_collection_stats(collection_name)
+                except Exception:
+                    stats = {}
+                try:
+                    desc = client.describe_collection(collection_name)
+                except Exception:
+                    desc = {}
+                fields = [
+                    {
+                        "name": field.get("name"),
+                        "type": str(field.get("type")),
+                        "params": field.get("params", {}),
+                    }
+                    for field in desc.get("fields", [])
+                ]
+                try:
+                    sample = client.query(collection_name=collection_name, filter="", limit=1, output_fields=["*"])
+                    sample_keys = sorted(sample[0].keys()) if sample else []
+                except Exception:
+                    sample_keys = []
+                report["collections"][collection_name] = {
+                    "stats": stats,
+                    "fields": fields,
+                    "sample_keys": sample_keys,
+                }
+            return report
+        finally:
+            close = getattr(client, "close", None)
+            if callable(close):
+                close()
+
+    def search(self, query_text: str, collection_name: str = "PaperChunk", top_k: int = 10) -> list[dict[str, Any]]:
+        """Perform semantic search against a target Milvus collection."""
+        client = self._get_client()
+        try:
+            results = client.search(
+                collection_name=collection_name,
+                data=[query_text],
+                limit=top_k,
+                output_fields=["*"],
+            )
+            hits: list[dict[str, Any]] = []
+            for raw_hit in (results[0] if results else []):
+                entity = raw_hit.get("entity", {})
+                hits.append({
+                    "content": entity.get("content", entity.get("description", "")),
+                    "score": float(raw_hit.get("distance", 0.0)),
+                    "metadata": entity,
+                })
+            return hits
+        except Exception as exc:
+            logger.warning("Milvus vector search error on collection %s: %s", collection_name, exc)
+            return []
+
+    # ── PRIVATE GRAPH RECORD GENERATION HELPERS ────────────────────────────
+
+    def _node_label(self, data: dict[str, Any], node_id: str) -> str:
+        return field_value(data, "label", "name", "title", "nama_norm", default=node_id)
+
+    def _node_source_id(self, data: dict[str, Any], node_id: str) -> str:
+        return field_value(
+            data,
+            "paper_id",
+            "nip",
+            "scopus_id",
+            "scholar_id",
+            "ieee_uri",
+            "value",
+            default=node_id,
+        )
+
+    def _node_description(self, node_id: str, data: dict[str, Any]) -> str:
+        node_type = field_value(data, "node_type", default="KGNode")
+        label = self._node_label(data, node_id)
+        parts = [f"{node_type}: {label}"]
+
+        if node_type == "Publication":
+            for key in ["title", "tldr", "abstract", "keywords", "document_type", "year", "venue"]:
+                val = field_value(data, key)
+                if val:
+                    parts.append(f"{key}: {val}")
+        elif node_type == "Lecturer":
+            for key in ["nama_dosen", "prodi", "nidn", "scopus_id", "scholar_id", "sinta_id"]:
+                val = field_value(data, key)
+                if val:
+                    parts.append(f"{key}: {val}")
+        elif node_type == "Concept":
+            for key in ["concept_type", "source", "ieee_uri"]:
+                val = field_value(data, key)
+                if val:
+                    parts.append(f"{key}: {val}")
+        else:
+            for key in ["name", "value", "institution_type", "source"]:
+                val = field_value(data, key)
+                if val:
+                    parts.append(f"{key}: {val}")
+
+        return " | ".join(parts)
+
+    def _publication_concept_labels(self, graph: nx.MultiDiGraph, paper_node: str) -> list[str]:
+        labels: list[str] = []
+        for _, target, data in graph.out_edges(paper_node, data=True):
+            if canonical_relation(data.get("relation")) not in CONCEPT_RELATIONS:
+                continue
+            target_data = graph.nodes[target]
+            lbl = self._node_label(target_data, target)
+            if lbl:
+                labels.append(lbl)
+        return list(dict.fromkeys(labels))
+
+    def _publication_author_labels(self, graph: nx.MultiDiGraph, paper_node: str) -> list[str]:
+        labels: list[str] = []
+        for _, target, data in graph.out_edges(paper_node, data=True):
+            if canonical_relation(data.get("relation")) != "HAS_AUTHOR":
+                continue
+            target_data = graph.nodes[target]
+            lbl = self._node_label(target_data, target)
+            if lbl:
+                labels.append(lbl)
+        for source, _, data in graph.in_edges(paper_node, data=True):
+            if canonical_relation(data.get("relation")) not in {"PUBLISHES", "WRITES"}:
+                continue
+            source_data = graph.nodes[source]
+            lbl = self._node_label(source_data, source)
+            if lbl:
+                labels.append(lbl)
+        return list(dict.fromkeys(labels))
+
+    def _publication_document_payload(self, graph: nx.MultiDiGraph, paper_node: str) -> dict[str, Any]:
+        data = graph.nodes[paper_node]
+        concepts = self._publication_concept_labels(graph, paper_node)
+        authors = self._publication_author_labels(graph, paper_node)
+        keywords = split_list_field(field_value(data, "keywords"))
+        doc_text = "\n".join(
+            part
+            for part in [
+                f"Title: {field_value(data, 'title', 'label')}",
+                f"TLDR: {field_value(data, 'tldr')}",
+                f"Abstract: {field_value(data, 'abstract')}",
+                f"Keywords: {', '.join(keywords)}",
+                f"Concepts: {', '.join(concepts)}",
+                f"Authors: {', '.join(authors)}",
+                f"Document type: {field_value(data, 'document_type')}",
+                f"DOI: {field_value(data, 'doi')}",
+                f"Link: {field_value(data, 'link')}",
+            ]
+            if not part.endswith(": ")
+        )
+        doc_id = field_value(data, "paper_id", default=paper_node)
+        return {
+            "doc_id": doc_id,
+            "paper_node": paper_node,
+            "title": field_value(data, "title", "label"),
+            "content": doc_text,
+            "content_hash": content_hash(doc_text),
+            "year": field_value(data, "year"),
+            "paperUrl": field_value(data, "link", "doi"),
+            "authors": ", ".join(authors),
+            "keywords": ", ".join(keywords),
+            "concepts": ", ".join(concepts),
+        }
+
+    def _paper_chunk_records(self, graph: nx.MultiDiGraph, *, graph_name: str = "") -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for node_id, data in graph.nodes(data=True):
+            if data.get("node_type") != "Publication":
+                continue
+            payload = self._publication_document_payload(graph, node_id)
+            for index, chunk in enumerate(semantic_text_chunks(payload["content"])):
+                content = (
+                    f"doc_id: {payload['doc_id']} | chunk_order_index: {index} | "
+                    f"content_hash: {content_hash(chunk)} | {chunk}"
+                )
+                rows.append({
+                    "graphName": _truncate_milvus("chunks_vdb", "graphName", graph_name),
+                    "title": _truncate_milvus("chunks_vdb", "title", payload["title"]),
+                    "content": _truncate_milvus("chunks_vdb", "content", content),
+                    "year": _truncate_milvus("chunks_vdb", "year", payload["year"]),
+                    "paperUrl": _truncate_milvus("chunks_vdb", "paperUrl", payload["paperUrl"]),
+                    "authors": _truncate_milvus("chunks_vdb", "authors", payload["authors"]),
+                    "_embedding_text": content,
+                })
+        return rows
+
+    def _entity_embedding_records(self, graph: nx.MultiDiGraph, *, graph_name: str = "") -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for node_id, data in graph.nodes(data=True):
+            node_type = field_value(data, "concept_type", "node_type", default="KGNode")
+            if data.get("node_type") == "Year":
+                continue
+            label = self._node_label(data, node_id)
+            description = self._node_description(node_id, data)
+            rows.append({
+                "graphName": _truncate_milvus("entities_vdb", "graphName", graph_name),
+                "entityName": _truncate_milvus("entities_vdb", "entityName", label),
+                "entityType": _truncate_milvus("entities_vdb", "entityType", node_type),
+                "description": _truncate_milvus("entities_vdb", "description", description),
+                "nodeId": _truncate_milvus("entities_vdb", "nodeId", node_id),
+                "sourceId": _truncate_milvus("entities_vdb", "sourceId", self._node_source_id(data, node_id)),
+                "_embedding_text": description,
+            })
+        return rows
+
+    def _relationship_embedding_records(self, graph: nx.MultiDiGraph, *, graph_name: str = "") -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for source, target, key, data in graph.edges(keys=True, data=True):
+            source_data = graph.nodes[source]
+            target_data = graph.nodes[target]
+            rel_type = canonical_relation(field_value(data, "relation", default="RELATED_TO"))
+            source_label = self._node_label(source_data, source)
+            target_label = self._node_label(target_data, target)
+            provenance = field_value(data, "provenance", "source")
+            description = (
+                f"{source_label} ({source_data.get('node_type', 'Node')}) "
+                f"-[{rel_type}]-> "
+                f"{target_label} ({target_data.get('node_type', 'Node')})"
+            )
+            if provenance:
+                description += f" | provenance: {provenance}"
+            rows.append({
+                "graphName": _truncate_milvus("relationships_vdb", "graphName", graph_name),
+                "srcId": _truncate_milvus("relationships_vdb", "srcId", source),
+                "tgtId": _truncate_milvus("relationships_vdb", "tgtId", target),
+                "relType": _truncate_milvus("relationships_vdb", "relType", rel_type),
+                "description": _truncate_milvus("relationships_vdb", "description", description),
+                "sourceId": _truncate_milvus(
+                    "relationships_vdb",
+                    "sourceId",
+                    f"{self._node_source_id(source_data, source)}::{self._node_source_id(target_data, target)}::{key}",
+                ),
+                "_embedding_text": description,
+            })
+        return rows
+
+    # ── PRIVATE MILVUS SCHEMA & COLLECTION MANAGERS ────────────────────────
+
+    def _create_collection_schema(self, collection_name: str, embedding_dim: int) -> Any:
+        schema = MilvusClient.create_schema(auto_id=True, enable_dynamic_field=False)
+        schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
+        for field_name, max_length in MILVUS_VARCHAR_LIMITS[collection_name].items():
+            schema.add_field(field_name=field_name, datatype=DataType.VARCHAR, max_length=max_length)
+        schema.add_field(field_name="embedding", datatype=DataType.FLOAT_VECTOR, dim=embedding_dim)
+        return schema
+
+    def _delete_graph_records(self, client: Any, collection_name: str, graph_name: str) -> dict[str, Any]:
+        if not graph_name:
+            return {"skipped": True, "reason": "graph_name_empty"}
+        try:
+            safe_val = safe_str(graph_name).replace("\\", "\\\\").replace('"', '\\"')
+            result = client.delete(
+                collection_name=collection_name,
+                filter=f'graphName == "{safe_val}"',
+            )
+            return {"skipped": False, "result": result}
+        except Exception as exc:
+            return {"skipped": False, "error_type": type(exc).__name__, "error": str(exc)}
+
+    def _count_graph_records(self, client: Any, collection_name: str, graph_name: str) -> dict[str, Any]:
+        if not graph_name:
+            return {"skipped": True, "reason": "graph_name_empty"}
+        limit = 16384
+        try:
+            safe_val = safe_str(graph_name).replace("\\", "\\\\").replace('"', '\\"')
+            rows = client.query(
+                collection_name=collection_name,
+                filter=f'graphName == "{safe_val}"',
+                output_fields=["graphName"],
+                limit=limit,
+            )
+            return {"skipped": False, "count": len(rows), "limit": limit, "exact": len(rows) < limit}
+        except Exception as exc:
+            return {"skipped": False, "error_type": type(exc).__name__, "error": str(exc)}
+
+    def _ensure_collection(
+        self,
+        client: Any,
+        *,
+        collection_name: str,
+        embedding_dim: int,
+        metric_type: str,
+        clear_existing: bool,
+    ) -> None:
+        exists = bool(client.has_collection(collection_name))
+        if exists:
+            try:
+                desc = client.describe_collection(collection_name)
+                field_names = {safe_str(f.get("name")) for f in desc.get("fields", []) if f.get("name")}
+            except Exception:
+                field_names = set()
+
+            if "graphName" not in field_names:
+                if clear_existing:
+                    client.drop_collection(collection_name)
+                    exists = False
+                else:
+                    raise RuntimeError(
+                        f"Milvus collection {collection_name!r} uses an old schema without graphName. "
+                        "Run with clear_existing=True once to rebuild it safely."
+                    )
+            else:
+                return
+
+        if not exists:
+            schema = self._create_collection_schema(collection_name, embedding_dim)
+            index_params = client.prepare_index_params()
+            index_params.add_index(
+                field_name="embedding",
+                index_type="AUTOINDEX",
+                metric_type=metric_type,
+            )
+            client.create_collection(
+                collection_name=collection_name,
+                schema=schema,
+                index_params=index_params,
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. Public Module-Level API & Backward-Compatibility Wrappers
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _node_label(data: dict[str, Any], node_id: str) -> str:
+    store = AcademicKGVectorStore()
+    return store._node_label(data, node_id)
+
+
+def _publication_author_labels(graph: nx.MultiDiGraph, paper_node: str) -> list[str]:
+    store = AcademicKGVectorStore()
+    return store._publication_author_labels(graph, paper_node)
+
+
+def _publication_concept_labels(graph: nx.MultiDiGraph, paper_node: str) -> list[str]:
+    store = AcademicKGVectorStore()
+    return store._publication_concept_labels(graph, paper_node)
+
+
+def build_academicrag_document_records(graph: nx.MultiDiGraph) -> dict[str, Any]:
+    """Build document status and text chunk records analogous to AcademicRAG KV stores."""
+    store = AcademicKGVectorStore()
+    payloads = [store._publication_document_payload(graph, node_id) for node_id, data in graph.nodes(data=True) if data.get("node_type") == "Publication"]
+    full_docs = [{"doc_id": p["doc_id"], "paper_node": p["paper_node"], "content": p["content"], "content_hash": p["content_hash"], "title": p["title"], "source": "supabase.papers"} for p in payloads]
+    text_chunks = []
+    for p in payloads:
+        chunks = semantic_text_chunks(p["content"])
+        for idx, chunk in enumerate(chunks):
+            text_chunks.append({
+                "chunk_id": stable_id("chunk", f"{p['doc_id']}:{idx}:{chunk}"),
+                "doc_id": p["doc_id"],
+                "paper_node": p["paper_node"],
+                "chunk_order_index": idx,
+                "content": chunk,
+                "content_hash": content_hash(chunk),
+                "tokens_estimate": max(1, len(chunk.split())),
+                "source": "notebook_kg_construction",
+            })
+    return {"full_docs": full_docs, "text_chunks": text_chunks, "doc_status": []}
+
+
+def summarize_academicrag_document_records(records: dict[str, Any]) -> dict[str, int]:
+    return {key: len(value) for key, value in records.items()}
+
+
+def build_milvus_index_records(graph: nx.MultiDiGraph, *, graph_name: str = "") -> dict[str, list[dict[str, Any]]]:
+    """Build Milvus records without embeddings for previewing and deterministic export."""
+    store = AcademicKGVectorStore()
+    return store.build_index_records(graph, graph_name=graph_name)
+
+
+def summarize_milvus_records(records_by_collection: dict[str, list[dict[str, Any]]]) -> dict[str, int]:
+    """Return count summary of records across all 4 Milvus GraphRAG collections."""
+    return {collection: len(rows) for collection, rows in records_by_collection.items()}
+
+
+def write_vector_index_to_milvus(
+    graph: nx.MultiDiGraph,
+    *,
+    config: MilvusVectorIndexConfig | None = None,
+    clear_existing: bool = False,
+    normalize_embeddings: bool = False,
+    graph_name: str = "yunesa_academic_kg",
+) -> dict[str, Any]:
+    """Write Academic GraphRAG Dual-Index vector collections to Milvus / Zilliz Cloud."""
+    store = AcademicKGVectorStore(config)
+    return store.write_vector_index(
+        graph,
+        clear_existing=clear_existing,
+        normalize_embeddings=normalize_embeddings,
+        graph_name=graph_name,
+    )
+
+
+def inspect_milvus_collections(config: MilvusVectorIndexConfig | None = None) -> dict[str, Any]:
+    """Read collection schemas and row counts from Milvus / Zilliz Cloud."""
+    store = AcademicKGVectorStore(config)
+    return store.inspect_collections()

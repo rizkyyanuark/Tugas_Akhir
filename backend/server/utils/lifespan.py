@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI):
             milvus_token = os.getenv("MILVUS_TOKEN") or os.getenv("ZILLIZ_TOKEN", "")
             if not milvus_uri or not milvus_token:
                 return
-            from yunesa.knowledge.graphrag.storage import normalize_milvus_uri
+            from yunesa.graphrag.storage import normalize_milvus_uri
             from pymilvus import MilvusClient
             def _ping():
                 client = MilvusClient(uri=normalize_milvus_uri(milvus_uri), token=milvus_token)
