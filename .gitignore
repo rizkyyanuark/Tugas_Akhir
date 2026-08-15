@@ -93,9 +93,10 @@ src/data/
 !notebooks/build-graph/eval_pipeline/data/README.md
 saves/
 saves_dev/
-graphrag/
+!backend/package/yunesa/graphrag/
+!backend/package/yunesa/graphrag/**
 !backend/package/yunesa/knowledge/graphrag/
-!backend/package/yunesa/knowledge/graphrag/*.py
+!backend/package/yunesa/knowledge/graphrag/**
 /models/
 
 # ML model and large binary artifacts
