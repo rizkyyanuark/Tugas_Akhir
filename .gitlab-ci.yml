@@ -48,7 +48,7 @@ deploy_to_gcp_vm:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - 'echo "Deploying commit $CI_COMMIT_SHORT_SHA ($CI_COMMIT_REF_NAME) to GCP VM at $TARGET_HOST..."'
-    - 'ssh $TARGET_USER@$TARGET_HOST "cd /home/$TARGET_USER/Tugas_Akhir && sudo git fetch origin && sudo git checkout $CI_COMMIT_REF_NAME && sudo git pull origin $CI_COMMIT_REF_NAME && sudo docker compose -f docker-compose.prod.yml up -d --build api worker web"'
+    - 'ssh $TARGET_USER@$TARGET_HOST "cd /home/$TARGET_USER/Tugas_Akhir && sudo git fetch origin && sudo git checkout $CI_COMMIT_REF_NAME && sudo git reset --hard origin/$CI_COMMIT_REF_NAME && sudo docker compose -f docker-compose.prod.yml up -d --build api worker web"'
     - 'echo "Verifying GCP VM health status..."'
     - 'sleep 15'
     - 'curl -f "http://$TARGET_HOST:5050/api/system/health" || curl -f "http://$TARGET_HOST:5050/health" || echo "Warning: Health endpoint check timed out"'
